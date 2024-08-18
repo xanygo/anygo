@@ -1,8 +1,8 @@
 //  Copyright(C) 2024 github.com/hidu  All Rights Reserved.
 //  Author: hidu <duv123+git@gmail.com>
-//  Date: 2024-08-17
+//  Date: 2024-08-18
 
-package xatomic
+package xsync
 
 import (
 	"errors"
@@ -65,5 +65,4 @@ func TestValueInt(t *testing.T) {
 		fst.Equal(t, 1, nv.Swap(2))
 		fst.Equal(t, 2, nv.Load())
 	})
-
 }
