@@ -4,7 +4,10 @@
 
 package xsync
 
-import "sync"
+import (
+	"bytes"
+	"sync"
+)
 
 type Pool[T any] struct {
 	// New optionally specifies a function to generate
@@ -12,12 +15,12 @@ type Pool[T any] struct {
 	// It may not be changed concurrently with calls to Get.
 	New func() T
 
-	sp   *sync.Pool
+	pool *sync.Pool
 	once sync.Once
 }
 
 func (p *Pool[T]) init() {
-	p.sp = &sync.Pool{
+	p.pool = &sync.Pool{
 		New: func() any {
 			return p.New()
 		},
@@ -30,10 +33,55 @@ func (p *Pool[T]) onceInit() {
 
 func (p *Pool[T]) Get() T {
 	p.onceInit()
-	return p.sp.Get().(T)
+	return p.pool.Get().(T)
 }
 
 func (p *Pool[T]) Put(x T) {
 	p.onceInit()
-	p.sp.Put(x)
+	p.pool.Put(x)
+}
+
+func NewBytesBufferPool(maxCap int) *BytesBufferPool {
+	return &BytesBufferPool{
+		MaxCap: maxCap,
+	}
+}
+
+type BytesBufferPool struct {
+	MaxCap int
+	pool   *sync.Pool
+	once   sync.Once
+}
+
+func (p *BytesBufferPool) initOnce() {
+	p.once.Do(func() {
+		p.pool = &sync.Pool{
+			New: func() interface{} {
+				return new(bytes.Buffer)
+			},
+		}
+	})
+}
+
+func (p *BytesBufferPool) Get() *bytes.Buffer {
+	p.initOnce()
+	return p.pool.Get().(*bytes.Buffer)
+}
+
+func (p *BytesBufferPool) Put(bf *bytes.Buffer) {
+	p.initOnce()
+	if p.MaxCap > 0 && bf.Cap() > p.MaxCap {
+		return
+	}
+	p.pool.Put(bf)
+}
+
+var DefaultBytesBufferPool = NewBytesBufferPool(1 << 20)
+
+func GetBytesBuffer() *bytes.Buffer {
+	return DefaultBytesBufferPool.Get()
+}
+
+func PutBytesBuffer(bf *bytes.Buffer) {
+	DefaultBytesBufferPool.Put(bf)
 }
