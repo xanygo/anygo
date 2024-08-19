@@ -15,7 +15,7 @@ import (
 
 var _ io.WriteCloser = (*AsyncWriter)(nil)
 
-// AsyncWriter 异步化的 writer
+// AsyncWriter 支持异步写的 Writer
 type AsyncWriter struct {
 	// Writer 实际 writer，必填
 	Writer io.Writer

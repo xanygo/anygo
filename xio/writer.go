@@ -10,12 +10,12 @@ import (
 	"sync"
 )
 
-// Flusher can flush
+// Flusher 具有 Flush 方法的接口定义
 type Flusher interface {
 	Flush() error
 }
 
-// TryFlush try flush
+// TryFlush 尝试调用 writer的 Flush 方法，若不支持会直接返回 nil
 func TryFlush(w io.Writer) error {
 	switch fw := w.(type) {
 	case Flusher:
@@ -28,13 +28,13 @@ func TryFlush(w io.Writer) error {
 	}
 }
 
-// ResetWriter writer can reset
+// ResetWriter 支持重新设置 Writer 的接口定义
 type ResetWriter interface {
 	io.Writer
 	Reset(w io.Writer)
 }
 
-// NewResetWriter wrap writer to ResetWriter
+// NewResetWriter 封装一个 writer 为 ResetWriter
 func NewResetWriter(w io.Writer) ResetWriter {
 	if rw, ok := w.(*resetWriter); ok {
 		return rw
@@ -67,7 +67,7 @@ type FlushWriter interface {
 	io.Writer
 }
 
-// NopWriteCloser nop closer for writer
+// NopWriteCloser 将一个 writer 封装为具有 空 Close 方法的 WriteCloser
 func NopWriteCloser(w io.Writer) io.WriteCloser {
 	return nopWriteCloser{Writer: w}
 }

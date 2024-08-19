@@ -21,13 +21,14 @@ func RecoveredCtx(ctx context.Context, re *PanicErr) {
 var _ error = (*PanicErr)(nil)
 
 type PanicErr struct {
-	Recover any
+	Re any
 }
 
 func (p *PanicErr) Error() string {
-	return fmt.Sprintf("panic: %v", p.Recover)
+	return fmt.Sprintf("panic: %v", p.Re)
 }
 
+// OnRecovered 注册 panic 被自动 recover 之后的回调函数
 func OnRecovered(fn func(ctx context.Context, re *PanicErr)) {
 	defCallbacks.add(fn)
 }

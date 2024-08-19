@@ -7,6 +7,7 @@ package safely_test
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/xanygo/anygo/safely"
 )
@@ -53,4 +54,43 @@ func ExampleRunCtx() {
 	// Output:
 	// i'm ok
 	// err: false
+}
+
+func ExampleOnRecovered() {
+	var panicCount atomic.Int64
+	safely.OnRecovered(func(ctx context.Context, re *safely.PanicErr) {
+		panicCount.Add(1)
+	})
+}
+
+func ExampleWrap() {
+	fn1 := func() error {
+		panic("hello")
+	}
+	fn2 := safely.Wrap(fn1)
+	fmt.Println("err is nil:", fn2() == nil)
+	// Output:
+	// err is nil: false
+}
+
+func ExampleWrapVoid() {
+	fn1 := func() error {
+		panic("hello")
+	}
+	fn2 := safely.WrapVoid(fn1)
+	fn2()
+	fmt.Println("ok")
+	// Output:
+	// ok
+}
+
+func ExampleWrapCtxVoid() {
+	fn1 := func(ctx context.Context) {
+		panic("hello")
+	}
+	fn2 := safely.WrapCtxVoid(fn1)
+	fn2(context.Background())
+	fmt.Println("ok")
+	// Output:
+	// ok
 }

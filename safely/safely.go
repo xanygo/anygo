@@ -20,7 +20,7 @@ func Run[T FnType1](fn T) (err error) {
 	defer func() {
 		if re := recover(); re != nil {
 			pe := &PanicErr{
-				Recover: re,
+				Re: re,
 			}
 			err = pe
 			RecoveredVoid(pe)
@@ -42,7 +42,8 @@ func WrapVoid[T FnType1](fn T) func() {
 	}
 }
 
-func Wrap(fn func() error) func() error {
+// Wrap 包装 fn，使其自动 recover panic
+func Wrap[T FnType1](fn T) func() error {
 	return func() error {
 		return Run(fn)
 	}
@@ -60,7 +61,7 @@ func RunCtx[T FnType2](ctx context.Context, fn T) (err error) {
 	defer func() {
 		if re := recover(); re != nil {
 			pe := &PanicErr{
-				Recover: re,
+				Re: re,
 			}
 			err = pe
 			RecoveredCtx(ctx, pe)
