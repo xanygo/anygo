@@ -11,8 +11,6 @@ import (
 	"io"
 	"sync"
 	"sync/atomic"
-
-	"github.com/xanygo/anygo/xsync"
 )
 
 var _ io.WriteCloser = (*AsyncWriter)(nil)
@@ -29,13 +27,13 @@ type AsyncWriter struct {
 	// NeedStatus 是否需要 write 的状态
 	NeedStatus bool
 
-	writeStats xsync.Value[WriteStatus] // 最新一条写入状态
-	buffers    chan []byte              // 异步数据
-	loopExit   chan bool                // 异步写完成后的事件
+	writeStats chan WriteStatus
+	buffers    chan []byte   // 异步数据
+	loopExit   chan struct{} // 异步写完成后的事件
 
-	once    sync.Once   // 用于初始化
-	initMux sync.Mutex  // 初始化时的锁
-	closed  atomic.Bool // 是否已经调用过 Close
+	once   sync.Once   // 用于初始化
+	mux    sync.Mutex  // 初始化时的锁
+	closed atomic.Bool // 是否已经调用过 Close
 }
 
 var errClosed = errors.New("writer already closed")
@@ -68,11 +66,12 @@ func (aw *AsyncWriter) Write(p []byte) (n int, err error) {
 }
 
 func (aw *AsyncWriter) init() {
-	aw.initMux.Lock()
-	defer aw.initMux.Unlock()
+	aw.mux.Lock()
+	defer aw.mux.Unlock()
 
-	aw.loopExit = make(chan bool)
+	aw.loopExit = make(chan struct{})
 	aw.buffers = make(chan []byte, aw.getChanSize())
+	aw.writeStats = make(chan WriteStatus, aw.getChanSize())
 	go func() {
 		defer func() {
 			if re := recover(); re != nil {
@@ -96,7 +95,10 @@ func (aw *AsyncWriter) onRecover(msg string, re any) {
 	s := WriteStatus{
 		Err: err,
 	}
-	aw.writeStats.Store(s)
+	select {
+	case aw.writeStats <- s:
+	default:
+	}
 }
 
 func (aw *AsyncWriter) doLoop() {
@@ -116,24 +118,35 @@ func (aw *AsyncWriter) doLoop() {
 				Wrote: n,
 				Err:   err,
 			}
-			aw.writeStats.Store(s)
+			select {
+			case aw.writeStats <- s:
+			default:
+			}
 		}
 	}
 }
 
-// LastWriteStatus 返回的是异步写的最新一次的状态
-func (aw *AsyncWriter) LastWriteStatus() WriteStatus {
-	return aw.writeStats.Load()
+// WriteStatus 返回的是异步写的最新一次的状态
+func (aw *AsyncWriter) WriteStatus() <-chan WriteStatus {
+	aw.mux.Lock()
+	defer aw.mux.Unlock()
+	if aw.writeStats == nil {
+		c := make(chan WriteStatus)
+		close(c)
+		return c
+	}
+	return aw.writeStats
 }
 
 // Close 关闭
 func (aw *AsyncWriter) Close() error {
 	if aw.closed.CompareAndSwap(false, true) {
-		aw.initMux.Lock()
-		defer aw.initMux.Unlock()
+		aw.mux.Lock()
+		defer aw.mux.Unlock()
 		if aw.buffers != nil {
 			aw.buffers <- nil
 			<-aw.loopExit
+			close(aw.writeStats)
 		}
 	}
 	return nil

@@ -29,7 +29,8 @@ func TestAsyncWriter(t *testing.T) {
 		want := WriteStatus{
 			Wrote: 1,
 		}
-		fst.Equal(t, want, aw.LastWriteStatus())
+		got := <-aw.WriteStatus()
+		fst.Equal(t, want, got)
 		fst.Equal(t, 1000, mw.Len())
 	})
 
@@ -41,8 +42,8 @@ func TestAsyncWriter(t *testing.T) {
 			NeedStatus: true,
 		}
 		fst.NoError(t, aw.Close())
-		want := WriteStatus{}
-		fst.Equal(t, want, aw.LastWriteStatus())
+		_, ok := <-aw.WriteStatus()
+		fst.False(t, ok)
 	})
 
 	t.Run("with gor", func(t *testing.T) {
