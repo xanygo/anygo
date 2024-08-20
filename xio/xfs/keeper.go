@@ -6,6 +6,7 @@ package xfs
 
 import (
 	"errors"
+	"github.com/xanygo/anygo/xworker"
 	"log"
 	"os"
 	"path/filepath"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/xsync"
-	"github.com/xanygo/anygo/xtime"
 )
 
 // Keeper 保持文件存在
@@ -31,7 +31,7 @@ type Keeper struct {
 
 	file  *os.File
 	info  os.FileInfo
-	timer *xtime.Interval
+	timer *xworker.Interval
 
 	beforeChange fileChange
 	afterChange  fileChange
@@ -64,8 +64,8 @@ func (kf *Keeper) Start() error {
 		return errors.New("already started")
 	}
 	kf.running = true
-	kf.timer = &xtime.Interval{}
-	kf.timer.Add(kf.loop)
+	kf.timer = &xworker.Interval{}
+	kf.timer.AddWorker(kf.loop)
 	kf.timer.Start(kf.getCheckInterval())
 	return nil
 }

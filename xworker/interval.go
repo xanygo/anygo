@@ -2,7 +2,7 @@
 // Author: hidu <duv123@gmail.com>
 // Date: 2022/7/31
 
-package xtime
+package xworker
 
 import (
 	"sync"
@@ -104,11 +104,11 @@ func (it *Interval) Stop() {
 	close(it.closed)
 }
 
-// Add 注册回调函数
+// AddWorker 注册回调函数
 //
 //	 应确保函数不会 panic。若 fn panic，会自动 recover 同时将 panic 信息丢弃。
 //		默认情况下，若 fn 运行时间 > 调度时间间隔，同一个 fn 在同一时间会有多个运行实例
-func (it *Interval) Add(fn func()) {
+func (it *Interval) AddWorker(fn func()) {
 	it.fns.Append(fn)
 }
 

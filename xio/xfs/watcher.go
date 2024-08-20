@@ -7,6 +7,7 @@ package xfs
 import (
 	"errors"
 	"fmt"
+	"github.com/xanygo/anygo/xworker"
 	"os"
 	"path/filepath"
 	"sync"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xsync"
-	"github.com/xanygo/anygo/xtime"
 )
 
 type WatcherEventType string
@@ -46,7 +46,7 @@ type Watcher struct {
 	// Delay 文件变化后多久可以被检查出，可选，默认为 1 秒
 	Delay time.Duration
 
-	timer   *xtime.Interval
+	timer   *xworker.Interval
 	rules   xsync.Slice[*watchRule]
 	mux     sync.RWMutex
 	started bool
@@ -86,8 +86,8 @@ func (w *Watcher) Start() error {
 	if w.started {
 		return errors.New("already started")
 	}
-	w.timer = &xtime.Interval{}
-	w.timer.Add(w.scan)
+	w.timer = &xworker.Interval{}
+	w.timer.AddWorker(w.scan)
 	w.timer.Start(w.getInterval())
 	w.started = true
 	w.errors = make(chan error)

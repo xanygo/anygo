@@ -2,9 +2,11 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-08-19
 
-package xerrors
+package xerror
 
 import (
+	"fmt"
+	"io"
 	"testing"
 
 	"github.com/fsgo/fst"
@@ -15,5 +17,14 @@ func TestOnceErr(t *testing.T) {
 		var oe *OnceSet
 		fst.Equal(t, "<nil>", oe.Error())
 		fst.Nil(t, oe.Unwrap())
+	})
+	t.Run("case 2", func(t *testing.T) {
+		var oe OnceSet
+		fst.Equal(t, "<nil>", oe.Error())
+		fst.Nil(t, oe.Unwrap())
+		err1 := fmt.Errorf("hello")
+		fst.True(t, oe.SetOnce(err1))
+		fst.False(t, oe.SetOnce(io.EOF))
+		fst.ErrorIs(t, &oe, err1)
 	})
 }

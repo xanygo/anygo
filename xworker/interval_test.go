@@ -2,10 +2,10 @@
 // Author: hidu <duv123@gmail.com>
 // Date: 2022/7/31
 
-package xtime_test
+package xworker_test
 
 import (
-	"github.com/xanygo/anygo/xtime"
+	"github.com/xanygo/anygo/xworker"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -15,14 +15,14 @@ import (
 )
 
 func TestInterval(t *testing.T) {
-	it := xtime.Interval{}
+	it := xworker.Interval{}
 	defer it.Stop()
 	var num int32
-	it.Add(func() {
+	it.AddWorker(func() {
 		atomic.AddInt32(&num, 1)
 	})
 	var f1 int32
-	it.Add(func() {
+	it.AddWorker(func() {
 		if it.Running() {
 			atomic.AddInt32(&f1, 1)
 		}
@@ -31,7 +31,7 @@ func TestInterval(t *testing.T) {
 	var wg2 sync.WaitGroup
 	for i := 0; i < 2; i++ {
 		wg2.Add(1)
-		it.Add(func() {
+		it.AddWorker(func() {
 			defer wg2.Done()
 			select {
 			case <-it.Done():
@@ -53,13 +53,13 @@ func TestInterval(t *testing.T) {
 }
 
 func TestInterval2(t *testing.T) {
-	it := xtime.Interval{}
+	it := xworker.Interval{}
 	var num atomic.Int64
-	it.Add(func() {
+	it.AddWorker(func() {
 		num.Add(1)
 		panic("hello")
 	})
-	it.Add(func() {
+	it.AddWorker(func() {
 		num.Add(3)
 		<-it.Done()
 		num.Add(5)

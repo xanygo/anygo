@@ -109,12 +109,12 @@ type OnceSet[T any] struct {
 	mux   sync.RWMutex
 }
 
-func (os *OnceSet[T]) SetOnce(value T) {
+func (os *OnceSet[T]) SetOnce(value T) bool {
 	os.mux.RLock()
 	has := os.has
 	os.mux.RUnlock()
 	if has {
-		return
+		return false
 	}
 	os.mux.Lock()
 	if !os.has {
@@ -122,6 +122,7 @@ func (os *OnceSet[T]) SetOnce(value T) {
 		os.value = value
 	}
 	os.mux.Unlock()
+	return true
 }
 
 func (os *OnceSet[T]) Get() (T, bool) {
