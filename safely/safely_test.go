@@ -6,8 +6,9 @@ package safely
 
 import (
 	"context"
-	"github.com/fsgo/fst"
 	"testing"
+
+	"github.com/fsgo/fst"
 )
 
 func TestRunVoid(t *testing.T) {

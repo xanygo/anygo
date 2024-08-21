@@ -56,7 +56,7 @@ type BytesBufferPool struct {
 func (p *BytesBufferPool) initOnce() {
 	p.once.Do(func() {
 		p.pool = &sync.Pool{
-			New: func() interface{} {
+			New: func() any {
 				return new(bytes.Buffer)
 			},
 		}

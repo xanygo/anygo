@@ -5,8 +5,9 @@
 package xsync
 
 import (
-	"github.com/fsgo/fst"
 	"testing"
+
+	"github.com/fsgo/fst"
 )
 
 func TestSlice(t *testing.T) {

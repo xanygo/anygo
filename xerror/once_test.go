@@ -5,7 +5,7 @@
 package xerror
 
 import (
-	"fmt"
+	"errors"
 	"io"
 	"testing"
 
@@ -22,7 +22,7 @@ func TestOnceErr(t *testing.T) {
 		var oe OnceSet
 		fst.Equal(t, "<nil>", oe.Error())
 		fst.Nil(t, oe.Unwrap())
-		err1 := fmt.Errorf("hello")
+		err1 := errors.New("hello")
 		fst.True(t, oe.SetOnce(err1))
 		fst.False(t, oe.SetOnce(io.EOF))
 		fst.ErrorIs(t, &oe, err1)

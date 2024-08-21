@@ -6,6 +6,7 @@ package xstr_test
 
 import (
 	"fmt"
+
 	"github.com/xanygo/anygo/xstr"
 )
 

@@ -5,13 +5,14 @@
 package xtp_test
 
 import (
-	"github.com/xanygo/anygo/xtp"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/fsgo/fst"
+
+	"github.com/xanygo/anygo/xtp"
 )
 
 func TestInterval(t *testing.T) {
