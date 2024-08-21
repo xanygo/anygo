@@ -6,9 +6,13 @@ package xlog
 
 import (
 	"log/slog"
-	"strings"
+
+	"github.com/xanygo/anygo/xstr"
 )
 
+// ReplaceAttr Logger Handler 的用于重写 Attr 函数，目前包含功能：
+//  1. source.file 字段的文件路径简化，只保留部分路径
+//  2. time 字段格式调整为 2006-01-02 15:04:05.999
 func ReplaceAttr(groups []string, a slog.Attr) slog.Attr {
 	if len(groups) != 0 {
 		return a
@@ -17,9 +21,7 @@ func ReplaceAttr(groups []string, a slog.Attr) slog.Attr {
 	case slog.SourceKey:
 		if a.Value.Kind() == slog.KindAny {
 			if source, ok := a.Value.Any().(*slog.Source); ok {
-				arr := strings.Split(source.File, "/")
-				index := max(0, len(arr)-3)
-				source.File = strings.Join(arr[index:], "/")
+				source.File = xstr.CutLastByteNAfter(source.File, '/', 3)
 			}
 		}
 	case slog.TimeKey:

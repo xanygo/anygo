@@ -59,7 +59,7 @@ func IndexByteN(s string, c byte, n int) int {
 	return index
 }
 
-// LastIndexByteN 反向在字符串 s 中查找第 N 个 byte 的位置，若查找不到会返回 -1
+// LastIndexByteN 反向在字符串 s 中查找第 n 个 字符(c) 的位置，若查找不到会返回 -1
 func LastIndexByteN(s string, c byte, n int) int {
 	var pos int
 	for i := 0; i < n; i++ {

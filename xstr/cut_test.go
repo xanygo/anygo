@@ -10,6 +10,7 @@ func TestCutIndex(t *testing.T) {
 	type args struct {
 		s     string
 		index int
+		len   int
 	}
 	tests := []struct {
 		name       string
@@ -53,10 +54,20 @@ func TestCutIndex(t *testing.T) {
 			wantBefore: "hello",
 			wantAfter:  "",
 		},
+		{
+			name: "case 5",
+			args: args{
+				s:     "hello",
+				index: 1,
+				len:   2,
+			},
+			wantBefore: "h",
+			wantAfter:  "lo",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBefore, gotAfter := CutIndex(tt.args.s, tt.args.index)
+			gotBefore, gotAfter := CutIndex(tt.args.s, tt.args.index, tt.args.len)
 			if gotBefore != tt.wantBefore {
 				t.Errorf("CutIndex() gotBefore = %v, want %v", gotBefore, tt.wantBefore)
 			}

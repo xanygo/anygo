@@ -48,6 +48,7 @@ func (n NopLogger) Output(context.Context, Level, int, string, ...Attr) {}
 
 func (n NopLogger) Nop() {}
 
+// Handler 日志记录行的处理对象，调用 Handle 方法后会触发日志落盘
 type Handler interface {
 	Handle(context.Context, slog.Record) error
 }

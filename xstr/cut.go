@@ -6,13 +6,90 @@ package xstr
 
 // CutIndex 将字符串从索引位置拆分为两部分
 //
-//	index: 拆分位置，支持超出字符串 s 正常的索引位置
-func CutIndex(s string, index int) (before, after string) {
-	if index > len(s) {
+//	sepIndex: 拆分位置，支持超出字符串 s 正常的索引位置
+//	当 index > len(s) 时，before = s
+//	当 index < 0     时， after = s
+//	sepLen：拆分字符串的长度，应 >=0
+func CutIndex(s string, sepIndex int, sepLen int) (before, after string) {
+	if sepIndex > len(s) {
 		return s, ""
 	}
-	if index <= 0 {
+	if sepIndex < 0 {
 		return "", s
 	}
-	return s[:index], s[index:]
+	return s[:sepIndex], substr(s[sepIndex:], sepLen)
+}
+
+func substr(str string, index int) string {
+	if index > len(str) {
+		return ""
+	}
+	return str[index:]
+}
+
+// CutIndexBefore  将字符串从索引位置拆分为两部分,返回前面的部分
+//
+//	sepIndex: 拆分位置，支持超出字符串 s 正常的索引位置
+//	当 index > len(s) 时，返回字符串整体
+//	当 index <= 0     时，返回空字符串
+func CutIndexBefore(s string, sepIndex int) (before string) {
+	if sepIndex > len(s) {
+		return s
+	}
+	if sepIndex <= 0 {
+		return ""
+	}
+	return s[:sepIndex]
+}
+
+// CutIndexAfter  将字符串从索引位置拆分为两部分,返回后面的部分
+//
+//	sepIndex: 拆分位置，支持超出字符串 s 正常的索引位置
+//	当 index > len(s) 时，返回空字符串
+//	当 index <= 0     时，返回字符串整体
+//	sepLen：拆分字符串的长度，应 >=0
+func CutIndexAfter(s string, sepIndex int, sepLen int) (after string) {
+	if sepIndex > len(s) {
+		return ""
+	}
+	if sepIndex < 0 {
+		return s
+	}
+	return substr(s[sepIndex:], sepLen)
+}
+
+// CutLastN 反向在字符串 s 中查找第 n 个子字符串 ,并拆分为前后两部分
+func CutLastN(s string, substr string, n int) (before string, after string) {
+	index := IndexN(s, substr, n)
+	return CutIndex(s, index, len(substr))
+}
+
+// CutLastNBefore 反向在字符串 s 中查找第 n 个子字符串 ,并返回前面部分
+func CutLastNBefore(s string, substr string, n int) (before string) {
+	index := IndexN(s, substr, n)
+	return CutIndexBefore(s, index)
+}
+
+// CutLastNAfter 反向在字符串 s 中查找第 n 个子字符串 ,并返回后面部分
+func CutLastNAfter(s string, substr string, n int) (after string) {
+	index := IndexN(s, substr, n)
+	return CutIndexAfter(s, index, len(substr))
+}
+
+// CutLastByteN 反向在字符串 s 中查找第 n 个字符(c) ,并拆分为前后两部分
+func CutLastByteN(s string, c byte, n int) (before string, after string) {
+	index := LastIndexByteN(s, c, n)
+	return CutIndex(s, index, 1)
+}
+
+// CutLastByteNBefore 反向在字符串 s 中查找第 n 个字符(c) ,并返回前面部分
+func CutLastByteNBefore(s string, c byte, n int) (before string) {
+	index := LastIndexByteN(s, c, n)
+	return CutIndexBefore(s, index)
+}
+
+// CutLastByteNAfter 反向在字符串 s 中查找第 n 个 字符(c) ,并返回后面部分
+func CutLastByteNAfter(s string, c byte, n int) (after string) {
+	index := LastIndexByteN(s, c, n)
+	return CutIndexAfter(s, index, 1)
 }
