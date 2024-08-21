@@ -15,7 +15,7 @@ import (
 // Level 日志等级
 type Level = slog.Level
 
-var (
+const (
 	LevelDebug Level = slog.LevelDebug
 	LevelInfo  Level = slog.LevelInfo
 	LevelWarn  Level = slog.LevelWarn
