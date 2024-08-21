@@ -11,14 +11,14 @@ import (
 	"sync"
 )
 
-// Sorted 按照写入顺序排序的 Value
-type Sorted[K comparable, V any] struct {
+// Ordered 按照写入顺序排序的 Map
+type Ordered[K comparable, V any] struct {
 	keys []K
 	db   map[K]V
 	mux  sync.RWMutex
 }
 
-func (s *Sorted[K, V]) Set(key K, value V) {
+func (s *Ordered[K, V]) Set(key K, value V) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	if s.db == nil {
@@ -31,7 +31,7 @@ func (s *Sorted[K, V]) Set(key K, value V) {
 	}
 }
 
-func (s *Sorted[K, V]) Delete(keys ...K) {
+func (s *Ordered[K, V]) Delete(keys ...K) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	if s.db == nil {
@@ -48,7 +48,7 @@ func (s *Sorted[K, V]) Delete(keys ...K) {
 	}
 }
 
-func (s *Sorted[K, V]) Get(key K) (V, bool) {
+func (s *Ordered[K, V]) Get(key K) (V, bool) {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 	if s.db == nil {
@@ -59,7 +59,7 @@ func (s *Sorted[K, V]) Get(key K) (V, bool) {
 	return v, ok
 }
 
-func (s *Sorted[K, V]) GetDefault(key K, def V) V {
+func (s *Ordered[K, V]) GetDefault(key K, def V) V {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 	if s.db == nil {
@@ -72,7 +72,7 @@ func (s *Sorted[K, V]) GetDefault(key K, def V) V {
 	return def
 }
 
-func (s *Sorted[K, V]) MustGet(key K) V {
+func (s *Ordered[K, V]) MustGet(key K) V {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 	if s.db != nil {
@@ -83,7 +83,7 @@ func (s *Sorted[K, V]) MustGet(key K) V {
 	panic(fmt.Sprintf("not found key=%v", key))
 }
 
-func (s *Sorted[K, V]) Has(key K) bool {
+func (s *Ordered[K, V]) Has(key K) bool {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 	if s.db == nil {
@@ -92,7 +92,8 @@ func (s *Sorted[K, V]) Has(key K) bool {
 	_, ok := s.db[key]
 	return ok
 }
-func (s *Sorted[K, V]) HasAny(keys ...K) bool {
+
+func (s *Ordered[K, V]) HasAny(keys ...K) bool {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 	if s.db == nil {
@@ -106,7 +107,7 @@ func (s *Sorted[K, V]) HasAny(keys ...K) bool {
 	return false
 }
 
-func (s *Sorted[K, V]) Range(fn func(key K, value V) bool) {
+func (s *Ordered[K, V]) Range(fn func(key K, value V) bool) {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 	for _, k := range s.keys {
@@ -116,13 +117,13 @@ func (s *Sorted[K, V]) Range(fn func(key K, value V) bool) {
 	}
 }
 
-func (s *Sorted[K, V]) Keys() []K {
+func (s *Ordered[K, V]) Keys() []K {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 	return s.keys
 }
 
-func (s *Sorted[K, V]) Value(clone bool) map[K]V {
+func (s *Ordered[K, V]) Map(clone bool) map[K]V {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 	if clone {
@@ -131,7 +132,7 @@ func (s *Sorted[K, V]) Value(clone bool) map[K]V {
 	return s.db
 }
 
-func (s *Sorted[K, V]) KVs(clone bool) ([]K, map[K]V) {
+func (s *Ordered[K, V]) KVs(clone bool) ([]K, map[K]V) {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 	if clone {
@@ -140,16 +141,37 @@ func (s *Sorted[K, V]) KVs(clone bool) ([]K, map[K]V) {
 	return s.keys, s.db
 }
 
-func (s *Sorted[K, V]) Len() int {
+func (s *Ordered[K, V]) Values() []V {
+	s.mux.RLock()
+	defer s.mux.RUnlock()
+	if s.db == nil {
+		return nil
+	}
+	values := make([]V, len(s.keys))
+	for index, key := range s.keys {
+		values[index] = s.db[key]
+	}
+	return values
+}
+
+func (s *Ordered[K, V]) Len() int {
 	s.mux.RLock()
 	val := len(s.keys)
 	s.mux.RUnlock()
 	return val
 }
 
-func (s *Sorted[K, V]) Clear() {
+func (s *Ordered[K, V]) Clear() {
 	s.mux.Lock()
 	s.keys = nil
 	clear(s.db)
 	s.mux.Unlock()
+}
+
+func (s *Ordered[K, V]) Clone() *Ordered[K, V] {
+	keys, values := s.KVs(true)
+	return &Ordered[K, V]{
+		keys: keys,
+		db:   values,
+	}
 }

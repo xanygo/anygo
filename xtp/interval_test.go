@@ -2,10 +2,10 @@
 // Author: hidu <duv123@gmail.com>
 // Date: 2022/7/31
 
-package xworker_test
+package xtp_test
 
 import (
-	"github.com/xanygo/anygo/xworker"
+	"github.com/xanygo/anygo/xtp"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -15,7 +15,7 @@ import (
 )
 
 func TestInterval(t *testing.T) {
-	it := xworker.Interval{}
+	it := xtp.Interval{}
 	defer it.Stop()
 	var num int32
 	it.AddWorker(func() {
@@ -53,7 +53,7 @@ func TestInterval(t *testing.T) {
 }
 
 func TestInterval2(t *testing.T) {
-	it := xworker.Interval{}
+	it := xtp.Interval{}
 	var num atomic.Int64
 	it.AddWorker(func() {
 		num.Add(1)

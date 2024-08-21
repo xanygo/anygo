@@ -6,21 +6,23 @@ package xmap_test
 
 import (
 	"fmt"
-	"github.com/fsgo/fst"
-	"github.com/xanygo/anygo/xmap"
 	"testing"
+
+	"github.com/fsgo/fst"
+
+	"github.com/xanygo/anygo/xmap"
 )
 
 func TestSorted(t *testing.T) {
-	var m1 xmap.Sorted[int, string]
+	var m1 xmap.Ordered[int, string]
 	fst.False(t, m1.Has(0))
 	fst.False(t, m1.HasAny(0, 1, 2))
 	m1.Set(0, "v0")
 	m1.Set(1, "v1")
 	fst.True(t, m1.Has(0))
 	fst.True(t, m1.HasAny(3, 0))
-	fst.Equal(t, map[int]string{0: "v0", 1: "v1"}, m1.Value(false))
-	fst.Equal(t, map[int]string{0: "v0", 1: "v1"}, m1.Value(true))
+	fst.Equal(t, map[int]string{0: "v0", 1: "v1"}, m1.Map(false))
+	fst.Equal(t, map[int]string{0: "v0", 1: "v1"}, m1.Map(true))
 
 	keys := []int{0, 1}
 	for i := 2; i < 10; i++ {
@@ -47,6 +49,6 @@ func TestSorted(t *testing.T) {
 	m1.Clear()
 	fst.Equal(t, 0, m1.Len())
 	fst.Empty(t, m1.Keys())
-	fst.Empty(t, m1.Value(false))
-	fst.Empty(t, m1.Value(true))
+	fst.Empty(t, m1.Map(false))
+	fst.Empty(t, m1.Map(true))
 }

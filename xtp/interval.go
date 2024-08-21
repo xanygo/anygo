@@ -2,7 +2,7 @@
 // Author: hidu <duv123@gmail.com>
 // Date: 2022/7/31
 
-package xworker
+package xtp
 
 import (
 	"sync"
