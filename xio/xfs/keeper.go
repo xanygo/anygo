@@ -65,7 +65,7 @@ func (kf *Keeper) Start() error {
 	}
 	kf.running = true
 	kf.timer = &xtp.Interval{}
-	kf.timer.AddWorker(kf.loop)
+	kf.timer.Add(kf.loop)
 	kf.timer.Start(kf.getCheckInterval())
 	return nil
 }

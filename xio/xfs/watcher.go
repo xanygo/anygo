@@ -87,7 +87,7 @@ func (w *Watcher) Start() error {
 		return errors.New("already started")
 	}
 	w.timer = &xtp.Interval{}
-	w.timer.AddWorker(w.scan)
+	w.timer.Add(w.scan)
 	w.timer.Start(w.getInterval())
 	w.started = true
 	w.errors = make(chan error)

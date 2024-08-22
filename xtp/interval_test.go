@@ -19,11 +19,11 @@ func TestInterval(t *testing.T) {
 	it := xtp.Interval{}
 	defer it.Stop()
 	var num int32
-	it.AddWorker(func() {
+	it.Add(func() {
 		atomic.AddInt32(&num, 1)
 	})
 	var f1 int32
-	it.AddWorker(func() {
+	it.Add(func() {
 		if it.Running() {
 			atomic.AddInt32(&f1, 1)
 		}
@@ -32,7 +32,7 @@ func TestInterval(t *testing.T) {
 	var wg2 sync.WaitGroup
 	for i := 0; i < 2; i++ {
 		wg2.Add(1)
-		it.AddWorker(func() {
+		it.Add(func() {
 			defer wg2.Done()
 			select {
 			case <-it.Done():
@@ -56,11 +56,11 @@ func TestInterval(t *testing.T) {
 func TestInterval2(t *testing.T) {
 	it := xtp.Interval{}
 	var num atomic.Int64
-	it.AddWorker(func() {
+	it.Add(func() {
 		num.Add(1)
 		panic("hello")
 	})
-	it.AddWorker(func() {
+	it.Add(func() {
 		num.Add(3)
 		<-it.Done()
 		num.Add(5)

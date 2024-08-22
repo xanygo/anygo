@@ -6,6 +6,7 @@ package xmap_test
 
 import (
 	"fmt"
+
 	"github.com/xanygo/anygo/xmap"
 )
 
