@@ -9,7 +9,7 @@ package xstr
 //	sepIndex: 拆分位置，支持超出字符串 s 正常的索引位置
 //	当 index > len(s) 时，before = s
 //	当 index < 0     时， after = s
-//	sepLen：拆分字符串的长度，应 >=0
+//	sepLen：拆分字符串的长度，应 >= 0
 func CutIndex(s string, sepIndex int, sepLen int) (before, after string) {
 	if sepIndex > len(s) {
 		return s, ""

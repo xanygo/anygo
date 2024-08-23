@@ -233,11 +233,11 @@ func (rr ExtRuleMap) Names() []string {
 }
 
 func (rr ExtRuleMap) Set(rules ...*ExtRule) error {
-	for _, rule := range rr {
+	for _, rule := range rules {
 		if err := rule.Valid(); err != nil {
 			return err
 		}
-		ExtRules[rule.Name] = rule
+		rr[rule.Name] = rule
 	}
 	return nil
 }

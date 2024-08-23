@@ -92,8 +92,8 @@ func CleanFiles(pattern string, remaining int) error {
 	}
 
 	sort.Slice(infos, func(i, j int) bool {
-		a := infos[i].info.ModTime()
-		b := infos[j].info.ModTime()
+		a := Ctime(infos[i].info)
+		b := Ctime(infos[j].info)
 		return b.Before(a)
 	})
 

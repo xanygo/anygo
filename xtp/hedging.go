@@ -90,7 +90,7 @@ func (h *Hedging[T]) Run(ctx context.Context) (T, error) {
 	}
 	var emp T
 	// 理论不应该发生
-	return emp, errors.New("bug? unexpect")
+	return emp, errors.New("bug, unexpect")
 }
 
 func (h *Hedging[T]) execute(ctx context.Context, fn func(ctx context.Context) (T, error), ret chan<- hedgingResult[T]) {
