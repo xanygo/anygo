@@ -4,7 +4,11 @@
 
 package xslice
 
-import "slices"
+import (
+	"fmt"
+	"slices"
+	"strings"
+)
 
 // Merge merge 多个 slice 为一个，并最终返回一个新的 slice
 func Merge[S ~[]T, T any](items ...S) S {
@@ -123,15 +127,15 @@ func PopHeadN[S ~[]E, E any](s S, n int) (new S, values S) {
 }
 
 // PopTail 弹出尾部的一个元素，若 slice 为空会返回 false
-func PopTail[S ~[]E, E any](s S) (S, E, bool) {
+func PopTail[S ~[]E, E any](s S) (new S, value E, has bool) {
 	if len(s) == 0 {
 		var emp E
 		return s, emp, false
 	}
 	index := len(s) - 1
-	val := s[index]
-	s = slices.Delete(s, index, index+1)
-	return s, val, true
+	value = s[index]
+	new = slices.Delete(s, index, index+1)
+	return new, value, true
 }
 
 // PopTailN 弹出尾部的 n 个元素
@@ -148,4 +152,29 @@ func PopTailN[S ~[]E, E any](s S, n int) (new S, values S) {
 	slices.Reverse(values)
 	new = slices.Delete(s, index, len(s))
 	return new, values
+}
+
+// JoinFunc 将 slice 使用特定的 format 方法转换为 string ，然后使用 sep 链接为字符串
+func JoinFunc[S ~[]E, E any](arr S, format func(val E) string, sep string) string {
+	if len(arr) == 0 {
+		return ""
+	}
+	elems := make([]string, len(arr))
+	for i := 0; i < len(arr); i++ {
+		elems[i] = format(arr[i])
+	}
+	return strings.Join(elems, sep)
+}
+
+// Join 将 slice 使用默认的 format 方法转换为 string ，然后使用 sep 链接为字符串
+//
+// 若元素有实现 String()string 方法，会优先采用该值，否则会使用 fmt.Sprint
+func Join[S ~[]E, E any](arr S, sep string) string {
+	return JoinFunc(arr, func(val E) string {
+		var obj any = val
+		if sg, ok := obj.(fmt.Stringer); ok {
+			return sg.String()
+		}
+		return fmt.Sprint(val)
+	}, sep)
 }

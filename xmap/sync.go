@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-// Sync 并发安全的 Sync
+// Sync 并发安全的 Map
 type Sync[K comparable, V any] struct {
 	storage sync.Map
 }

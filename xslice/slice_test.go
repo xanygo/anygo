@@ -174,3 +174,8 @@ func TestPopTailN(t *testing.T) {
 		fst.Empty(t, g2)
 	})
 }
+
+func TestJoin(t *testing.T) {
+	fst.Equal(t, "1-2", Join([]int{1, 2}, "-"))
+	fst.Equal(t, "", Join([]int{}, "-"))
+}

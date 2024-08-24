@@ -7,6 +7,7 @@ package xslice_test
 import (
 	"fmt"
 	"github.com/xanygo/anygo/xslice"
+	"strconv"
 )
 
 func ExampleMerge() {
@@ -55,4 +56,23 @@ func ExampleDeleteValue() {
 
 	// Output:
 	// [1 3]
+}
+
+func ExampleJoinFunc() {
+	fmt.Println(xslice.JoinFunc([]int{1, 2}, strconv.Itoa, "-")) // 1-2
+
+	fmt.Println(xslice.JoinFunc([]int{1, 2}, func(val int) string {
+		return fmt.Sprintf("%02d", val)
+	}, "-")) //  01-02
+
+	// Output:
+	// 1-2
+	// 01-02
+}
+
+func ExampleJoin() {
+	fmt.Println(xslice.Join([]int{1, 2}, "-")) // 1-2
+
+	// Output:
+	// 1-2
 }
