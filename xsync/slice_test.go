@@ -57,3 +57,12 @@ func TestSlice(t *testing.T) {
 	ss1 := ss.Clone()
 	fst.Equal(t, []int{2, 1}, ss1.Load())
 }
+
+func TestSlice_DeleteValue(t *testing.T) {
+	s1 := &Slice[int]{}
+	s1.Append(1, 2, 3, 4)
+	s1.DeleteValue(4)
+	fst.Equal(t, []int{1, 2, 3}, s1.Load())
+	s1.DeleteValue(3, 1)
+	fst.Equal(t, []int{2}, s1.Load())
+}

@@ -79,3 +79,22 @@ func ToAnys[S ~[]E, E any](s S) []any {
 	}
 	return result
 }
+
+// DeleteValue 删除指定的值
+func DeleteValue[S ~[]E, E comparable](s S, values ...E) S {
+	if len(s) == 0 || len(values) == 0 {
+		return s
+	}
+	kv := make(map[E]struct{}, len(values))
+	for _, v := range values {
+		kv[v] = struct{}{}
+	}
+	oldLen := len(s)
+	for i := len(s) - 1; i >= 0; i-- {
+		if _, ok := kv[s[i]]; ok {
+			s = append(s[:i], s[i+1:]...)
+		}
+	}
+	clear(s[len(s):oldLen])
+	return s
+}

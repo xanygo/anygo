@@ -9,7 +9,7 @@ import (
 	"sync"
 )
 
-type Slice[T any] struct {
+type Slice[T comparable] struct {
 	items []T
 	mux   sync.RWMutex
 }
@@ -33,10 +33,30 @@ func (s *Slice[T]) Insert(index int, v ...T) {
 	s.mux.Unlock()
 }
 
-// Delete removes the elements s[i:j] from s, returning the modified slice
+// Delete 删除 s[i:j] 之间的值
 func (s *Slice[T]) Delete(i int, j int) {
 	s.mux.Lock()
 	s.items = slices.Delete(s.items, i, j)
+	s.mux.Unlock()
+}
+
+// DeleteValue 删除指定的值
+func (s *Slice[T]) DeleteValue(vs ...T) {
+	if len(vs) == 0 {
+		return
+	}
+	kv := make(map[T]struct{}, len(vs))
+	for _, v := range vs {
+		kv[v] = struct{}{}
+	}
+	s.mux.Lock()
+	oldLen := len(s.items)
+	for i := len(s.items) - 1; i >= 0; i-- {
+		if _, ok := kv[s.items[i]]; ok {
+			s.items = append(s.items[:i], s.items[i+1:]...)
+		}
+	}
+	clear(s.items[len(s.items):oldLen])
 	s.mux.Unlock()
 }
 

@@ -34,3 +34,9 @@ func TestToAnys(t *testing.T) {
 	var a []int
 	fst.Nil(t, ToAnys(a))
 }
+
+func TestDeleteValue(t *testing.T) {
+	fst.Equal(t, []int{1}, DeleteValue([]int{1}, 2))
+	fst.Equal(t, []int{1}, DeleteValue([]int{1, 2}, 2))
+	fst.Equal(t, []int{1}, DeleteValue([]int{1, 2, 2}, 2))
+}
