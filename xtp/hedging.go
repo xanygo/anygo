@@ -6,7 +6,6 @@ package xtp
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -55,42 +54,38 @@ func (h *Hedging[T]) Run(ctx context.Context) (T, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	ret := make(chan hedgingResult[T], len(h.fns)+1)
+	results := make(chan hedgingResult[T], len(h.fns)+1)
 	h.sortFns()
-	go h.execute(ctx, h.Main, ret)
+	go h.execute(ctx, h.Main, results)
 
-	tm := time.NewTimer(h.fns[0].Delay)
+	var index int
+	tm := time.NewTimer(h.fns[index].Delay)
 	defer tm.Stop()
 
-	for i := 0; i <= len(h.fns); i++ {
-		var next hedgingFn[T]
-		var tc <-chan time.Time
-		if i < len(h.fns) {
-			next = h.fns[i]
-		}
-		if i > 0 && next.Fn != nil {
-			tm.Reset(next.Delay)
-		}
-		if i < len(h.fns) {
-			tc = tm.C
-		}
+	var resultTotal int
+	for {
 		select {
 		case <-ctx.Done():
 			var emp T
 			return emp, context.Cause(ctx)
-		case v := <-ret:
-			if next.Fn != nil && h.CallNext != nil && h.CallNext(ctx, v.Value, v.Err) {
-				go h.execute(ctx, next.Fn, ret)
+		case ret := <-results:
+			resultTotal++
+			if resultTotal == len(h.fns)+1 || h.CallNext == nil || !h.CallNext(ctx, ret.Value, ret.Err) {
+				return ret.Value, ret.Err
+			}
+			if index < len(h.fns) {
+				tm.Reset(0)
 				continue
 			}
-			return v.Value, v.Err
-		case <-tc:
-			go h.execute(ctx, next.Fn, ret)
+		case <-tm.C:
+			go h.execute(ctx, h.fns[index].Fn, results)
+			index++
+			if index < len(h.fns) {
+				tm.Reset(h.fns[index].Delay)
+			}
 		}
+
 	}
-	var emp T
-	// 理论不应该发生
-	return emp, errors.New("bug, unexpect")
 }
 
 func (h *Hedging[T]) execute(ctx context.Context, fn func(ctx context.Context) (T, error), ret chan<- hedgingResult[T]) {

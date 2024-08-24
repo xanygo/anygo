@@ -16,7 +16,7 @@ import (
 )
 
 func TestInterval(t *testing.T) {
-	it := xtp.Interval{}
+	it := &xtp.Interval{}
 	defer it.Stop()
 	var num int32
 	it.Add(func() {
@@ -37,13 +37,13 @@ func TestInterval(t *testing.T) {
 			select {
 			case <-it.Done():
 				atomic.AddInt32(&f2, 1)
-			case <-time.After(2 * time.Millisecond):
+			case <-time.After(20 * time.Millisecond):
 				return
 			}
 		})
 	}
-	it.Start(3 * time.Millisecond)
-	time.Sleep(time.Millisecond)
+	it.Start(30 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 	it.Stop()
 	wg2.Wait()
 
@@ -54,7 +54,7 @@ func TestInterval(t *testing.T) {
 }
 
 func TestInterval2(t *testing.T) {
-	it := xtp.Interval{}
+	it := &xtp.Interval{}
 	var num atomic.Int64
 	it.Add(func() {
 		num.Add(1)
