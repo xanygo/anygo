@@ -44,8 +44,8 @@ func TestSorted(t *testing.T) {
 	keys2 := []int{0, 2, 4, 5, 6, 7, 8, 9}
 	fst.Equal(t, keys2, m1.Keys())
 
-	fst.Equal(t, "v_2", m1.GetDefault(2, ""))
-	fst.Equal(t, "v0", m1.GetDefault(0, ""))
+	fst.Equal(t, "v_2", m1.GetDf(2, ""))
+	fst.Equal(t, "v0", m1.GetDf(0, ""))
 	m1.Clear()
 	fst.Equal(t, 0, m1.Len())
 	fst.Empty(t, m1.Keys())

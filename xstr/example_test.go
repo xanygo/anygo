@@ -151,3 +151,19 @@ func ExampleCutLastN() {
 	// before="" after="c-ab-ab-c"
 	// before="abc-" after="-ab-c"
 }
+
+func ExampleToInts() {
+	fmt.Println(xstr.ToInt32s("1,2,3,", ",")) // [1 2 3] <nil>
+	fmt.Println(xstr.ToInt32s(",,3,4", ","))  // [3 4] <nil>
+
+	// Output:
+	// [1 2 3] <nil>
+	// [3 4] <nil>
+}
+
+func ExampleToBools() {
+	fmt.Println(xstr.ToBools("1,true,false,,", ","))
+
+	// Output:
+	// [true true false] <nil>
+}

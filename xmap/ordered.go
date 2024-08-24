@@ -62,7 +62,7 @@ func (s *Ordered[K, V]) Get(key K) (V, bool) {
 	return v, ok
 }
 
-func (s *Ordered[K, V]) GetDefault(key K, def V) V {
+func (s *Ordered[K, V]) GetDf(key K, def V) V {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 	if s.db == nil {
