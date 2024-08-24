@@ -12,6 +12,7 @@ import (
 
 	"github.com/fsgo/fst"
 	"path/filepath"
+	"runtime"
 )
 
 func TestKeepFile(t *testing.T) {
@@ -56,6 +57,11 @@ func TestKeepFile(t *testing.T) {
 	})
 
 	t.Run("rm and create it auto", func(t *testing.T) {
+		// on Windows
+		//  remove testdata\tmp\keep.txt: The process cannot access the file because it is being used by another process.
+		if runtime.GOOS == "windows" {
+			t.SkipNow()
+		}
 		checkExists(t)
 		fst.NoError(t, os.Remove(fp))
 		time.Sleep(ci * 2)
