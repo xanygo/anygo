@@ -1,17 +1,16 @@
 //  Copyright(C) 2024 github.com/hidu  All Rights Reserved.
 //  Author: hidu <duv123+git@gmail.com>
-//  Date: 2024-08-17
+//  Date: 2024-08-24
 
-package xsync
+package xslice
 
 import (
-	"testing"
-
 	"github.com/fsgo/fst"
+	"testing"
 )
 
-func TestSlice(t *testing.T) {
-	ss := &Slice[int]{}
+func TestSync(t *testing.T) {
+	ss := &Sync[int]{}
 	ss.Grow(2)
 	_, ok1 := ss.Head()
 	fst.False(t, ok1)
@@ -56,13 +55,4 @@ func TestSlice(t *testing.T) {
 
 	ss1 := ss.Clone()
 	fst.Equal(t, []int{2, 1}, ss1.Load())
-}
-
-func TestSlice_DeleteValue(t *testing.T) {
-	s1 := &Slice[int]{}
-	s1.Append(1, 2, 3, 4)
-	s1.DeleteValue(4)
-	fst.Equal(t, []int{1, 2, 3}, s1.Load())
-	s1.DeleteValue(3, 1)
-	fst.Equal(t, []int{2}, s1.Load())
 }

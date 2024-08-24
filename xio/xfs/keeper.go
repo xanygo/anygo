@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xanygo/anygo/xsync"
+	"github.com/xanygo/anygo/xslice"
 	"github.com/xanygo/anygo/xtp"
 )
 
@@ -179,7 +179,7 @@ func (kf *Keeper) exists(fp string) (bool, error) {
 }
 
 type fileChange struct {
-	callbacks xsync.Slice[func(f *os.File)]
+	callbacks xslice.Sync[func(f *os.File)]
 }
 
 func (fc *fileChange) register(fn func(f *os.File)) {

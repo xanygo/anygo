@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/safely"
-	"github.com/xanygo/anygo/xsync"
+	"github.com/xanygo/anygo/xslice"
 )
 
 // Interval 定时器
@@ -20,7 +20,7 @@ type Interval struct {
 
 	tk     *time.Ticker
 	closed chan struct{}
-	fns    xsync.Slice[func()]
+	fns    xslice.Sync[func()]
 
 	stopped atomic.Bool
 	once    sync.Once

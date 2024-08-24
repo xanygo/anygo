@@ -98,3 +98,54 @@ func DeleteValue[S ~[]E, E comparable](s S, values ...E) S {
 	clear(s[len(s):oldLen])
 	return s
 }
+
+// PopHead 弹出头部的一个元素，若 slice 为空会返回 false
+func PopHead[S ~[]E, E any](s S) (new S, value E, ok bool) {
+	if len(s) == 0 {
+		return s, value, false
+	}
+	value = s[0]
+	new = slices.Delete(s, 0, 1)
+	return new, value, true
+}
+
+// PopHeadN 弹出头部的 n 个元素
+func PopHeadN[S ~[]E, E any](s S, n int) (new S, values S) {
+	if len(s) == 0 {
+		return s, nil
+	}
+	if n >= len(s) {
+		return nil, s
+	}
+	values = s[0:n]
+	new = slices.Delete(s, 0, n)
+	return new, values
+}
+
+// PopTail 弹出尾部的一个元素，若 slice 为空会返回 false
+func PopTail[S ~[]E, E any](s S) (S, E, bool) {
+	if len(s) == 0 {
+		var emp E
+		return s, emp, false
+	}
+	index := len(s) - 1
+	val := s[index]
+	s = slices.Delete(s, index, index+1)
+	return s, val, true
+}
+
+// PopTailN 弹出尾部的 n 个元素
+func PopTailN[S ~[]E, E any](s S, n int) (new S, values S) {
+	if len(s) == 0 {
+		return s, nil
+	}
+	if n >= len(s) {
+		slices.Reverse(s)
+		return nil, s
+	}
+	index := len(s) - n
+	values = s[index:]
+	slices.Reverse(values)
+	new = slices.Delete(s, index, len(s))
+	return new, values
+}

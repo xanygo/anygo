@@ -11,7 +11,7 @@ import (
 	"sync"
 )
 
-// Ordered 按照写入顺序排序的 Map, 并发安全的
+// Ordered 按照写入顺序排序的 Sync, 并发安全的
 type Ordered[K comparable, V any] struct {
 	// Caption 初始化 map 时，默认的容量，可选，默认值为 4
 	Caption int

@@ -1,8 +1,8 @@
 //  Copyright(C) 2024 github.com/hidu  All Rights Reserved.
 //  Author: hidu <duv123+git@gmail.com>
-//  Date: 2024-08-17
+//  Date: 2024-08-24
 
-package xsync
+package xmap
 
 import (
 	"io"
@@ -11,9 +11,9 @@ import (
 	"github.com/fsgo/fst"
 )
 
-func TestMap(t *testing.T) {
+func TestSync(t *testing.T) {
 	t.Run("case 1", func(t *testing.T) {
-		var m1 Map[string, string]
+		var m1 Sync[string, string]
 		key1 := "hello"
 		v1, ok1 := m1.Load(key1)
 		fst.Equal(t, "", v1)
@@ -61,14 +61,14 @@ func TestMap(t *testing.T) {
 	})
 
 	t.Run("case 2", func(t *testing.T) {
-		var m2 Map[string, error]
+		var m2 Sync[string, error]
 		got, ok := m2.LoadOrStore("k1", io.EOF)
 		fst.False(t, ok)
 		fst.Equal(t, io.EOF, got)
 	})
 
 	t.Run("case 3", func(t *testing.T) {
-		var m2 Map[string, error]
+		var m2 Sync[string, error]
 		got, ok := m2.LoadAndDelete("k1")
 		fst.False(t, ok)
 		fst.Nil(t, got)

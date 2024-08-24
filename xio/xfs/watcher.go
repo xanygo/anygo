@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/safely"
-	"github.com/xanygo/anygo/xsync"
+	"github.com/xanygo/anygo/xslice"
 	"github.com/xanygo/anygo/xtp"
 )
 
@@ -47,7 +47,7 @@ type Watcher struct {
 	Delay time.Duration
 
 	timer   *xtp.Interval
-	rules   xsync.Slice[*watchRule]
+	rules   xslice.Sync[*watchRule]
 	mux     sync.RWMutex
 	started bool
 	errors  chan error

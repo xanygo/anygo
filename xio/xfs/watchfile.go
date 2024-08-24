@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xanygo/anygo/xsync"
+	"github.com/xanygo/anygo/xslice"
 )
 
 // WatchFile 监听单个文件
@@ -23,7 +23,7 @@ type WatchFile struct {
 
 	onStop func()
 
-	afterChanges xsync.Slice[func()]
+	afterChanges xslice.Sync[func()]
 
 	mux     sync.RWMutex
 	started bool
