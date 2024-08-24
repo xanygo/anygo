@@ -98,8 +98,8 @@ func CutLastByteNAfter(s string, c byte, n int) (after string) {
 //
 //	s: 待截取的字符串
 //	start: 开始的位置，支持负数，0，正数索引位置，当为负数时，表示从字符尾部开始计数，
-//		   如 -1 表示倒数第一个字符。
-//	 length： 截取长度，允许超过字符串 s 的最大长度
+//	  如 -1 表示倒数第一个字符。
+//	length： 截取长度，允许超过字符串 s 的最大长度,应 > 0。若 <=0 则返回空。
 func Substr(s string, start, length int) string {
 	if s == "" || length <= 0 {
 		return ""

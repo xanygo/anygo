@@ -167,3 +167,36 @@ func ExampleToBools() {
 	// Output:
 	// [true true false] <nil>
 }
+
+func ExampleSubstr() {
+	fmt.Println(xstr.Substr("hello", 0, 1)) // h
+	fmt.Println(xstr.Substr("hello", 0, 2)) // he
+	fmt.Println(xstr.Substr("hello", 0, 5)) // hello
+
+	// out off length
+	fmt.Println(xstr.Substr("hello", 0, 6)) // hello
+
+	// zero length
+	fmt.Println(xstr.Substr("hello", 0, 0)) //
+
+	// negative index
+	fmt.Println(xstr.Substr("hello", -1, 1)) // o
+	fmt.Println(xstr.Substr("hello", -1, 2)) // o
+	fmt.Println(xstr.Substr("hello", -2, 2)) // lo
+	fmt.Println(xstr.Substr("hello", -3, 3)) // llo
+
+	// out of negative index
+	fmt.Println(xstr.Substr("hello", -10, 3)) // hel
+
+	// Output:
+	// h
+	// he
+	// hello
+	// hello
+	//
+	// o
+	// o
+	// lo
+	// llo
+	// hel
+}
