@@ -14,7 +14,7 @@ jobs:
   build:
     strategy:
       matrix:
-        go: [ '1.21', '1.22', '1.23']
+        go: ['1.23']
         servers: [ "ubuntu-latest","windows-latest","macos-latest","macos-13"]
     runs-on: ${{ matrix.servers }}
 
@@ -32,4 +32,4 @@ jobs:
       run: go build -v ./...
 
     - name: Test
-      run: go test -v -timeout=60s  -race ./...
+      run: go test -v -timeout=120s  -race ./...

@@ -11,12 +11,13 @@ import (
 	"time"
 
 	"github.com/fsgo/fst"
+	"path/filepath"
 )
 
 func TestKeepFile(t *testing.T) {
-	fp := "testdata/tmp/keep.txt"
+	fp := filepath.Join("testdata", "tmp", "keep.txt")
 	defer os.Remove(fp)
-	ci := 10 * time.Millisecond
+	const ci = 50 * time.Millisecond
 	kp := &Keeper{
 		FilePath: func() string {
 			return fp
@@ -37,10 +38,10 @@ func TestKeepFile(t *testing.T) {
 
 	defer kp.Stop()
 
-	checkExists := func() {
+	checkExists := func(t *testing.T) {
 		info, err := os.Stat(fp)
 		fst.NoError(t, err)
-		fst.NotNil(t, info)
+		fst.NotEmpty(t, info.Name())
 	}
 
 	t.Run("same file not change", func(t *testing.T) {
@@ -55,10 +56,10 @@ func TestKeepFile(t *testing.T) {
 	})
 
 	t.Run("rm and create it auto", func(t *testing.T) {
-		checkExists()
-		fst.Nil(t, os.Remove(fp))
+		checkExists(t)
+		fst.NoError(t, os.Remove(fp))
 		time.Sleep(ci * 2)
-		checkExists()
+		checkExists(t)
 		fst.Equal(t, int32(2), atomic.LoadInt32(&changeNum))
 	})
 
