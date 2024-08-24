@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-08-24
 
-//go:build !(linux && darwin && windows)
+//go:build !(linux || darwin || windows)
 
 package fctime
 
