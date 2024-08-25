@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/xtp"
+	"sync"
 )
 
 func ExampleHedging_Run() {
@@ -33,4 +34,29 @@ func ExampleHedging_Run() {
 
 	// Output:
 	// got= 2 , err= <nil>
+}
+
+func ExampleConcLimiter_Wait() {
+	limiter := xtp.NewConcLimiter(1) // 并发度为 1
+
+	var wg sync.WaitGroup
+	start := time.Now()
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
+
+		go func(id int) {
+			defer wg.Done()
+
+			fn := limiter.Wait() // 获取令牌
+			defer fn()           // 释放令牌
+
+			time.Sleep(10 * time.Millisecond)
+		}(i)
+	}
+	wg.Wait()
+	cost := time.Since(start)
+	fmt.Println(cost >= 30*time.Millisecond) // true
+
+	// Output:
+	// true
 }
