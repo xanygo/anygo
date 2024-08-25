@@ -200,3 +200,10 @@ func ExampleSubstr() {
 	// llo
 	// hel
 }
+
+func ExampleToStrings() {
+	fmt.Println(xstr.ToStrings(",1,2,3,  ,", ","))
+
+	// Output:
+	// [1 2 3]
+}

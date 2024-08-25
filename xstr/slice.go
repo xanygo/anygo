@@ -116,3 +116,11 @@ func ToFloat64s(str string, sep string) ([]float64, error) {
 		return strconv.ParseFloat(sub, 64)
 	})
 }
+
+// ToStrings 使用 sep 将字符串拆分为 []string, 会对子串 trim space,并剔除掉空的子串
+func ToStrings(str string, sep string) []string {
+	values, _ := ToSliceFunc[string](str, sep, func(sub string) (string, error) {
+		return sub, nil
+	})
+	return values
+}
