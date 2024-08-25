@@ -132,6 +132,5 @@ func TestHedging_Run(t *testing.T) {
 		got, err := h1.Run(ctx)
 		fst.NoError(t, err)
 		fst.Equal(t, 3, got)
-
 	})
 }

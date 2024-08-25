@@ -6,8 +6,9 @@ package xslice_test
 
 import (
 	"fmt"
-	"github.com/xanygo/anygo/xslice"
 	"strconv"
+
+	"github.com/xanygo/anygo/xslice"
 )
 
 func ExampleMerge() {

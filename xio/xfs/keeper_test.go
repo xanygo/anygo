@@ -6,13 +6,13 @@ package xfs
 
 import (
 	"os"
+	"path/filepath"
+	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/fsgo/fst"
-	"path/filepath"
-	"runtime"
 )
 
 func TestKeepFile(t *testing.T) {

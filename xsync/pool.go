@@ -12,7 +12,7 @@ import (
 func NewPool[T any](new func() T) *Pool[T] {
 	return &Pool[T]{
 		pool: &sync.Pool{
-			New: func() interface{} {
+			New: func() any {
 				return new()
 			},
 		},
@@ -36,7 +36,7 @@ func NewBytesBufferPool(maxCap int) *BytesBufferPool {
 	return &BytesBufferPool{
 		maxCap: maxCap,
 		pool: &sync.Pool{
-			New: func() interface{} {
+			New: func() any {
 				return new(bytes.Buffer)
 			},
 		},

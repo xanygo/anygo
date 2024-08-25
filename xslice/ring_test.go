@@ -5,8 +5,9 @@
 package xslice
 
 import (
-	"github.com/fsgo/fst"
 	"testing"
+
+	"github.com/fsgo/fst"
 )
 
 func TestNewRing(t *testing.T) {

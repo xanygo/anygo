@@ -84,7 +84,6 @@ func (h *Hedging[T]) Run(ctx context.Context) (T, error) {
 				tm.Reset(h.fns[index].Delay)
 			}
 		}
-
 	}
 }
 
