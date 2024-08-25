@@ -12,12 +12,16 @@ import (
 )
 
 func TestPool(t *testing.T) {
-	p := &Pool[*bytes.Buffer]{
-		New: func() *bytes.Buffer {
-			return &bytes.Buffer{}
-		},
-	}
+	p := NewPool[*bytes.Buffer](func() *bytes.Buffer {
+		return &bytes.Buffer{}
+	})
 	g1 := p.Get()
 	fst.NotNil(t, g1)
 	p.Put(g1)
+}
+
+func TestBytesBufferPool(t *testing.T) {
+	bf := GetBytesBuffer()
+	bf.WriteString("hello")
+	PutBytesBuffer(bf)
 }

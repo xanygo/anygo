@@ -9,79 +9,68 @@ import (
 	"sync"
 )
 
-type Pool[T any] struct {
-	// New optionally specifies a function to generate
-	// a value when Get would otherwise return nil.
-	// It may not be changed concurrently with calls to Get.
-	New func() T
-
-	pool *sync.Pool
-	once sync.Once
-}
-
-func (p *Pool[T]) init() {
-	p.pool = &sync.Pool{
-		New: func() any {
-			return p.New()
+func NewPool[T any](new func() T) *Pool[T] {
+	return &Pool[T]{
+		pool: &sync.Pool{
+			New: func() interface{} {
+				return new()
+			},
 		},
 	}
 }
 
-func (p *Pool[T]) onceInit() {
-	p.once.Do(p.init)
+// Pool sync.Pool 的泛型封装
+type Pool[T any] struct {
+	pool *sync.Pool
 }
 
 func (p *Pool[T]) Get() T {
-	p.onceInit()
 	return p.pool.Get().(T)
 }
 
 func (p *Pool[T]) Put(x T) {
-	p.onceInit()
 	p.pool.Put(x)
 }
 
 func NewBytesBufferPool(maxCap int) *BytesBufferPool {
 	return &BytesBufferPool{
-		MaxCap: maxCap,
+		maxCap: maxCap,
+		pool: &sync.Pool{
+			New: func() interface{} {
+				return new(bytes.Buffer)
+			},
+		},
 	}
 }
 
+// BytesBufferPool  BytesBuffer 的对象池，
+// 若 buffer 的 caption > maxCap 时，该对象会被丢弃，以避免占用过多内存
 type BytesBufferPool struct {
-	MaxCap int
+	maxCap int
 	pool   *sync.Pool
-	once   sync.Once
-}
-
-func (p *BytesBufferPool) initOnce() {
-	p.once.Do(func() {
-		p.pool = &sync.Pool{
-			New: func() any {
-				return new(bytes.Buffer)
-			},
-		}
-	})
 }
 
 func (p *BytesBufferPool) Get() *bytes.Buffer {
-	p.initOnce()
 	return p.pool.Get().(*bytes.Buffer)
 }
 
 func (p *BytesBufferPool) Put(bf *bytes.Buffer) {
-	p.initOnce()
-	if p.MaxCap > 0 && bf.Cap() > p.MaxCap {
+	bf.Reset()
+	if p.maxCap > 0 && bf.Cap() > p.maxCap {
 		return
 	}
 	p.pool.Put(bf)
 }
 
+// DefaultBytesBufferPool 全局的 BytesBuffer 对象池
 var DefaultBytesBufferPool = NewBytesBufferPool(1 << 20)
 
+// GetBytesBuffer 从全局 BytesBuffer 对象池获取一个新的 Buffer 对象
 func GetBytesBuffer() *bytes.Buffer {
 	return DefaultBytesBufferPool.Get()
 }
 
+// PutBytesBuffer 将 Buffer 对象放回全局的 BytesBuffer 对象池
 func PutBytesBuffer(bf *bytes.Buffer) {
 	DefaultBytesBufferPool.Put(bf)
 }

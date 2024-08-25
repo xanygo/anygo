@@ -76,3 +76,33 @@ func ExampleJoin() {
 	// Output:
 	// 1-2
 }
+
+func ExampleNewRing() {
+	r := xslice.NewRing[int](3)
+
+	r.Add(1, 2)
+	fmt.Println("Values=", r.Values(), "Len=", r.Len()) // Values= [1 2] Len= 2
+
+	r.Add(3, 4)
+	fmt.Println("Values=", r.Values(), "Len=", r.Len()) // Values= [2 3 4] Len= 3
+
+	r.Add(5)
+	fmt.Println("Values=", r.Values(), "Len=", r.Len()) // Values= [3 4 5] Len= 3
+
+	fmt.Println("---")
+	r.Range(func(v int) bool {
+		fmt.Println("range v=", v)
+		if v%2 == 0 {
+			return false
+		}
+		return true
+	})
+
+	// Output:
+	// Values= [1 2] Len= 2
+	// Values= [2 3 4] Len= 3
+	// Values= [3 4 5] Len= 3
+	// ---
+	// range v= 3
+	// range v= 4
+}

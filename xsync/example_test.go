@@ -125,3 +125,10 @@ func ExampleOnceValue2() {
 	// 1 3
 	// 1 3
 }
+
+func ExampleGetBytesBuffer() {
+	bf := xsync.GetBytesBuffer()
+	bf.WriteString("hello")
+
+	xsync.PutBytesBuffer(bf)
+}
