@@ -2,5 +2,5 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-08-20
 
-// Package xtp 任务并行处理(Task Parallel)
-package xtp
+// Package xpp (任务)并行处理(Parallel processing)
+package xpp

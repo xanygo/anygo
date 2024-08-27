@@ -2,19 +2,19 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-08-22
 
-package xtp_test
+package xpp_test
 
 import (
 	"context"
 	"fmt"
 	"time"
 
-	"github.com/xanygo/anygo/xtp"
+	"github.com/xanygo/anygo/xpp"
 	"sync"
 )
 
 func ExampleHedging_Run() {
-	hg := &xtp.Hedging[int]{
+	hg := &xpp.Hedging[int]{
 		Main: func(ctx context.Context) (int, error) {
 			// 模拟长耗时 1 秒
 			select {
@@ -37,7 +37,7 @@ func ExampleHedging_Run() {
 }
 
 func ExampleConcLimiter_Wait() {
-	limiter := xtp.NewConcLimiter(1) // 并发度为 1
+	limiter := xpp.NewConcLimiter(1) // 并发度为 1
 
 	var wg sync.WaitGroup
 	start := time.Now()

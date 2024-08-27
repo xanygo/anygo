@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-08-22
 
-package xtp_test
+package xpp_test
 
 import (
 	"context"
@@ -11,13 +11,12 @@ import (
 	"time"
 
 	"github.com/fsgo/fst"
-
-	"github.com/xanygo/anygo/xtp"
+	"github.com/xanygo/anygo/xpp"
 )
 
 func TestHedging_Run(t *testing.T) {
 	t.Run("no fn 1", func(t *testing.T) {
-		h1 := &xtp.Hedging[int]{
+		h1 := &xpp.Hedging[int]{
 			Main: func(ctx context.Context) (int, error) {
 				return 1, nil
 			},
@@ -27,7 +26,7 @@ func TestHedging_Run(t *testing.T) {
 		fst.Equal(t, 1, got)
 	})
 	t.Run("no fn 2", func(t *testing.T) {
-		h1 := &xtp.Hedging[int]{
+		h1 := &xpp.Hedging[int]{
 			Main: func(ctx context.Context) (int, error) {
 				return 0, io.EOF
 			},
@@ -37,7 +36,7 @@ func TestHedging_Run(t *testing.T) {
 		fst.Equal(t, 0, got)
 	})
 	t.Run("fn 1", func(t *testing.T) {
-		h1 := &xtp.Hedging[int]{
+		h1 := &xpp.Hedging[int]{
 			Main: func(ctx context.Context) (int, error) {
 				select {
 				case <-ctx.Done():
@@ -57,7 +56,7 @@ func TestHedging_Run(t *testing.T) {
 	})
 
 	t.Run("fn 2", func(t *testing.T) {
-		h1 := &xtp.Hedging[int]{
+		h1 := &xpp.Hedging[int]{
 			Main: func(ctx context.Context) (int, error) {
 				select {
 				case <-ctx.Done():
@@ -84,7 +83,7 @@ func TestHedging_Run(t *testing.T) {
 	})
 
 	t.Run("fn 2 CallNext", func(t *testing.T) {
-		h1 := &xtp.Hedging[int]{
+		h1 := &xpp.Hedging[int]{
 			Main: func(ctx context.Context) (int, error) {
 				select {
 				case <-ctx.Done():
@@ -109,7 +108,7 @@ func TestHedging_Run(t *testing.T) {
 		fst.Equal(t, 3, got)
 	})
 	t.Run("fn panic", func(t *testing.T) {
-		h1 := &xtp.Hedging[int]{
+		h1 := &xpp.Hedging[int]{
 			Main: func(ctx context.Context) (int, error) {
 				select {
 				case <-ctx.Done():

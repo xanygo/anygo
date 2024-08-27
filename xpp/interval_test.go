@@ -2,7 +2,7 @@
 // Author: hidu <duv123@gmail.com>
 // Date: 2022/7/31
 
-package xtp_test
+package xpp_test
 
 import (
 	"sync"
@@ -11,12 +11,11 @@ import (
 	"time"
 
 	"github.com/fsgo/fst"
-
-	"github.com/xanygo/anygo/xtp"
+	"github.com/xanygo/anygo/xpp"
 )
 
 func TestInterval(t *testing.T) {
-	it := &xtp.Interval{}
+	it := &xpp.Interval{}
 	defer it.Stop()
 	var num int32
 	it.Add(func() {
@@ -54,7 +53,7 @@ func TestInterval(t *testing.T) {
 }
 
 func TestInterval2(t *testing.T) {
-	it := &xtp.Interval{}
+	it := &xpp.Interval{}
 	var num atomic.Int64
 	it.Add(func() {
 		num.Add(1)

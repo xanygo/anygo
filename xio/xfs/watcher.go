@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/safely"
+	"github.com/xanygo/anygo/xpp"
 	"github.com/xanygo/anygo/xslice"
-	"github.com/xanygo/anygo/xtp"
 )
 
 type WatcherEventType string
@@ -46,7 +46,7 @@ type Watcher struct {
 	// Delay 文件变化后多久可以被检查出，可选，默认为 1 秒
 	Delay time.Duration
 
-	timer   *xtp.Interval
+	timer   *xpp.Interval
 	rules   xslice.Sync[*watchRule]
 	mux     sync.RWMutex
 	started bool
@@ -86,7 +86,7 @@ func (w *Watcher) Start() error {
 	if w.started {
 		return errors.New("already started")
 	}
-	w.timer = &xtp.Interval{}
+	w.timer = &xpp.Interval{}
 	w.timer.Add(w.scan)
 	w.timer.Start(w.getInterval())
 	w.started = true
