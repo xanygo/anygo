@@ -5,6 +5,7 @@
 package xnet
 
 import (
+	"context"
 	"net"
 
 	"github.com/xanygo/anygo/xmap"
@@ -41,4 +42,13 @@ func (a *Addr) Equal(b net.Addr) bool {
 // Attr 附加属性
 func (a *Addr) Attr() *xmap.Slice[string, string] {
 	return a.attr
+}
+
+func ContextWithAddr(ctx context.Context, addr net.Addr) context.Context {
+	return context.WithValue(ctx, ctxKeyAddr, addr)
+}
+
+func AddrFromContext(ctx context.Context) net.Addr {
+	addr, _ := ctx.Value(ctxKeyAddr).(net.Addr)
+	return addr
 }

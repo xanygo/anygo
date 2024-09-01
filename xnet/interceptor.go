@@ -19,6 +19,7 @@ type ctxKey uint8
 
 const (
 	ctxKeyInterceptor ctxKey = iota
+	ctxKeyAddr
 )
 
 // ContextWithInterceptor 让 ctx 注册携带 ConnInterceptor，允许注册多次，最终读取的时候遍历向上读取所有 ctx 里注册的

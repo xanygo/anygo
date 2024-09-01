@@ -19,6 +19,9 @@ import (
 type (
 	// Resolver 名字解析的接口定义
 	Resolver interface {
+		// LookupIP 根据传入的地址，查询返回其所有 IP 地址列表
+		//
+		// 当返回的 error == nil 时，[]net.IP 总是不为空
 		LookupIP(ctx context.Context, network string, host string) ([]net.IP, error)
 	}
 
@@ -37,12 +40,13 @@ type ResolverImpl struct {
 	// Invoker 可选，实际查询名字的组件，当为 nil 时，会使用标准库的 net.DefaultResolver
 	Invoker Resolver
 
-	// Interceptors 可选，拦截器，先注册的后执行
+	// Interceptors 可选，拦截器，先注册的先执行
 	Interceptors []*ResolverInterceptor
 
-	// Expiration 结果缓存时间
-	// 当 <=0 缓存不生效
-	Expiration time.Duration
+	// CacheTTL 结果缓存时间,当 > 0 时缓存生效
+	//  若此无有效值，会尝试读取环境变量 AnyGo_Resolver_CaChe_TTL 的值，如  "3s" 表示缓存有效期 3 秒。
+	//  若上述两者均无有效值，最终会使用默认值 1分钟。
+	CacheTTL time.Duration
 
 	cacheOnce xsync.OnceDoValue[*zcache.Map[string, []net.IP]]
 }
@@ -128,19 +132,19 @@ func (r *ResolverImpl) getCache() *zcache.Map[string, []net.IP] {
 }
 
 func (r *ResolverImpl) getTTL() time.Duration {
-	if r.Expiration > 0 {
-		return r.Expiration
+	if r.CacheTTL > 0 {
+		return r.CacheTTL
 	}
-	return defaultResolverExpiration()
+	return defaultResolverCacheTTL()
 }
 
-func defaultResolverExpiration() time.Duration {
-	val := os.Getenv("ANYGO_RESOLVER_EXP")
+func defaultResolverCacheTTL() time.Duration {
+	val := os.Getenv("AnyGo_Resolver_CaChe_TTL")
 	ts, _ := time.ParseDuration(val)
 	if ts > time.Second {
 		return ts
 	}
-	return 3 * time.Minute
+	return time.Minute
 }
 
 type ResolverInterceptor struct {

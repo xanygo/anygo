@@ -7,6 +7,7 @@ package xnet
 import (
 	"testing"
 
+	"context"
 	"github.com/fsgo/fst"
 )
 
@@ -20,4 +21,17 @@ func TestNewAddr(t *testing.T) {
 	fst.NotNil(t, addr.Attr())
 	addr.Attr().Set("idc", "test")
 	fst.Equal(t, "test", addr.Attr().GetFirst("idc"))
+
+	ctx := ContextWithAddr(context.Background(), addr)
+	g1 := AddrFromContext(ctx)
+	fst.True(t, addr.Equal(g1))
+	fst.Nil(t, AddrFromContext(context.Background()))
+}
+
+func TestContextWithAddr(t *testing.T) {
+	addr := NewAddr(NetworkTCP, "127.0.0.1:8080")
+	ctx := ContextWithAddr(context.Background(), addr)
+	g1 := AddrFromContext(ctx)
+	fst.True(t, addr.Equal(g1))
+	fst.Nil(t, AddrFromContext(context.Background()))
 }

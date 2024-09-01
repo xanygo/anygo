@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/xnet/internal"
+	"github.com/xanygo/anygo/xpp"
 )
 
 type (
@@ -20,19 +21,21 @@ type (
 	DialContextFunc func(ctx context.Context, network, address string) (net.Conn, error)
 )
 
-// DefaultDialer 默认的拨号器
-var DefaultDialer Dialer = &DialerImpl{}
+// DefaultDialer 默认的拨号器,10 秒超时
+var DefaultDialer Dialer = &DialerImpl{
+	Timeout: 10 * time.Second,
+}
 
 func DialContext(ctx context.Context, network, address string) (net.Conn, error) {
 	return DefaultDialer.DialContext(ctx, network, address)
 }
 
-// DialerImpl 拨号器的默认实现
+// DialerImpl 拨号器的默认实现，已支持 DialerInterceptor
 type DialerImpl struct {
-	// Invoker 可选，底层拨号器
+	// Invoker 可选，底层拨号器,当为 nil 时，会使用 net.Dialer
 	Invoker Dialer
 
-	// Resolver 可选，dns 解析
+	// Resolver 可选，dns 解析器，当为 nil 时，会使用 DefaultResolver
 	Resolver Resolver
 
 	// Interceptors 可选，拦截器列表
@@ -128,24 +131,54 @@ func (d *DialerImpl) doDial(ctx context.Context, network string, address string)
 		if err != nil {
 			return nil, err
 		}
-		// 在超时允许的范围内，将所有 ip 都尝试一遍
-		for _, ip := range ips {
-			ad := net.JoinHostPort(ip.String(), port)
-			conn, err := d.dialStd(ctx, network, ad)
-			if err == nil || ctx.Err() != nil {
-				return conn, ctx.Err()
-			}
-		}
-		return nil, err
+		return d.dialHedging(ctx, network, ips, port)
 	}
 	return d.dialStd(ctx, network, address)
 }
 
+var zeroDialer = &net.Dialer{}
+
 func (d *DialerImpl) dialStd(ctx context.Context, network string, address string) (net.Conn, error) {
-	return zeroDialer.DialContext(ctx, network, address)
+	conn, err := zeroDialer.DialContext(ctx, network, address)
+	if err != nil {
+		return nil, err
+	}
+	return NewConnContext(ctx, conn), nil
 }
 
-var zeroDialer = &net.Dialer{}
+func (d *DialerImpl) dialHedging(ctx context.Context, network string, ips []net.IP, port string) (net.Conn, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, context.Cause(ctx)
+	}
+	hr := &xpp.Hedging[net.Conn]{
+		Main: func(ctx context.Context) (net.Conn, error) {
+			hostPort := net.JoinHostPort(ips[0].String(), port)
+			return d.dialStd(ctx, network, hostPort)
+		},
+		CallNext: func(ctx context.Context, value net.Conn, err error) bool {
+			return err != nil
+		},
+	}
+	maxDelay := d.Timeout
+	if maxDelay == 0 {
+		maxDelay = 10 * time.Second
+	}
+	if dl, has := ctx.Deadline(); has {
+		maxDelay = min(time.Until(dl), maxDelay)
+	}
+	minDelay := maxDelay / 2
+	part := minDelay / time.Duration(len(ips)-1)
+	// 发送 backup request 请求
+	// 请求平均分布于超时时间的后半段
+	for idx, ip := range ips[1:] {
+		ip := ip
+		hr.Add(minDelay+time.Duration(idx)*part, func(ctx context.Context) (net.Conn, error) {
+			hostPort := net.JoinHostPort(ip.String(), port)
+			return d.dialStd(ctx, network, hostPort)
+		})
+	}
+	return hr.Run(ctx)
+}
 
 func (d *DialerImpl) getInterceptors(ctx context.Context) dialerInterceptors {
 	return Interceptors[*DialerInterceptor](ctx, d.Interceptors)
