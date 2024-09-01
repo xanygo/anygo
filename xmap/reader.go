@@ -4,7 +4,7 @@
 
 package xmap
 
-func Get[K comparable, V any](m map[K]V, key K) (v V, found bool) {
+func Get[Map ~map[K]V, K comparable, V any](m Map, key K) (v V, found bool) {
 	if m == nil {
 		return v, false
 	}
@@ -12,7 +12,7 @@ func Get[K comparable, V any](m map[K]V, key K) (v V, found bool) {
 	return v, found
 }
 
-func GetDf[K comparable, V any](m map[K]V, key K, def V) V {
+func GetDf[Map ~map[K]V, K comparable, V any](m Map, key K, def V) V {
 	if m == nil {
 		return def
 	}
@@ -21,4 +21,42 @@ func GetDf[K comparable, V any](m map[K]V, key K, def V) V {
 		return v
 	}
 	return def
+}
+
+func HasKey[Map ~map[K]V, K comparable, V any](m Map, key K) bool {
+	if m == nil {
+		return false
+	}
+	_, found := m[key]
+	return found
+}
+
+func HasKeyValue[Map ~map[K]V, K comparable, V comparable](m Map, key K, value V) bool {
+	if m == nil {
+		return false
+	}
+	val, found := m[key]
+	return found && val == value
+}
+
+func Keys[Map ~map[K]V, K comparable, V any](m Map) []K {
+	if len(m) == 0 {
+		return nil
+	}
+	keys := make([]K, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+func Values[Map ~map[K]V, K comparable, V any](m Map) []V {
+	if len(m) == 0 {
+		return nil
+	}
+	values := make([]V, 0, len(m))
+	for _, v := range m {
+		values = append(values, v)
+	}
+	return values
 }

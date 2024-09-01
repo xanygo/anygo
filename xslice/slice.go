@@ -8,44 +8,18 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/xanygo/anygo/internal/zslice"
 )
 
 // Merge merge 多个 slice 为一个，并最终返回一个新的 slice
 func Merge[S ~[]T, T any](items ...S) S {
-	switch len(items) {
-	case 0:
-		return nil
-	case 1:
-		return slices.Clone(items[0])
-	}
-
-	var n int
-	for i := 0; i < len(items); i++ {
-		n += len(items[i])
-	}
-	cp := make([]T, 0, n)
-	for i := 0; i < len(items); i++ {
-		cp = append(cp, items[i]...)
-	}
-	return cp
+	return zslice.Merge(items...)
 }
 
 // Unique 返回去重后的 slice
 func Unique[S ~[]T, T comparable](arr S) S {
-	if len(arr) < 2 {
-		return arr
-	}
-	c := make(map[T]struct{}, len(arr))
-	result := make([]T, 0, len(arr))
-	for i := 0; i < len(arr); i++ {
-		v := arr[i]
-		if _, ok := c[v]; ok {
-			continue
-		}
-		c[v] = struct{}{}
-		result = append(result, v)
-	}
-	return result
+	return zslice.Unique(arr)
 }
 
 // ContainsAny 判断 all 中是否包含 values 的任意一个值
@@ -86,21 +60,7 @@ func ToAnys[S ~[]E, E any](s S) []any {
 
 // DeleteValue 删除指定的值
 func DeleteValue[S ~[]E, E comparable](s S, values ...E) S {
-	if len(s) == 0 || len(values) == 0 {
-		return s
-	}
-	kv := make(map[E]struct{}, len(values))
-	for _, v := range values {
-		kv[v] = struct{}{}
-	}
-	oldLen := len(s)
-	for i := len(s) - 1; i >= 0; i-- {
-		if _, ok := kv[s[i]]; ok {
-			s = append(s[:i], s[i+1:]...)
-		}
-	}
-	clear(s[len(s):oldLen])
-	return s
+	return zslice.DeleteValue(s, values...)
 }
 
 // PopHead 弹出头部的一个元素，若 slice 为空会返回 false
