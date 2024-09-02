@@ -12,8 +12,7 @@ import (
 	"github.com/xanygo/anygo/internal/zslice"
 )
 
-// NewConn  conn WithIt with Interceptor
-// its 将倒序执行：后注册的先执行
+// NewConn  对 net.Conn 封装，以支持 ConnInterceptor
 func NewConn(c net.Conn, its ...*ConnInterceptor) net.Conn {
 	globalConnIts := InterceptorFromGlobal[*ConnInterceptor]()
 	if rc, ok := c.(*Conn); ok {
@@ -33,12 +32,15 @@ func NewConn(c net.Conn, its ...*ConnInterceptor) net.Conn {
 	return nc
 }
 
-// NewConnContext 取出 ctx 里的 Interceptor， 并对 conn 进行封装
+// NewConnContext 取出 ctx 里的 ConnInterceptor 作为参数， 并对 Conn 包装
 func NewConnContext(ctx context.Context, conn net.Conn) net.Conn {
 	cks := InterceptorFromContext[*ConnInterceptor](ctx)
 	return NewConn(conn, cks...)
 }
 
+var _ net.Conn = (*Conn)(nil)
+
+// Conn 支持拦截器 ( ConnInterceptor ) 的网络连接
 type Conn struct {
 	raw net.Conn
 
@@ -207,7 +209,9 @@ func (c *Conn) SetWriteDeadline(t time.Time) (err error) {
 	return err
 }
 
-// ConnInterceptor  for net.Conn
+var _ Interceptor = (*ConnInterceptor)(nil)
+
+// ConnInterceptor  net.Conn 的拦截器定义
 type ConnInterceptor struct {
 	Read      func(info ConnInfo, b []byte, invoker func([]byte) (int, error)) (int, error)
 	AfterRead func(info ConnInfo, b []byte, readSize int, err error)
@@ -234,10 +238,10 @@ type ConnInterceptor struct {
 func (it *ConnInterceptor) Interceptor() {}
 
 type ConnInfo interface {
-	// LocalAddr returns the local network address, if known.
+	// LocalAddr 本地网络地址
 	LocalAddr() net.Addr
 
-	// RemoteAddr returns the remote network address, if known.
+	// RemoteAddr 远端网络地址
 	RemoteAddr() net.Addr
 }
 

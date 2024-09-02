@@ -28,6 +28,7 @@ func (b *baggage[K, V]) All(key K) []V {
 	return zslice.Merge(vs, b.values)
 }
 
+// WithValues 让 ctx 携带多个值，支持多次调用，最终可以使用 Values 读取出最新的值或者递归读取所有值
 func WithValues[K comparable, V any](ctx context.Context, key K, vs ...V) context.Context {
 	if len(vs) == 0 {
 		return ctx
@@ -39,9 +40,12 @@ func WithValues[K comparable, V any](ctx context.Context, key K, vs ...V) contex
 	return context.WithValue(ctx, key, val)
 }
 
-func Values[K comparable, V any](ctx context.Context, key K, all bool) []V {
+// Values 读取使用 WithValues 设置的值，先设置的值会排在前面
+//
+// recursion: 是否递归读取所有的值。即是否在 ctx 中，向上查找相同 key 设置的值
+func Values[K comparable, V any](ctx context.Context, key K, recursion bool) []V {
 	if bg, ok := ctx.Value(key).(*baggage[K, V]); ok {
-		if all {
+		if recursion {
 			return bg.All(key)
 		}
 		return bg.values
