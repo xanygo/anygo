@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-09-02
 
-package cache
+package xcache
 
 import (
 	"container/list"
@@ -12,9 +12,7 @@ import (
 	"time"
 )
 
-var _ Getter[string, string] = (*LRU[string, string])(nil)
-var _ Setter[string, string] = (*LRU[string, string])(nil)
-var _ Deleter[string] = (*LRU[string, string])(nil)
+var _ Cache[string, string] = (*LRU[string, string])(nil)
 
 func NewLRU[K comparable, V any](capacity int) *LRU[K, V] {
 	if capacity <= 0 {
@@ -22,7 +20,7 @@ func NewLRU[K comparable, V any](capacity int) *LRU[K, V] {
 	}
 	return &LRU[K, V]{
 		capacity: capacity,
-		data:     make(map[any]*list.Element, capacity),
+		data:     make(map[K]*list.Element, capacity),
 		list:     list.New(),
 		mux:      &sync.Mutex{},
 	}
@@ -32,7 +30,7 @@ func NewLRU[K comparable, V any](capacity int) *LRU[K, V] {
 // 数据全部存储在内存中
 type LRU[K comparable, V any] struct {
 	capacity int // 容量
-	data     map[any]*list.Element
+	data     map[K]*list.Element
 	list     *list.List
 	mux      *sync.Mutex
 }
@@ -108,7 +106,7 @@ func (lru *LRU[K, V]) Delete(ctx context.Context, keys ...K) error {
 func (lru *LRU[K, V]) Clear(ctx context.Context) error {
 	lru.mux.Lock()
 	clear(lru.data)
-	lru.data = make(map[any]*list.Element, lru.capacity)
+	lru.data = make(map[K]*list.Element, lru.capacity)
 	lru.list = list.New()
 	lru.mux.Unlock()
 	return nil

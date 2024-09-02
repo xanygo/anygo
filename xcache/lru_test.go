@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-09-02
 
-package cache
+package xcache
 
 import (
 	"context"

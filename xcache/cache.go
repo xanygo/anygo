@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-09-02
 
-package cache
+package xcache
 
 import (
 	"context"
@@ -32,3 +32,12 @@ type (
 
 // ErrNil 缓存数据不存在
 var ErrNil = errors.New("cache not exists")
+
+func IsNotExists(err error) bool {
+	return err != nil && errors.Is(err, ErrNil)
+}
+
+type ValueError[V any] struct {
+	Value V
+	Err   error
+}
