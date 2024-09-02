@@ -41,3 +41,5 @@ type ValueError[V any] struct {
 	Value V
 	Err   error
 }
+
+const cacheFileExt = ".cache"

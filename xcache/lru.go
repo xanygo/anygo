@@ -26,8 +26,7 @@ func NewLRU[K comparable, V any](capacity int) *LRU[K, V] {
 	}
 }
 
-// LRU 最近最少使用( Least Recently Used ) 缓存组件。
-// 数据全部存储在内存中
+// LRU 最近最少使用( Least Recently Used ) 全内存缓存组件。
 type LRU[K comparable, V any] struct {
 	capacity int // 容量
 	data     map[K]*list.Element

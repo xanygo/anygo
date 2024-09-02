@@ -79,3 +79,19 @@ type nopWriteCloser struct {
 func (nopWriteCloser) Close() error {
 	return nil
 }
+
+type StringWriter interface {
+	WriteString(s string) (int, error)
+}
+
+func WriteStrings(bf StringWriter, ss ...string) (int, error) {
+	var total int
+	for _, str := range ss {
+		n, err := bf.WriteString(str)
+		total += n
+		if err != nil {
+			return total, err
+		}
+	}
+	return total, nil
+}
