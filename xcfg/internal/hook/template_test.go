@@ -6,8 +6,6 @@ package hook
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -95,51 +93,4 @@ Z="z"
 			fst.Equal(t, string(tt.wantOutput), string(gotOutput))
 		})
 	}
-}
-
-func Test_fnFetch(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		k := r.URL.Query().Get("k")
-		_, _ = w.Write([]byte("hello-" + k))
-	}))
-	defer ts.Close()
-	api := ts.URL
-	t.Run("server ok", func(t *testing.T) {
-		txt := `# hook.template  Enable=true
-{
- "K1":"{{ fetch "` + api + `?k=k1" }}",
- "K2":"{{ fetch "` + api + `?k=k2" }}",
- "K3":"{{ fetch "` + api + `?k=k3" "timeout=5s&cache=1h" }}"
-}
-`
-		h := &Template{}
-		nc, err := h.Hook(context.Background(), "", []byte(txt))
-		fst.NoError(t, err)
-		want := `# hook.template  Enable=true
-{
- "K1":"hello-k1",
- "K2":"hello-k2",
- "K3":"hello-k3"
-}
-`
-		fst.Equal(t, want, string(nc))
-	})
-
-	t.Run("server unreachable with cache", func(t *testing.T) {
-		ts.Close()
-		txt := `# hook.template  Enable=true
-{
-  "K3" : "{{ fetch "` + api + `?k=k3" "timeout=5s&cache=1h" }}"
-}
-`
-		h := &Template{}
-		want := `# hook.template  Enable=true
-{
-  "K3" : "hello-k3"
-}
-`
-		nc, err := h.Hook(context.Background(), "", []byte(txt))
-		fst.NoError(t, err)
-		fst.Equal(t, want, string(nc))
-	})
 }

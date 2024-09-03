@@ -9,18 +9,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
+	"github.com/xanygo/anygo/xattr"
+	"github.com/xanygo/anygo/xcfg/internal/parser"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"text/template"
-	"time"
-
-	"github.com/xanygo/anygo/xattr"
-	"github.com/xanygo/anygo/xcfg/internal/parser"
-	"github.com/xanygo/anygo/xcfg/internal/zcache"
 )
 
 const hookTplPrefix = "hook.template "
@@ -66,9 +61,6 @@ func (t *Template) exec(ctx context.Context, cfPath string, content []byte, tp m
 		"include": func(name string) (string, error) {
 			return t.fnInclude(ctx, name, cfPath, tp)
 		},
-		"fetch": func(name string, args ...string) (string, error) {
-			return t.fnFetch(ctx, tp, name, args)
-		},
 		"osenv": func(name string) string {
 			return os.Getenv(name)
 		},
@@ -89,12 +81,12 @@ func (t *Template) exec(ctx context.Context, cfPath string, content []byte, tp m
 	buf := &bytes.Buffer{}
 
 	data := map[string]string{
-		"IDC":         xattr.IDC(),
-		"RootDir":     xattr.RootDir(),
-		"ConfRootDir": xattr.ConfDir(),
-		"LogRootDir":  xattr.LogDir(),
-		"DataRootDir": xattr.DataDir(),
-		"RunMode":     xattr.RunMode().String(),
+		"IDC":     xattr.IDC(),
+		"RootDir": xattr.RootDir(),
+		"ConfDir": xattr.ConfDir(),
+		"LogDir":  xattr.LogDir(),
+		"DataDir": xattr.DataDir(),
+		"RunMode": xattr.RunMode().String(),
 	}
 
 	if err = tmpl.Execute(buf, data); err != nil {
@@ -146,66 +138,4 @@ func (t *Template) fnInclude(ctx context.Context, name string, cfPath string, tp
 		buf.Write(o1)
 	}
 	return buf.String(), nil
-}
-
-func (t *Template) getXCache() *zcache.FileCache {
-	dir := filepath.Join(xattr.TempDir(), "xcfg_cache")
-	return &zcache.FileCache{
-		Dir: dir,
-	}
-}
-
-func (t *Template) fnFetch(ctx context.Context, tp map[string]string, api string, ps []string) (string, error) {
-	if len(api) == 0 {
-		return "", errors.New("url is required")
-	}
-	if len(ps) > 1 {
-		return "", errors.New("only support 0 or 1 param")
-	}
-
-	timeout := 3 * time.Second
-	var cacheTTL time.Duration
-	if len(ps) == 1 {
-		param, err := zcache.ParserParam(ps[0])
-		if err != nil {
-			return "", err
-		}
-		if param.Timeout > 0 {
-			timeout = param.Timeout
-		}
-		cacheTTL = param.TTL
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	bf, err := httpFetch(ctx, api)
-
-	if cacheTTL > 0 {
-		fc := t.getXCache()
-		if err == nil {
-			fc.Set(api, bf)
-		} else {
-			if cv, ok := fc.Get(api, cacheTTL); ok {
-				return string(cv), nil
-			}
-		}
-	}
-
-	return string(bf), err
-}
-
-func httpFetch(ctx context.Context, api string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, api, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
 }
