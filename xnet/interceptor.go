@@ -11,6 +11,7 @@ import (
 	"github.com/xanygo/anygo/xctx"
 )
 
+// Interceptor 拦截器接口定义，具体的实现包括 ConnInterceptor、DialerInterceptor、ResolverInterceptor
 type Interceptor interface {
 	Interceptor()
 }
@@ -22,7 +23,8 @@ const (
 	ctxKeyAddr
 )
 
-// ContextWithInterceptor 让 ctx 注册携带 ConnInterceptor，允许注册多次，最终读取的时候遍历向上读取所有 ctx 里注册的
+// ContextWithInterceptor 让 ctx 注册携带 Interceptor，允许注册多次。
+// 最终读取的时候可以遍历向上读取所有 ctx 里注册的 Interceptor
 func ContextWithInterceptor(ctx context.Context, its ...Interceptor) context.Context {
 	if len(its) == 0 {
 		return ctx
