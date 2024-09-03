@@ -8,6 +8,7 @@ import "encoding/json"
 
 type (
 	Codec interface {
+		Name() string
 		Encoder
 		Decoder
 	}
@@ -33,15 +34,16 @@ func (d DecodeFunc) Decode(v []byte, r any) error {
 	return d(v, r)
 }
 
-func NewCodec(e EncodeFunc, d DecodeFunc) Codec {
-	return &codec{e: e, d: d}
+func NewCodec(name string, e EncodeFunc, d DecodeFunc) Codec {
+	return &codec{name: name, e: e, d: d}
 }
 
 var _ Codec = (*codec)(nil)
 
 type codec struct {
-	e EncodeFunc
-	d DecodeFunc
+	name string
+	e    EncodeFunc
+	d    DecodeFunc
 }
 
 func (c *codec) Encode(a any) ([]byte, error) {
@@ -52,4 +54,8 @@ func (c *codec) Decode(bf []byte, a any) error {
 	return c.d(bf, a)
 }
 
-var JSON = NewCodec(json.Marshal, json.Unmarshal)
+func (c *codec) Name() string {
+	return c.name
+}
+
+var JSON = NewCodec("json", json.Marshal, json.Unmarshal)
