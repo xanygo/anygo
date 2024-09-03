@@ -32,29 +32,32 @@ func TestDefault(t *testing.T) {
 	SetConfDir("/user/cfg|abs")
 	fst.Equal(t, "/user/cfg", ConfDir())
 
-	SetConfDir("/user/cfg")
+	SetConfDir("user/cfg")
 	fst.Equal(t, filepath.Join(root, "/user/cfg"), ConfDir())
 
 	SetDataDir("/user/data|abs")
 	fst.Equal(t, "/user/data", DataDir())
 
-	SetDataDir("/user/data")
+	SetDataDir("user/data")
 	fst.Equal(t, filepath.Join(root, "/user/data"), DataDir())
 
 	SetTempDir("/temp|abs")
 	fst.Equal(t, "/temp", TempDir())
 
-	SetTempDir("/temp")
+	SetTempDir("temp")
 	fst.Equal(t, filepath.Join(root, "temp"), TempDir())
 
 	SetLogDir("/temp/log|abs")
 	fst.Equal(t, "/temp/log", LogDir())
 
-	SetLogDir("/temp/log")
+	SetLogDir("temp/log")
 	fst.Equal(t, filepath.Join(root, "temp", "log"), LogDir())
 }
 
 func TestMustInitWithAppConfPath(t *testing.T) {
 	MustInitWithAppConfPath(filepath.Join(".github", "workflows", "go.yml"))
 	fst.Equal(t, ".github", AppName())
+
+	// reset
+	doInit()
 }
