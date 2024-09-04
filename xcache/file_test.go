@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/xanygo/anygo/xcodec"
+	"os"
 )
 
 func TestFile(t *testing.T) {
@@ -17,4 +18,6 @@ func TestFile(t *testing.T) {
 		Codec: xcodec.JSON,
 	}
 	testCache(t, c1)
+
+	os.RemoveAll("tmp")
 }

@@ -43,7 +43,7 @@ func TestTemplateHook(t *testing.T) {
 			wantOutput: []byte(
 				`# hook.template  Enable=true
 A="a"
-Port = {osenv.Port1}
+Port = {env.Port1}
 
 B="b"
 B1="b1"
