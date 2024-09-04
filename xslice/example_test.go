@@ -107,3 +107,14 @@ func ExampleNewRing() {
 	// range v= 3
 	// range v= 4
 }
+
+func ExampleFilter() {
+	arr := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	result := xslice.Filter(arr, func(index int, item int, ok int) bool {
+		return item%2 == 0
+	})
+	fmt.Println(result)
+
+	// Output:
+	// [2 4 6 8]
+}

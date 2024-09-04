@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/xanygo/anygo/xmap"
+	"sort"
 )
 
 func ExampleOrdered_Values() {
@@ -68,4 +69,56 @@ func ExampleGetDf() {
 	// k1= 1
 	// k2= 0
 	// k2= 1
+}
+
+func ExampleFilter() {
+	m := map[int]int{
+		0: 0,
+		1: 1,
+		2: 2,
+		3: 3,
+	}
+	result := xmap.Filter(m, func(k int, v int, ok int) bool {
+		return v%2 == 0
+	})
+	fmt.Println(result)
+
+	// Output:
+	// map[0:0 2:2]
+}
+
+func ExampleFilterKeys() {
+	m := map[int]int{
+		0: 10,
+		1: 11,
+		2: 22,
+		3: 33,
+	}
+	result := xmap.FilterKeys(m, func(k int, v int, ok int) bool {
+		return v%2 == 0
+	})
+	sort.Ints(result)
+
+	fmt.Println(result)
+
+	// Output:
+	// [0 2]
+}
+
+func ExampleFilterValues() {
+	m := map[int]int{
+		0: 10,
+		1: 11,
+		2: 22,
+		3: 33,
+	}
+	result := xmap.FilterValues(m, func(k int, v int, ok int) bool {
+		return v%2 == 0
+	})
+	sort.Ints(result)
+
+	fmt.Println(result)
+
+	// Output:
+	// [10 22]
 }

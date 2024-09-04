@@ -138,3 +138,19 @@ func Join[S ~[]E, E any](arr S, sep string) string {
 		return fmt.Sprint(val)
 	}, sep)
 }
+
+// Filter 过滤删选出满足条件的元素
+//
+// filter: 过滤函数，参数依次为 index-元素索引、item 元素、ok-已过滤满足条件的个数
+func Filter[S ~[]E, E any](arr S, filter func(index int, item E, ok int) bool) S {
+	if len(arr) == 0 {
+		return nil
+	}
+	result := make(S, 0, len(arr))
+	for i := 0; i < len(arr); i++ {
+		if filter(i, arr[i], len(result)) {
+			result = append(result, arr[i])
+		}
+	}
+	return result
+}
