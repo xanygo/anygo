@@ -22,8 +22,8 @@ import (
 // 会注册默认的配置解析方法和辅助方法
 func NewDefault() *Configure {
 	cfg := &Configure{}
-	for _, pair := range defaultParsers {
-		if err := cfg.WithParser(pair.Name, pair.Fn); err != nil {
+	for _, pair := range defaultDecoders {
+		if err := cfg.WithDecoder(pair.Name, pair.Fn); err != nil {
 			panic(fmt.Sprintf("WithParser(%q) err=%s", pair.Name, err))
 		}
 	}
@@ -42,17 +42,17 @@ type Configure struct {
 
 	ctx       context.Context
 	validator Validator
-	parsers   map[string]xcodec.Decoder
+	decoders  map[string]xcodec.Decoder
 	exts      []string // 支持的文件后缀，如 []string{".json",".toml"}
 	hooks     hooks
 }
 
-func (c *Configure) Parse(confName string, obj any) error {
-	confAbsPath, err := c.confFileAbsPath(confName)
+func (c *Configure) Parse(path string, obj any) error {
+	absPath, err := c.confFileAbsPath(path)
 	if err != nil {
 		return err
 	}
-	return c.ParseByAbsPath(confAbsPath, obj)
+	return c.parseByAbsPath(absPath, obj)
 }
 
 func (c *Configure) getDir() string {
@@ -62,19 +62,19 @@ func (c *Configure) getDir() string {
 	return xattr.ConfDir()
 }
 
-func (c *Configure) confFileAbsPath(confName string) (string, error) {
-	if strings.HasPrefix(confName, "./") || strings.HasPrefix(confName, "../") {
-		return filepath.Abs(confName)
+func (c *Configure) confFileAbsPath(path string) (string, error) {
+	if strings.HasPrefix(path, "./") || strings.HasPrefix(path, "../") {
+		return filepath.Abs(path)
 	}
 
-	if filepath.IsAbs(confName) {
-		return confName, nil
+	if filepath.IsAbs(path) {
+		return path, nil
 	}
 
-	fp := filepath.Join(c.getDir(), confName)
+	fp := filepath.Join(c.getDir(), path)
 
 	if !fileExists(fp) {
-		if fp1, err := filepath.Abs(confName); err == nil && fileExists(fp1) {
+		if fp1, err := filepath.Abs(path); err == nil && fileExists(fp1) {
 			return fp1, nil
 		}
 	}
@@ -86,12 +86,12 @@ func fileExists(fp string) bool {
 	return err == nil && !info.IsDir()
 }
 
-func (c *Configure) ParseByAbsPath(confAbsPath string, obj any) error {
-	if len(c.parsers) == 0 {
+func (c *Configure) parseByAbsPath(absPath string, obj any) error {
+	if len(c.decoders) == 0 {
 		return errors.New("no parser")
 	}
 
-	return c.readConfDirect(confAbsPath, obj)
+	return c.readConfDirect(absPath, obj)
 }
 
 func (c *Configure) realConfPath(confPath string) (path string, ext string, err error) {
@@ -122,20 +122,20 @@ func (c *Configure) realConfPath(confPath string) (path string, ext string, err 
 	return "", "", fmt.Errorf("cannot get real path for %q", confPath)
 }
 
-func (c *Configure) readConfDirect(confPath string, obj any) error {
-	realFile, fileExt, err := c.realConfPath(confPath)
+func (c *Configure) readConfDirect(path string, obj any) error {
+	realPath, fileExt, err := c.realConfPath(path)
 	if err != nil {
 		return err
 	}
-	content, errIO := os.ReadFile(realFile)
+	content, errIO := os.ReadFile(realPath)
 	if errIO != nil {
 		return errIO
 	}
-	err2 := c.parseBytes(realFile, fileExt, content, obj)
+	err2 := c.parseBytes(realPath, fileExt, content, obj)
 	if err2 == nil {
 		return nil
 	}
-	return fmt.Errorf("parser %q failed: %w", realFile, err2)
+	return fmt.Errorf("parser %q failed: %w", realPath, err2)
 }
 
 func (c *Configure) context() context.Context {
@@ -145,12 +145,12 @@ func (c *Configure) context() context.Context {
 	return c.ctx
 }
 
-func (c *Configure) ParseBytes(fileExt string, content []byte, obj any) error {
-	return c.parseBytes("", fileExt, content, obj)
+func (c *Configure) ParseBytes(ext string, content []byte, obj any) error {
+	return c.parseBytes("", ext, content, obj)
 }
 
 func (c *Configure) parseBytes(confPath string, fileExt string, content []byte, obj any) error {
-	parser, hasParser := c.parsers[fileExt]
+	parser, hasParser := c.decoders[fileExt]
 	if len(fileExt) == 0 || !hasParser {
 		err1 := fmt.Errorf("fileExt %q is not supported yet", fileExt)
 		if confPath == "" {
@@ -197,8 +197,8 @@ func (c *Configure) getValidator() Validator {
 	return DefaultValidator
 }
 
-func (c *Configure) Exists(confName string) bool {
-	p, err := c.confFileAbsPath(confName)
+func (c *Configure) Exists(path string) bool {
+	p, err := c.confFileAbsPath(path)
 	if err != nil {
 		return false
 	}
@@ -210,7 +210,7 @@ func (c *Configure) Exists(confName string) bool {
 	if !os.IsNotExist(err) {
 		return false
 	}
-	for ext := range c.parsers {
+	for ext := range c.decoders {
 		info1, err1 := os.Stat(p + ext)
 		if err1 == nil && !info1.IsDir() {
 			return true
@@ -219,27 +219,27 @@ func (c *Configure) Exists(confName string) bool {
 	return false
 }
 
-func (c *Configure) WithParser(fileExt string, fn xcodec.Decoder) error {
-	if c.parsers == nil {
-		c.parsers = make(map[string]xcodec.Decoder, len(defaultParsers))
+func (c *Configure) WithDecoder(ext string, fn xcodec.Decoder) error {
+	if c.decoders == nil {
+		c.decoders = make(map[string]xcodec.Decoder, len(defaultDecoders))
 	}
-	if _, has := c.parsers[fileExt]; has {
-		return fmt.Errorf("parser=%q already exists", fileExt)
+	if _, has := c.decoders[ext]; has {
+		return fmt.Errorf("parser=%q already exists", ext)
 	}
-	c.parsers[fileExt] = fn
-	c.exts = append(c.exts, fileExt)
+	c.decoders[ext] = fn
+	c.exts = append(c.exts, ext)
 	return nil
 }
 
-func (c *Configure) MustWithParser(fileExt string, fn xcodec.Decoder) {
-	if err := c.WithParser(fileExt, fn); err != nil {
+func (c *Configure) MustWithDecoder(ext string, fn xcodec.Decoder) {
+	if err := c.WithDecoder(ext, fn); err != nil {
 		panic(err)
 	}
 }
 
 // WithHook 注册新的 Hook，若出现重名会注册失败
-func (c *Configure) WithHook(hs ...Hook) error {
-	for _, h := range hs {
+func (c *Configure) WithHook(hooks ...Hook) error {
+	for _, h := range hooks {
 		if err := c.hooks.Add(h); err != nil {
 			return err
 		}
@@ -247,9 +247,9 @@ func (c *Configure) WithHook(hs ...Hook) error {
 	return nil
 }
 
-// MusWithHook 注册新的 Hook, 若失败会 panic
-func (c *Configure) MusWithHook(hs ...Hook) {
-	if err := c.WithHook(hs...); err != nil {
+// MusWithHook 注册新的 Hook, 若出现重名等异常情况会 panic
+func (c *Configure) MusWithHook(hooks ...Hook) {
+	if err := c.WithHook(hooks...); err != nil {
 		panic(err)
 	}
 }
@@ -257,7 +257,7 @@ func (c *Configure) MusWithHook(hs ...Hook) {
 func (c *Configure) Clone() *Configure {
 	return &Configure{
 		Dir:       c.Dir,
-		parsers:   maps.Clone(c.parsers),
+		decoders:  maps.Clone(c.decoders),
 		exts:      slices.Clone(c.exts),
 		validator: c.validator,
 		hooks:     slices.Clone(c.hooks),
@@ -270,9 +270,9 @@ func (c *Configure) CloneWithContext(ctx context.Context) *Configure {
 	return c1
 }
 
-func (c *Configure) CloneWithHook(hs ...Hook) *Configure {
+func (c *Configure) CloneWithHook(hooks ...Hook) *Configure {
 	c1 := c.Clone()
-	for _, h := range hs {
+	for _, h := range hooks {
 		c1.MusWithHook(h)
 	}
 	return c1

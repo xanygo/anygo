@@ -7,7 +7,6 @@ package xcfg
 import (
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/fsgo/fst"
@@ -145,43 +144,7 @@ func TestParse(t *testing.T) {
 	}
 }
 
-func TestParseByAbsPath(t *testing.T) {
-	type args struct {
-		confAbsPath string
-		obj         map[string]string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    map[string]string
-		wantErr bool
-	}{
-		{
-			name: "case 1",
-			args: args{
-				confAbsPath: "testdata/conf/abc.json",
-				obj:         map[string]string{},
-			},
-			wantErr: false,
-			want: map[string]string{
-				"A": "bb",
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := ParseByAbsPath(tt.args.confAbsPath, &tt.args.obj); (err != nil) != tt.wantErr {
-				t.Errorf("ParseByAbsPath() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			got := tt.args.obj
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ParseByAbsPath() got=%v want=%v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestRegisterHook(t *testing.T) {
+func TestWithHook(t *testing.T) {
 	type args struct {
 		name string
 		fn   hook.Func
@@ -226,7 +189,7 @@ func TestRegisterHook(t *testing.T) {
 	}
 }
 
-func TestRegisterParser(t *testing.T) {
+func TestWithDecoder(t *testing.T) {
 	type args struct {
 		fileExt string
 		fn      xcodec.Decoder
@@ -255,7 +218,7 @@ func TestRegisterParser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := RegisterParser(tt.args.fileExt, tt.args.fn); (err != nil) != tt.wantErr {
+			if err := WithDecoder(tt.args.fileExt, tt.args.fn); (err != nil) != tt.wantErr {
 				t.Errorf("WithParser() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

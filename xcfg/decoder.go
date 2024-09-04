@@ -16,9 +16,9 @@ type parserNameFn struct {
 	Name string
 }
 
-// defaultParsers 所有默认的 parser，
+// defaultDecoders 所有默认的解析器，
 // 当传入配置文件名不包含后置的时候，会使用此顺序依次查找
-var defaultParsers = []parserNameFn{
+var defaultDecoders = []parserNameFn{
 	{Name: ".json", Fn: xcodec.DecodeFunc(parser.JSON)},
 	{Name: ".xml", Fn: xcodec.DecodeFunc(xml.Unmarshal)},
 }

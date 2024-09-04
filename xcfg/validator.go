@@ -11,9 +11,14 @@ type AutoChecker interface {
 }
 
 // Validator 自动规则校验器
+type Validator interface {
+	Validate(val any) error
+}
+
+// DefaultValidator 默认的 Validator，为 nil，在使用前可以基于
+// github.com/go-playground/validator/v10 初始化。
 //
-// 可以使用 github.com/go-playground/validator/v10
-// 如下设置所有字段都是必填的：
+// 初始化之后，可以采用如下设置，以让所有字段都是必填的：
 //
 //	type Address struct {
 //		Street string `validator:"required"`
@@ -21,8 +26,4 @@ type AutoChecker interface {
 //		Planet string `validator:"required"`
 //		Phone  string `validator:"required"`
 //	}
-type Validator interface {
-	Validate(val any) error
-}
-
 var DefaultValidator Validator

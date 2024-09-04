@@ -11,6 +11,7 @@ import (
 	"github.com/fsgo/fst"
 
 	"context"
+	"fmt"
 	"github.com/xanygo/anygo/xattr"
 )
 
@@ -105,7 +106,7 @@ func TestXAttrVars(t *testing.T) {
 			args: args{
 				input: []byte(`{"idc":"{xattr.IDC}","logDir":"{xattr.LogDir}"}`),
 			},
-			wantOutput: []byte(`{"idc":"online","logDir":"testdata/log"}`),
+			wantOutput: []byte(fmt.Sprintf(`{"idc":"online","logDir":"%s"}`, filepath.Join("testdata", "log"))),
 		},
 		{
 			name: "not support key",

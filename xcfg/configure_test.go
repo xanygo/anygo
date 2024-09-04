@@ -20,7 +20,7 @@ func Test_confImpl(t *testing.T) {
 	testReset()
 	var a any
 	fst.Error(t, conf.Parse("abc.json", &a))
-	fst.NoError(t, conf.WithParser(".json", xcodec.DecodeFunc(parser.JSON)))
+	fst.NoError(t, conf.WithDecoder(".json", xcodec.DecodeFunc(parser.JSON)))
 	fst.Error(t, conf.Parse("abc.xyz", &a))
 	fst.NoError(t, conf.Parse("testdata/db10.json", &a))
 }

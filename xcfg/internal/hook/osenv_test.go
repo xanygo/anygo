@@ -11,8 +11,8 @@ import (
 	"testing"
 )
 
-func Test_helperOsEnvVars(t *testing.T) {
-	os.Setenv("appname", "fsgo/fsconf")
+func TestOsEnvVars(t *testing.T) {
+	os.Setenv("appname", "anygo/demo")
 	os.Setenv("port", "8081")
 
 	type args struct {
@@ -27,9 +27,9 @@ func Test_helperOsEnvVars(t *testing.T) {
 		{
 			name: "case 1",
 			args: args{
-				content: []byte(`{"app":"{osenv.appname|def}","port":"{osenv.port|80}","mem":"{osenv.abc|10}{osenv.def}"}`),
+				content: []byte(`{"app":"{env.appname|def}","port":"{env.port|80}","mem":"{env.abc|10}{env.def}"}`),
 			},
-			want:    []byte(`{"app":"fsgo/fsconf","port":"8081","mem":"10"}`),
+			want:    []byte(`{"app":"anygo/demo","port":"8081","mem":"10"}`),
 			wantErr: false,
 		},
 	}
