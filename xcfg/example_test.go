@@ -77,3 +77,24 @@ func ExampleMustParseBytes() {
 	// Name= Hello
 	// Age= 18
 }
+
+func ExampleParse() {
+	type Info struct {
+		A string
+	}
+	var info Info
+
+	// 解析 配置文件 {ConfDir}/abc.json
+	if err := xcfg.Parse("abc.json", &info); err != nil {
+		log.Println(err.Error())
+	}
+
+	fmt.Printf("info.A = %q\n", info.A)
+
+	// Output:
+	//info.A = "bb"
+}
+
+func Example_AutoChecker() {
+
+}

@@ -17,7 +17,7 @@
 //
 // # 3. Hooks
 //
-// # Hook 功能会在解析配置内容时自动运行。目前内置如下几个功能：
+// Hook 功能会在解析配置内容时自动运行。目前内置如下几个功能：
 //
 // 1. 读取环境变量的值
 //
@@ -43,5 +43,71 @@
 //	LogDir  :  应用日志文件目录地址, 如 /home/work/myapp/log
 //	RunMode :  应用运行模式,如 product
 //
-// # 4. 自动校验( Validator )
+// 3. Go Template 语法
+//
+// 该功能默认未启用,需要在配置文件的头部添加如何内容以启用该功能：
+//
+//	# hook.template  Enable=true
+//
+// 以下是一个例子 (  server.toml )：
+//
+//	# hook.template  Enable=true
+//
+//	 Port = {env.Port1}
+//	 {{ include "sub1/*.toml" }}
+//	 {{ include "sub2/z.toml" }}
+//
+// template 语法详见 https://pkg.go.dev/text/template 。
+// 默认内置如下自定义函数：
+//
+//	include  : 包含指定的文件，如 include "sub2/z.toml"，include "sub1/*.toml"
+//	env      : 读取环境变量的值，如 env "userName"
+//	contains : 即 strings.Contains，如 contains "hello" "h"
+//	prefix   : 即 strings.HasPrefix，如 contains "hello" "h"
+//	suffix   : 即 strings.HasSuffix，如 contains "hello" "o"
+//
+// # 4. 数据校验( Validator )
+//
+// 使用 Parser、ParseBytes 解析配置后，得的的结果可能是非预期的，如必填字段为空或者格式错误。
+//
+// 如典型的解析配置然后校验的逻辑为：
+//
+//	 if err := xcfg.Parse("abc.json", &info); err != nil {
+//		return err
+//	 }
+//	 // 下面是校验逻辑
+//	 if info.A == "" {
+//		return fmt.Errorf("required field A is empty")
+//	 }
+//
+// 若 info 的 struct 对象实现了 AutoChecker 接口，则在调用 Parse 解析配置内容之后，会自动调用校验逻辑。
+//
+//	type AutoChecker interface {
+//		AutoCheck() error
+//	}
+//
+// 即让 info 的 struct 定义为：
+//
+//	type Info struct {
+//		A string
+//	}
+//
+//	 func (in *Info)AutoCheck() error{
+//	 	if in==nil || in.A==""{
+//	 		return fmt.Errorf("invalid info")
+//	 	}
+//	 	return nil
+//	 }
+//
+// 除此之外，还可以使用 Validator 实现自动校验，使用的前提是给 DefaultValidator 赋值。
+// 如可以使用 github.com/go-playground/validator/v10 来初始化 DefaultValidator。
+//
+//	type Info struct {
+//		A string `validator:"required"` // A 字段必填，不能为空
+//	}
+//
+// 具体顺序为：
+//
+//  1. Validator
+//  2. AutoChecker
 package xcfg

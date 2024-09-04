@@ -61,7 +61,7 @@ func (t *Template) exec(ctx context.Context, cfPath string, content []byte, tp m
 		"include": func(name string) (string, error) {
 			return t.fnInclude(ctx, name, cfPath, tp)
 		},
-		"osenv": func(name string) string {
+		"env": func(name string) string {
 			return os.Getenv(name)
 		},
 		"contains": func(s string, sub string) bool {

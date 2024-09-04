@@ -13,7 +13,7 @@ import (
 	"github.com/xanygo/anygo/xcfg/internal/hook"
 )
 
-// Hook 辅助类，在执行解析前，会先会配置的内容进行解析处理
+// Hook 辅助类，用于在解析配置文件内容是，提前先对配置的内容进行预处理
 type Hook interface {
 	// Name 名称，不可为空
 	// 每个 Hook 应返回唯一的名称，若重名会注册失败
@@ -23,7 +23,7 @@ type Hook interface {
 	Execute(ctx context.Context, p *HookParam) (output []byte, err error)
 }
 
-// HookParam param for Hook
+// HookParam Hook 的参数
 type HookParam struct {
 	Cfg      *Configure // 当前 Cfg 对象
 	FileExt  string     // 文件类型后缀，如 .toml,.json
@@ -33,7 +33,7 @@ type HookParam struct {
 
 var defaultHooks hooks = []Hook{
 	newHook("template", (&hook.Template{}).Hook),
-	newHook("osenv", hook.OsEnvVars),
+	newHook("env", hook.OsEnvVars),
 	newHook("xattr", hook.XAttrVars),
 }
 
