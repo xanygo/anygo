@@ -4,6 +4,7 @@
 
 package xmap
 
+// Get 从 map 中读取指定 key 的值。支持 map 为 nil。
 func Get[Map ~map[K]V, K comparable, V any](m Map, key K) (v V, found bool) {
 	if m == nil {
 		return v, false
@@ -12,6 +13,7 @@ func Get[Map ~map[K]V, K comparable, V any](m Map, key K) (v V, found bool) {
 	return v, found
 }
 
+// GetDf  从 map 中读取指定 key 的值,若 key 不存在则返回默认值。支持 map 为 nil。
 func GetDf[Map ~map[K]V, K comparable, V any](m Map, key K, def V) V {
 	if m == nil {
 		return def
@@ -23,6 +25,7 @@ func GetDf[Map ~map[K]V, K comparable, V any](m Map, key K, def V) V {
 	return def
 }
 
+// HasKey 判断 map 中是否存在特定 key。支持 map 为 nil。
 func HasKey[Map ~map[K]V, K comparable, V any](m Map, key K) bool {
 	if m == nil {
 		return false
@@ -31,6 +34,7 @@ func HasKey[Map ~map[K]V, K comparable, V any](m Map, key K) bool {
 	return found
 }
 
+// HasKeyValue 判断 map 中是否有指定的 key 和 value。支持 map 为 nil。
 func HasKeyValue[Map ~map[K]V, K comparable, V comparable](m Map, key K, value V) bool {
 	if m == nil {
 		return false
@@ -39,6 +43,7 @@ func HasKeyValue[Map ~map[K]V, K comparable, V comparable](m Map, key K, value V
 	return found && val == value
 }
 
+// Keys 返回 map 所有的 key。支持 map 为 nil。
 func Keys[Map ~map[K]V, K comparable, V any](m Map) []K {
 	if len(m) == 0 {
 		return nil
@@ -50,6 +55,7 @@ func Keys[Map ~map[K]V, K comparable, V any](m Map) []K {
 	return keys
 }
 
+// Values 返回 map 所有的 value。支持 map 为 nil。
 func Values[Map ~map[K]V, K comparable, V any](m Map) []V {
 	if len(m) == 0 {
 		return nil

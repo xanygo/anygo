@@ -45,6 +45,19 @@ func ExampleToMap() {
 	// map[1:ok 2:ok 3:ok]
 }
 
+func ExampleToMapFunc() {
+	ss := []int{1, 2, 3}
+	result := xslice.ToMapFunc(ss, func(index int, v int) (string, string) {
+		key := fmt.Sprintf("key-%d", index)
+		value := fmt.Sprintf("value-%d", v)
+		return key, value
+	})
+	fmt.Println(result)
+
+	// Output:
+	// map[key-0:value-1 key-1:value-2 key-2:value-3]
+}
+
 func ExampleToAnys() {
 	fmt.Printf("%#v\n", xslice.ToAnys([]int{1, 2, 3})) // []interface {}{1, 2, 3}
 

@@ -46,6 +46,16 @@ func ToMap[S ~[]E, E comparable, V any](s S, value V) map[E]V {
 	return result
 }
 
+// ToMapFunc 使用回调函数，将 slice 转换为 map
+func ToMapFunc[S ~[]E, E comparable, K comparable, V any](s S, fn func(index int, v E) (K, V)) map[K]V {
+	result := make(map[K]V, len(s))
+	for i := 0; i < len(s); i++ {
+		k, v := fn(i, s[i])
+		result[k] = v
+	}
+	return result
+}
+
 // ToAnys 转换为 []any 类型
 func ToAnys[S ~[]E, E any](s S) []any {
 	if len(s) == 0 {
