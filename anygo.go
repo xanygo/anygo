@@ -25,9 +25,13 @@ type Then struct {
 	err error
 }
 
-func (t *Then) Then(fn func() error) *Then {
-	if t.err == nil {
-		t.err = fn()
+func (t *Then) Then(fns ...func() error) *Then {
+	for _, fn := range fns {
+		if t.err == nil {
+			t.err = fn()
+		} else {
+			break
+		}
 	}
 	return t
 }
@@ -36,8 +40,6 @@ func (t *Then) Err() error {
 	return t.err
 }
 
-func DoThen(fn func() error) *Then {
-	return &Then{
-		err: fn(),
-	}
+func DoThen(fns ...func() error) *Then {
+	return (&Then{}).Then(fns...)
 }

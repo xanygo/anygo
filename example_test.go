@@ -36,7 +36,7 @@ func ExampleMust() {
 	// panic: EOF
 }
 
-func ExampleDo() {
+func ExampleDoThen() {
 	var called int
 	err := anygo.DoThen(func() error {
 		called += 1
