@@ -21,6 +21,27 @@ func Must(values ...any) {
 	}
 }
 
+func Must1[T any](value T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+func Must2[A any, B any](v1 A, v2 B, err error) (A, B) {
+	if err != nil {
+		panic(err)
+	}
+	return v1, v2
+}
+
+func Must3[A any, B any, C any](v1 A, v2 B, v3 C, err error) (A, B, C) {
+	if err != nil {
+		panic(err)
+	}
+	return v1, v2, v3
+}
+
 type Then struct {
 	err error
 }

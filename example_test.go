@@ -6,9 +6,9 @@ package anygo_test
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/xanygo/anygo"
-	"io"
 )
 
 func ExampleTernary() {
@@ -36,10 +36,40 @@ func ExampleMust() {
 	// panic: EOF
 }
 
+func ExampleMust1() {
+	func() {
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Println("panic1:", err)
+			}
+		}()
+		run := func() (int, error) {
+			return 1, io.EOF // 由于返回 err!=nil, 所以 Must1 读取到 error 后会 panic
+		}
+		fmt.Println("v1=", anygo.Must1(run())) // Must1 会 panic
+	}()
+
+	func() {
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Println("panic2:", err)
+			}
+		}()
+		run := func() (int, error) {
+			return 1, nil // 返回er err == nil, 所以 Must1 会返回结果 “1”，并且不会 panic
+		}
+		fmt.Println("v2=", anygo.Must1(run())) // Must1 不会 panic
+	}()
+
+	// Output:
+	// panic1: EOF
+	// v2= 1
+}
+
 func ExampleDoThen() {
 	var called int
 	err := anygo.DoThen(func() error {
-		called += 1
+		called++
 		// do something
 		return nil
 	}).Then(func() error {
