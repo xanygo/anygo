@@ -16,40 +16,40 @@ import (
 // Message 一条国际化消息
 // https://cldr.unicode.org/index/cldr-spec/plural-rules
 type Message struct {
-	Key string
+	Key string `yaml:"Key"`
 
 	// vars 模版中用到的参数名
 	vars []string
 
-	Desc string
+	Desc string `yaml:"Desc"`
 
 	// Zero 0 个元素
-	Zero string
+	Zero string `yaml:"Zero"`
 
 	// One 1 个元素
-	One string
+	One string `yaml:"One"`
 
 	//  Two 2 个元素
-	Two string
+	Two string `yaml:"Two"`
 
 	// Few 一些，元素个数在 （2-10） 之间
-	Few string
+	Few string `yaml:"Few"`
 
 	// Many 很多，元素个数 >= 10
-	Many string
+	Many string `yaml:"Many"`
 
 	// Other 其他情况，当 Zero - Many 之间无满足条件的情况是使用
-	Other string
+	Other string `yaml:"Other"`
 }
 
 var varReg = regexp.MustCompile(`{\.(\w+)}`)
 
 func (m *Message) initAndCheck() error {
 	if m.Key == "" {
-		return fmt.Errorf("required field Key is empty")
+		return errors.New("required field Key is empty")
 	}
 	if m.Other == "" {
-		return fmt.Errorf("required field Other is empty")
+		return errors.New("required field Other is empty")
 	}
 	sm := varReg.FindAllStringSubmatch(m.Other, -1)
 	if len(sm) > 0 {
@@ -165,5 +165,3 @@ func (m *Message) plural(data map[string]any) pluralRule {
 	}
 	return rule
 }
-
-type Messages map[string]*Message

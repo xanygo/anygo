@@ -4,9 +4,25 @@
 
 package xi18n
 
+import "strings"
+
 type Language string
 
 const (
 	LangZh Language = "zh"
 	LangEn Language = "en"
 )
+
+func ParserAccept(accept string) []Language {
+	arr := strings.Split(accept, ",")
+	result := make([]Language, 0, len(arr))
+	for _, v := range arr {
+		v = strings.TrimSpace(v)
+		b, _, _ := strings.Cut(v, ";")
+		b = strings.TrimSpace(b)
+		if b != "" {
+			result = append(result, Language(b))
+		}
+	}
+	return result
+}

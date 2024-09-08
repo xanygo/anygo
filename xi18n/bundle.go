@@ -4,6 +4,10 @@
 
 package xi18n
 
+import (
+	"github.com/xanygo/anygo/xmap"
+)
+
 type Bundle struct {
 	// localizes 所有本地化信息
 	// map  key- 时语言类型，value 时本地化语言信息
@@ -25,4 +29,8 @@ func (b *Bundle) Localize(lang Language) *Localize {
 		return nil
 	}
 	return b.localizes[lang]
+}
+
+func (b *Bundle) Languages() []Language {
+	return xmap.Keys(b.localizes)
 }

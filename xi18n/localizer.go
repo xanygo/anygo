@@ -9,33 +9,35 @@ import (
 )
 
 type Localize struct {
-	messages map[string]Messages
+	messages map[string]*Message
 }
 
 func (l *Localize) Add(ns string, messages ...*Message) error {
 	if l.messages == nil {
-		l.messages = make(map[string]Messages)
-	}
-	msgs, ok := l.messages[ns]
-	if !ok {
-		msgs = Messages{}
+		l.messages = make(map[string]*Message)
 	}
 	for index, msg := range messages {
 		if err := msg.initAndCheck(); err != nil {
 			return fmt.Errorf("ns=%q, index=%d, %w", ns, index, err)
 		}
-		msgs[msg.Key] = msg
+		path := l.keyJoin(ns, msg.Key)
+		l.messages[path] = msg
 	}
-	l.messages[ns] = msgs
 	return nil
 }
 
+const nameSpaceKeySep = "@"
+
+func (l *Localize) keyJoin(ns string, key string) string {
+	return ns + nameSpaceKeySep + key
+}
+
 func (l *Localize) Find(ns string, key string) *Message {
-	ms, ok := l.messages[ns]
-	if !ok {
+	if len(l.messages) == 0 {
 		return nil
 	}
-	return ms[key]
+	path := l.keyJoin(ns, key)
+	return l.messages[path]
 }
 
 func FindMessage(b *Bundle, languages []Language, ns string, key string) *Message {
@@ -53,18 +55,4 @@ func findMessage(b *Bundle, lang Language, ns string, key string) *Message {
 		return nil
 	}
 	return l.Find(ns, key)
-}
-
-func Render(b *Bundle, languages []Language, ns string) func(key string, args ...any) string {
-	return func(key string, args ...any) string {
-		msg := FindMessage(b, languages, ns, key)
-		if msg == nil {
-			return "cannot find i18n message " + ns + "#" + key
-		}
-		result, err := msg.Render1(args)
-		if err == nil {
-			return result
-		}
-		return fmt.Sprintf("render i18n message %q#%q: %s", ns, key, err.Error())
-	}
 }
