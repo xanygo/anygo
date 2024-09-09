@@ -8,7 +8,7 @@ import "testing"
 
 func TestMessage_plural(t *testing.T) {
 	type args struct {
-		data map[string]any
+		data []any
 	}
 	tests := []struct {
 		name string
@@ -23,9 +23,9 @@ func TestMessage_plural(t *testing.T) {
 		{
 			name: "case 2",
 			args: args{
-				data: map[string]any{
-					"k1": 0,
-					"k2": "v2",
+				data: []any{
+					0,
+					"v2",
 				},
 			},
 			want: pluralZero,
@@ -33,9 +33,9 @@ func TestMessage_plural(t *testing.T) {
 		{
 			name: "case 3",
 			args: args{
-				data: map[string]any{
-					"k1": uint8(1),
-					"k2": "v2",
+				data: []any{
+					uint8(1),
+					"v2",
 				},
 			},
 			want: pluralOne,
@@ -43,9 +43,9 @@ func TestMessage_plural(t *testing.T) {
 		{
 			name: "case 4",
 			args: args{
-				data: map[string]any{
-					"k1": float64(2),
-					"k2": "v2",
+				data: []any{
+					float64(2),
+					"v2",
 				},
 			},
 			want: pluralTwo,
@@ -53,9 +53,9 @@ func TestMessage_plural(t *testing.T) {
 		{
 			name: "case 5",
 			args: args{
-				data: map[string]any{
-					"k1": float32(4),
-					"k2": "v2",
+				data: []any{
+					float32(4),
+					"v2",
 				},
 			},
 			want: pluralFew,
@@ -63,10 +63,10 @@ func TestMessage_plural(t *testing.T) {
 		{
 			name: "case 6",
 			args: args{
-				data: map[string]any{
-					"k1": float32(10),
-					"k2": "v2",
-					"k3": 1,
+				data: []any{
+					float32(10),
+					"v2",
+					1,
 				},
 			},
 			want: pluralMany,
@@ -75,7 +75,7 @@ func TestMessage_plural(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := &Message{}
-			if got := m.plural(tt.args.data); got != tt.want {
+			if got := m.plural(tt.args.data...); got != tt.want {
 				t.Errorf("plural() = %v, want %v", got, tt.want)
 			}
 		})

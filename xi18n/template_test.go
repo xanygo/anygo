@@ -76,7 +76,7 @@ func TestTemplate(t *testing.T) {
 		},
 		{
 			name: "case 8",
-			tpl:  `hello {{ "你好 {.Name}" | xit "index@k2" "demo"}}`,
+			tpl:  `hello {{ "你好 {0}" | xit "index@k2" "demo"}}`,
 			want: "hello 你好 demo",
 		},
 		{
@@ -86,7 +86,7 @@ func TestTemplate(t *testing.T) {
 					LangEn,
 				},
 			},
-			tpl:  `hello {{ "你好 {.Name}" | xit "index@k2" "demo"}}`,
+			tpl:  `hello {{ "你好 {0}" | xit "index@k2" "demo"}}`,
 			want: "hello hello demo",
 		},
 		{
@@ -101,7 +101,7 @@ func TestTemplate(t *testing.T) {
 		},
 		{
 			name: "case 12",
-			tpl:  `hello {{ "你好 {.Name}" | xit "index@k_error" "demo"}}`,
+			tpl:  `hello {{ "你好 {0}" | xit "index@k_error" "demo"}}`,
 			want: "hello 你好 demo",
 		},
 		{
@@ -115,8 +115,8 @@ func TestTemplate(t *testing.T) {
 	b.MustLocalize(LangZh).Add("index", &Message{Key: "k1", Other: "你好"})
 	b.MustLocalize(LangEn).Add("index", &Message{Key: "k1", Other: "hello"})
 
-	b.MustLocalize(LangZh).Add("index", &Message{Key: "k2", Other: "你好 {.Name}"})
-	b.MustLocalize(LangEn).Add("index", &Message{Key: "k2", Other: "hello {.Name}"})
+	b.MustLocalize(LangZh).Add("index", &Message{Key: "k2", Other: "你好 {0}"})
+	b.MustLocalize(LangEn).Add("index", &Message{Key: "k2", Other: "hello {0}"})
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

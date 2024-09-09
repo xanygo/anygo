@@ -9,19 +9,23 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	"text/template"
-
-	"github.com/xanygo/anygo/xsync"
+	"strconv"
+	"strings"
 )
 
 // Message 一条本地化化消息
 //
 // 复数规则参考了 https://cldr.unicode.org/index/cldr-spec/plural-rules
+//
+// Zero, One, Two, Few, Many, Other 是各种复数规则情况下的本地化内容。
+// 这些字段可以是普通纯文本，也可以是包含变量（占位符）的，如 "Hello {0}, my name is {1}" 。
+// 占位符格式为 {number}，从 0 依次递增
 type Message struct {
+	// Key 主键，必填
 	Key string `yaml:"Key"`
 
-	// vars 模版中用到的参数名
-	vars []string
+	// vars 模版中用到的参数个数
+	vars int
 
 	Desc string `yaml:"Desc"`
 
@@ -40,11 +44,11 @@ type Message struct {
 	// Many 很多，元素个数 >= 10
 	Many string `yaml:"Many"`
 
-	// Other 其他情况，当 Zero - Many 之间无满足条件的情况是使用
+	// Other 其他情况，必填，当 Zero - Many 之间无满足条件的情况是使用
 	Other string `yaml:"Other"`
 }
 
-var varReg = regexp.MustCompile(`{\.(\w+)}`)
+var varReg = regexp.MustCompile(`{\d+}`)
 
 func (m *Message) initAndCheck() error {
 	if m.Key == "" {
@@ -53,91 +57,59 @@ func (m *Message) initAndCheck() error {
 	if m.Other == "" {
 		return errors.New("required field Other is empty")
 	}
-	sm := varReg.FindAllStringSubmatch(m.Other, -1)
-	if len(sm) > 0 {
-		for _, v := range sm {
-			m.vars = append(m.vars, v[1])
-		}
-	}
+	sm := varReg.FindAllString(m.Other, -1)
+	m.vars = len(sm)
 	return nil
 }
 
-// RenderMap 渲染本地消息
-func (m *Message) RenderMap(data map[string]any) (string, error) {
-	rule := m.plural(data)
+// Render 渲染本地消息, 参数个数需要和文本模版中定义的一样
+func (m *Message) Render(args ...any) (string, error) {
+	if len(args) != m.vars {
+		return "", fmt.Errorf("expect %d args, but got %d", m.vars, len(args))
+	}
+	rule := m.plural(args...)
 	switch rule {
 	case pluralZero:
 		if m.Zero != "" {
-			return renderMsgMap(m.Zero, data)
+			return renderMsgSlice(m.Zero, args...)
 		}
 	case pluralOne:
 		if m.One != "" {
-			return renderMsgMap(m.One, data)
+			return renderMsgSlice(m.One, args...)
 		}
 	case pluralTwo:
 		if m.Two != "" {
-			return renderMsgMap(m.Two, data)
+			return renderMsgSlice(m.Two, args...)
 		}
 	case pluralFew:
 		if m.Few != "" {
-			return renderMsgMap(m.Few, data)
+			return renderMsgSlice(m.Few, args...)
 		}
 	case pluralMany:
 		if m.Few != "" {
-			return renderMsgMap(m.Many, data)
+			return renderMsgSlice(m.Many, args...)
 		}
 	}
 	if m.Other != "" {
-		return renderMsgMap(m.Other, data)
+		return renderMsgSlice(m.Other, args...)
 	}
 	return "", errors.New("msg.Other is empty")
 }
 
-// RenderSlice 渲染本地消息, 参数个数需要和文本模版中定义的一样
-func (m *Message) RenderSlice(args ...any) (string, error) {
-	if len(args) != len(m.vars) {
-		return "", fmt.Errorf("expect %d args, but got %d", len(m.vars), len(args))
-	}
-	if len(args) == 0 {
-		return m.RenderMap(nil)
-	}
-
-	data := make(map[string]any, len(args))
-	for i, arg := range args {
-		data[m.vars[i]] = arg
-	}
-	return m.RenderMap(data)
-}
-
-var bp = xsync.NewBytesBufferPool(2048)
-
-func renderMsgMap(text string, data map[string]any) (string, error) {
-	tpl, err := template.New("msg").Delims("{", "}").Parse(text)
-	if err != nil {
-		return "", err
-	}
-	bf := bp.Get()
-	defer bp.Put(bf)
-	err = tpl.Execute(bf, data)
-	return bf.String(), err
-}
-
 func renderMsgSlice(text string, args ...any) (string, error) {
-	var data map[string]any
-	if len(args) > 0 {
-		sm := varReg.FindAllStringSubmatch(text, -1)
-		if len(sm) != len(args) {
-			return "", fmt.Errorf("%q got %d args, but expect has %d", text, len(args), len(sm))
-		}
-		data = make(map[string]any, len(sm))
-		for i, val := range sm {
-			data[val[1]] = args[i]
-		}
+	if len(args) == 0 {
+		return text, nil
 	}
-	return renderMsgMap(text, data)
+	for i, v := range args {
+		rpk := "{" + strconv.Itoa(i) + "}"
+		rpv := fmt.Sprint(v)
+		text = strings.ReplaceAll(text, rpk, rpv)
+	}
+	strings.NewReplacer()
+	return text, nil
 }
 
-type pluralRule uint8
+type pluralRule int8
 
 const (
 	pluralZero pluralRule = iota
@@ -169,13 +141,12 @@ func useRule[T ruleNumber](rule pluralRule, num T) pluralRule {
 	return rule
 }
 
-func (m *Message) plural(data map[string]any) pluralRule {
-	if len(data) == 0 {
+func (m *Message) plural(args ...any) pluralRule {
+	if len(args) == 0 {
 		return pluralOther
 	}
-	var rule pluralRule
-
-	for _, v := range data {
+	rule := pluralRule(-1)
+	for _, v := range args {
 		rv := reflect.ValueOf(v)
 		if rv.CanInt() {
 			rule = useRule(rule, rv.Int())
@@ -184,6 +155,9 @@ func (m *Message) plural(data map[string]any) pluralRule {
 		} else if rv.CanFloat() {
 			rule = useRule(rule, rv.Float())
 		}
+	}
+	if rule < pluralZero {
+		return pluralOther
 	}
 	return rule
 }

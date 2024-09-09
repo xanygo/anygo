@@ -4,14 +4,39 @@
 
 package xi18n
 
-import "net/http"
+import (
+	"net/http"
+	"slices"
 
-func HandlerAcceptLanguage(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		accept := ParserAccept(r.Header.Get("Accept-Language"))
-		if len(accept) > 0 {
-			r = r.WithContext(ContextWithLanguages(r.Context(), accept))
+	"github.com/xanygo/anygo/xslice"
+)
+
+type HTTPHandlerLanguage struct {
+	CookieName string
+	Handler    http.Handler
+	Allow      []Language
+}
+
+func (h HTTPHandlerLanguage) getCookieName() string {
+	if h.CookieName == "" {
+		return "lang"
+	}
+	return h.CookieName
+}
+
+func (h HTTPHandlerLanguage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	accept := ParserAccept(r.Header.Get("Accept-Language"))
+
+	// 读取以设置到 cookie 中的首选语言
+	if ck, err := r.Cookie(h.getCookieName()); err == nil && len(ck.Value) > 0 {
+		cv := Language(ck.Value)
+		if len(h.Allow) == 0 || xslice.ContainsAny(h.Allow, cv) {
+			accept = slices.Insert(accept, 0, Language(ck.Value))
 		}
-		h.ServeHTTP(w, r)
-	})
+	}
+
+	if len(accept) > 0 {
+		r = r.WithContext(ContextWithLanguages(r.Context(), accept))
+	}
+	h.Handler.ServeHTTP(w, r)
 }
