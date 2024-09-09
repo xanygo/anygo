@@ -5,16 +5,18 @@
 package xi18n
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
 	"text/template"
+
+	"github.com/xanygo/anygo/xsync"
 )
 
-// Message 一条国际化消息
-// https://cldr.unicode.org/index/cldr-spec/plural-rules
+// Message 一条本地化化消息
+//
+// 复数规则参考了 https://cldr.unicode.org/index/cldr-spec/plural-rules
 type Message struct {
 	Key string `yaml:"Key"`
 
@@ -60,59 +62,79 @@ func (m *Message) initAndCheck() error {
 	return nil
 }
 
-func (m *Message) Render(data map[string]any) (string, error) {
+// RenderMap 渲染本地消息
+func (m *Message) RenderMap(data map[string]any) (string, error) {
 	rule := m.plural(data)
 	switch rule {
 	case pluralZero:
 		if m.Zero != "" {
-			return m.doRender(m.Zero, data)
+			return renderMsgMap(m.Zero, data)
 		}
 	case pluralOne:
 		if m.One != "" {
-			return m.doRender(m.One, data)
+			return renderMsgMap(m.One, data)
 		}
 	case pluralTwo:
 		if m.Two != "" {
-			return m.doRender(m.Two, data)
+			return renderMsgMap(m.Two, data)
 		}
 	case pluralFew:
 		if m.Few != "" {
-			return m.doRender(m.Few, data)
+			return renderMsgMap(m.Few, data)
 		}
 	case pluralMany:
 		if m.Few != "" {
-			return m.doRender(m.Many, data)
+			return renderMsgMap(m.Many, data)
 		}
 	}
 	if m.Other != "" {
-		return m.doRender(m.Other, data)
+		return renderMsgMap(m.Other, data)
 	}
 	return "", errors.New("msg.Other is empty")
 }
 
-func (m *Message) Render1(args []any) (string, error) {
+// RenderSlice 渲染本地消息, 参数个数需要和文本模版中定义的一样
+func (m *Message) RenderSlice(args ...any) (string, error) {
 	if len(args) != len(m.vars) {
 		return "", fmt.Errorf("expect %d args, but got %d", len(m.vars), len(args))
 	}
 	if len(args) == 0 {
-		return m.Render(nil)
+		return m.RenderMap(nil)
 	}
 
 	data := make(map[string]any, len(args))
 	for i, arg := range args {
 		data[m.vars[i]] = arg
 	}
-	return m.Render(data)
+	return m.RenderMap(data)
 }
 
-func (m *Message) doRender(text string, data map[string]any) (string, error) {
+var bp = xsync.NewBytesBufferPool(2048)
+
+func renderMsgMap(text string, data map[string]any) (string, error) {
 	tpl, err := template.New("msg").Delims("{", "}").Parse(text)
 	if err != nil {
 		return "", err
 	}
-	bf := &bytes.Buffer{}
+	bf := bp.Get()
+	defer bp.Put(bf)
 	err = tpl.Execute(bf, data)
 	return bf.String(), err
+}
+
+func renderMsgSlice(text string, args ...any) (string, error) {
+	var data map[string]any
+	if len(args) > 0 {
+		sm := varReg.FindAllStringSubmatch(text, -1)
+		if len(sm) != len(args) {
+			return "", fmt.Errorf("%q got %d args, but expect has %d", text, len(args), len(sm))
+		}
+		data = make(map[string]any, len(sm))
+		for i, val := range sm {
+			data[val[1]] = args[i]
+		}
+	}
+	return renderMsgMap(text, data)
 }
 
 type pluralRule uint8
