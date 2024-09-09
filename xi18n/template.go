@@ -68,16 +68,14 @@ func (r Render) BindIs(languages []Language) func(lang string) bool {
 // # 参数说明：
 //
 //	*Bundle: 本地化资源集
-//	[]Language: 优先查找的语言
-//
-// 如初始化用于支持中文的的模版，则此值可以是 []Language{ xi18n.LangZh },
-// 初始化用于支持英文的的模版，则此值可以是 []Language{ xi18n.LangEn }
+//	[]Language: 优先查找的语言,如初始化用于支持中文的的模版，则此值可以是 []Language{ xi18n.LangZh },
+//	 初始化用于支持英文的的模版，则此值可以是 []Language{ xi18n.LangEn }
 //
 // # 包含模版函数：
 //
 //  1. xi: 在模版中加载渲染本地化内容
 //
-//     如  hello {{xi "index@k1"}} 、 {{xi "index@k1" arg1 arg2}}
+//     如  hello {{ xi "index@k1" }} 、 {{ xi "index@k1" arg1 arg2 }}
 //     第一个参数 "index@k1" 中 namespace = "index", key="k1"
 //     arg1 arg2 等是可选参数，支持 >=0 个
 //
@@ -85,7 +83,7 @@ func (r Render) BindIs(languages []Language) func(lang string) bool {
 //
 // 2. xit: 优先使用预定义本地化信息，并渲染本地化内容
 //
-//	如 {{ "你好" | xit "index@k1"}} 或者 {{ "你好 {0}" | xit "index@k1" "demo"}}
+//	如 {{ "你好" | xit "index@k1" }} 或者 {{ "你好 {0}" | xit "index@k1" "demo" }}
 //	在 “|” 前的内容是预定义的本地化模版信息,本地化信息中的变量使用 {number} 作为占位符，从 0 依次递增
 func FuncMap(b *Bundle, languages []Language, namespace string) map[string]any {
 	var rd Render

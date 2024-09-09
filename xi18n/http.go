@@ -11,20 +11,27 @@ import (
 	"github.com/xanygo/anygo/xslice"
 )
 
-type HTTPHandlerLanguage struct {
+var _ http.Handler = (*HTTPLanguageHandler)(nil)
+
+// HTTPLanguageHandler  读取 HTTP 的 Accept-Language 和 cookie 中存储的首选项信息的中间件
+type HTTPLanguageHandler struct {
+	// CookieName cookie 中存储首选语言的字段名，可选，当为空时默认值为 lang
 	CookieName string
-	Handler    http.Handler
-	Allow      []Language
+	// Allow 从 cookie 中读取的首选语言的有效值，可选，当不为空时生效
+	Allow []Language
+
+	// Handler 原始的 handler，必填
+	Handler http.Handler
 }
 
-func (h HTTPHandlerLanguage) getCookieName() string {
+func (h HTTPLanguageHandler) getCookieName() string {
 	if h.CookieName == "" {
 		return "lang"
 	}
 	return h.CookieName
 }
 
-func (h HTTPHandlerLanguage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h HTTPLanguageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	accept := ParserAccept(r.Header.Get("Accept-Language"))
 
 	// 读取以设置到 cookie 中的首选语言

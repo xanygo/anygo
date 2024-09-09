@@ -9,8 +9,14 @@ import "strings"
 type Language string
 
 const (
-	LangZh Language = "zh"
-	LangEn Language = "en"
+	LangZh   Language = "zh"    // 中文
+	LangZhCN Language = "zh-CN" // 中文-简体
+	LangZhHK Language = "zh-HK" // 中文-香港
+	LangZhTW Language = "zh-TW" // 中文-台湾
+
+	LangEn   Language = "en"    // 英文
+	LangEnUS Language = "en-US" // 英文-美国
+	LangEnGB Language = "en-GB" // 英文-英国
 )
 
 func ParserAccept(accept string) []Language {
