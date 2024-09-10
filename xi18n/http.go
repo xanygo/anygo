@@ -22,6 +22,9 @@ type HTTPLanguageHandler struct {
 
 	// Handler 原始的 handler，必填
 	Handler http.Handler
+
+	// WithRequest 可选，其他对 request 改写的逻辑
+	WithRequest func(r *http.Request) *http.Request
 }
 
 func (h HTTPLanguageHandler) getCookieName() string {
@@ -41,9 +44,11 @@ func (h HTTPLanguageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			accept = slices.Insert(accept, 0, Language(ck.Value))
 		}
 	}
-
 	if len(accept) > 0 {
 		r = r.WithContext(ContextWithLanguages(r.Context(), accept))
+	}
+	if h.WithRequest != nil {
+		r = h.WithRequest(r)
 	}
 	h.Handler.ServeHTTP(w, r)
 }

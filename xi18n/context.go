@@ -4,19 +4,9 @@
 
 package xi18n
 
-import "context"
-
 type ctxKey uint8
 
 const (
 	ctxKeyLang ctxKey = iota
+	ctxKeyBundle
 )
-
-func ContextWithLanguages(ctx context.Context, languages []Language) context.Context {
-	return context.WithValue(ctx, ctxKeyLang, languages)
-}
-
-func LanguagesFromContext(ctx context.Context) []Language {
-	result, _ := ctx.Value(ctxKeyLang).([]Language)
-	return result
-}

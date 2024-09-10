@@ -9,6 +9,7 @@ import (
 	"testing"
 	"text/template"
 
+	"context"
 	"github.com/fsgo/fst"
 )
 
@@ -112,11 +113,17 @@ func TestTemplate(t *testing.T) {
 	}
 
 	b := &Bundle{}
-	b.MustLocalize(LangZh).Add("index", &Message{Key: "k1", Other: "你好"})
-	b.MustLocalize(LangEn).Add("index", &Message{Key: "k1", Other: "hello"})
+	e0 := b.MustLocalize(LangZh).Add("index", &Message{Key: "k1", Other: "你好"})
+	fst.NoError(t, e0)
 
-	b.MustLocalize(LangZh).Add("index", &Message{Key: "k2", Other: "你好 {0}"})
-	b.MustLocalize(LangEn).Add("index", &Message{Key: "k2", Other: "hello {0}"})
+	e1 := b.MustLocalize(LangEn).Add("index", &Message{Key: "k1", Other: "hello"})
+	fst.NoError(t, e1)
+
+	e2 := b.MustLocalize(LangZh).Add("index", &Message{Key: "k2", Other: "你好 {0}"})
+	fst.NoError(t, e2)
+
+	e3 := b.MustLocalize(LangEn).Add("index", &Message{Key: "k2", Other: "hello {0}"})
+	fst.NoError(t, e3)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -127,4 +134,24 @@ func TestTemplate(t *testing.T) {
 			fst.Equal(t, tt.want, bf.String())
 		})
 	}
+}
+
+func TestXI(t *testing.T) {
+	b := &Bundle{}
+	b.MustLocalize(LangZh).MustAdd("index", &Message{Key: "k1", Other: "你好"})
+	b.MustLocalize(LangEn).MustAdd("index", &Message{Key: "k1", Other: "hello"})
+
+	b.MustLocalize(LangZh).MustAdd("index", &Message{Key: "k2", Other: "你好 {0}"})
+	b.MustLocalize(LangEn).MustAdd("index", &Message{Key: "k2", Other: "hello {0}"})
+
+	fst.Panic(t, func() {
+		_ = XI(context.Background(), "index@k1")
+	})
+
+	ctx1 := WithBundle(context.Background(), b, "")
+	fst.Equal(t, "你好", XI(ctx1, "index@k1"))
+	fst.Equal(t, "你好 demo", XI(ctx1, "index@k2", "demo"))
+
+	fst.Equal(t, "abc", XIT(ctx1, "abc", "index@k1"))
+	fst.Equal(t, "abc demo", XIT(ctx1, "abc {0}", "index@k1", "demo"))
 }

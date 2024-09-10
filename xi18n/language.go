@@ -4,7 +4,10 @@
 
 package xi18n
 
-import "strings"
+import (
+	"context"
+	"strings"
+)
 
 type Language string
 
@@ -30,5 +33,14 @@ func ParserAccept(accept string) []Language {
 			result = append(result, Language(b))
 		}
 	}
+	return result
+}
+
+func ContextWithLanguages(ctx context.Context, languages []Language) context.Context {
+	return context.WithValue(ctx, ctxKeyLang, languages)
+}
+
+func LanguagesFromContext(ctx context.Context) []Language {
+	result, _ := ctx.Value(ctxKeyLang).([]Language)
 	return result
 }

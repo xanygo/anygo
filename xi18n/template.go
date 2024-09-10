@@ -5,29 +5,30 @@
 package xi18n
 
 import (
+	"context"
 	"fmt"
 )
 
-type Render struct{}
+type TemplateRender struct{}
 
-func (r Render) BindXI(b *Bundle, languages []Language, namespace string) func(key string, args ...any) string {
+func (r TemplateRender) BindXI(b *Bundle, languages []Language, namespace string) func(key string, args ...any) string {
 	return func(key string, args ...any) string {
 		msg := FindMessage(b, languages, namespace, key)
 		if msg == nil {
 			return "cannot find " + key
 		}
-		return r.result(msg.Render(args...))
+		return renderResult(msg.Render(args...))
 	}
 }
 
-func (r Render) result(result string, err error) string {
+func renderResult(result string, err error) string {
 	if err == nil {
 		return result
 	}
 	return fmt.Sprintf("render i18n message %s", err.Error())
 }
 
-func (r Render) BindXTT(b *Bundle, languages []Language, namespace string) func(key string, args ...any) string {
+func (r TemplateRender) BindXTT(b *Bundle, languages []Language, namespace string) func(key string, args ...any) string {
 	useDefault := len(languages) == 0
 	if !useDefault {
 		if bls := b.Languages(); len(bls) > 0 {
@@ -44,17 +45,17 @@ func (r Render) BindXTT(b *Bundle, languages []Language, namespace string) func(
 			return fmt.Sprintf("key=%q, missing text", key)
 		}
 		if useDefault {
-			return r.result(renderMsgSlice(text, args[0:len(args)-1]...))
+			return renderResult(renderMsgSlice(text, args[0:len(args)-1]...))
 		}
 		msg := FindMessage(b, languages, namespace, key)
 		if msg == nil {
-			return r.result(renderMsgSlice(text, args[0:len(args)-1]...))
+			return renderResult(renderMsgSlice(text, args[0:len(args)-1]...))
 		}
-		return r.result(msg.Render(args[0 : len(args)-1]...))
+		return renderResult(msg.Render(args[0 : len(args)-1]...))
 	}
 }
 
-func (r Render) BindIs(languages []Language) func(lang string) bool {
+func (r TemplateRender) BindIs(languages []Language) func(lang string) bool {
 	return func(lang string) bool {
 		return len(languages) > 0 && languages[0] == Language(lang)
 	}
@@ -86,10 +87,62 @@ func (r Render) BindIs(languages []Language) func(lang string) bool {
 //	如 {{ "你好" | xit "index@k1" }} 或者 {{ "你好 {0}" | xit "index@k1" "demo" }}
 //	在 “|” 前的内容是预定义的本地化模版信息,本地化信息中的变量使用 {number} 作为占位符，从 0 依次递增
 func FuncMap(b *Bundle, languages []Language, namespace string) map[string]any {
-	var rd Render
+	var rd TemplateRender
 	return map[string]any{
 		"xi":    rd.BindXI(b, languages, namespace),
 		"xi_is": rd.BindIs(languages),
 		"xit":   rd.BindXTT(b, languages, namespace),
 	}
+}
+
+type ctxBundle struct {
+	bundle    *Bundle
+	namespace string
+}
+
+// WithBundle 将本地化资源信息存储到 ctx 里去，如此之后可以直接在 .go 文件中使用 XI 和 XIT 等系列函数渲染文本内容
+func WithBundle(ctx context.Context, b *Bundle, namespace string) context.Context {
+	rr := &ctxBundle{
+		bundle:    b,
+		namespace: namespace,
+	}
+	return context.WithValue(ctx, ctxKeyBundle, rr)
+}
+
+// XI 使用资源的 key 渲染文本内容,需要提前使用 WithBundle 将 *Bundle 存入 ctx。
+// 若是 Bundle、key 不存在，均会 panic
+func XI(ctx context.Context, key string, args ...any) string {
+	rr, ok := ctx.Value(ctxKeyBundle).(*ctxBundle)
+	if !ok {
+		panic(fmt.Sprintf("key=%q, not found Bundle in context, should WithBundle first", key))
+	}
+	msg := FindMessage(rr.bundle, LanguagesFromContext(ctx), rr.namespace, key)
+	if msg == nil {
+		panic("missing i18n key=" + key)
+	}
+	return renderResult(msg.Render(args...))
+}
+
+// XIT 使用传入的模版( 参数名: text ) 以及资源的 key 渲染文本内容,需要提前使用 WithBundle 将 *Bundle 存入 ctx。
+// 若是 Bundle、key 不存在，均会 panic。
+func XIT(ctx context.Context, text string, key string, args ...any) string {
+	rr, ok := ctx.Value(ctxKeyBundle).(*ctxBundle)
+	if !ok {
+		panic(fmt.Sprintf("key=%q, not found Bundle in context, should WithBundle first", key))
+	}
+	languages := LanguagesFromContext(ctx)
+	useDefault := len(languages) == 0
+	if !useDefault {
+		if bls := rr.bundle.Languages(); len(bls) > 0 {
+			useDefault = bls[0] == languages[0]
+		}
+	}
+	if useDefault {
+		return renderResult(renderMsgSlice(text, args...))
+	}
+	msg := FindMessage(rr.bundle, languages, rr.namespace, key)
+	if msg == nil {
+		panic("missing i18n key=" + key)
+	}
+	return renderResult(msg.Render(args...))
 }

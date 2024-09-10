@@ -32,6 +32,13 @@ func (l *Localize) Add(namespace string, messages ...*Message) error {
 	return nil
 }
 
+// MustAdd 简化的 Add，若有异常会 panic
+func (l *Localize) MustAdd(namespace string, messages ...*Message) {
+	if err := l.Add(namespace, messages...); err != nil {
+		panic(err)
+	}
+}
+
 const nameSpaceKeySep = "@"
 
 func (l *Localize) keyJoin(namespace string, key string) string {
