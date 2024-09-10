@@ -110,7 +110,7 @@ func ContextWithBundle(ctx context.Context, b *Bundle, namespace string) context
 }
 
 // XI 使用资源的 key 渲染文本内容,需要提前使用 ContextWithBundle 将 *Bundle 存入 ctx。
-// 若是 Bundle、key 不存在，均会 panic
+// 若是 Bundle 不存在会 panic，key 不存在会返回错误信息。
 func XI(ctx context.Context, key string, args ...any) string {
 	rr, ok := ctx.Value(ctxKeyBundle).(*ctxBundle)
 	if !ok {
@@ -118,13 +118,13 @@ func XI(ctx context.Context, key string, args ...any) string {
 	}
 	msg := FindMessage(rr.bundle, LanguagesFromContext(ctx), rr.namespace, key)
 	if msg == nil {
-		panic("missing i18n key=" + key)
+		return "missing i18n key=" + key
 	}
 	return renderResult(msg.Render(args...))
 }
 
 // XIT 使用传入的模版( 参数名: text ) 以及资源的 key 渲染文本内容,需要提前使用 ContextWithBundle 将 *Bundle 存入 ctx。
-// 若是 Bundle、key 不存在，均会 panic。
+// 若是 Bundle 不存在会 panic，key 不存在会返回错误信息。
 func XIT(ctx context.Context, text string, key string, args ...any) string {
 	rr, ok := ctx.Value(ctxKeyBundle).(*ctxBundle)
 	if !ok {
@@ -142,7 +142,7 @@ func XIT(ctx context.Context, text string, key string, args ...any) string {
 	}
 	msg := FindMessage(rr.bundle, languages, rr.namespace, key)
 	if msg == nil {
-		panic("missing i18n key=" + key)
+		return "missing i18n key=" + key
 	}
 	return renderResult(msg.Render(args...))
 }

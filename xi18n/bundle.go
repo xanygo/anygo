@@ -35,7 +35,7 @@ func (b *Bundle) Localize(lang Language) *Localize {
 	return b.localizes[lang]
 }
 
-// LanguagesFromContext 所有支持的本地化语言，返回的 slice 时排序的，先通过 MustLocalize 注册的会排在前面
+// Languages 所有支持的本地化语言，返回的 slice 是排序的，先通过 MustLocalize 注册的会排在前面
 func (b *Bundle) Languages() []Language {
 	return b.languages
 }
