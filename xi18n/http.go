@@ -17,6 +17,7 @@ var _ http.Handler = (*HTTPLanguageHandler)(nil)
 type HTTPLanguageHandler struct {
 	// CookieName cookie 中存储首选语言的字段名，可选，当为空时默认值为 lang
 	CookieName string
+
 	// Allow 从 cookie 中读取的首选语言的有效值，可选，当不为空时生效
 	Allow []Language
 

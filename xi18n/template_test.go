@@ -6,10 +6,10 @@ package xi18n
 
 import (
 	"bytes"
+	"context"
 	"testing"
 	"text/template"
 
-	"context"
 	"github.com/fsgo/fst"
 )
 
@@ -148,10 +148,13 @@ func TestXI(t *testing.T) {
 		_ = XI(context.Background(), "index@k1")
 	})
 
-	ctx1 := WithBundle(context.Background(), b, "")
+	ctx1 := ContextWithBundle(context.Background(), b, "")
 	fst.Equal(t, "你好", XI(ctx1, "index@k1"))
 	fst.Equal(t, "你好 demo", XI(ctx1, "index@k2", "demo"))
 
 	fst.Equal(t, "abc", XIT(ctx1, "abc", "index@k1"))
 	fst.Equal(t, "abc demo", XIT(ctx1, "abc {0}", "index@k1", "demo"))
+
+	ctx2 := ContextWithLanguages(ctx1, []Language{LangEn})
+	fst.Equal(t, "hello", XI(ctx2, "index@k1"))
 }

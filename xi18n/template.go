@@ -100,8 +100,8 @@ type ctxBundle struct {
 	namespace string
 }
 
-// WithBundle 将本地化资源信息存储到 ctx 里去，如此之后可以直接在 .go 文件中使用 XI 和 XIT 等系列函数渲染文本内容
-func WithBundle(ctx context.Context, b *Bundle, namespace string) context.Context {
+// ContextWithBundle 将本地化资源信息存储到 ctx 里去，如此之后可以直接在 .go 文件中使用 XI 和 XIT 等系列函数渲染文本内容
+func ContextWithBundle(ctx context.Context, b *Bundle, namespace string) context.Context {
 	rr := &ctxBundle{
 		bundle:    b,
 		namespace: namespace,
@@ -109,12 +109,12 @@ func WithBundle(ctx context.Context, b *Bundle, namespace string) context.Contex
 	return context.WithValue(ctx, ctxKeyBundle, rr)
 }
 
-// XI 使用资源的 key 渲染文本内容,需要提前使用 WithBundle 将 *Bundle 存入 ctx。
+// XI 使用资源的 key 渲染文本内容,需要提前使用 ContextWithBundle 将 *Bundle 存入 ctx。
 // 若是 Bundle、key 不存在，均会 panic
 func XI(ctx context.Context, key string, args ...any) string {
 	rr, ok := ctx.Value(ctxKeyBundle).(*ctxBundle)
 	if !ok {
-		panic(fmt.Sprintf("key=%q, not found Bundle in context, should WithBundle first", key))
+		panic(fmt.Sprintf("key=%q, not found Bundle in context, should ContextWithBundle first", key))
 	}
 	msg := FindMessage(rr.bundle, LanguagesFromContext(ctx), rr.namespace, key)
 	if msg == nil {
@@ -123,12 +123,12 @@ func XI(ctx context.Context, key string, args ...any) string {
 	return renderResult(msg.Render(args...))
 }
 
-// XIT 使用传入的模版( 参数名: text ) 以及资源的 key 渲染文本内容,需要提前使用 WithBundle 将 *Bundle 存入 ctx。
+// XIT 使用传入的模版( 参数名: text ) 以及资源的 key 渲染文本内容,需要提前使用 ContextWithBundle 将 *Bundle 存入 ctx。
 // 若是 Bundle、key 不存在，均会 panic。
 func XIT(ctx context.Context, text string, key string, args ...any) string {
 	rr, ok := ctx.Value(ctxKeyBundle).(*ctxBundle)
 	if !ok {
-		panic(fmt.Sprintf("key=%q, not found Bundle in context, should WithBundle first", key))
+		panic(fmt.Sprintf("key=%q, not found Bundle in context, should ContextWithBundle first", key))
 	}
 	languages := LanguagesFromContext(ctx)
 	useDefault := len(languages) == 0
