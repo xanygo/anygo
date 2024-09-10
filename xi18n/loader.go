@@ -14,8 +14,9 @@ import (
 	"github.com/xanygo/anygo/xcodec"
 )
 
-func LoadFS(b *Bundle, f fs.FS, ext string, decoder xcodec.Decoder) error {
-	return fs.WalkDir(f, ".", func(fileName string, d fs.DirEntry, err error) error {
+// LoadFS 加载本地化资源到 Bundle 里去
+func LoadFS(b *Bundle, f fs.FS, root string, ext string, decoder xcodec.Decoder) error {
+	return fs.WalkDir(f, root, func(fileName string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
