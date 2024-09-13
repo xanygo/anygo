@@ -87,12 +87,12 @@ func mustFindMetaBaggage(ctx context.Context) *baggage {
 
 func newBaggage() *baggage {
 	return &baggage{
-		attrs: &xmap.Ordered[string, Attr]{},
+		attrs: &xmap.OrderedSync[string, Attr]{},
 	}
 }
 
 type baggage struct {
-	attrs *xmap.Ordered[string, Attr]
+	attrs *xmap.OrderedSync[string, Attr]
 }
 
 func (cb *baggage) Clone() *baggage {

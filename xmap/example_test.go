@@ -6,13 +6,13 @@ package xmap_test
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/xanygo/anygo/xmap"
-	"sort"
 )
 
 func ExampleOrdered_Values() {
-	mp := &xmap.Ordered[string, int]{}
+	mp := &xmap.OrderedSync[string, int]{}
 	mp.Set("k0", 0)
 	mp.Set("k1", 1)
 	mp.Set("k2", 2)
@@ -24,7 +24,7 @@ func ExampleOrdered_Values() {
 }
 
 func ExampleOrdered_Keys() {
-	mp := &xmap.Ordered[string, int]{}
+	mp := &xmap.OrderedSync[string, int]{}
 	mp.Set("k0", 0)
 	mp.Set("k1", 1)
 	mp.Set("k2", 2)

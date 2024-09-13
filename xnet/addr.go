@@ -15,7 +15,7 @@ func NewAddr(network, host string) *Addr {
 	return &Addr{
 		network: network,
 		host:    host,
-		attr:    &xmap.Slice[string, string]{},
+		attr:    &xmap.SliceValueSync[string, string]{},
 	}
 }
 
@@ -24,7 +24,7 @@ var _ net.Addr = (*Addr)(nil)
 type Addr struct {
 	network string
 	host    string
-	attr    *xmap.Slice[string, string]
+	attr    *xmap.SliceValueSync[string, string]
 }
 
 func (a *Addr) Network() string {
@@ -40,7 +40,7 @@ func (a *Addr) Equal(b net.Addr) bool {
 }
 
 // Attr 附加属性
-func (a *Addr) Attr() *xmap.Slice[string, string] {
+func (a *Addr) Attr() *xmap.SliceValueSync[string, string] {
 	return a.attr
 }
 

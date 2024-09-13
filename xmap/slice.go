@@ -5,19 +5,126 @@
 package xmap
 
 import (
+	"iter"
 	"maps"
 	"sync"
 
 	"github.com/xanygo/anygo/internal/zslice"
 )
 
-// Slice 值为 slice 的 并发安全的 map ( map[K][]V )
-type Slice[K, V comparable] struct {
+// SliceValue 值为 slice 的 并发安全的 map ( map[K][]V )
+type SliceValue[K, V comparable] struct {
+	data map[K][]V
+}
+
+func (s *SliceValue[K, V]) Set(key K, values ...V) {
+	if s.data == nil {
+		s.data = make(map[K][]V)
+	}
+	s.data[key] = values
+}
+
+func (s *SliceValue[K, V]) Get(key K) []V {
+	if len(s.data) == 0 {
+		return nil
+	}
+	return s.data[key]
+}
+
+func (s *SliceValue[K, V]) GetFirst(key K) (v V) {
+	vs := s.Get(key)
+	if len(vs) == 0 {
+		return v
+	}
+	return vs[0]
+}
+
+func (s *SliceValue[K, V]) Add(key K, values ...V) {
+	if len(values) == 0 {
+		return
+	}
+	if s.data == nil {
+		s.data = make(map[K][]V)
+	}
+	s.data[key] = append(s.data[key], values...)
+	zslice.Unique(s.data[key])
+}
+
+func (s *SliceValue[K, V]) Delete(keys ...K) {
+	if len(s.data) == 0 {
+		return
+	}
+	for _, key := range keys {
+		delete(s.data, key)
+	}
+}
+
+func (s *SliceValue[K, V]) DeleteValue(key K, values ...V) {
+	if len(s.data) == 0 {
+		return
+	}
+	vs, ok := s.data[key]
+	if !ok {
+		return
+	}
+	vs = zslice.DeleteValue(vs, values...)
+	if len(vs) == 0 {
+		delete(s.data, key)
+	} else {
+		s.data[key] = vs
+	}
+}
+
+func (s *SliceValue[K, V]) Has(key K) bool {
+	if len(s.data) == 0 {
+		return false
+	}
+
+	_, has := s.data[key]
+	return has
+}
+
+func (s *SliceValue[K, V]) HasValue(key K, values ...V) bool {
+	if len(values) == 0 {
+		return false
+	}
+	if len(s.data) == 0 {
+		return false
+	}
+
+	return zslice.ContainsAny(s.data[key], values...)
+}
+
+func (s *SliceValue[K, V]) Keys() []K {
+	return Keys(s.data)
+}
+
+func (s *SliceValue[K, V]) Map(clone bool) map[K][]V {
+	if !clone {
+		return s.data
+	}
+	return maps.Clone(s.data)
+}
+
+func (s *SliceValue[K, V]) Iter() iter.Seq2[K, []V] {
+	return func(yield func(K, []V) bool) {
+		for k, v := range s.data {
+			if !yield(k, v) {
+				return
+			}
+		}
+	}
+}
+
+// -----
+
+// SliceValueSync 值为 slice 的 并发安全的 map ( map[K][]V )
+type SliceValueSync[K, V comparable] struct {
 	data map[K][]V
 	mux  sync.RWMutex
 }
 
-func (s *Slice[K, V]) Set(key K, values ...V) {
+func (s *SliceValueSync[K, V]) Set(key K, values ...V) {
 	s.mux.Lock()
 	if s.data == nil {
 		s.data = make(map[K][]V)
@@ -26,7 +133,7 @@ func (s *Slice[K, V]) Set(key K, values ...V) {
 	s.mux.Unlock()
 }
 
-func (s *Slice[K, V]) Get(key K) []V {
+func (s *SliceValueSync[K, V]) Get(key K) []V {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 	if len(s.data) == 0 {
@@ -35,7 +142,7 @@ func (s *Slice[K, V]) Get(key K) []V {
 	return s.data[key]
 }
 
-func (s *Slice[K, V]) GetFirst(key K) (v V) {
+func (s *SliceValueSync[K, V]) GetFirst(key K) (v V) {
 	vs := s.Get(key)
 	if len(vs) == 0 {
 		return v
@@ -43,7 +150,7 @@ func (s *Slice[K, V]) GetFirst(key K) (v V) {
 	return vs[0]
 }
 
-func (s *Slice[K, V]) Add(key K, values ...V) {
+func (s *SliceValueSync[K, V]) Add(key K, values ...V) {
 	if len(values) == 0 {
 		return
 	}
@@ -56,7 +163,7 @@ func (s *Slice[K, V]) Add(key K, values ...V) {
 	zslice.Unique(s.data[key])
 }
 
-func (s *Slice[K, V]) Delete(keys ...K) {
+func (s *SliceValueSync[K, V]) Delete(keys ...K) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	if len(s.data) == 0 {
@@ -67,7 +174,7 @@ func (s *Slice[K, V]) Delete(keys ...K) {
 	}
 }
 
-func (s *Slice[K, V]) DeleteValue(key K, values ...V) {
+func (s *SliceValueSync[K, V]) DeleteValue(key K, values ...V) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	if len(s.data) == 0 {
@@ -85,7 +192,7 @@ func (s *Slice[K, V]) DeleteValue(key K, values ...V) {
 	}
 }
 
-func (s *Slice[K, V]) HasKey(key K) bool {
+func (s *SliceValueSync[K, V]) Has(key K) bool {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 	if len(s.data) == 0 {
@@ -96,7 +203,7 @@ func (s *Slice[K, V]) HasKey(key K) bool {
 	return has
 }
 
-func (s *Slice[K, V]) HasValue(key K, values ...V) bool {
+func (s *SliceValueSync[K, V]) HasValue(key K, values ...V) bool {
 	if len(values) == 0 {
 		return false
 	}
@@ -109,16 +216,32 @@ func (s *Slice[K, V]) HasValue(key K, values ...V) bool {
 	return zslice.ContainsAny(s.data[key], values...)
 }
 
-func (s *Slice[K, V]) Keys() []K {
+func (s *SliceValueSync[K, V]) Keys() []K {
 	s.mux.RLock()
 	result := Keys(s.data)
 	s.mux.RUnlock()
 	return result
 }
 
-func (s *Slice[K, V]) Map() map[K][]V {
+func (s *SliceValueSync[K, V]) Map(clone bool) (result map[K][]V) {
 	s.mux.RLock()
-	result := maps.Clone(s.data)
+	if clone {
+		result = maps.Clone(s.data)
+	} else {
+		result = s.data
+	}
 	s.mux.RUnlock()
 	return result
+}
+
+func (s *SliceValueSync[K, V]) Iter() iter.Seq2[K, []V] {
+	return func(yield func(K, []V) bool) {
+		s.mux.RLock()
+		defer s.mux.RUnlock()
+		for k, v := range s.data {
+			if !yield(k, v) {
+				return
+			}
+		}
+	}
 }

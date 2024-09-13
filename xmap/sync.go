@@ -5,10 +5,11 @@
 package xmap
 
 import (
+	"iter"
 	"sync"
 )
 
-// Sync 并发安全的 Map
+// Sync 并发安全的 Map,基于 sync.Map 简单封装以支持泛型
 type Sync[K comparable, V any] struct {
 	storage sync.Map
 }
@@ -72,6 +73,14 @@ func (m *Sync[K, V]) Range(fn func(key K, value V) bool) {
 	m.storage.Range(func(key, value any) bool {
 		return fn(key.(K), value.(V))
 	})
+}
+
+func (m *Sync[K, V]) Iter() iter.Seq2[K, V] {
+	return func(yield func(K, V) bool) {
+		m.storage.Range(func(key, value any) bool {
+			return yield(key.(K), value.(V))
+		})
+	}
 }
 
 func (m *Sync[K, V]) Count() int {

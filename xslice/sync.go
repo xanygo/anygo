@@ -5,6 +5,7 @@
 package xslice
 
 import (
+	"iter"
 	"slices"
 	"sync"
 )
@@ -142,5 +143,17 @@ func (s *Sync[T]) PopTailN(n int) (values []T) {
 func (s *Sync[T]) Clone() *Sync[T] {
 	return &Sync[T]{
 		items: s.Load(),
+	}
+}
+
+func (s *Sync[T]) Iter() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		s.mux.RLock()
+		defer s.mux.RUnlock()
+		for _, val := range s.items {
+			if !yield(val) {
+				return
+			}
+		}
 	}
 }

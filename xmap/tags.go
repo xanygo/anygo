@@ -4,28 +4,30 @@
 
 package xmap
 
+// Tags 以 map  格式存储 < key: value & tags > 数据，并且支持使用 tags 查找数据。
+// 非并发安全的
 type Tags[K comparable, V any, T comparable] struct {
 	values map[K]*tagValue[V, T]
 	index  map[T][]K
 }
 
-func (t *Tags[K, V, T]) Add(k K, v V, tags ...T) {
+func (t *Tags[K, V, T]) Set(key K, value V, tags ...T) {
 	if t.values == nil {
 		t.values = make(map[K]*tagValue[V, T])
 		t.index = make(map[T][]K)
 	}
-	t.values[k] = &tagValue[V, T]{
-		Value: v,
+	t.values[key] = &tagValue[V, T]{
+		Value: value,
 		Tags:  tags,
 	}
 	for _, tag := range tags {
-		t.index[tag] = append(t.index[tag], k)
+		t.index[tag] = append(t.index[tag], key)
 	}
 }
 
-func (t *Tags[K, V, T]) Any(dk K, tags ...T) (v V) {
+func (t *Tags[K, V, T]) Any(defaultKey K, tags ...T) (value V) {
 	if len(t.values) == 0 {
-		return v
+		return value
 	}
 	for _, tag := range tags {
 		vs, ok := t.index[tag]
@@ -34,14 +36,14 @@ func (t *Tags[K, V, T]) Any(dk K, tags ...T) (v V) {
 		}
 		return t.values[vs[0]].Value
 	}
-	val, ok := t.values[dk]
+	val, ok := t.values[defaultKey]
 	if ok {
 		return val.Value
 	}
 	for _, item := range t.values {
 		return item.Value
 	}
-	return v
+	return value
 }
 
 type tagValue[V any, T comparable] struct {
