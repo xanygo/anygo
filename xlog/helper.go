@@ -6,8 +6,7 @@ package xlog
 
 import (
 	"log/slog"
-
-	"github.com/xanygo/anygo/xstr"
+	"path/filepath"
 )
 
 // ReplaceAttr Logger Handler 的用于重写 Attr 函数，目前包含功能：
@@ -21,7 +20,8 @@ func ReplaceAttr(groups []string, a slog.Attr) slog.Attr {
 	case slog.SourceKey:
 		if a.Value.Kind() == slog.KindAny {
 			if source, ok := a.Value.Any().(*slog.Source); ok {
-				source.File = xstr.CutLastByteNAfter(source.File, '/', 3)
+				// source.File = xstr.CutLastByteNAfter(source.File, '/', 3)
+				source.File = filepath.Base(source.File)
 			}
 		}
 	case slog.TimeKey:
@@ -30,4 +30,23 @@ func ReplaceAttr(groups []string, a slog.Attr) slog.Attr {
 		}
 	}
 	return a
+}
+
+type WithLogger struct {
+	lg Logger
+}
+
+func (wl *WithLogger) SetLogger(lg Logger) {
+	wl.lg = lg
+}
+
+func (wl *WithLogger) AutoLogger() Logger {
+	if wl.lg == nil {
+		return Default()
+	}
+	return wl.lg
+}
+
+func (wl *WithLogger) HasLogger() bool {
+	return wl.lg != nil
 }
