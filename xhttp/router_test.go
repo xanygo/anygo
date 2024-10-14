@@ -49,6 +49,9 @@ func TestRouter_ServeHTTP(t *testing.T) {
 	g1.GetFunc("/list", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(r.Method + " index.list " + r.RequestURI))
 	})
+	g1.NotFoundFunc(func(w http.ResponseWriter, r *http.Request) {
+		WriteTextStatus(w, http.StatusNotFound, []byte("Not-Found "+r.RequestURI))
+	})
 
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -68,6 +71,15 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		fst.NoError(t, iotest.TestReader(res.Body, []byte("GET index.list /index/list")))
 		fst.NoError(t, res.Body.Close())
 		fst.Equal(t, http.StatusOK, res.StatusCode)
+		checkCalled(t)
+	})
+
+	t.Run("GET /index/404", func(t *testing.T) {
+		res, err := ts.Client().Get(ts.URL + "/index/404")
+		fst.NoError(t, err)
+		fst.NoError(t, iotest.TestReader(res.Body, []byte("Not-Found /index/404")))
+		fst.NoError(t, res.Body.Close())
+		fst.Equal(t, http.StatusNotFound, res.StatusCode)
 		checkCalled(t)
 	})
 

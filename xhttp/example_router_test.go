@@ -5,9 +5,9 @@
 package xhttp_test
 
 import (
+	"fmt"
 	"net/http"
 
-	"fmt"
 	"github.com/xanygo/anygo/xhttp"
 )
 
