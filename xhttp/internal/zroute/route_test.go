@@ -24,7 +24,7 @@ func Test_splitPattern(t *testing.T) {
 			args: args{
 				pattern: "/index",
 			},
-			want:  nil,
+			want:  []string{"ANY"},
 			want1: "/index",
 		},
 		{

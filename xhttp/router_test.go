@@ -23,7 +23,8 @@ func TestRouter_ServeHTTP(t *testing.T) {
 	}
 	router.Use(func(handler http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			called.Add(1)
+			num := called.Add(1)
+			t.Logf("middleware called, num=%d, uri=%s", num, r.RequestURI)
 			handler.ServeHTTP(w, r)
 		})
 	})
@@ -44,7 +45,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		_, _ = w.Write([]byte(r.Method + " user " + r.RequestURI + ", id=" + r.PathValue("id")))
 	})
 
-	g1 := router.Group("/index/")
+	g1 := router.Prefix("/index/")
 	g1.GetFunc("/list", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(r.Method + " index.list " + r.RequestURI))
 	})
@@ -61,7 +62,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		checkCalled(t)
 	})
 
-	t.Run("GET /", func(t *testing.T) {
+	t.Run("GET /index/list", func(t *testing.T) {
 		res, err := ts.Client().Get(ts.URL + "/index/list")
 		fst.NoError(t, err)
 		fst.NoError(t, iotest.TestReader(res.Body, []byte("GET index.list /index/list")))

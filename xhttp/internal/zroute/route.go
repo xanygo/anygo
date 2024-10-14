@@ -38,12 +38,12 @@ func splitPattern(pattern string) ([]string, string) {
 	return strings.Split(methods, ","), arr[4]
 }
 
-func ParserPattern(pattern string) ([]*Route, error) {
+func ParserPattern(prefix string, pattern string) ([]*Route, error) {
 	methods, path := splitPattern(pattern)
 	if path == "" {
 		return nil, fmt.Errorf("invalid pattern %q", pattern)
 	}
-	path = CleanPath(path)
+	path = CleanPath(prefix + path)
 	rs := make([]*Route, 0, len(methods))
 	for _, method := range methods {
 		rt := &Route{

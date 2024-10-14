@@ -33,7 +33,7 @@ func main() {
 		_, _ = w.Write([]byte("Hello .html " + r.RequestURI + ",id=" + r.PathValue("id") + ", name=" + r.PathValue("name")))
 	}))
 
-	g := router.Group("/index/")
+	g := router.Prefix("/index/")
 
 	router.Get("/{id}/{name}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("Hello " + r.RequestURI + ",id=" + r.PathValue("id") + ", name=" + r.PathValue("name")))

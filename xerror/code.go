@@ -11,7 +11,7 @@ import (
 )
 
 func ErrCode(err error) (int64, bool) {
-	var ec CodeError
+	var ec HasErrCode
 	if errors.As(err, &ec) {
 		return ec.ErrCode(), true
 	}

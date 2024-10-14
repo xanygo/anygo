@@ -6,12 +6,9 @@ package xhttp
 
 import (
 	"context"
-	"log"
-	"net/http"
-	"slices"
-
 	"github.com/xanygo/anygo/xhttp/internal/zroute"
 	"github.com/xanygo/anygo/xlog"
+	"net/http"
 )
 
 type MiddlewareFunc func(http.Handler) http.Handler
@@ -75,7 +72,6 @@ func (r *Router) doNotFound(w http.ResponseWriter, req *http.Request) {
 	if h == nil {
 		h = r.wrap(http.HandlerFunc(NotFound))
 	}
-	log.Println("doNotFound h=", h)
 	h.ServeHTTP(w, req)
 }
 
@@ -87,8 +83,8 @@ func (r *Router) doNotFound(w http.ResponseWriter, req *http.Request) {
 //	若 Method 为空则不限定请求方法
 //
 //	Path: 请求地址，支持静态地址和通配符
-func (r *Router) Handle(pattern string, handler http.Handler, middlewares ...MiddlewareFunc) {
-	routes, err := zroute.ParserPattern(pattern)
+func (r *Router) Handle(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
+	routes, err := zroute.ParserPattern(r.prefix, pattern)
 	if err != nil {
 		panic(err)
 	}
@@ -102,20 +98,22 @@ func (r *Router) Handle(pattern string, handler http.Handler, middlewares ...Mid
 		xlog.Int("Routes.cnt", len(routes)),
 	)
 
+	handler = r.wrap(handler, mds...)
+
 	for _, route := range routes {
-		route.Handler = r.wrap(handler, middlewares...)
+		route.Handler = handler
 		r.subRoute = append(r.subRoute, route)
 
 		r.AutoLogger().Debug(context.Background(), "Route", route.LogFields()...)
 	}
 }
 
-func (r *Router) HandleFunc(pattern string, handler http.HandlerFunc, middlewares ...MiddlewareFunc) {
-	r.Handle(pattern, handler, middlewares...)
+func (r *Router) HandleFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
+	r.Handle(pattern, handler, mds...)
 }
 
-func (r *Router) handleMethod(method string, pattern string, handler http.Handler, middlewares ...MiddlewareFunc) {
-	r.Handle(method+" "+r.prefix+pattern, handler, middlewares...)
+func (r *Router) handleMethod(method string, pattern string, handler http.Handler, mds ...MiddlewareFunc) {
+	r.Handle(method+" "+pattern, handler, mds...)
 }
 
 func (r *Router) NotFound(handler http.Handler) {
@@ -130,29 +128,30 @@ func (r *Router) NotFoundFunc(handler http.HandlerFunc) {
 	r.NotFound(handler)
 }
 
-func (r *Router) wrap(h http.Handler, middlewares ...MiddlewareFunc) http.Handler {
+func (r *Router) wrap(h http.Handler, mds ...MiddlewareFunc) http.Handler {
 	for _, mf := range r.middlewares {
 		h = mf(h)
 	}
-	for _, mf := range middlewares {
+	for _, mf := range mds {
 		h = mf(h)
 	}
 	return h
 }
 
-func (r *Router) Use(middlewares ...MiddlewareFunc) {
-	r.middlewares = append(r.middlewares, middlewares...)
+func (r *Router) Use(mds ...MiddlewareFunc) {
+	r.middlewares = append(r.middlewares, mds...)
 }
 
-func (r *Router) Group(prefix string, middlewares ...MiddlewareFunc) *Router {
+func (r *Router) Prefix(prefix string, mds ...MiddlewareFunc) *Router {
 	if prefix == "" {
 		panic("prefix must not be empty")
 	}
-	ms := slices.Clone(r.middlewares)
-	ms = append(ms, middlewares...)
 	g := &Router{
-		prefix:      zroute.CleanPath(r.prefix + "/" + prefix),
-		middlewares: ms,
+		prefix:      zroute.CleanPath(r.prefix + prefix),
+		middlewares: mds,
+	}
+	if g.HasLogger() {
+		g.SetLogger(r.Logger())
 	}
 	if r.notFoundRaw != nil {
 		g.NotFound(r.notFoundRaw)
@@ -161,58 +160,58 @@ func (r *Router) Group(prefix string, middlewares ...MiddlewareFunc) *Router {
 	return g
 }
 
-func (r *Router) Head(pattern string, handler http.Handler, middlewares ...MiddlewareFunc) {
-	r.handleMethod(http.MethodHead, pattern, handler, middlewares...)
+func (r *Router) Head(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
+	r.handleMethod(http.MethodHead, pattern, handler, mds...)
 }
 
-func (r *Router) HeadFunc(pattern string, handler http.HandlerFunc, middlewares ...MiddlewareFunc) {
-	r.Head(pattern, handler, middlewares...)
+func (r *Router) HeadFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
+	r.Head(pattern, handler, mds...)
 }
 
-func (r *Router) Get(pattern string, handler http.Handler, middlewares ...MiddlewareFunc) {
-	r.handleMethod(http.MethodGet, pattern, handler, middlewares...)
+func (r *Router) Get(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
+	r.handleMethod(http.MethodGet, pattern, handler, mds...)
 }
 
-func (r *Router) GetFunc(pattern string, handler http.HandlerFunc, middlewares ...MiddlewareFunc) {
-	r.Get(pattern, handler, middlewares...)
+func (r *Router) GetFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
+	r.Get(pattern, handler, mds...)
 }
 
-func (r *Router) Post(pattern string, handler http.Handler, middlewares ...MiddlewareFunc) {
-	r.handleMethod(http.MethodPost, pattern, handler, middlewares...)
+func (r *Router) Post(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
+	r.handleMethod(http.MethodPost, pattern, handler, mds...)
 }
 
-func (r *Router) PostFunc(pattern string, handler http.HandlerFunc, middlewares ...MiddlewareFunc) {
-	r.Post(pattern, handler, middlewares...)
+func (r *Router) PostFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
+	r.Post(pattern, handler, mds...)
 }
 
-func (r *Router) Delete(pattern string, handler http.Handler, middlewares ...MiddlewareFunc) {
-	r.handleMethod(http.MethodDelete, pattern, handler, middlewares...)
+func (r *Router) Delete(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
+	r.handleMethod(http.MethodDelete, pattern, handler, mds...)
 }
 
-func (r *Router) DeleteFunc(pattern string, handler http.HandlerFunc, middlewares ...MiddlewareFunc) {
-	r.Delete(pattern, handler, middlewares...)
+func (r *Router) DeleteFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
+	r.Delete(pattern, handler, mds...)
 }
 
-func (r *Router) Put(pattern string, handler http.Handler, middlewares ...MiddlewareFunc) {
-	r.handleMethod(http.MethodPut, pattern, handler, middlewares...)
+func (r *Router) Put(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
+	r.handleMethod(http.MethodPut, pattern, handler, mds...)
 }
 
-func (r *Router) PutFunc(pattern string, handler http.HandlerFunc, middlewares ...MiddlewareFunc) {
-	r.Put(pattern, handler, middlewares...)
+func (r *Router) PutFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
+	r.Put(pattern, handler, mds...)
 }
 
-func (r *Router) Trace(pattern string, handler http.Handler, middlewares ...MiddlewareFunc) {
-	r.handleMethod(http.MethodTrace, pattern, handler, middlewares...)
+func (r *Router) Trace(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
+	r.handleMethod(http.MethodTrace, pattern, handler, mds...)
 }
 
-func (r *Router) TraceFunc(pattern string, handler http.HandlerFunc, middlewares ...MiddlewareFunc) {
-	r.Trace(pattern, handler, middlewares...)
+func (r *Router) TraceFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
+	r.Trace(pattern, handler, mds...)
 }
 
-func (r *Router) Options(pattern string, handler http.Handler, middlewares ...MiddlewareFunc) {
-	r.handleMethod(http.MethodOptions, pattern, handler, middlewares...)
+func (r *Router) Options(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
+	r.handleMethod(http.MethodOptions, pattern, handler, mds...)
 }
 
-func (r *Router) OptionsFunc(pattern string, handler http.HandlerFunc, middlewares ...MiddlewareFunc) {
-	r.Options(pattern, handler, middlewares...)
+func (r *Router) OptionsFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
+	r.Options(pattern, handler, mds...)
 }
