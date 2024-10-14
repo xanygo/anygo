@@ -25,18 +25,27 @@ func NewRouter() *Router {
 
 //	Router HTTP Router
 //
-// 请求地址 Path 支持静态地址和通配符：
+// 路由地址 Path 支持静态地址和通配符(下文中 Router 的 Handle、Get 等 API 文档中所述的 Path就是此)：
 //
 //  1. 静态路由地址： /user
 //
-//  2. 单词通配：一个目录最多允许一个变量，可以有前缀和后缀
-//     /user/{name}/{age}, /user/{id}/detail,/user/{id}.html,/user/hello-{id}.html
+//  2. 单词通配：一个变量匹配一个目录，可以有前缀和后缀
 //
-//  3. 正则表达式：/user/{category}/{id:[0-9]+}, /user/{id:[0-9]+}.html, /user/hello-{id:[0-9]+}-{age:[0-9]+}.html
+//     /user/{name}/{age}, /user/{id}/detail, /user/{id}.html, /user/hello-{id}.html
+//
+//  3. 正则表达式：
+//
+//     /user/{category}/{id:[0-9]+}, /user/{id:[0-9]+}.html, /user/hello-{id:[0-9]+}-{age:[0-9]+}.html
 //
 //  4. *通配符（简化正则）(* 可以匹配包含 / 的所有字符)
 //     /user/*,  /user/*/detail, /user/*/detail/*, /user/*/detail/*.html
 //     /user/{s1:*},  /user/{s1:*}/detail,  /user/{s1:*}/detail/{s2:*}
+//
+// 路由变量读取：
+//
+//	在路由地址中的 {name},* 和 {id:[0-9]+} 均为路由变量，是可以使用 http.Request.PathValue("name") 读取对应的值的。
+//	对于 {name} 、 {id:[0-9]+}、{age:*} 这种，分别使用 PathValue("name") 和 PathValue("id")、PathValue("age") 就能读取到。
+//	对于使用了 /user/*/detail/* 这种方式，分别使用 PathValue("p0")、PathValue("p1")，即变量名 = p + 变量序号( 从 0 开始 )
 type Router struct {
 	xlog.WithLogger
 
@@ -142,6 +151,9 @@ func (r *Router) wrap(h http.Handler, mds ...MiddlewareFunc) http.Handler {
 	return h
 }
 
+// Use 给路由注册新的中间件，
+// 在使用 Handle、HandleFunc、Get、GetFunc 等注册 Handler 时，会读取已注册到 Router 的中间件列表，用于对 Handler 添加切面。
+// 在完成注册 Handler 之后，使用 Use 方法注册的中间件不会影响 已注册的 Handler。
 func (r *Router) Use(mds ...MiddlewareFunc) {
 	r.middlewares = append(r.middlewares, mds...)
 }

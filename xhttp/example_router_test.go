@@ -7,6 +7,7 @@ package xhttp_test
 import (
 	"net/http"
 
+	"fmt"
 	"github.com/xanygo/anygo/xhttp"
 )
 
@@ -26,5 +27,18 @@ func ExampleRouter_Prefix() {
 	// 完整地址：/user/{id}, 可接收如 DELETE /user/123
 	g1.DeleteFunc("/{id}", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("delete user"))
+	})
+}
+
+func ExampleRouter_Use() {
+	r := xhttp.NewRouter()
+	r.Use(func(handler http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Println("call before")
+
+			handler.ServeHTTP(w, r)
+
+			fmt.Println("call after")
+		})
 	})
 }
