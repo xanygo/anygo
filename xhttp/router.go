@@ -6,11 +6,14 @@ package xhttp
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/xanygo/anygo/xhttp/internal/zroute"
 	"github.com/xanygo/anygo/xlog"
-	"net/http"
 )
 
+// MiddlewareFunc HTTP Router(路由) 的 中间件函数类型定义，可用于给 Router 增加切面。
+// 如添加额外的日志、可用性统计等独立的功能
 type MiddlewareFunc func(http.Handler) http.Handler
 
 var _ http.Handler = (*Router)(nil)
@@ -77,7 +80,7 @@ func (r *Router) doNotFound(w http.ResponseWriter, req *http.Request) {
 
 // Handle  注册路由
 //
-// prefix： 支持格式 (Method\s+)?(Path)
+// pattern： 支持格式 (Method\s+)?(Path)
 //
 //	Method: 请求方法，可选，支持一个活多个，如 “GET”，“GET,POST”
 //	若 Method 为空则不限定请求方法
@@ -108,6 +111,7 @@ func (r *Router) Handle(pattern string, handler http.Handler, mds ...MiddlewareF
 	}
 }
 
+// HandleFunc  注册路由， pattern 支持格式 (Method\s+)?(Path)
 func (r *Router) HandleFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
 	r.Handle(pattern, handler, mds...)
 }
@@ -142,6 +146,8 @@ func (r *Router) Use(mds ...MiddlewareFunc) {
 	r.middlewares = append(r.middlewares, mds...)
 }
 
+// Prefix 给地址前缀 prefix 生成一个独立的分组，
+// prefix 只能是静态地址，不能包含变量参数，如 /user/
 func (r *Router) Prefix(prefix string, mds ...MiddlewareFunc) *Router {
 	if prefix == "" {
 		panic("prefix must not be empty")
@@ -160,58 +166,72 @@ func (r *Router) Prefix(prefix string, mds ...MiddlewareFunc) *Router {
 	return g
 }
 
+// Head  注册 HEAD 请求路由，pattern 支持格式 (Method\s+)?(Path)
 func (r *Router) Head(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
 	r.handleMethod(http.MethodHead, pattern, handler, mds...)
 }
 
+// HeadFunc  注册 HEAD 请求路由，pattern 支持格式 (Method\s+)?(Path)
 func (r *Router) HeadFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
 	r.Head(pattern, handler, mds...)
 }
 
+// Get  注册 GET 请求路由，pattern 应是一个 Path 格式的字符串
 func (r *Router) Get(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
 	r.handleMethod(http.MethodGet, pattern, handler, mds...)
 }
 
+// GetFunc  注册 GET 请求路由，pattern 应是一个 Path 格式的字符串
 func (r *Router) GetFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
 	r.Get(pattern, handler, mds...)
 }
 
+// Post  注册 POST 请求路由，pattern 应是一个 Path 格式的字符串
 func (r *Router) Post(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
 	r.handleMethod(http.MethodPost, pattern, handler, mds...)
 }
 
+// PostFunc  注册 POST 请求路由，pattern 应是一个 Path 格式的字符串
 func (r *Router) PostFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
 	r.Post(pattern, handler, mds...)
 }
 
+// Delete  注册 DELETE 请求路由，pattern 应是一个 Path 格式的字符串
 func (r *Router) Delete(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
 	r.handleMethod(http.MethodDelete, pattern, handler, mds...)
 }
 
+// DeleteFunc  注册 DELETE 请求路由，pattern 应是一个 Path 格式的字符串
 func (r *Router) DeleteFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
 	r.Delete(pattern, handler, mds...)
 }
 
+// Put  注册 PUT 请求路由，pattern 应是一个 Path 格式的字符串
 func (r *Router) Put(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
 	r.handleMethod(http.MethodPut, pattern, handler, mds...)
 }
 
+// PutFunc  注册 PUT 请求路由，pattern 应是一个 Path 格式的字符串
 func (r *Router) PutFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
 	r.Put(pattern, handler, mds...)
 }
 
+// Trace  注册 TRACE 请求路由，pattern 应是一个 Path 格式的字符串
 func (r *Router) Trace(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
 	r.handleMethod(http.MethodTrace, pattern, handler, mds...)
 }
 
+// TraceFunc  注册 TRACE 请求路由，pattern 应是一个 Path 格式的字符串
 func (r *Router) TraceFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
 	r.Trace(pattern, handler, mds...)
 }
 
+// Options  注册 OPTIONS 请求路由，pattern 应是一个 Path 格式的字符串
 func (r *Router) Options(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
 	r.handleMethod(http.MethodOptions, pattern, handler, mds...)
 }
 
+// OptionsFunc  注册 OPTIONS 请求路由，pattern 应是一个 Path 格式的字符串
 func (r *Router) OptionsFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
 	r.Options(pattern, handler, mds...)
 }
