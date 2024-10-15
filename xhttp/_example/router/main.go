@@ -11,6 +11,8 @@ import (
 
 	"github.com/xanygo/anygo"
 	"github.com/xanygo/anygo/xhttp"
+	"github.com/xanygo/anygo/xhttp/xhandler"
+	"github.com/xanygo/anygo/xlog"
 )
 
 func main() {
@@ -22,9 +24,18 @@ func main() {
 			log.Println("after", r.URL.String())
 		})
 	})
+	aw := &xhandler.AccessLog{
+		Logger: xlog.Default(),
+	}
+	router.Use(aw.Next)
 	router.Get("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("Hello " + r.RequestURI))
 	}))
+
+	router.HandleFunc("/panic", func(w http.ResponseWriter, r *http.Request) {
+		panic("demo")
+	})
+
 	router.Get("/{name}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("Hello " + r.RequestURI + ", " + r.PathValue("name")))
 	}))

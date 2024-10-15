@@ -9,10 +9,6 @@ import (
 	"net/http"
 )
 
-func NotFound(w http.ResponseWriter, r *http.Request) {
-	http.NotFound(w, r)
-}
-
 // WriteJSON 输出 JSON 格式的数据，状态码为 200
 func WriteJSON(w http.ResponseWriter, data any) {
 	WriteJSONStatus(w, http.StatusOK, data)
@@ -47,4 +43,39 @@ func WriteHTMLStatus(w http.ResponseWriter, status int, html []byte) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	_, _ = w.Write(html)
+}
+
+var _ http.ResponseWriter = (*StatusWriter)(nil)
+
+type StatusWriter struct {
+	W          http.ResponseWriter
+	statusCode int
+	wrote      int
+}
+
+func (w *StatusWriter) Header() http.Header {
+	return w.W.Header()
+}
+
+func (w *StatusWriter) Write(bytes []byte) (int, error) {
+	n, err := w.W.Write(bytes)
+	w.wrote += n
+	return n, err
+}
+
+func (w *StatusWriter) WriteHeader(statusCode int) {
+	w.W.WriteHeader(statusCode)
+	w.statusCode = statusCode
+}
+
+func (w *StatusWriter) Wrote() int {
+	return w.wrote
+}
+
+func (w *StatusWriter) StatusCode() int {
+	return w.statusCode
+}
+
+func (w *StatusWriter) Unwrap() http.ResponseWriter {
+	return w.W
 }

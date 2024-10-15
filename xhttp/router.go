@@ -82,7 +82,7 @@ func (r *Router) findRoute(req *http.Request) (*zroute.Route, map[string]string)
 func (r *Router) doNotFound(w http.ResponseWriter, req *http.Request) {
 	h := r.notFound
 	if h == nil {
-		h = r.wrap(http.HandlerFunc(NotFound))
+		h = r.wrap(http.HandlerFunc(http.NotFound))
 	}
 	h.ServeHTTP(w, req)
 }

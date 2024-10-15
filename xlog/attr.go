@@ -39,6 +39,10 @@ func Group(key string, args ...any) Attr {
 	return slog.Group(key, args...)
 }
 
+func GroupAttrs(key string, args ...Attr) Attr {
+	return slog.Attr{Key: key, Value: slog.GroupValue(args...)}
+}
+
 func Int(key string, value int) Attr {
 	return slog.Int(key, value)
 }
@@ -85,4 +89,11 @@ func String(key, value string) Attr {
 
 func Bytes(key string, value []byte) Attr {
 	return slog.Any(key, value)
+}
+
+func ErrorAttr(key string, err error) Attr {
+	if err == nil {
+		return String(key, "")
+	}
+	return String(key, err.Error())
 }
