@@ -26,13 +26,9 @@ func ExampleXI() {
 	})
 
 	// 解析 Accept-Language 的中间件
-	handler = xi18n.HTTPLanguageHandler{
-		Handler: handler,
-		WithRequest: func(r *http.Request) *http.Request {
-			// 额外的中间件逻辑：将 Bundle 也附加到 context 里去
-			return r.WithContext(xi18n.ContextWithBundle(r.Context(), b, ""))
-		},
-	}
+	handler = (&xi18n.HTTPLanguageHandler{
+		Bundle: b,
+	}).Next(handler)
 	ts := httptest.NewServer(handler)
 
 	send := func(accept string) {
