@@ -11,8 +11,6 @@ import (
 	"github.com/xanygo/anygo/xslice"
 )
 
-var _ http.Handler = (*HTTPLanguageHandler)(nil)
-
 // HTTPLanguageHandler  读取 HTTP 的 Accept-Language 和 cookie 中存储的首选项信息的中间件
 type HTTPLanguageHandler struct {
 	// CookieName cookie 中存储首选语言的字段名，可选，当为空时默认值为 lang
@@ -21,11 +19,8 @@ type HTTPLanguageHandler struct {
 	// Allow 从 cookie 中读取的首选语言的有效值，可选，当不为空时生效
 	Allow []Language
 
-	// Handler 原始的 handler，必填
-	Handler http.Handler
-
-	// WithRequest 可选，其他对 request 改写的逻辑
-	WithRequest func(r *http.Request) *http.Request
+	// Bundle 可选
+	Bundle *Bundle
 }
 
 func (h HTTPLanguageHandler) getCookieName() string {
@@ -35,21 +30,25 @@ func (h HTTPLanguageHandler) getCookieName() string {
 	return h.CookieName
 }
 
-func (h HTTPLanguageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	accept := ParserAccept(r.Header.Get("Accept-Language"))
+func (h HTTPLanguageHandler) Next(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		accept := ParserAccept(r.Header.Get("Accept-Language"))
 
-	// 读取以设置到 cookie 中的首选语言
-	if ck, err := r.Cookie(h.getCookieName()); err == nil && len(ck.Value) > 0 {
-		cv := Language(ck.Value)
-		if len(h.Allow) == 0 || xslice.ContainsAny(h.Allow, cv) {
-			accept = slices.Insert(accept, 0, Language(ck.Value))
+		// 读取以设置到 cookie 中的首选语言
+		if ck, err := r.Cookie(h.getCookieName()); err == nil && len(ck.Value) > 0 {
+			cv := Language(ck.Value)
+			if len(h.Allow) == 0 || xslice.ContainsAny(h.Allow, cv) {
+				accept = slices.Insert(accept, 0, Language(ck.Value))
+			}
 		}
-	}
-	if len(accept) > 0 {
-		r = r.WithContext(ContextWithLanguages(r.Context(), accept))
-	}
-	if h.WithRequest != nil {
-		r = h.WithRequest(r)
-	}
-	h.Handler.ServeHTTP(w, r)
+		ctx := r.Context()
+		if len(accept) > 0 {
+			ctx = ContextWithLanguages(r.Context(), accept)
+		}
+		if h.Bundle != nil {
+			ctx = ContextWithBundle(ctx, h.Bundle, "")
+		}
+		r = r.WithContext(ctx)
+		handler.ServeHTTP(w, r)
+	})
 }
