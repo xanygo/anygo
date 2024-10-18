@@ -207,3 +207,25 @@ func ExampleToStrings() {
 	// Output:
 	// [1 2 3]
 }
+
+func ExampleHasAnyPrefix() {
+	fmt.Println(xstr.HasAnyPrefix("hello", "abc"))          // false
+	fmt.Println(xstr.HasAnyPrefix("hello", "hello"))        // true
+	fmt.Println(xstr.HasAnyPrefix("hello", "abc", "hello")) // true
+
+	// Output:
+	// false
+	// true
+	// true
+}
+
+func ExampleHasAnySuffix() {
+	fmt.Println(xstr.HasAnySuffix("hello.js", ".a"))        // false
+	fmt.Println(xstr.HasAnySuffix("hello.js", ".a", ".js")) // true
+	fmt.Println(xstr.HasAnySuffix("hello.js", ".js"))       // true
+
+	// Output:
+	// false
+	// true
+	// true
+}
