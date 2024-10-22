@@ -6,37 +6,142 @@ package xhtml
 
 import (
 	"html"
+	"unsafe"
 )
 
-// Bytes 将 []byte 转换为 Element 类型，原样输出 HTML
-type Bytes []byte
+// HTMLBytes 将 []byte 转换为 Element 类型，原样输出 HTML
+type HTMLBytes []byte
 
 // HTML 实现 Element 接口
-func (b Bytes) HTML() ([]byte, error) {
+func (b HTMLBytes) HTML() ([]byte, error) {
 	return b, nil
 }
 
-// Text 文本，输出的时候会自动调用 html.EscapeString
-type Text String
-
-// HTML 实现 Element 接口
-func (b Text) HTML() ([]byte, error) {
-	return []byte(html.EscapeString(string(b))), nil
+func (b HTMLBytes) Pre() ([]byte, error) {
+	return b.Wrap("pre")
 }
 
-// String 将 String 转换为 Element 类型，原样输出 HTML
-type String string
-
-// HTML 实现 Element 接口
-func (s String) HTML() ([]byte, error) {
-	return []byte(s), nil
+func (b HTMLBytes) Div() ([]byte, error) {
+	return b.Wrap("div")
 }
 
-// StringSlice 将 []string 转换为 Element 类型
-type StringSlice []string
+func (b HTMLBytes) Li() ([]byte, error) {
+	return b.Wrap("li")
+}
 
-// ToElements 转换为 字段 tag 的 []Element
-func (ss StringSlice) ToElements(tag string, fn func(b *Any)) Elements {
+func (b HTMLBytes) P() ([]byte, error) {
+	return b.Wrap("p")
+}
+
+func (b HTMLBytes) Wrap(tag string) ([]byte, error) {
+	return wrap(tag, b)
+}
+
+func wrap[T ~string | ~[]byte](tag string, code T) ([]byte, error) {
+	bf := make([]byte, 0, len(code)+1+len(tag)*2)
+	bf = append(bf, '<')
+	bf = append(bf, tag...)
+	bf = append(bf, '>')
+	bf = append(bf, code...)
+	bf = append(bf, '<', '/')
+	bf = append(bf, tag...)
+	bf = append(bf, '>')
+	return bf, nil
+}
+
+// HTMLString 将 String 转换为 Element 类型，原样输出 HTML
+type HTMLString string
+
+// HTML 实现 Element 接口
+func (b HTMLString) HTML() ([]byte, error) {
+	return unsafe.Slice(unsafe.StringData(string(b)), len(b)), nil
+}
+
+func (b HTMLString) Pre() ([]byte, error) {
+	return b.Wrap("pre")
+}
+
+func (b HTMLString) Div() ([]byte, error) {
+	return b.Wrap("div")
+}
+
+func (b HTMLString) Li() ([]byte, error) {
+	return b.Wrap("li")
+}
+
+func (b HTMLString) P() ([]byte, error) {
+	return b.Wrap("p")
+}
+
+func (b HTMLString) Wrap(tag string) ([]byte, error) {
+	return wrap(tag, b)
+}
+
+// TextBytes 将 []byte 转换为 Element 类型，会转换为 html.EscapeString
+type TextBytes []byte
+
+// HTML 实现 Element 接口
+func (b TextBytes) HTML() ([]byte, error) {
+	be := html.EscapeString(string(b))
+	return unsafe.Slice(unsafe.StringData(be), len(be)), nil
+}
+
+func (b TextBytes) Pre() ([]byte, error) {
+	return b.Wrap("pre")
+}
+
+func (b TextBytes) Div() ([]byte, error) {
+	return b.Wrap("div")
+}
+
+func (b TextBytes) Li() ([]byte, error) {
+	return b.Wrap("li")
+}
+
+func (b TextBytes) P() ([]byte, error) {
+	return b.Wrap("p")
+}
+
+func (b TextBytes) Wrap(tag string) ([]byte, error) {
+	be := html.EscapeString(string(b))
+	return wrap(tag, be)
+}
+
+// TextString 文本，输出的时候会自动调用 html.EscapeString
+type TextString string
+
+// HTML 实现 Element 接口
+func (b TextString) HTML() ([]byte, error) {
+	be := html.EscapeString(string(b))
+	return unsafe.Slice(unsafe.StringData(be), len(be)), nil
+}
+
+func (b TextString) Pre() ([]byte, error) {
+	return b.Wrap("pre")
+}
+
+func (b TextString) Div() ([]byte, error) {
+	return b.Wrap("div")
+}
+
+func (b TextString) Li() ([]byte, error) {
+	return b.Wrap("li")
+}
+
+func (b TextString) P() ([]byte, error) {
+	return b.Wrap("p")
+}
+
+func (b TextString) Wrap(tag string) ([]byte, error) {
+	be := html.EscapeString(string(b))
+	return wrap(tag, be)
+}
+
+// HTMLStringSlice 将 []string 转换为 Element 类型
+type HTMLStringSlice[T ~string] []T
+
+// Elements 转换为 字段 tag 的 []Element
+func (ss HTMLStringSlice[T]) Elements(tag string, fn func(b *Any)) Elements {
 	if len(ss) == 0 {
 		return nil
 	}
@@ -44,7 +149,7 @@ func (ss StringSlice) ToElements(tag string, fn func(b *Any)) Elements {
 	for i := 0; i < len(ss); i++ {
 		b := &Any{
 			Tag:  tag,
-			Body: ToElements(String(ss[i])),
+			Body: ToElements(HTMLString(ss[i])),
 		}
 		if fn != nil {
 			fn(b)
@@ -54,15 +159,73 @@ func (ss StringSlice) ToElements(tag string, fn func(b *Any)) Elements {
 	return cs
 }
 
-func (ss StringSlice) HTML() ([]byte, error) {
-	return NewUl(ss).HTML()
+func (ss HTMLStringSlice[T]) HTML() ([]byte, error) {
+	return ss.UL()
 }
 
-func (ss StringSlice) toOptions() []Element {
-	return toOptions(ss)
+func (ss HTMLStringSlice[T]) UL() ([]byte, error) {
+	ul := &Any{
+		Tag:  "ul",
+		Body: ss.Elements("li", nil),
+	}
+	return ul.HTML()
 }
 
-func (ss StringSlice) ToDatalist(id string) *Any {
+func (ss HTMLStringSlice[T]) OL() ([]byte, error) {
+	ol := &Any{
+		Tag:  "ol",
+		Body: ss.Elements("li", nil),
+	}
+	return ol.HTML()
+}
+
+func (ss HTMLStringSlice[T]) Datalist(id string) *Any {
+	return NewDatalist(id, ss)
+}
+
+// TextStringSlice 将 []string 转换为 Element 类型
+type TextStringSlice []string
+
+// Elements 转换为 字段 tag 的 []Element
+func (ss TextStringSlice) Elements(tag string, fn func(b *Any)) Elements {
+	if len(ss) == 0 {
+		return nil
+	}
+	cs := make([]Element, len(ss))
+	for i := 0; i < len(ss); i++ {
+		b := &Any{
+			Tag:  tag,
+			Body: ToElements(TextString(ss[i])),
+		}
+		if fn != nil {
+			fn(b)
+		}
+		cs[i] = b
+	}
+	return cs
+}
+
+func (ss TextStringSlice) HTML() ([]byte, error) {
+	return ss.UL()
+}
+
+func (ss TextStringSlice) UL() ([]byte, error) {
+	ul := &Any{
+		Tag:  "ul",
+		Body: ss.Elements("li", nil),
+	}
+	return ul.HTML()
+}
+
+func (ss TextStringSlice) OL() ([]byte, error) {
+	ol := &Any{
+		Tag:  "ol",
+		Body: ss.Elements("li", nil),
+	}
+	return ol.HTML()
+}
+
+func (ss TextStringSlice) Datalist(id string) *Any {
 	return NewDatalist(id, ss)
 }
 
@@ -86,17 +249,17 @@ func (p PreByte) HTML() ([]byte, error) {
 
 var (
 	// NL 换行: \n
-	NL = Bytes("\n")
+	NL = HTMLBytes("\n")
 
 	// BR HTML 换行 br
-	BR = Bytes("<br/>")
+	BR = HTMLBytes("<br/>")
 
 	// HR HTML 分割符 hr
-	HR = Bytes("<hr/>")
+	HR = HTMLBytes("<hr/>")
 )
 
 type Number interface {
 	~int | ~int8 | ~int16 | ~int32 | ~int64 |
-	~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 |
-	~float32 | ~float64
+		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 |
+		~float32 | ~float64
 }

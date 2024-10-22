@@ -60,14 +60,6 @@ func NewArticle() *Any {
 	return NewAny("article")
 }
 
-// NewUl 转换为 ul
-func NewUl(values StringSlice) *Any {
-	return &Any{
-		Tag:  "ul",
-		Body: values.ToElements("li", nil),
-	}
-}
-
 // NewPre 创建一个 <pre>
 func NewPre() *Any {
 	return NewAny("pre")
@@ -86,14 +78,6 @@ func NewFigure() *Any {
 // NewFigCaption 创建一个 <figcaption>
 func NewFigCaption() *Any {
 	return NewAny("figcaption")
-}
-
-// NewOl 转换为 ol
-func NewOl(values StringSlice) *Any {
-	return &Any{
-		Tag:  "ol",
-		Body: values.ToElements("li", nil),
-	}
 }
 
 type selfCloseTag struct {
@@ -325,10 +309,10 @@ func WithLabel(es ...Element) *Any {
 	}
 }
 
-func NewLabel(text string) *Any {
+func NewLabel(html string) *Any {
 	l := &Any{
 		Tag:  "label",
-		Body: ToElements(String(text)),
+		Body: ToElements(HTMLString(html)),
 	}
 	return l
 }
@@ -347,7 +331,7 @@ func NewSelect(name string, opts ...Element) *Any {
 func NewOption(value string, b Element) *Any {
 	input := &Any{
 		Tag:  "option",
-		Body: ToElements(String(value)),
+		Body: ToElements(TextString(value)),
 	}
 	SetValue(input, value)
 	return input
@@ -356,24 +340,24 @@ func NewOption(value string, b Element) *Any {
 func NewButton(text string) *Any {
 	return &Any{
 		Tag:  "button",
-		Body: ToElements(String(text)),
+		Body: ToElements(TextString(text)),
 	}
 }
 
-func toOptions(ss []string) []Element {
+func toOptions[T ~string](ss []T) []Element {
 	result := make([]Element, len(ss))
 	for i := 0; i < len(ss); i++ {
 		opt := &Any{
 			Tag:       "option",
 			SelfClose: true,
 		}
-		SetValue(opt, ss[i])
+		SetValue(opt, string(ss[i]))
 		result[i] = opt
 	}
 	return result
 }
 
-func NewDatalist(id string, ss []string) *Any {
+func NewDatalist[T ~string](id string, ss []T) *Any {
 	a := &Any{
 		Tag:  "datalist",
 		Body: ToElements(toOptions(ss)...),

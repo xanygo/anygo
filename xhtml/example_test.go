@@ -10,35 +10,22 @@ import (
 	"github.com/xanygo/anygo/xhtml"
 )
 
-func ExampleNewUl() {
-	values := []string{"1", "2", "3"}
-	ul := xhtml.NewUl(values)
-	got, _ := ul.HTML()
+func ExampleTextStringSlice_UL() {
+	values := xhtml.TextStringSlice{"1", "2", "3"}
+	got, _ := values.UL()
 	fmt.Println(string(got))
 	// Output:
 	// <ul><li>1</li><li>2</li><li>3</li></ul>
-}
-
-func ExampleNewOl() {
-	values := []string{"1", "2", "3"}
-	ul := xhtml.NewOl(values)
-	style := &xhtml.StyleAttr{}
-	_ = style.Width("180px").Height("20px").SetTo(ul)
-
-	got, _ := ul.HTML()
-	fmt.Println(string(got))
-	// Output:
-	// <ol style="width:180px; height:20px"><li>1</li><li>2</li><li>3</li></ol>
 }
 
 func ExampleNewHTML() {
 	h := xhtml.NewHTML()
 	xhtml.Add(h,
 		xhtml.WithAny(xhtml.NewHead(), func(a *xhtml.Any) {
-			xhtml.Add(a, xhtml.NewTitle(xhtml.Text("hello")))
+			xhtml.Add(a, xhtml.NewTitle(xhtml.TextString("hello")))
 		}),
 		xhtml.WithAny(xhtml.NewBody(), func(a *xhtml.Any) {
-			xhtml.Add(a, xhtml.Text("Hello World"))
+			xhtml.Add(a, xhtml.TextString("Hello World"))
 		}),
 	)
 	got, _ := h.HTML()

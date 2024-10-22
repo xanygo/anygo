@@ -48,7 +48,7 @@ func TestBody(t *testing.T) {
 		sa.MaxWidth("100px").Height("200px")
 		fst.NoError(t, sa.SetTo(body))
 		div := xhtml.NewDiv()
-		div.Body = append(div.Body, xhtml.String("hello"))
+		div.Body = append(div.Body, xhtml.TextString("hello"))
 		body.Body = xhtml.ToElements(div)
 		got, err := body.HTML()
 		fst.NoError(t, err)

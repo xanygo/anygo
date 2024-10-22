@@ -14,6 +14,12 @@ type Element interface {
 	HTML() ([]byte, error)
 }
 
+type ElementFunc func() ([]byte, error)
+
+func (fn ElementFunc) HTML() ([]byte, error) {
+	return fn()
+}
+
 // ToElements 转换为 Elements 类型
 func ToElements(es ...Element) Elements {
 	return es
@@ -47,10 +53,9 @@ func NewAny(tag string) *Any {
 	}
 }
 
-// HasChildren 允许添加子元素
-type HasChildren interface {
-	Add(values ...Element)
-	Element
+// Container 允许添加子元素
+type Container interface {
+	Add(children ...Element)
 }
 
 // WithAny 对 any 元素进行处理
@@ -76,8 +81,8 @@ type Any struct {
 }
 
 // Add 添加子元素
-func (c *Any) Add(values ...Element) {
-	c.Body = append(c.Body, values...)
+func (c *Any) Add(children ...Element) {
+	c.Body = append(c.Body, children...)
 }
 
 // HTML 实现 Element 接口
@@ -112,6 +117,6 @@ func (c Comment) HTML() ([]byte, error) {
 }
 
 // Add 给指定的对象添加子元素
-func Add(to HasChildren, add ...Element) {
-	to.Add(add...)
+func Add(to Container, children ...Element) {
+	to.Add(children...)
 }

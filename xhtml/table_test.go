@@ -15,10 +15,10 @@ import (
 func TestTable1(t *testing.T) {
 	t.Run("simple", func(t *testing.T) {
 		tb := &xhtml.Table1{}
-		tb.SetHeader(xhtml.NewTh(xhtml.String("name")), xhtml.NewTh(xhtml.String("age")))
-		tb.AddRow(xhtml.NewTd(xhtml.String("lilei")), xhtml.NewTd(xhtml.String("18")))
-		tb.AddRow(xhtml.NewTd(xhtml.String("hanmeimei")), xhtml.NewTd(xhtml.String("15")))
-		tb.SetFooter(xhtml.NewTd(xhtml.String("f1")), xhtml.NewTd(xhtml.String("f2")))
+		tb.SetHeader(xhtml.NewTh(xhtml.TextString("name")), xhtml.NewTh(xhtml.TextString("age")))
+		tb.AddRow(xhtml.NewTd(xhtml.TextString("lilei")), xhtml.NewTd(xhtml.TextString("18")))
+		tb.AddRow(xhtml.NewTd(xhtml.TextString("hanmeimei")), xhtml.NewTd(xhtml.TextString("15")))
+		tb.SetFooter(xhtml.NewTd(xhtml.TextString("f1")), xhtml.NewTd(xhtml.TextString("f2")))
 
 		xhtml.SetID(tb, "#abc")
 

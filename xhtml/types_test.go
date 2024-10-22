@@ -14,16 +14,16 @@ import (
 
 func TestStringSlice_Codes(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
-		var a xhtml.StringSlice
-		got, err := a.ToElements("li", nil).HTML()
+		var a xhtml.TextStringSlice
+		got, err := a.Elements("li", nil).HTML()
 		fst.NoError(t, err)
 		want := ``
 		fst.Equal(t, want, string(got))
 	})
 
 	t.Run("1 value", func(t *testing.T) {
-		a := xhtml.StringSlice{"123"}
-		got, err := a.ToElements("li", func(b *xhtml.Any) {
+		a := xhtml.TextStringSlice{"123"}
+		got, err := a.Elements("li", func(b *xhtml.Any) {
 			xhtml.SetClass(b, "red")
 		}).HTML()
 		fst.NoError(t, err)
@@ -32,8 +32,8 @@ func TestStringSlice_Codes(t *testing.T) {
 	})
 
 	t.Run("2 value", func(t *testing.T) {
-		a := xhtml.StringSlice{"123", "456"}
-		got, err := a.ToElements("li", nil).HTML()
+		a := xhtml.TextStringSlice{"123", "456"}
+		got, err := a.Elements("li", nil).HTML()
 		fst.NoError(t, err)
 		want := "<li>123</li><li>456</li>"
 		fst.Equal(t, want, string(got))
@@ -41,7 +41,7 @@ func TestStringSlice_Codes(t *testing.T) {
 }
 
 func TestStringSlice_HTML(t *testing.T) {
-	ss := xhtml.StringSlice{"hello", "world"}
+	ss := xhtml.TextStringSlice{"hello", "world"}
 	b, err := ss.HTML()
 	fst.NoError(t, err)
 	want := "<ul><li>hello</li><li>world</li></ul>"
