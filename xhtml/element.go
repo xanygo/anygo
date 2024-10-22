@@ -6,7 +6,6 @@ package xhtml
 
 import (
 	"errors"
-	"html"
 )
 
 // Element 所有 HTML 组件的基础定义
@@ -58,6 +57,11 @@ type Container interface {
 	Add(children ...Element)
 }
 
+// AddTo 给指定的对象添加子元素
+func AddTo(to Container, children ...Element) {
+	to.Add(children...)
+}
+
 // WithAny 对 any 元素进行处理
 func WithAny(a *Any, fn func(*Any)) *Any {
 	fn(a)
@@ -101,22 +105,4 @@ func (c *Any) HTML() ([]byte, error) {
 		bw.Write("</", c.Tag, ">")
 	}
 	return bw.HTML()
-}
-
-// Comment 注释
-type Comment string
-
-// HTML 转换为 HTML
-func (c Comment) HTML() ([]byte, error) {
-	if len(c) == 0 {
-		return nil, nil
-	}
-	bw := newBufWriter()
-	bw.Write("<!-- ", html.EscapeString(string(c)), " -->\n")
-	return bw.HTML()
-}
-
-// Add 给指定的对象添加子元素
-func Add(to Container, children ...Element) {
-	to.Add(children...)
 }

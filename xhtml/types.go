@@ -9,6 +9,23 @@ import (
 	"unsafe"
 )
 
+var (
+	// NL 换行: \n
+	NL = HTMLBytes("\n")
+
+	// BR HTML 换行 br
+	BR = HTMLBytes("<br/>")
+
+	// HR HTML 分割符 hr
+	HR = HTMLBytes("<hr/>")
+)
+
+type Number interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 |
+		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 |
+		~float32 | ~float64
+}
+
 // HTMLBytes 将 []byte 转换为 Element 类型，原样输出 HTML
 type HTMLBytes []byte
 
@@ -247,19 +264,15 @@ func (p PreByte) HTML() ([]byte, error) {
 	return bf, nil
 }
 
-var (
-	// NL 换行: \n
-	NL = HTMLBytes("\n")
+// Comment 注释
+type Comment string
 
-	// BR HTML 换行 br
-	BR = HTMLBytes("<br/>")
-
-	// HR HTML 分割符 hr
-	HR = HTMLBytes("<hr/>")
-)
-
-type Number interface {
-	~int | ~int8 | ~int16 | ~int32 | ~int64 |
-		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 |
-		~float32 | ~float64
+// HTML 转换为 HTML
+func (c Comment) HTML() ([]byte, error) {
+	if len(c) == 0 {
+		return nil, nil
+	}
+	bw := newBufWriter()
+	bw.Write("<!-- ", html.EscapeString(string(c)), " -->\n")
+	return bw.HTML()
 }

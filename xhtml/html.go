@@ -329,9 +329,12 @@ func NewSelect(name string, opts ...Element) *Any {
 
 // NewOption 创建一个 option
 func NewOption(value string, b Element) *Any {
+	if b == nil {
+		b = TextString(value)
+	}
 	input := &Any{
 		Tag:  "option",
-		Body: ToElements(TextString(value)),
+		Body: ToElements(b),
 	}
 	SetValue(input, value)
 	return input
