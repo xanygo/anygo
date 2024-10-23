@@ -105,8 +105,10 @@ type Route struct {
 	PathSuffix string // 地址后缀
 
 	PatternType PatternType
-	Pattern     string
+	Pattern     string // 路由地址
 	Handler     http.Handler
+
+	Info any // 其他信息，在注册的时候额外补充的，目前是 xhttp.RouteInfo
 
 	// wordNodes PatternWord 类型的 Pattern 的节点
 	// 个数 = Pattern 中 / 的个数

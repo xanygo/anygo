@@ -63,6 +63,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		req.SetPathValue(k, v)
 	}
 	if sr != nil {
+		req = req.WithContext(contextWithRouteInfo(req.Context(), sr.Info.(RouteInfo)))
 		sr.ServeHTTP(w, req)
 		return
 	}
@@ -114,6 +115,11 @@ func (r *Router) Handle(pattern string, handler http.Handler, mds ...MiddlewareF
 
 	for _, route := range routes {
 		route.Handler = handler
+		route.Info = RouteInfo{
+			Method:  route.Method,
+			Pattern: route.Pattern,
+			Path:    zroute.CleanPattern(route.Pattern),
+		}
 		r.subRoute = append(r.subRoute, route)
 
 		r.AutoLogger().Debug(context.Background(), "Route", route.LogFields()...)
@@ -246,4 +252,30 @@ func (r *Router) Options(pattern string, handler http.Handler, mds ...Middleware
 // OptionsFunc  注册 OPTIONS 请求路由，pattern 应是一个 Path 格式的字符串
 func (r *Router) OptionsFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
 	r.Options(pattern, handler, mds...)
+}
+
+type RouteInfo struct {
+	Method string // 注册的请求方法，如 GET、ANY
+
+	// Pattern 注册的路由地址，如 /user, /user/{id}, /user/*, /user/{category}/{id:[0-9]+}
+	Pattern string
+
+	// Path 归一化后的 pattern 地址,,去掉变量的正则只保留变量名，
+	// 如 /user, /user/{id}, /user/*， /user/{category}/{id}
+	Path string
+}
+
+type ctxKey uint8
+
+const (
+	ctxKeyRouteInfo ctxKey = iota
+)
+
+func contextWithRouteInfo(ctx context.Context, info RouteInfo) context.Context {
+	return context.WithValue(ctx, ctxKeyRouteInfo, info)
+}
+
+// ReadRouteInfo 从 http.Request.Context() 信息里读取路由信息
+func ReadRouteInfo(ctx context.Context) RouteInfo {
+	return ctx.Value(ctxKeyRouteInfo).(RouteInfo)
 }

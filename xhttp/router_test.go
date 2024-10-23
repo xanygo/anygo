@@ -52,6 +52,10 @@ func TestRouter_ServeHTTP(t *testing.T) {
 	g1.NotFoundFunc(func(w http.ResponseWriter, r *http.Request) {
 		WriteTextStatus(w, http.StatusNotFound, []byte("Not-Found "+r.RequestURI))
 	})
+	g1.GetFunc("/routeInfo", func(w http.ResponseWriter, r *http.Request) {
+		info := ReadRouteInfo(r.Context())
+		WriteJSON(w, info)
+	})
 
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -129,6 +133,16 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		fst.NoError(t, iotest.TestReader(res.Body, []byte("DELETE /user/1 NOT Found")))
 		fst.NoError(t, res.Body.Close())
 		fst.Equal(t, http.StatusNotFound, res.StatusCode)
+		checkCalled(t)
+	})
+
+	t.Run("get /index/routeInfo", func(t *testing.T) {
+		res, err := ts.Client().Get(ts.URL + "/index/routeInfo")
+		fst.NoError(t, err)
+		const body = "{\"Method\":\"GET\",\"Pattern\":\"/index/routeInfo\",\"Path\":\"/index/routeInfo\"}\n"
+		fst.NoError(t, iotest.TestReader(res.Body, []byte(body)))
+		fst.NoError(t, res.Body.Close())
+		fst.Equal(t, http.StatusOK, res.StatusCode)
 		checkCalled(t)
 	})
 }
