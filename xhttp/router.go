@@ -23,9 +23,22 @@ func NewRouter() *Router {
 	return rt
 }
 
-//	Router HTTP Router
+//	Router 支持静态地址和通配符、支持中间件的 HTTP Router
 //
-// 路由地址 Path 支持静态地址和通配符(下文中 Router 的 Handle、Get 等 API 文档中所述的 Path就是此)：
+// # Pattern 格式：
+//
+//	在使用 Handle、HandleFunc 注册路由时，路由的 Pattern 支持格式 ：(Method\s+)?(Path)(\s+meta|Meta)? 。
+//	在使用 Get、GetFUnc 等方法中带有 Method 的时候，Pattern 支持格式： (Path)(\s+meta|Meta)? 。
+//
+// # Method, Handler 支持的请求方法:
+//
+// Pattern 中的 Method 可以配置 [0-N] 个，当 Method 为空时，此 handler 可以处理所有的请求类型（路由信息会读取到 Method = "ANY" ）。
+// 当为多个时，使用英文逗号连接。注册时的填写的 Method 不区分大小写，传入后会统一转换为大写（如 get -> GET）。
+// 如 Handle("/index")，Handle("get /index")，Handle("get,post /index") 。
+//
+// # Path, 路由地址，支持静态地址和通配符
+//
+// 下文中 Router 的 Handle、Get 等 API 文档中所述的 Path就是此。
 //
 //  1. 静态路由地址： /user
 //
@@ -41,11 +54,18 @@ func NewRouter() *Router {
 //     /user/*,  /user/*/detail, /user/*/detail/*, /user/*/detail/*.html
 //     /user/{s1:*},  /user/{s1:*}/detail,  /user/{s1:*}/detail/{s2:*}
 //
-// 路由变量读取：
+// # 路由变量读取：
 //
 //	在路由地址中的 {name},* 和 {id:[0-9]+} 均为路由变量，是可以使用 http.Request.PathValue("name") 读取对应的值的。
 //	对于 {name} 、 {id:[0-9]+}、{age:*} 这种，分别使用 PathValue("name") 和 PathValue("id")、PathValue("age") 就能读取到。
 //	对于使用了 /user/*/detail/* 这种方式，分别使用 PathValue("p0")、PathValue("p1")，即变量名 = p + 变量序号( 从 0 开始 )
+//
+// # Meta 路由元信息：
+//
+//	在 Handler 中或者中间件中使用 ReadRouteInfo(http.Request.Context()) 可以读取此 Handler 注册的路由信息。
+//	如用于监控、鉴权等场景时，可以读取 RouteInfo 信息。
+//	在 Pattern 中，除了 Path 等其他元信息可以通过在 Pattern 中添加 (\s+meta|Meta) 段落内容添加。
+//	如 Handle("get /index meta|id=1,type=user")。id 字段时固定的字段，还可以添加其他任意 key 。
 type Router struct {
 	xlog.WithLogger
 
@@ -90,12 +110,15 @@ func (r *Router) doNotFound(w http.ResponseWriter, req *http.Request) {
 
 // Handle  注册路由
 //
-// pattern： 支持格式 (Method\s+)?(Path)
+// pattern： 支持格式 (Method\s+)?(Path)(\s+meta|Meta)
 //
 //	Method: 请求方法，可选，支持一个活多个，如 “GET”，“GET,POST”
 //	若 Method 为空则不限定请求方法
 //
 //	Path: 请求地址，支持静态地址和通配符
+//
+//	Meta：路由的其他元信息
+//	如 meta|id=123 或者 meta|id=123,type=user
 func (r *Router) Handle(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
 	routes, err := zroute.ParserPattern(r.prefix, pattern)
 	if err != nil {
@@ -116,9 +139,11 @@ func (r *Router) Handle(pattern string, handler http.Handler, mds ...MiddlewareF
 	for _, route := range routes {
 		route.Handler = handler
 		route.Info = RouteInfo{
-			Method:  route.Method,
-			Pattern: route.Pattern,
-			Path:    zroute.CleanPattern(route.Pattern),
+			Method:    route.Method,
+			Pattern:   route.Pattern,
+			Path:      zroute.CleanPattern(route.Pattern),
+			MetaID:    route.Meta.ID,
+			MetaOther: route.Meta.Other,
 		}
 		r.subRoute = append(r.subRoute, route)
 
@@ -126,7 +151,7 @@ func (r *Router) Handle(pattern string, handler http.Handler, mds ...MiddlewareF
 	}
 }
 
-// HandleFunc  注册路由， pattern 支持格式 (Method\s+)?(Path)
+// HandleFunc  注册路由， pattern 支持格式 (Method\s+)?(Path)(\s+meta|Meta)
 func (r *Router) HandleFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
 	r.Handle(pattern, handler, mds...)
 }
@@ -184,72 +209,72 @@ func (r *Router) Prefix(prefix string, mds ...MiddlewareFunc) *Router {
 	return g
 }
 
-// Head  注册 HEAD 请求路由，pattern 支持格式 (Method\s+)?(Path)
+// Head  注册 HEAD 请求路由，pattern 支持格式 (Method\s+)?(Path)(\s+meta|Meta)
 func (r *Router) Head(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
 	r.handleMethod(http.MethodHead, pattern, handler, mds...)
 }
 
-// HeadFunc  注册 HEAD 请求路由，pattern 支持格式 (Method\s+)?(Path)
+// HeadFunc  注册 HEAD 请求路由，pattern 支持格式 (Method\s+)?(Path)(\s+meta|Meta)
 func (r *Router) HeadFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
 	r.Head(pattern, handler, mds...)
 }
 
-// Get  注册 GET 请求路由，pattern 应是一个 Path 格式的字符串
+// Get  注册 GET 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
 func (r *Router) Get(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
 	r.handleMethod(http.MethodGet, pattern, handler, mds...)
 }
 
-// GetFunc  注册 GET 请求路由，pattern 应是一个 Path 格式的字符串
+// GetFunc  注册 GET 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
 func (r *Router) GetFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
 	r.Get(pattern, handler, mds...)
 }
 
-// Post  注册 POST 请求路由，pattern 应是一个 Path 格式的字符串
+// Post  注册 POST 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
 func (r *Router) Post(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
 	r.handleMethod(http.MethodPost, pattern, handler, mds...)
 }
 
-// PostFunc  注册 POST 请求路由，pattern 应是一个 Path 格式的字符串
+// PostFunc  注册 POST 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
 func (r *Router) PostFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
 	r.Post(pattern, handler, mds...)
 }
 
-// Delete  注册 DELETE 请求路由，pattern 应是一个 Path 格式的字符串
+// Delete  注册 DELETE 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
 func (r *Router) Delete(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
 	r.handleMethod(http.MethodDelete, pattern, handler, mds...)
 }
 
-// DeleteFunc  注册 DELETE 请求路由，pattern 应是一个 Path 格式的字符串
+// DeleteFunc  注册 DELETE 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
 func (r *Router) DeleteFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
 	r.Delete(pattern, handler, mds...)
 }
 
-// Put  注册 PUT 请求路由，pattern 应是一个 Path 格式的字符串
+// Put  注册 PUT 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
 func (r *Router) Put(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
 	r.handleMethod(http.MethodPut, pattern, handler, mds...)
 }
 
-// PutFunc  注册 PUT 请求路由，pattern 应是一个 Path 格式的字符串
+// PutFunc  注册 PUT 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
 func (r *Router) PutFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
 	r.Put(pattern, handler, mds...)
 }
 
-// Trace  注册 TRACE 请求路由，pattern 应是一个 Path 格式的字符串
+// Trace  注册 TRACE 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
 func (r *Router) Trace(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
 	r.handleMethod(http.MethodTrace, pattern, handler, mds...)
 }
 
-// TraceFunc  注册 TRACE 请求路由，pattern 应是一个 Path 格式的字符串
+// TraceFunc  注册 TRACE 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
 func (r *Router) TraceFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
 	r.Trace(pattern, handler, mds...)
 }
 
-// Options  注册 OPTIONS 请求路由，pattern 应是一个 Path 格式的字符串
+// Options  注册 OPTIONS 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
 func (r *Router) Options(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
 	r.handleMethod(http.MethodOptions, pattern, handler, mds...)
 }
 
-// OptionsFunc  注册 OPTIONS 请求路由，pattern 应是一个 Path 格式的字符串
+// OptionsFunc  注册 OPTIONS 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
 func (r *Router) OptionsFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
 	r.Options(pattern, handler, mds...)
 }
@@ -263,6 +288,12 @@ type RouteInfo struct {
 	// Path 归一化后的 pattern 地址,,去掉变量的正则只保留变量名，
 	// 如 /user, /user/{id}, /user/*， /user/{category}/{id}
 	Path string
+
+	// MetaID 注册在 路由 pattern 中的 meta 的 id 值
+	MetaID string
+
+	// MetaOther
+	MetaOther map[string]string
 }
 
 type ctxKey uint8

@@ -52,7 +52,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 	g1.NotFoundFunc(func(w http.ResponseWriter, r *http.Request) {
 		WriteTextStatus(w, http.StatusNotFound, []byte("Not-Found "+r.RequestURI))
 	})
-	g1.GetFunc("/routeInfo", func(w http.ResponseWriter, r *http.Request) {
+	g1.GetFunc("/routeInfo meta|id=1,k1=v1", func(w http.ResponseWriter, r *http.Request) {
 		info := ReadRouteInfo(r.Context())
 		WriteJSON(w, info)
 	})
@@ -139,8 +139,8 @@ func TestRouter_ServeHTTP(t *testing.T) {
 	t.Run("get /index/routeInfo", func(t *testing.T) {
 		res, err := ts.Client().Get(ts.URL + "/index/routeInfo")
 		fst.NoError(t, err)
-		const body = "{\"Method\":\"GET\",\"Pattern\":\"/index/routeInfo\",\"Path\":\"/index/routeInfo\"}\n"
-		fst.NoError(t, iotest.TestReader(res.Body, []byte(body)))
+		const body = `{"Method":"GET","Pattern":"/index/routeInfo","Path":"/index/routeInfo","MetaID":"1","MetaOther":{"k1":"v1"}}`
+		fst.NoError(t, iotest.TestReader(res.Body, []byte(body+"\n")))
 		fst.NoError(t, res.Body.Close())
 		fst.Equal(t, http.StatusOK, res.StatusCode)
 		checkCalled(t)

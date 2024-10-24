@@ -23,33 +23,41 @@ const (
 	PatternRegexp
 )
 
-var patternReg = regexp.MustCompile(`^(([A-Za-z]+(,[A-Za-z]+)*\s+)?)(/\S*)$`)
+var patternReg = regexp.MustCompile(`^(([A-Za-z]+(,[A-Za-z]+)*\s+)?)(/\S*)(\s+meta\|(\S*))?$`)
 
-// splitPattern 解析 pattern 中的 Method 和 Path值
-func splitPattern(pattern string) ([]string, string) {
+// splitPattern 解析 pattern 中的 Method、Path、Meta 三部分
+func splitPattern(pattern string) ([]string, string, string) {
 	arr := patternReg.FindStringSubmatch(pattern)
 	if len(arr) == 0 {
-		return nil, ""
+		return nil, "", ""
 	}
+
 	methods := strings.TrimSpace(arr[1])
 	if methods == "" {
-		return []string{MethodAny}, arr[4]
+		return []string{MethodAny}, arr[4], arr[6]
 	}
-	return strings.Split(methods, ","), arr[4]
+	return strings.Split(methods, ","), arr[4], arr[6]
 }
 
 func ParserPattern(prefix string, pattern string) ([]*Route, error) {
-	methods, path := splitPattern(pattern)
+	methods, path, metaStr := splitPattern(pattern)
 	if path == "" {
 		return nil, fmt.Errorf("invalid pattern %q", pattern)
 	}
 	path = CleanPath(prefix + path)
 	rs := make([]*Route, 0, len(methods))
+
+	meta, err := parserMeta(metaStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid meta in pattern %q, err: %w", pattern, err)
+	}
+
 	for _, method := range methods {
 		rt := &Route{
 			Method:      CleanMethod(method),
 			Pattern:     path,
 			PatternType: getPatternType(path),
+			Meta:        meta,
 		}
 
 		// PatternWord 和 PatternRegexp 类型的通过 PathPrefix PathSuffix 加速匹配
@@ -107,6 +115,8 @@ type Route struct {
 	PatternType PatternType
 	Pattern     string // 路由地址
 	Handler     http.Handler
+
+	Meta Meta // 其他元信息
 
 	Info any // 其他信息，在注册的时候额外补充的，目前是 xhttp.RouteInfo
 

@@ -18,6 +18,7 @@ func Test_splitPattern(t *testing.T) {
 		args  args
 		want  []string
 		want1 string
+		want2 string
 	}{
 		{
 			name: "case 1",
@@ -51,15 +52,36 @@ func Test_splitPattern(t *testing.T) {
 			want:  nil,
 			want1: "",
 		},
+		{
+			name: "case 5",
+			args: args{
+				pattern: "GET,POST /index meta|id=1,a=2",
+			},
+			want:  []string{"GET", "POST"},
+			want1: "/index",
+			want2: "id=1,a=2",
+		},
+		{
+			name: "case 6",
+			args: args{
+				pattern: "/index meta|id=1,a=2",
+			},
+			want:  []string{"ANY"},
+			want1: "/index",
+			want2: "id=1,a=2",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := splitPattern(tt.args.pattern)
+			got, got1, got2 := splitPattern(tt.args.pattern)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("splitPattern() got = %v, want %v", got, tt.want)
 			}
 			if got1 != tt.want1 {
 				t.Errorf("splitPattern() got1 = %v, want %v", got1, tt.want1)
+			}
+			if got2 != tt.want2 {
+				t.Errorf("splitPattern() got2 = %v, want %v", got2, tt.want2)
 			}
 		})
 	}
