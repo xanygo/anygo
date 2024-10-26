@@ -34,13 +34,10 @@ func NewRandomDigits(length int) *Random {
 }
 
 type Random struct {
-	code string
+	base
+
 	// Table 可选，默认为所有字母和数字
 	Table string
-}
-
-func (p *Random) Code() string {
-	return p.code
 }
 
 func (p *Random) genCode(length int) {
@@ -61,11 +58,18 @@ func (p *Random) genCode(length int) {
 
 func (p *Random) Image() image.Image {
 	bs := pixelfont.GetBytes([]byte(p.code))
-	img := image.NewRGBA(image.Rect(0, 0, bs.Width()+len(p.code)*5, pixelfont.MaxHeight()))
+	width := bs.Width() + len(p.code)*5
+	height := pixelfont.MaxHeight()
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
 	bs.DrawTo(img, 0, 0, 5, color.Black)
-	for i := 0; i < 10; i++ {
-		ximage.DrawRandomLine(img)
+
+	nw, nh, ok := p.getSize(width, height)
+	if ok {
+		img = ximage.Resize(img, nw, nh)
 	}
+	p.drawRandomLine(img)
+	p.tryReDraw(img)
+
 	return img
 }
 

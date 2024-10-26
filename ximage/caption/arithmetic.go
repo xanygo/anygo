@@ -27,8 +27,8 @@ var _ Caption = (*Arithmetic)(nil)
 
 // Arithmetic 算数表达式验证码
 type Arithmetic struct {
-	code string
-	exp  string
+	base
+	exp string
 }
 
 func (a *Arithmetic) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -43,17 +43,19 @@ func (a *Arithmetic) genCode() {
 
 func (a *Arithmetic) Image() image.Image {
 	bs := pixelfont.GetBytes([]byte(a.exp))
-	img := image.NewRGBA(image.Rect(0, 0, bs.Width()+len(a.exp)*5, pixelfont.MaxHeight()))
+	width := bs.Width() + len(a.exp)*5
+	height := pixelfont.MaxHeight()
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
 	bs.DrawTo(img, 0, 0, 5, color.Black)
 
-	for i := 0; i < 10; i++ {
-		ximage.DrawRandomLine(img)
+	nw, nh, ok := a.getSize(width, height)
+	if ok {
+		img = ximage.Resize(img, nw, nh)
 	}
-	return img
-}
+	a.drawRandomLine(img)
+	a.tryReDraw(img)
 
-func (a *Arithmetic) Code() string {
-	return a.code
+	return img
 }
 
 func (a *Arithmetic) newExp() (string, string) {
