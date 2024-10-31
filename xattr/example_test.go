@@ -6,6 +6,7 @@ package xattr_test
 
 import (
 	"fmt"
+
 	"github.com/xanygo/anygo/xattr"
 )
 

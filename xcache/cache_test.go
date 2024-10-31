@@ -6,9 +6,12 @@ package xcache
 
 import (
 	"context"
-	"github.com/fsgo/fst"
 	"testing"
 	"time"
+
+	"github.com/fsgo/fst"
+
+	"github.com/xanygo/anygo/xerror"
 )
 
 func testCache(t *testing.T, c Cache[string, int]) {
@@ -20,7 +23,7 @@ func testCache(t *testing.T, c Cache[string, int]) {
 	checkNotExists := func(t *testing.T) {
 		got1, err1 := c.Get(ctx, "k1")
 		fst.Equal(t, 0, got1)
-		fst.ErrorIs(t, err1, ErrNil)
+		fst.ErrorIs(t, err1, xerror.NotFound)
 	}
 	checkNotExists(t)
 

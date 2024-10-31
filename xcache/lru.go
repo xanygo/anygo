@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/xanygo/anygo/xerror"
 )
 
 var _ Cache[string, string] = (*LRU[string, string])(nil)
@@ -39,14 +41,14 @@ func (lru *LRU[K, V]) Get(ctx context.Context, key K) (v V, err error) {
 	defer lru.mux.Unlock()
 	el, has := lru.data[key]
 	if !has {
-		return v, ErrNil
+		return v, xerror.NotFound
 	}
 	val := el.Value.(*lruValue[K, V])
 
 	if val.Expired() {
 		lru.list.Remove(el)
 		delete(lru.data, key)
-		return v, ErrNil
+		return v, xerror.NotFound
 	}
 	lru.list.MoveToFront(el)
 	return val.Data, nil

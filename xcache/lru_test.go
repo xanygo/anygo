@@ -7,9 +7,12 @@ package xcache
 import (
 	"context"
 	"fmt"
-	"github.com/fsgo/fst"
 	"testing"
 	"time"
+
+	"github.com/fsgo/fst"
+
+	"github.com/xanygo/anygo/xerror"
 )
 
 func TestLRU(t *testing.T) {
@@ -23,7 +26,7 @@ func TestLRU(t *testing.T) {
 	}
 
 	_, err1 := c1.Get(ctx, "k_0")
-	fst.ErrorIs(t, err1, ErrNil)
+	fst.ErrorIs(t, err1, xerror.NotFound)
 
 	got2, err2 := c1.Get(ctx, "k_1")
 	fst.NoError(t, err2)

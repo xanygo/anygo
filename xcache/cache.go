@@ -6,8 +6,9 @@ package xcache
 
 import (
 	"context"
-	"errors"
 	"time"
+
+	"github.com/xanygo/anygo/xerror"
 )
 
 type (
@@ -30,11 +31,8 @@ type (
 	}
 )
 
-// ErrNil 缓存数据不存在
-var ErrNil = errors.New("cache not exists")
-
 func IsNotExists(err error) bool {
-	return err != nil && errors.Is(err, ErrNil)
+	return err != nil && xerror.IsNotFound(err)
 }
 
 type ValueError[V any] struct {

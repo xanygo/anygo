@@ -25,7 +25,7 @@ import (
 func NewAttribute(appName string, rootDir string) *Attribute {
 	attr := &Attribute{}
 	attr.SetAppName(appName)
-	attr.SetRootDir(rootDir)
+	attr.SetRootDir(osEnvDefault(eKeyRoot, rootDir))
 	attr.SetConfDir(osEnvDefault(eKeyConf, "conf"))
 	attr.SetDataDir(osEnvDefault(eKeyData, "data"))
 	attr.SetTempDir(osEnvDefault(eKeyTemp, "temp"))

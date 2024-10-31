@@ -7,6 +7,8 @@ package xcache
 import (
 	"context"
 	"time"
+
+	"github.com/xanygo/anygo/xerror"
 )
 
 var _ Cache[string, int] = (*Nop[string, int])(nil)
@@ -15,7 +17,7 @@ var _ Cache[string, int] = (*Nop[string, int])(nil)
 type Nop[K comparable, V any] struct{}
 
 func (n *Nop[K, V]) Get(ctx context.Context, key K) (value V, err error) {
-	return value, ErrNil
+	return value, xerror.NotFound
 }
 
 func (n *Nop[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration) error {

@@ -58,13 +58,13 @@ func (f *File[K, V]) Get(ctx context.Context, key K) (value V, err error) {
 	expire, data, err := f.readByKey(key, true)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return value, ErrNil
+			return value, xerror.NotFound
 		}
 		return value, err
 	}
 	if expire {
 		f.Delete(ctx, key)
-		return value, ErrNil
+		return value, xerror.NotFound
 	}
 	err = f.Codec.Decode(data, &value)
 	return value, err

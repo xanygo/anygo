@@ -8,6 +8,7 @@ import (
 	"encoding"
 	"encoding/json"
 	"errors"
+	"strconv"
 )
 
 func ErrCode(err error) (int64, bool) {
@@ -26,55 +27,81 @@ func ErrCode2(err error, def int64) int64 {
 	return def
 }
 
+type CodeError interface {
+	error
+	HasErrCode
+}
+
 type HasErrCode interface {
 	ErrCode() int64
 }
 
-func NewCodeError(err error, code int64) *CodeError {
-	return &CodeError{
+var _ error = (*codeError1)(nil)
+var _ HasErrCode = (*codeError1)(nil)
+
+func NewCodeError(code int64, msg string) CodeError {
+	return &codeError1{
+		Code: code,
+		Msg:  msg,
+	}
+}
+
+func fmtCode(code int64) string {
+	return "[code=" + strconv.FormatInt(code, 10) + "] "
+}
+
+type codeError1 struct {
+	Code int64
+	Msg  string
+}
+
+func (e *codeError1) ErrCode() int64 {
+	return e.Code
+}
+
+func (e *codeError1) Error() string {
+	return fmtCode(e.Code) + e.Msg
+}
+
+func WithCode(err error, code int64) CodeError {
+	return &codeError2{
 		Code: code,
 		Err:  err,
 	}
 }
 
-var _ encoding.TextMarshaler = (*CodeError)(nil)
-var _ json.Marshaler = (*CodeError)(nil)
-var _ HasErrCode = (*CodeError)(nil)
+var _ encoding.TextMarshaler = (*codeError2)(nil)
+var _ json.Marshaler = (*codeError2)(nil)
+var _ CodeError = (*codeError2)(nil)
 
-type CodeError struct {
+type codeError2 struct {
 	Err  error
 	Code int64 // 错误码
-	Data any   // 导致错误的数据，可选
 }
 
-func (c *CodeError) Error() string {
+func (c *codeError2) Error() string {
 	if c.Err == nil {
 		return "<nil>"
 	}
-	return c.Err.Error()
+	return fmtCode(c.Code) + c.Err.Error()
 }
 
-func (c *CodeError) ErrCode() int64 {
+func (c *codeError2) ErrCode() int64 {
 	return c.Code
 }
 
-func (c *CodeError) ErrData() any {
-	return c.Data
-}
-
-func (c *CodeError) Unwrap() error {
+func (c *codeError2) Unwrap() error {
 	return c.Err
 }
 
-func (c *CodeError) MarshalJSON() ([]byte, error) {
+func (c *codeError2) MarshalJSON() ([]byte, error) {
 	data := map[string]any{
 		"Code": c.Code,
 		"Msg":  c.Error(),
-		"Data": c.Data,
 	}
 	return json.Marshal(data)
 }
 
-func (c *CodeError) MarshalText() (text []byte, err error) {
+func (c *codeError2) MarshalText() (text []byte, err error) {
 	return c.MarshalJSON()
 }

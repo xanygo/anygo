@@ -120,6 +120,10 @@ func (r *Router) doNotFound(w http.ResponseWriter, req *http.Request) {
 //	Meta：路由的其他元信息
 //	如 meta|id=123 或者 meta|id=123,type=user
 func (r *Router) Handle(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
+	r.register(pattern, handler, mds...)
+}
+
+func (r *Router) register(pattern string, handler http.Handler, mds ...MiddlewareFunc) []RouteInfo {
 	routes, err := zroute.ParserPattern(r.prefix, pattern)
 	if err != nil {
 		panic(err)
@@ -136,19 +140,23 @@ func (r *Router) Handle(pattern string, handler http.Handler, mds ...MiddlewareF
 
 	handler = r.wrap(handler, mds...)
 
+	result := make([]RouteInfo, 0, len(routes))
 	for _, route := range routes {
 		route.Handler = handler
-		route.Info = RouteInfo{
+		info := RouteInfo{
 			Method:    route.Method,
 			Pattern:   route.Pattern,
 			Path:      zroute.CleanPattern(route.Pattern),
 			MetaID:    route.Meta.ID,
 			MetaOther: route.Meta.Other,
 		}
+		route.Info = info
 		r.subRoute = append(r.subRoute, route)
+		result = append(result, info)
 
 		r.AutoLogger().Debug(context.Background(), "Route", route.LogFields()...)
 	}
+	return result
 }
 
 // HandleFunc  注册路由， pattern 支持格式 (Method\s+)?(Path)(\s+meta|Meta)
@@ -156,8 +164,9 @@ func (r *Router) HandleFunc(pattern string, handler http.HandlerFunc, mds ...Mid
 	r.Handle(pattern, handler, mds...)
 }
 
-func (r *Router) handleMethod(method string, pattern string, handler http.Handler, mds ...MiddlewareFunc) {
-	r.Handle(method+" "+pattern, handler, mds...)
+func (r *Router) handleMethod(method string, pattern string, handler http.Handler, mds ...MiddlewareFunc) RouteInfo {
+	infos := r.register(method+" "+pattern, handler, mds...)
+	return infos[0]
 }
 
 func (r *Router) NotFound(handler http.Handler) {
@@ -210,73 +219,73 @@ func (r *Router) Prefix(prefix string, mds ...MiddlewareFunc) *Router {
 }
 
 // Head  注册 HEAD 请求路由，pattern 支持格式 (Method\s+)?(Path)(\s+meta|Meta)
-func (r *Router) Head(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
-	r.handleMethod(http.MethodHead, pattern, handler, mds...)
+func (r *Router) Head(pattern string, handler http.Handler, mds ...MiddlewareFunc) RouteInfo {
+	return r.handleMethod(http.MethodHead, pattern, handler, mds...)
 }
 
 // HeadFunc  注册 HEAD 请求路由，pattern 支持格式 (Method\s+)?(Path)(\s+meta|Meta)
-func (r *Router) HeadFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
-	r.Head(pattern, handler, mds...)
+func (r *Router) HeadFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) RouteInfo {
+	return r.Head(pattern, handler, mds...)
 }
 
 // Get  注册 GET 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
-func (r *Router) Get(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
-	r.handleMethod(http.MethodGet, pattern, handler, mds...)
+func (r *Router) Get(pattern string, handler http.Handler, mds ...MiddlewareFunc) RouteInfo {
+	return r.handleMethod(http.MethodGet, pattern, handler, mds...)
 }
 
 // GetFunc  注册 GET 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
-func (r *Router) GetFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
-	r.Get(pattern, handler, mds...)
+func (r *Router) GetFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) RouteInfo {
+	return r.Get(pattern, handler, mds...)
 }
 
 // Post  注册 POST 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
-func (r *Router) Post(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
-	r.handleMethod(http.MethodPost, pattern, handler, mds...)
+func (r *Router) Post(pattern string, handler http.Handler, mds ...MiddlewareFunc) RouteInfo {
+	return r.handleMethod(http.MethodPost, pattern, handler, mds...)
 }
 
 // PostFunc  注册 POST 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
-func (r *Router) PostFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
-	r.Post(pattern, handler, mds...)
+func (r *Router) PostFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) RouteInfo {
+	return r.Post(pattern, handler, mds...)
 }
 
 // Delete  注册 DELETE 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
-func (r *Router) Delete(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
-	r.handleMethod(http.MethodDelete, pattern, handler, mds...)
+func (r *Router) Delete(pattern string, handler http.Handler, mds ...MiddlewareFunc) RouteInfo {
+	return r.handleMethod(http.MethodDelete, pattern, handler, mds...)
 }
 
 // DeleteFunc  注册 DELETE 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
-func (r *Router) DeleteFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
-	r.Delete(pattern, handler, mds...)
+func (r *Router) DeleteFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) RouteInfo {
+	return r.Delete(pattern, handler, mds...)
 }
 
 // Put  注册 PUT 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
-func (r *Router) Put(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
-	r.handleMethod(http.MethodPut, pattern, handler, mds...)
+func (r *Router) Put(pattern string, handler http.Handler, mds ...MiddlewareFunc) RouteInfo {
+	return r.handleMethod(http.MethodPut, pattern, handler, mds...)
 }
 
 // PutFunc  注册 PUT 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
-func (r *Router) PutFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
-	r.Put(pattern, handler, mds...)
+func (r *Router) PutFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) RouteInfo {
+	return r.Put(pattern, handler, mds...)
 }
 
 // Trace  注册 TRACE 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
-func (r *Router) Trace(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
-	r.handleMethod(http.MethodTrace, pattern, handler, mds...)
+func (r *Router) Trace(pattern string, handler http.Handler, mds ...MiddlewareFunc) RouteInfo {
+	return r.handleMethod(http.MethodTrace, pattern, handler, mds...)
 }
 
 // TraceFunc  注册 TRACE 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
-func (r *Router) TraceFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
-	r.Trace(pattern, handler, mds...)
+func (r *Router) TraceFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) RouteInfo {
+	return r.Trace(pattern, handler, mds...)
 }
 
 // Options  注册 OPTIONS 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
-func (r *Router) Options(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
-	r.handleMethod(http.MethodOptions, pattern, handler, mds...)
+func (r *Router) Options(pattern string, handler http.Handler, mds ...MiddlewareFunc) RouteInfo {
+	return r.handleMethod(http.MethodOptions, pattern, handler, mds...)
 }
 
 // OptionsFunc  注册 OPTIONS 请求路由，pattern 应是一个 (Path)(\s+meta|Meta) 格式的字符串
-func (r *Router) OptionsFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
-	r.Options(pattern, handler, mds...)
+func (r *Router) OptionsFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) RouteInfo {
+	return r.Options(pattern, handler, mds...)
 }
 
 type RouteInfo struct {

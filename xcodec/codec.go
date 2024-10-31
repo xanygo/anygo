@@ -4,7 +4,16 @@
 
 package xcodec
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
+
+var (
+	JSON = NewCodec("json", json.Marshal, json.Unmarshal)
+
+	Raw = NewCodec("raw", rawEncode, rawDecode)
+)
 
 type (
 	Codec interface {
@@ -58,4 +67,26 @@ func (c *codec) Name() string {
 	return c.name
 }
 
-var JSON = NewCodec("json", json.Marshal, json.Unmarshal)
+func rawEncode(obj any) ([]byte, error) {
+	switch val := obj.(type) {
+	case []byte:
+		return val, nil
+	case string:
+		return []byte(val), nil
+	default:
+		return nil, fmt.Errorf("not support type %T for rawEncode", obj)
+	}
+}
+
+func rawDecode(data []byte, obj any) error {
+	switch val := obj.(type) {
+	case *[]byte:
+		*val = data
+		return nil
+	case *string:
+		*val = string(data)
+		return nil
+	default:
+		return fmt.Errorf("not support type %T for rawDecode", obj)
+	}
+}
