@@ -2,17 +2,14 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-10-30
 
-package session
+package xsession
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
-	"io"
 	"time"
-	"unsafe"
 
+	"github.com/xanygo/anygo/xctx"
 	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xsync"
 )
@@ -37,6 +34,9 @@ func (s *Session) Set(key string, value any) {
 func (s *Session) Get(key string) any {
 	v, _ := s.values.Load(key)
 	return v
+}
+func (s *Session) Range(fn func(key string, value any) bool) {
+	s.values.Range(fn)
 }
 
 func (s *Session) Delete(keys ...string) {
@@ -125,10 +125,16 @@ type Storage interface {
 	Save(ctx context.Context, session *Session) error
 }
 
-func NewID() string {
-	bf := make([]byte, 24)
-	_, _ = io.ReadFull(rand.Reader, bf)
-	out := make([]byte, base64.RawURLEncoding.EncodedLen(len(bf)))
-	base64.RawURLEncoding.Encode(out, bf)
-	return unsafe.String(&out[0], len(out))
+var ctxKeyStore = xctx.NewKey()
+
+func WithStorage(ctx context.Context, store Storage) context.Context {
+	return context.WithValue(ctx, ctxKeyStore, store)
+}
+
+func StorageFromContext(ctx context.Context) Storage {
+	return ctx.Value(ctxKeyStore).(Storage)
+}
+
+func FromContext(ctx context.Context) *Session {
+	return StorageFromContext(ctx).GetOrCreate(ctx, IDFromContext(ctx))
 }

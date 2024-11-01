@@ -11,24 +11,24 @@ import (
 	"net/http"
 
 	"github.com/xanygo/anygo"
-	"github.com/xanygo/anygo/store/session"
+	"github.com/xanygo/anygo/store/xsession"
 	"github.com/xanygo/anygo/xhttp"
 )
 
 func main() {
 	router := xhttp.NewRouter()
-	sessionHandler := (&session.CookieStoreHandler{}).Trans()
-	router.Use(sessionHandler.Next)
+	router.Use((&xsession.IDHTTPHandler{}).Next)
+	router.Use((&xsession.CookieStoreHandler{}).Trans().Next)
 
 	router.GetFunc("/set", func(w http.ResponseWriter, r *http.Request) {
-		ss := sessionHandler.Session(r)
+		ss := xsession.FromContext(r.Context())
 		ss.Set("k1", "v1:"+r.URL.Query().Get("k1"))
 		err := ss.Save(r.Context())
 		_, _ = fmt.Fprintf(w, "save=%v", err)
 	})
 
 	router.GetFunc("/get", func(w http.ResponseWriter, r *http.Request) {
-		ss := sessionHandler.Session(r)
+		ss := xsession.FromContext(r.Context())
 		_, _ = fmt.Fprintf(w, "k1=%v", ss.Get("k1"))
 	})
 

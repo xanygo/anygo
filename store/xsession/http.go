@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-10-30
 
-package session
+package xsession
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 	"net/http"
 
 	"github.com/xanygo/anygo/xcodec"
-	"github.com/xanygo/anygo/xctx"
 	"github.com/xanygo/anygo/xerror"
 )
 
@@ -107,35 +106,21 @@ func (cs *CookieStore) Save(ctx context.Context, session *Session) error {
 	return nil
 }
 
-var ctxHTTPStoreKey = xctx.NewKey()
-
 type StorageHTTPHandler struct {
 	NewStorage func(http.ResponseWriter, *http.Request) Storage
 }
 
+func (hb *StorageHTTPHandler) BeforeServeHTTP(w http.ResponseWriter, r *http.Request) *http.Request {
+	store := hb.NewStorage(w, r)
+	ctx := WithStorage(r.Context(), store)
+	return r.WithContext(ctx)
+}
+
 func (hb *StorageHTTPHandler) Next(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		store := hb.NewStorage(w, r)
-		ctx := context.WithValue(r.Context(), ctxHTTPStoreKey, store)
-		r = r.WithContext(ctx)
+		r = hb.BeforeServeHTTP(w, r)
 		h.ServeHTTP(w, r)
 	})
-}
-
-func (hb *StorageHTTPHandler) Store(r *http.Request) Storage {
-	return hb.StoreFromContext(r.Context())
-}
-
-func (hb *StorageHTTPHandler) StoreFromContext(ctx context.Context) Storage {
-	return ctx.Value(ctxHTTPStoreKey).(Storage)
-}
-
-func (hb *StorageHTTPHandler) Session(r *http.Request) *Session {
-	return hb.Store(r).GetOrCreate(r.Context(), "")
-}
-
-func (hb *StorageHTTPHandler) SessionFromContext(ctx context.Context) *Session {
-	return hb.StoreFromContext(ctx).GetOrCreate(ctx, "")
 }
 
 type CookieStoreHandler struct {
@@ -163,4 +148,46 @@ func (csh *CookieStoreHandler) newCookieStore(w http.ResponseWriter, req *http.R
 		Cipher:     csh.Cipher,
 		BeforeSave: csh.BeforeSave,
 	}
+}
+
+type IDHTTPHandler struct {
+	CookieName string
+	OnSet      func(ck *http.Cookie)
+}
+
+func (s *IDHTTPHandler) getCookieName() string {
+	if s.CookieName != "" {
+		return s.CookieName
+	}
+	return "sid"
+}
+
+func (s *IDHTTPHandler) BeforeServeHTTP(w http.ResponseWriter, r *http.Request) *http.Request {
+	name := s.getCookieName()
+	var id string
+	cookie, err := r.Cookie(name)
+	if err == nil && len(cookie.Value) == 32 {
+		id = cookie.Value
+	} else {
+		id = NewID()
+		sc := &http.Cookie{
+			Name:     name,
+			Value:    id,
+			HttpOnly: true,
+		}
+		if s.OnSet != nil {
+			s.OnSet(sc)
+		}
+
+		http.SetCookie(w, sc)
+	}
+	ctx := WithID(r.Context(), id)
+	return r.WithContext(ctx)
+}
+
+func (s *IDHTTPHandler) Next(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = s.BeforeServeHTTP(w, r)
+		h.ServeHTTP(w, r)
+	})
 }

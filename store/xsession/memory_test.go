@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-10-31
 
-package session
+package xsession
 
 import (
 	"context"
