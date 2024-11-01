@@ -10,7 +10,6 @@ import (
 
 	"github.com/xanygo/anygo/xcache"
 	"github.com/xanygo/anygo/xcodec"
-	"github.com/xanygo/anygo/xerror"
 )
 
 func NewFileStore(dir string, ttl time.Duration) *CacheStore {
@@ -45,16 +44,13 @@ func (fs *CacheStore) Get(ctx context.Context, id string) (*Session, error) {
 	return val.ToSession(fs), nil
 }
 
-func (fs *CacheStore) GetOrCreate(ctx context.Context, id string) (*Session, error) {
+func (fs *CacheStore) GetOrCreate(ctx context.Context, id string) *Session {
 	se, err := fs.Get(ctx, id)
 	if err == nil {
-		return se, nil
-	}
-	if !xerror.IsNotFound(err) {
-		return nil, err
+		return se
 	}
 	val := NewValue(id)
-	return val.ToSession(fs), nil
+	return val.ToSession(fs)
 }
 
 func (fs *CacheStore) Save(ctx context.Context, session *Session) error {

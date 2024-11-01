@@ -30,21 +30,12 @@ func (mem *MemoryStore) Get(ctx context.Context, id string) (*Session, error) {
 	return mem.db.Get(ctx, id)
 }
 
-func (mem *MemoryStore) GetOrCreate(ctx context.Context, id string) (*Session, error) {
+func (mem *MemoryStore) GetOrCreate(ctx context.Context, id string) *Session {
 	val, err := mem.db.Get(ctx, id)
 	if err == nil {
-		return val, nil
+		return val
 	}
-	if !xcache.IsNotExists(err) {
-		return nil, err
-	}
-	now := time.Now()
-	vv := &Value{
-		ID:      id,
-		Created: now,
-		Updated: now,
-	}
-	return vv.ToSession(mem), nil
+	return NewValue(id).ToSession(mem)
 }
 
 func (mem *MemoryStore) Save(ctx context.Context, session *Session) error {

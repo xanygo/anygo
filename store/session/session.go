@@ -6,42 +6,16 @@ package session
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
+	"io"
 	"time"
+	"unsafe"
 
 	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xsync"
 )
-
-func NewValue(id string) *Value {
-	now := time.Now()
-	val := &Value{
-		ID:      id,
-		Created: now,
-		Updated: now,
-	}
-	return val
-}
-
-type Value struct {
-	ID      string
-	Created time.Time
-	Updated time.Time
-	Values  map[string]any
-}
-
-func (v *Value) ToSession(s Storage) *Session {
-	se := &Session{
-		id:      v.ID,
-		storage: s,
-	}
-	se.created.Store(v.Created)
-	se.updated.Store(v.Updated)
-	for k, v := range v.Values {
-		se.values.Store(k, v)
-	}
-	return se
-}
 
 type Session struct {
 	id      string
@@ -96,6 +70,36 @@ func (s *Session) Bytes() ([]byte, error) {
 	return json.Marshal(data)
 }
 
+func NewValue(id string) *Value {
+	now := time.Now()
+	val := &Value{
+		ID:      id,
+		Created: now,
+		Updated: now,
+	}
+	return val
+}
+
+type Value struct {
+	ID      string
+	Created time.Time
+	Updated time.Time
+	Values  map[string]any
+}
+
+func (v *Value) ToSession(s Storage) *Session {
+	se := &Session{
+		id:      v.ID,
+		storage: s,
+	}
+	se.created.Store(v.Created)
+	se.updated.Store(v.Updated)
+	for k, v := range v.Values {
+		se.values.Store(k, v)
+	}
+	return se
+}
+
 type valueData struct {
 	Created int64          `json:"c"`
 	Updated int64          `json:"u"`
@@ -117,6 +121,14 @@ func ParserValue(bf []byte) (*Value, error) {
 
 type Storage interface {
 	Get(ctx context.Context, id string) (*Session, error)
-	GetOrCreate(ctx context.Context, id string) (*Session, error)
+	GetOrCreate(ctx context.Context, id string) *Session
 	Save(ctx context.Context, session *Session) error
+}
+
+func NewID() string {
+	bf := make([]byte, 24)
+	_, _ = io.ReadFull(rand.Reader, bf)
+	out := make([]byte, base64.RawURLEncoding.EncodedLen(len(bf)))
+	base64.RawURLEncoding.Encode(out, bf)
+	return unsafe.String(&out[0], len(out))
 }

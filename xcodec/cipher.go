@@ -96,6 +96,20 @@ func (cs Ciphers) Decrypt(src []byte) (out []byte, err error) {
 	return out, nil
 }
 
+func NewCipher(enc EncryptFunc, dec DecryptFunc) Cipher {
+	return cipherTPL{enc, dec}
+}
+
+type cipherTPL [2]func(src []byte) ([]byte, error)
+
+func (cs cipherTPL) Encrypt(src []byte) ([]byte, error) {
+	return cs[0](src)
+}
+
+func (cs cipherTPL) Decrypt(src []byte) ([]byte, error) {
+	return cs[1](src)
+}
+
 var _ Cipher = (*AesBlock)(nil)
 
 // AesBlock AES 加解密
