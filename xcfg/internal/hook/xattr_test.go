@@ -5,13 +5,13 @@
 package hook
 
 import (
+	"context"
+	"fmt"
 	"path/filepath"
 	"testing"
 
 	"github.com/fsgo/fst"
 
-	"context"
-	"fmt"
 	"github.com/xanygo/anygo/xattr"
 )
 

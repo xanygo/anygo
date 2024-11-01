@@ -35,6 +35,7 @@ func (s *Session) Get(key string) any {
 	v, _ := s.values.Load(key)
 	return v
 }
+
 func (s *Session) Range(fn func(key string, value any) bool) {
 	s.values.Range(fn)
 }

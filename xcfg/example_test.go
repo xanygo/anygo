@@ -39,7 +39,7 @@ func ExampleMustParse() {
 	fmt.Printf("info.A = %q\n", info.A)
 
 	// Output:
-	//info.A = "bb"
+	// info.A = "bb"
 }
 
 func ExampleParseBytes() {
@@ -92,9 +92,7 @@ func ExampleParse() {
 	fmt.Printf("info.A = %q\n", info.A)
 
 	// Output:
-	//info.A = "bb"
+	// info.A = "bb"
 }
 
-func Example_AutoChecker() {
-
-}
+func Example_AutoChecker() {}

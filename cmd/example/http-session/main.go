@@ -29,7 +29,8 @@ func main() {
 
 	router.GetFunc("/get", func(w http.ResponseWriter, r *http.Request) {
 		ss := xsession.FromContext(r.Context())
-		_, _ = fmt.Fprintf(w, "k1=%v", ss.Get("k1"))
+		_, _ = fmt.Fprintf(w, "sessionID=%q\n", xsession.IDFromContext(r.Context()))
+		_, _ = fmt.Fprintf(w, "k1=%v\n", ss.Get("k1"))
 	})
 
 	ser := &http.Server{

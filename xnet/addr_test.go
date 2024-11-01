@@ -5,9 +5,9 @@
 package xnet
 
 import (
+	"context"
 	"testing"
 
-	"context"
 	"github.com/fsgo/fst"
 )
 

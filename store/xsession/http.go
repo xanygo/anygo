@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
-	"log"
 	"net/http"
 
 	"github.com/xanygo/anygo/xcodec"
@@ -90,7 +89,6 @@ func (cs *CookieStore) Save(ctx context.Context, session *Session) error {
 		return err
 	}
 	bf, err = cs.getCipher().Encrypt(bf)
-	log.Println("session=", string(bf), "err=", err)
 	if err != nil {
 		return err
 	}
@@ -166,7 +164,7 @@ func (s *IDHTTPHandler) BeforeServeHTTP(w http.ResponseWriter, r *http.Request) 
 	name := s.getCookieName()
 	var id string
 	cookie, err := r.Cookie(name)
-	if err == nil && len(cookie.Value) == 32 {
+	if err == nil && len(cookie.Value) > 32 {
 		id = cookie.Value
 	} else {
 		id = NewID()

@@ -39,6 +39,7 @@ type WithLogger struct {
 func (wl *WithLogger) SetLogger(lg Logger) {
 	wl.lg = lg
 }
+
 func (wl *WithLogger) Logger() Logger {
 	return wl.lg
 }

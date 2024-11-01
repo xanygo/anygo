@@ -8,10 +8,12 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"fmt"
-	"github.com/xanygo/anygo/xctx"
 	"io"
+	"time"
 	"unsafe"
+
+	"github.com/xanygo/anygo/internal/znum"
+	"github.com/xanygo/anygo/xctx"
 )
 
 func NewID() string {
@@ -19,15 +21,8 @@ func NewID() string {
 	_, _ = io.ReadFull(rand.Reader, bf)
 	out := make([]byte, base64.RawURLEncoding.EncodedLen(len(bf)))
 	base64.RawURLEncoding.Encode(out, bf)
-	return unsafe.String(&out[0], len(out))
-}
-
-func init() {
-	const idLen = 32
-	id := NewID()
-	if len(id) != idLen {
-		panic(fmt.Errorf("sessionID=%q, expect len %d", id, idLen))
-	}
+	tm := znum.FormatIntB62(time.Now().Unix() - 1730000000)
+	return tm + "|" + unsafe.String(&out[0], len(out))
 }
 
 var ctxKeySessionID = xctx.NewKey()

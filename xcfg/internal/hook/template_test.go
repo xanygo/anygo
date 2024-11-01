@@ -21,7 +21,6 @@ func mustRead(name string) []byte {
 }
 
 func TestTemplateHook(t *testing.T) {
-
 	type args struct {
 		ctx     context.Context
 		cfPath  string

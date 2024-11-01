@@ -5,10 +5,10 @@
 package xhtml
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
-	"fmt"
 	"github.com/xanygo/anygo/xslice"
 )
 

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/fsgo/fst"
+
 	"github.com/xanygo/anygo/xhtml"
 )
 

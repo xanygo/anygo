@@ -35,3 +35,13 @@ func TestContainsAny(t *testing.T) {
 	fst.False(t, ContainsAny(a, 1))
 	fst.False(t, ContainsAny(a))
 }
+
+func TestReverse(t *testing.T) {
+	b1 := []byte("12345")
+	Reverse(b1)
+	fst.Equal(t, "54321", string(b1))
+
+	b2 := []byte("1-")
+	Reverse(b2)
+	fst.Equal(t, "-1", string(b2))
+}

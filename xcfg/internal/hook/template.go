@@ -9,13 +9,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/xanygo/anygo/xattr"
-	"github.com/xanygo/anygo/xcfg/internal/parser"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"text/template"
+
+	"github.com/xanygo/anygo/xattr"
+	"github.com/xanygo/anygo/xcfg/internal/parser"
 )
 
 const hookTplPrefix = "hook.template "

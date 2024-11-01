@@ -7,10 +7,10 @@ package xpp_test
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/xanygo/anygo/xpp"
-	"sync"
 )
 
 func ExampleHedging_Run() {

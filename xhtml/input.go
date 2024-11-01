@@ -96,6 +96,7 @@ func NewInputTime(name string) *Any {
 func NewInputDateTimeLocal(name string) *Any {
 	return NewInput("datetime-local", name)
 }
+
 func NewInputEmail(name string) *Any {
 	return NewInput("email", name)
 }

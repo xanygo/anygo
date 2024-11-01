@@ -5,11 +5,11 @@
 package xcache
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/xanygo/anygo/xcodec"
-	"os"
 )
 
 func TestFile(t *testing.T) {

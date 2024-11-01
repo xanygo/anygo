@@ -6,10 +6,12 @@ package xsession
 
 import (
 	"context"
-	"github.com/fsgo/fst"
-	"github.com/xanygo/anygo/xerror"
 	"testing"
 	"time"
+
+	"github.com/fsgo/fst"
+
+	"github.com/xanygo/anygo/xerror"
 )
 
 func TestNewMemoryStore(t *testing.T) {

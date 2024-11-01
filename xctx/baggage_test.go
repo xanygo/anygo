@@ -6,8 +6,9 @@ package xctx
 
 import (
 	"context"
-	"github.com/fsgo/fst"
 	"testing"
+
+	"github.com/fsgo/fst"
 )
 
 type tk uint8
