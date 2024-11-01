@@ -18,8 +18,7 @@ func TestNewMemoryStore(t *testing.T) {
 	fst.ErrorIs(t, err1, xerror.NotFound)
 	fst.Nil(t, got1)
 
-	got2, err2 := ms.GetOrCreate(context.Background(), "123")
-	fst.NoError(t, err2)
+	got2 := ms.GetOrCreate(context.Background(), "123")
 	fst.NotNil(t, got2)
 	fst.Equal(t, "123", got2.ID())
 
