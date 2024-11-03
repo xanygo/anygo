@@ -36,6 +36,7 @@ func (fs *CacheStore) Get(ctx context.Context, id string) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	val, err := ParserValue(bf)
 	if err != nil {
 		return nil, err

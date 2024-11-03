@@ -36,6 +36,33 @@ func (s *Session) Get(key string) any {
 	return v
 }
 
+func (s *Session) GetAndDelete(key string) any {
+	v, _ := s.values.LoadAndDelete(key)
+	return v
+}
+
+func (s *Session) Load(key string) (any, bool) {
+	return s.values.Load(key)
+}
+
+func (s *Session) Has(key string) bool {
+	_, ok := s.values.Load(key)
+	return ok
+}
+
+func (s *Session) Equal(key string, value any) bool {
+	v, ok := s.values.Load(key)
+	return ok && v == value
+}
+
+func (s *Session) EqualAndDelete(key string, value any) bool {
+	v, ok := s.values.LoadAndDelete(key)
+	if ok {
+		s.updated.Store(time.Now())
+	}
+	return ok && v == value
+}
+
 func (s *Session) Range(fn func(key string, value any) bool) {
 	s.values.Range(fn)
 }

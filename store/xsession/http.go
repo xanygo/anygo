@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xerror"
@@ -160,6 +161,8 @@ func (s *IDHTTPHandler) getCookieName() string {
 	return "sid"
 }
 
+var defaultExpire = time.Now().AddDate(100, 0, 0)
+
 func (s *IDHTTPHandler) BeforeServeHTTP(w http.ResponseWriter, r *http.Request) *http.Request {
 	name := s.getCookieName()
 	var id string
@@ -172,6 +175,7 @@ func (s *IDHTTPHandler) BeforeServeHTTP(w http.ResponseWriter, r *http.Request) 
 			Name:     name,
 			Value:    id,
 			HttpOnly: true,
+			Expires:  defaultExpire,
 		}
 		if s.OnSet != nil {
 			s.OnSet(sc)

@@ -28,6 +28,9 @@ type AccessLog struct {
 	// OnPanic 可选，panic 后，自定义输出
 	OnPanic func(w http.ResponseWriter, r *http.Request, re any)
 
+	// OnRequest ctx 日志字段初始化完成后，在执行后续 ServeHTTP 方法前调用
+	OnRequest func(ctx context.Context, r *http.Request)
+
 	// RePanic 当 panic 发生后，是否将 panic 重新抛出
 	RePanic bool
 }
@@ -43,6 +46,9 @@ func (al *AccessLog) Next(handler http.Handler) http.Handler {
 		al.before(ctx, start, r)
 		r = r.WithContext(ctx)
 		defer al.after(ctx, start, w, r)
+		if al.OnRequest != nil {
+			al.OnRequest(ctx, r)
+		}
 		handler.ServeHTTP(w, r)
 	})
 }
