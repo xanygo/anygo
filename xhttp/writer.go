@@ -7,6 +7,7 @@ package xhttp
 import (
 	"encoding/json"
 	"net/http"
+	"text/template"
 )
 
 // WriteJSON 输出 JSON 格式的数据，状态码为 200
@@ -43,6 +44,23 @@ func WriteHTMLStatus(w http.ResponseWriter, status int, html []byte) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	_, _ = w.Write(html)
+}
+
+func WriteJSONP(w http.ResponseWriter, cb string, data any) {
+	WriteJSONPStatus(w, http.StatusOK, cb, data)
+}
+
+func WriteJSONPStatus(w http.ResponseWriter, status int, cb string, data any) {
+	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+	w.WriteHeader(status)
+	if cb == "" {
+		_, _ = w.Write([]byte("callback("))
+	} else {
+		template.JSEscape(w, []byte(cb))
+		_, _ = w.Write([]byte("("))
+	}
+	_ = json.NewEncoder(w).Encode(data)
+	_, _ = w.Write([]byte(")"))
 }
 
 var _ http.ResponseWriter = (*StatusWriter)(nil)

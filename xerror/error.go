@@ -6,7 +6,12 @@ package xerror
 
 import "errors"
 
-var NotFound = NewCodeError(1404, "Not Found")
+var (
+	// NotFound 错误：数据找不到
+	NotFound = NewCodeError(1000, "not found")
+
+	InvalidStatus = NewCodeError(1001, "invalid status")
+)
 
 func IsNotFound(err error) bool {
 	return errors.Is(err, NotFound)
