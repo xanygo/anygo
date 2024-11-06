@@ -10,15 +10,18 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/xctx"
+	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xsync"
+	"reflect"
+	"unsafe"
 )
 
 type Session struct {
 	id      string
 	created xsync.Value[time.Time]
 	updated xsync.Value[time.Time]
-	values  xmap.Sync[string, any]
+	values  xmap.Sync[string, string]
 	storage Storage
 }
 
@@ -26,23 +29,30 @@ func (s *Session) ID() string {
 	return s.id
 }
 
-func (s *Session) Set(key string, value any) {
+func (s *Session) Set(key string, value string) {
 	s.updated.Store(time.Now())
 	s.values.Store(key, value)
 }
 
-func (s *Session) Get(key string) any {
+func (s *Session) Get(key string) string {
 	v, _ := s.values.Load(key)
 	return v
 }
 
-func (s *Session) GetAndDelete(key string) any {
-	v, _ := s.values.LoadAndDelete(key)
-	return v
+func (s *Session) Load(key string) (string, bool) {
+	return s.values.Load(key)
 }
 
-func (s *Session) Load(key string) (any, bool) {
-	return s.values.Load(key)
+func (s *Session) Equal(key string, value string) bool {
+	v, ok := s.values.Load(key)
+	if !ok {
+		return false
+	}
+	return value == v
+}
+
+func (s *Session) LoadAndDelete(key string) (string, bool) {
+	return s.values.LoadAndDelete(key)
 }
 
 func (s *Session) Has(key string) bool {
@@ -50,20 +60,15 @@ func (s *Session) Has(key string) bool {
 	return ok
 }
 
-func (s *Session) Equal(key string, value any) bool {
-	v, ok := s.values.Load(key)
-	return ok && v == value
-}
-
-func (s *Session) EqualAndDelete(key string, value any) bool {
-	v, ok := s.values.LoadAndDelete(key)
-	if ok {
+func (s *Session) CompareAndDelete(key string, value string) bool {
+	deleted := s.values.CompareAndDelete(key, value)
+	if deleted {
 		s.updated.Store(time.Now())
 	}
-	return ok && v == value
+	return deleted
 }
 
-func (s *Session) Range(fn func(key string, value any) bool) {
+func (s *Session) Range(fn func(key string, value string) bool) {
 	s.values.Range(fn)
 }
 
@@ -79,6 +84,10 @@ func (s *Session) Delete(keys ...string) {
 
 func (s *Session) Save(ctx context.Context) error {
 	return s.storage.Save(ctx, s)
+}
+
+func (s *Session) Clear() {
+	s.values.Clear()
 }
 
 func (s *Session) Created() time.Time {
@@ -112,7 +121,7 @@ type Value struct {
 	ID      string
 	Created time.Time
 	Updated time.Time
-	Values  map[string]any
+	Values  map[string]string
 }
 
 func (v *Value) ToSession(s Storage) *Session {
@@ -129,9 +138,9 @@ func (v *Value) ToSession(s Storage) *Session {
 }
 
 type valueData struct {
-	Created int64          `json:"c"`
-	Updated int64          `json:"u"`
-	Values  map[string]any `json:"v"`
+	Created int64             `json:"c"`
+	Updated int64             `json:"u"`
+	Values  map[string]string `json:"v"`
 }
 
 func ParserValue(bf []byte) (*Value, error) {
@@ -165,4 +174,62 @@ func StorageFromContext(ctx context.Context) Storage {
 
 func FromContext(ctx context.Context) *Session {
 	return StorageFromContext(ctx).GetOrCreate(ctx, IDFromContext(ctx))
+}
+
+func Set[T any](s *Session, key string, val T) error {
+	bf, err := json.Marshal(val)
+	if err != nil {
+		return err
+	}
+	str := unsafe.String(&bf[0], len(bf))
+	s.Set(key, str)
+	return nil
+}
+
+func Load[T any](s *Session, key string) (result T, err error) {
+	str, ok := s.Load(key)
+	if !ok {
+		return result, xerror.NotFound
+	}
+	err = json.Unmarshal([]byte(str), &result)
+	return result, err
+}
+
+func Get[T any](s *Session, key string) (result T) {
+	str, ok := s.Load(key)
+	if !ok {
+		return result
+	}
+	_ = json.Unmarshal([]byte(str), &result)
+	return result
+}
+
+func LoadAndDelete[T any](s *Session, key string) (result T, err error) {
+	str, ok := s.LoadAndDelete(key)
+	if !ok {
+		return result, xerror.NotFound
+	}
+	err = json.Unmarshal([]byte(str), &result)
+	return result, err
+}
+
+func Equal[T any](s *Session, key string, value T) bool {
+	val, err := Load[T](s, key)
+	if err != nil {
+		return false
+	}
+	return reflect.DeepEqual(val, value)
+}
+
+func EqualAndDelete[T any](s *Session, key string, value T) bool {
+	str, ok := s.LoadAndDelete(key)
+	if !ok {
+		return false
+	}
+	var result T
+	err := json.Unmarshal([]byte(str), &result)
+	if err != nil {
+		return false
+	}
+	return reflect.DeepEqual(result, value)
 }

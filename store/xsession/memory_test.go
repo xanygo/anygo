@@ -29,4 +29,9 @@ func TestNewMemoryStore(t *testing.T) {
 	got2.Delete("k1")
 	fst.Empty(t, got2.Get("k1"))
 	fst.NoError(t, got2.Save(context.Background()))
+
+	got2.Set("k2", "v2")
+	fst.False(t, got2.CompareAndDelete("k2", "v1"))
+	fst.True(t, got2.CompareAndDelete("k2", "v2"))
+	fst.False(t, got2.Has("k2"))
 }
