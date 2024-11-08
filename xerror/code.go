@@ -47,7 +47,7 @@ func NewCodeError(code int64, msg string) CodeError {
 }
 
 func fmtCode(code int64) string {
-	return "[code=" + strconv.FormatInt(code, 10) + "] "
+	return "(errno:" + strconv.FormatInt(code, 10) + ") "
 }
 
 type codeError1 struct {
