@@ -55,3 +55,19 @@ func interpolate(x, y, x1, y1, x2, y2 float64, q11, q21, q12, q22 uint8) float64
 		float64(q12)*(x2-x)*(y-y1) +
 		float64(q22)*(x-x1)*(y-y1)
 }
+
+// ToGray 将彩色图片转换为黑白图片
+func ToGray(img image.Image) *image.Gray {
+	bounds := img.Bounds()
+	width, height := bounds.Max.X, bounds.Max.Y
+	out := image.NewGray(image.Rect(0, 0, width, height))
+
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			r, g, b, _ := img.At(x, y).RGBA()
+			gray := uint8(0.2989*float64(r>>8) + 0.587*float64(g>>8) + 0.114*float64(b>>8))
+			out.Set(x, y, color.Gray{Y: gray})
+		}
+	}
+	return out
+}
