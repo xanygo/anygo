@@ -9,7 +9,7 @@ import (
 	"image/color"
 )
 
-func Resize(src image.Image, width, height int) *image.RGBA {
+func Resize(src *image.RGBA, width, height int) *image.RGBA {
 	dst := image.NewRGBA(image.Rect(0, 0, width, height))
 	srcBounds := src.Bounds()
 	srcWidth := srcBounds.Dx()
@@ -34,7 +34,7 @@ func Resize(src image.Image, width, height int) *image.RGBA {
 }
 
 // 双线性插值函数
-func bilinearInterpolation(img image.Image, srcX, srcY float64, x1, y1, x2, y2 int) (uint8, uint8, uint8, uint8) {
+func bilinearInterpolation(img *image.RGBA, srcX, srcY float64, x1, y1, x2, y2 int) (uint8, uint8, uint8, uint8) {
 	q11 := img.At(x1, y1).(color.RGBA)
 	q21 := img.At(x2, y1).(color.RGBA)
 	q12 := img.At(x1, y2).(color.RGBA)
@@ -70,4 +70,21 @@ func ToGray(img image.Image) *image.Gray {
 		}
 	}
 	return out
+}
+
+// CanvasScale 将宽高调整为指定的比例，在调整时，会保持其中一条边的值不变，让另一条表按照比例放大
+func CanvasScale(width int, height int, scale float64) (int, int) {
+	if scale < 1 {
+		scale = 1.0 / scale
+	}
+	if width >= height {
+		if float64(width)/float64(height) > scale {
+			return width, int(float64(width) / scale)
+		}
+		return int(float64(height) * scale), height
+	}
+	if float64(height)/float64(width) > scale {
+		return int(float64(height) / scale), height
+	}
+	return width, int(float64(width) * scale)
 }

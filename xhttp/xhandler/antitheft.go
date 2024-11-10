@@ -64,20 +64,20 @@ func (a *AntiTheft) check(r *http.Request) bool {
 		)
 		return false
 	}
+	referHost := u.Hostname()
 	// 请求的 HOST 和 refer 是同一个 host:port
-	if r.Host == u.Host {
+	if r.Host == u.Host || r.Host == referHost || strings.HasSuffix(referHost, "."+r.Host) {
 		return true
 	}
-	host, _, err := net.SplitHostPort(u.Host)
-	if err != nil {
-		a.AutoLogger().Warn(r.Context(), "AntiTheft, parser refer host failed",
+	result := a.hostAllow(referHost)
+	if !result {
+		a.AutoLogger().Warn(r.Context(), "AntiTheft Forbidden",
 			xlog.String("refer", refer),
-			xlog.ErrorAttr("error", err),
+			xlog.String("referHosts", referHost),
+			xlog.String("host", r.Host),
 		)
-		return false
 	}
-
-	return a.hostAllow(host)
+	return result
 }
 
 func (a *AntiTheft) hostAllow(host string) bool {
