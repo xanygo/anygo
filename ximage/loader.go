@@ -6,7 +6,6 @@ package ximage
 
 import (
 	"fmt"
-	"github.com/xanygo/anygo/xerror"
 	"image"
 	"image/gif"
 	"image/jpeg"
@@ -15,6 +14,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/xanygo/anygo/xerror"
 )
 
 type DecoderFunc func(io.Reader) (image.Image, error)

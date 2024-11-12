@@ -5,9 +5,10 @@
 package xhttp
 
 import (
-	"github.com/xanygo/anygo/xslice"
 	"maps"
 	"net/http"
+
+	"github.com/xanygo/anygo/xslice"
 )
 
 // HeaderDiffMore 查找到 new 相比 old 增量的部分，总是返回一个全新的 Header

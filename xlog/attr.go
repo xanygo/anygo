@@ -27,6 +27,10 @@ func Duration(key string, v time.Duration) Attr {
 	return slog.Duration(key, v)
 }
 
+func DurationMS(key string, v time.Duration) Attr {
+	return slog.Float64(key, float64(v.Nanoseconds())/1e6)
+}
+
 func Float64(key string, v float64) Attr {
 	return slog.Float64(key, v)
 }

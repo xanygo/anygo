@@ -124,7 +124,10 @@ func (al *AccessLog) headers(h http.Header) []xlog.Attr {
 
 func (al *AccessLog) after(ctx context.Context, start time.Time, w http.ResponseWriter, r *http.Request) {
 	fields := []xlog.Attr{
-		xlog.Duration("cost", time.Since(start)),
+		xlog.DurationMS("cost", time.Since(start)),
+	}
+	if err := ctx.Err(); err != nil {
+		fields = append(fields, xlog.ErrorAttr("after.ctx.err", ctx.Err()))
 	}
 	al.Logger.Info(ctx, "", fields...)
 }

@@ -7,14 +7,14 @@ package xsession
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"time"
+	"unsafe"
 
 	"github.com/xanygo/anygo/xctx"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xsync"
-	"reflect"
-	"unsafe"
 )
 
 type Session struct {

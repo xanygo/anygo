@@ -28,6 +28,12 @@ func TestRouter_ServeHTTP(t *testing.T) {
 			handler.ServeHTTP(w, r)
 		})
 	})
+	router.Use(func(handler http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fst.Equal(t, 1, called.Load())
+			handler.ServeHTTP(w, r)
+		})
+	})
 	router.NotFoundFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte(r.Method + " " + r.RequestURI + " NOT Found"))
@@ -145,4 +151,39 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		fst.Equal(t, http.StatusOK, res.StatusCode)
 		checkCalled(t)
 	})
+}
+
+// 测试中间件的执行顺序
+func TestRouter_Use(t *testing.T) {
+	router := NewRouter()
+	var num atomic.Int64
+	router.Use(func(handler http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fst.Equal(t, 1, num.Add(1)) // 执行顺序 1
+			handler.ServeHTTP(w, r)
+			fst.Equal(t, 1+3+5+7, num.Load()) // 执行顺序 7
+		})
+	})
+	router.Use(func(handler http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fst.Equal(t, 1+3, num.Add(3)) // 执行顺序 2
+			handler.ServeHTTP(w, r)
+			fst.Equal(t, 1+3+5+7, num.Load()) // 执行顺序 6
+		})
+	})
+	router.GetFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fst.Equal(t, 1+3+5+7, num.Add(7)) // 执行顺序 4
+		_, _ = w.Write([]byte("ok"))
+	}, func(handler http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fst.Equal(t, 1+3+5, num.Add(5)) // 执行顺序 3
+			handler.ServeHTTP(w, r)
+			fst.Equal(t, 1+3+5+7, num.Load()) // 执行顺序 5
+		})
+	})
+	ts := httptest.NewServer(router)
+	resp, err := ts.Client().Get(ts.URL)
+	fst.NoError(t, err)
+	fst.NoError(t, iotest.TestReader(resp.Body, []byte("ok")))
+	defer resp.Body.Close()
 }

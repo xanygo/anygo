@@ -5,8 +5,9 @@
 package xsession
 
 import (
-	"github.com/fsgo/fst"
 	"testing"
+
+	"github.com/fsgo/fst"
 )
 
 func TestSet(t *testing.T) {
@@ -15,5 +16,4 @@ func TestSet(t *testing.T) {
 	got1, err1 := Load[string](s, "k1")
 	fst.NoError(t, err1)
 	fst.Equal(t, "v1", got1)
-
 }

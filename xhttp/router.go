@@ -182,11 +182,11 @@ func (r *Router) NotFoundFunc(handler http.HandlerFunc) {
 }
 
 func (r *Router) wrap(h http.Handler, mds ...MiddlewareFunc) http.Handler {
-	for _, mf := range r.middlewares {
-		h = mf(h)
+	for i := len(mds) - 1; i >= 0; i-- {
+		h = mds[i](h)
 	}
-	for _, mf := range mds {
-		h = mf(h)
+	for i := len(r.middlewares) - 1; i >= 0; i-- {
+		h = r.middlewares[i](h)
 	}
 	return h
 }
