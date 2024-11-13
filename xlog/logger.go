@@ -22,6 +22,13 @@ const (
 	LevelError Level = slog.LevelError
 )
 
+var allLevels = []Level{
+	LevelDebug,
+	LevelInfo,
+	LevelWarn,
+	LevelError,
+}
+
 // Logger 输出日志的 Logger 接口定义
 type Logger interface {
 	Info(ctx context.Context, msg string, attr ...Attr)
@@ -48,19 +55,23 @@ func (n NopLogger) Output(context.Context, Level, int, string, ...Attr) {}
 
 func (n NopLogger) Nop() {}
 
-// Handler 日志记录行的处理对象，调用 Handle 方法后会触发日志落盘
-type Handler interface {
-	Handle(context.Context, slog.Record) error
+func NewSimple(w io.Writer) *Simple {
+	if dw, ok := w.(DispatchWriter); ok {
+		return &Simple{
+			Handler: NewDispatchHandler(dw.Writers(), defaultJSONHandler),
+		}
+	}
+	return &Simple{
+		Handler: defaultJSONHandler(w),
+	}
 }
 
-func NewSimple(w io.Writer) *Simple {
-	return &Simple{
-		Handler: slog.NewJSONHandler(w, &slog.HandlerOptions{
-			Level:       LevelDebug,
-			AddSource:   true,
-			ReplaceAttr: ReplaceAttr,
-		}),
-	}
+func defaultJSONHandler(w io.Writer) Handler {
+	return slog.NewJSONHandler(w, &slog.HandlerOptions{
+		Level:       LevelDebug,
+		AddSource:   true,
+		ReplaceAttr: ReplaceAttr,
+	})
 }
 
 var _ Logger = (*Simple)(nil)

@@ -8,7 +8,9 @@ import (
 	"context"
 	"os"
 
+	"github.com/xanygo/anygo/xattr"
 	"github.com/xanygo/anygo/xsync"
+	"path/filepath"
 )
 
 var defaultLogger xsync.Value[Logger]
@@ -45,4 +47,27 @@ func Warn(ctx context.Context, msg string, attr ...Attr) {
 // Error 使用 Default() Logger 打印 Error 日志
 func Error(ctx context.Context, msg string, attr ...Attr) {
 	Default().Output(ctx, LevelError, 1, msg, attr...)
+}
+
+// DefaultLoggerOpt 默认 logger 的配置，用于打印服务端内部组件运行状态的
+// 配置内容:
+// 1. 首选日志配置文件: conf/log/default
+// 2. 若无则使用默认日志文件地址： log/default/default.log
+func DefaultLoggerOpt() FileLoggerOpt {
+	return FileLoggerOpt{
+		CfgPath: filepath.Join(xattr.ConfDir(), "log", "default"),
+		Cfg: &FileConfig{
+			FileName: filepath.Join(xattr.LogDir(), "default", "default.log"),
+			ExtRule:  "1hour",
+			MaxFiles: 48,
+			Dispatch: defaultDispatch,
+		},
+	}
+}
+
+// InitAllDefaultLogger 使用所有的 XXXLoggerOpt 初始化并赋值给对应的默认 Logger
+func InitAllDefaultLogger() {
+	SetDefault(DefaultLoggerOpt().MustNewLogger())
+	SetPanicLogger(PanicLoggerOpt().MustNewLogger())
+	SetAccessLogger(AccessLoggerOpt().MustNewLogger())
 }
