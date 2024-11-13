@@ -10,12 +10,15 @@ import (
 	"errors"
 	"net/http"
 	"path"
+	"sync"
 
-	"github.com/xanygo/anygo/xsync"
+	"github.com/xanygo/anygo/xarchive"
+	"github.com/xanygo/anygo/xslice"
 )
 
 var _ http.Handler = (*ZipFileHandler)(nil)
 
+// ZipFileHandler 将 zip 文件封装为 http.Handler，以使其内部文件可被访问到，并添加了 etag 支持
 type ZipFileHandler struct {
 	// Reader 压缩文件的 reader， Reader 和 Content 二者至少有一个，并优先使用 Reader
 	Reader *zip.Reader
@@ -26,24 +29,37 @@ type ZipFileHandler struct {
 	// RootDir 可选，FS 里此目录作为基准目录
 	RootDir string
 
+	// NotFound 可选，当文件不存在时的回调
+	NotFound http.Handler
+
 	etag etagStore
-	once xsync.OnceDoValue2[*zip.Reader, error]
+
+	initReader    *zip.Reader
+	initErr       error
+	initFileNames map[string]bool
+	once          sync.Once
 }
 
-func (z *ZipFileHandler) initReader() (*zip.Reader, error) {
+func (z *ZipFileHandler) init() {
 	if z.Reader != nil {
-		return z.Reader, nil
+		z.initReader = z.Reader
+		z.initFileNames = xslice.ToMap(xarchive.ZipFileNames(z.Reader, 0), true)
+		return
 	}
 	if len(z.Content) == 0 {
-		return nil, errors.New("both Reader and Content are empty")
+		z.initErr = errors.New("both Reader and Content are empty")
+		return
 	}
-	return zip.NewReader(bytes.NewReader(z.Content), int64(len(z.Content)))
+	z.initReader, z.initErr = zip.NewReader(bytes.NewReader(z.Content), int64(len(z.Content)))
+	if z.initReader != nil {
+		z.initFileNames = xslice.ToMap(xarchive.ZipFileNames(z.initReader, 0), true)
+	}
 }
 
 func (z *ZipFileHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	rd, err := z.once.Do(z.initReader)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	z.once.Do(z.init)
+	if z.initErr != nil {
+		http.Error(w, z.initErr.Error(), http.StatusInternalServerError)
 		return
 	}
 	fileName := req.URL.Path
@@ -51,8 +67,18 @@ func (z *ZipFileHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		fileName = path.Join(z.RootDir, fileName)
 	}
 
-	if z.etag.hasSameETag(w, req, rd, fileName) {
+	if z.etag.hasSameETag(w, req, z.initReader, fileName) {
 		return
 	}
-	http.ServeFileFS(w, req, rd, fileName)
+	if z.NotFound != nil && !z.initFileNames[fileName] {
+		z.NotFound.ServeHTTP(w, req)
+		return
+	}
+	http.ServeFileFS(w, req, z.initReader, fileName)
+}
+
+// Exists 判断文件是否存在，fp 应该时经过了 path.Clean 的，并且不以 / 开头
+func (z *ZipFileHandler) Exists(fp string) bool {
+	z.once.Do(z.init)
+	return len(z.initFileNames) > 0 && z.initFileNames[fp]
 }

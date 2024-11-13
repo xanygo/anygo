@@ -145,14 +145,14 @@ func (a *Attribute) RunMode() Mode {
 	return Mode(a.mode.Load())
 }
 
-func (a *Attribute) SetAttr(key any, value any) {
+func (a *Attribute) Set(key any, value any) {
 	a.other.Store(key, value)
 }
 
-func (a *Attribute) Attr(key any) (any, bool) {
+func (a *Attribute) Get(key any) (any, bool) {
 	return a.other.Load(key)
 }
 
-func (a *Attribute) AttrRange(fn func(key any, value any) bool) {
+func (a *Attribute) Range(fn func(key any, value any) bool) {
 	a.other.Range(fn)
 }

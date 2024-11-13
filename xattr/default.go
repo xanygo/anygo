@@ -28,21 +28,6 @@ func Init(appName string, rootDir string) {
 	Default = NewAttribute(appName, rootDir)
 }
 
-// MustInitWithAppConfPath 传入应用的主配置文件路径来初始化
-//
-// 假如传入 ./conf/app.toml, 其他路径信息依据此路径自动推断出
-func MustInitWithAppConfPath(appConfPath string) {
-	p, err := filepath.Abs(appConfPath)
-	if err != nil {
-		panic(err)
-	}
-	confDir := filepath.Dir(p)
-	rootDir := filepath.Dir(confDir)
-	appName := filepath.Base(rootDir)
-	Init(appName, rootDir)
-	SetConfDir(confDir)
-}
-
 func SetAppName(name string) {
 	Default.SetAppName(name)
 }
@@ -121,14 +106,31 @@ func SetRunMode(mode Mode) {
 	Default.SetRunMode(mode)
 }
 
-func SetAttr(key any, value any) {
-	Default.SetAttr(key, value)
+func Set(key any, value any) {
+	Default.Set(key, value)
 }
 
-func Attr(key any) (any, bool) {
-	return Default.Attr(key)
+func Get(key any) (any, bool) {
+	return Default.Get(key)
 }
 
-func AttrRange(fn func(key any, value any) bool) {
-	Default.AttrRange(fn)
+func GetAs[T any](key any) (result T, ok bool) {
+	val, ok := Get(key)
+	if !ok {
+		return result, false
+	}
+	result, ok = val.(T)
+	return result, ok
+}
+
+func GetDefault[T any](key any, def T) T {
+	val, ok := GetAs[T](key)
+	if !ok {
+		return def
+	}
+	return val
+}
+
+func Range(fn func(key any, value any) bool) {
+	Default.Range(fn)
 }

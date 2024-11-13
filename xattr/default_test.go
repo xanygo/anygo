@@ -24,8 +24,8 @@ func TestDefault(t *testing.T) {
 	fst.Equal(t, IDCOnline, IDC())
 	fst.Equal(t, ModeProduct, RunMode())
 
-	SetAttr("k1", "v1")
-	got1, ok1 := Attr("k1")
+	Set("k1", "v1")
+	got1, ok1 := Get("k1")
 	fst.Equal(t, "v1", got1)
 	fst.True(t, ok1)
 
@@ -52,12 +52,4 @@ func TestDefault(t *testing.T) {
 
 	SetLogDir("temp/log")
 	fst.Equal(t, filepath.Join(root, "temp", "log"), LogDir())
-}
-
-func TestMustInitWithAppConfPath(t *testing.T) {
-	MustInitWithAppConfPath(filepath.Join(".github", "workflows", "go.yml"))
-	fst.Equal(t, ".github", AppName())
-
-	// reset
-	doInit()
 }
