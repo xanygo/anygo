@@ -28,7 +28,7 @@ type AccessLog struct {
 	// OnPanic 可选，panic 后，自定义输出
 	OnPanic func(w http.ResponseWriter, r *http.Request, re any)
 
-	// OnRequest ctx 日志字段初始化完成后，在执行后续 ServeHTTP 方法前调用
+	// OnRequest 可选，ctx 日志字段初始化完成后，在执行后续 ServeHTTP 方法前调用
 	OnRequest func(ctx context.Context, r *http.Request)
 
 	// RePanic 当 panic 发生后，是否将 panic 重新抛出
@@ -81,6 +81,7 @@ func (al *AccessLog) before(ctx context.Context, start time.Time, r *http.Reques
 	} else {
 		cookies = al.OnCookies(r.Cookies())
 	}
+	xlog.WithLogID(ctx, al.logID(r))
 
 	var headers []xlog.Attr
 	if al.OnHeaders == nil {
@@ -98,6 +99,16 @@ func (al *AccessLog) before(ctx context.Context, start time.Time, r *http.Reques
 		xlog.GroupAttrs("cookie", cookies...),
 		xlog.GroupAttrs("header", headers...),
 	)
+}
+
+func (al *AccessLog) logID(r *http.Request) string {
+	if id := r.Header.Get("X-LogID"); id != "" {
+		return id
+	}
+	if id := r.URL.Query().Get("logid"); id != "" {
+		return id
+	}
+	return xlog.NewLogID()
 }
 
 func (al *AccessLog) cookies(cookies []*http.Cookie) []xlog.Attr {

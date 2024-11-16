@@ -7,9 +7,12 @@ package xhttp
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/md5"
 	"errors"
+	"fmt"
 	"io/fs"
 	"net/http"
+	"os"
 	"path"
 	"sync"
 
@@ -20,6 +23,7 @@ import (
 type FSHandler interface {
 	http.Handler
 	Exists(fp string) bool
+	Open(name string) (fs.File, error)
 }
 
 type FSHandlers []FSHandler
@@ -45,6 +49,15 @@ func (fs FSHandlers) Exists(fp string) bool {
 		}
 	}
 	return false
+}
+
+func (fs FSHandlers) Open(name string) (fs.File, error) {
+	for _, f := range fs {
+		if f.Exists(name) {
+			return f.Open(name)
+		}
+	}
+	return nil, os.ErrNotExist
 }
 
 var _ FSHandler = (*FS)(nil)
@@ -79,6 +92,10 @@ func (e *FS) init() {
 		e.fileNames[path] = true
 		return nil
 	})
+}
+
+func (e *FS) Open(name string) (fs.File, error) {
+	return e.FS.Open(name)
 }
 
 func (e *FS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -157,6 +174,13 @@ func (z *ZipFile) init() {
 	}
 }
 
+func (z *ZipFile) Open(name string) (fs.File, error) {
+	if er := z.Init(); er != nil {
+		return nil, er
+	}
+	return z.initReader.Open(name)
+}
+
 func (z *ZipFile) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if z.initErr != nil {
 		http.Error(w, z.initErr.Error(), http.StatusInternalServerError)
@@ -185,6 +209,9 @@ func (z *ZipFile) Exists(fp string) bool {
 }
 
 func ToFSHandler(h http.Handler) FSHandler {
+	if fh, ok := h.(FSHandler); ok {
+		return fh
+	}
 	return &fsWrap{Handler: h}
 }
 
@@ -194,10 +221,87 @@ type fsWrap struct {
 	http.Handler
 }
 
+func (f *fsWrap) Open(name string) (fs.File, error) {
+	if hf, ok := f.Handler.(http.FileSystem); ok {
+		return hf.Open(name)
+	}
+	return nil, fs.ErrNotExist
+}
+
 func (f *fsWrap) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	f.Handler.ServeHTTP(writer, request)
 }
 
 func (f *fsWrap) Exists(fp string) bool {
+	if hf, ok := f.Handler.(http.FileSystem); ok {
+		file, err := hf.Open(fp)
+		if file != nil {
+			_ = file.Close()
+		}
+		return err == nil
+	}
 	return true
+}
+
+var _ http.Handler = (*FSMerge)(nil)
+
+type FSMerge struct {
+	FS          FSHandler
+	mergedFiles map[string]*mergeFile
+}
+
+func (fm *FSMerge) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	filename := req.URL.Path
+	if len(fm.mergedFiles) > 0 {
+		file, ok := fm.mergedFiles[filename]
+		if ok {
+			if et := req.Header.Get("If-None-Match"); et != "" && et == file.Etag {
+				w.WriteHeader(http.StatusNotModified)
+				return
+			}
+			w.Header().Set("Content-Type", file.ContentType)
+			w.Header().Set("ETag", file.Etag)
+			_, _ = w.Write(file.Body)
+			return
+		}
+	}
+	fm.FS.ServeHTTP(w, req)
+}
+
+func (fm *FSMerge) Merge(alias string, ct string, names ...string) error {
+	if fm.mergedFiles == nil {
+		fm.mergedFiles = make(map[string]*mergeFile)
+	}
+	mf, ok := fm.mergedFiles[alias]
+	if ok {
+		return fmt.Errorf("already has alias %q", alias)
+	}
+	mf = &mergeFile{
+		ContentType: ct,
+	}
+	bf := &bytes.Buffer{}
+	for _, name := range names {
+		file, err := fm.FS.Open(name)
+		if err != nil {
+			return fmt.Errorf("merge %q failed：%w", name, err)
+		}
+		if _, err = bf.ReadFrom(file); err != nil {
+			_ = file.Close()
+			return fmt.Errorf("read %q failed: %w", name, err)
+		}
+		_ = file.Close()
+
+		bf.WriteString("\n\n")
+	}
+	mf.Body = bf.Bytes()
+	mf.Etag = fmt.Sprintf(`"%x"`, md5.Sum(bf.Bytes()))
+
+	fm.mergedFiles[alias] = mf
+	return nil
+}
+
+type mergeFile struct {
+	ContentType string
+	Body        []byte
+	Etag        string
 }

@@ -31,3 +31,30 @@ func init() {
 		methods[method] = method
 	}
 }
+
+func IsMethod(method string) bool {
+	method = strings.ToUpper(method)
+	_, ok := methods[method]
+	return ok
+}
+
+// SplitCamelCase 将驼峰函数名拆分为 2 部分，
+// 如 GetUser -> Get,User ; GetUserList ->  Get, UserList
+func SplitCamelCase(s string) (string, string) {
+	if len(s) == 0 {
+		return "", ""
+	}
+
+	var splitIndex int
+	for i, char := range s {
+		if i > 0 && char >= 'A' && char <= 'Z' {
+			splitIndex = i
+			break
+		}
+	}
+
+	if splitIndex == 0 {
+		return s, ""
+	}
+	return s[:splitIndex], s[splitIndex:]
+}

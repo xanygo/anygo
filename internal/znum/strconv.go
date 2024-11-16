@@ -6,6 +6,7 @@ package znum
 
 import (
 	"fmt"
+	"math/rand/v2"
 )
 
 const base62Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -16,6 +17,11 @@ func init() {
 	for i := 0; i < len(base62Chars); i++ {
 		base62CharMap[base62Chars[i]] = i
 	}
+}
+
+func Random1() string {
+	n := rand.IntN(len(base62Chars))
+	return string(base62Chars[n])
 }
 
 func FormatIntB62(n int64) string {

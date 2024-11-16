@@ -121,6 +121,13 @@ func (cb *baggage) Attrs() []Attr {
 	return cb.attrs.Values()
 }
 
+func (cb *baggage) Find(key string) (Attr, bool) {
+	if cb == nil {
+		return Attr{}, false
+	}
+	return cb.attrs.Get(key)
+}
+
 // AddAttr 让 ctx 携带一些日志字段，若字段同名( Key 相同)，则新的会覆盖旧的。
 // 在使用前，ctx 应使用 NewContext 或者 WithContext 初始化，否则会 panic。
 func AddAttr(ctx context.Context, attrs ...Attr) {
@@ -136,6 +143,10 @@ func AttrsFromCtx(ctx context.Context) []Attr {
 	return findBaggage(ctx).Attrs()
 }
 
+func FindAttrFromCtx(ctx context.Context, key string) (Attr, bool) {
+	return findBaggage(ctx).Find(key)
+}
+
 // AddMetaAttr 让 ctx 携带一些 meta 日志字段，若字段同名( Key 相同)，则新的会覆盖旧的。
 // 在使用前，ctx 应使用 NewContext 或者 NewMetaContext 或者 WithMetaContext 初始化，否则会 panic。
 func AddMetaAttr(ctx context.Context, attrs ...Attr) {
@@ -149,4 +160,8 @@ func DeleteMetaAttr(ctx context.Context, keys ...string) {
 
 func MetaAttrsFromCtx(ctx context.Context) []Attr {
 	return findMetaBaggage(ctx).Attrs()
+}
+
+func FindMetaAttrFromCtx(ctx context.Context, key string) (Attr, bool) {
+	return findMetaBaggage(ctx).Find(key)
 }

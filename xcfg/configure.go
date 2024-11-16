@@ -16,6 +16,7 @@ import (
 
 	"github.com/xanygo/anygo/xattr"
 	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xvalidator"
 )
 
 // NewDefault 创建一个新的配置解析实例
@@ -41,7 +42,7 @@ type Configure struct {
 	Dir string
 
 	ctx       context.Context
-	validator Validator
+	validator xvalidator.Validator
 	decoders  map[string]xcodec.Decoder
 	exts      []string // 支持的文件后缀，如 []string{".json",".toml"}
 	hooks     hooks
@@ -176,25 +177,7 @@ func (c *Configure) parseBytes(confPath string, fileExt string, content []byte, 
 		return fmt.Errorf("%w, config content=\n%s", errParser, string(contentNew))
 	}
 
-	if vd := c.getValidator(); vd != nil {
-		if err := vd.Validate(obj); err != nil {
-			return err
-		}
-	}
-
-	if ac, ok := obj.(AutoChecker); ok {
-		if err := ac.AutoCheck(); err != nil {
-			return fmt.Errorf("autoCheck: %w", err)
-		}
-	}
-	return nil
-}
-
-func (c *Configure) getValidator() Validator {
-	if c.validator != nil {
-		return c.validator
-	}
-	return DefaultValidator
+	return xvalidator.ValidateWith(c.validator, obj)
 }
 
 func (c *Configure) Exists(path string) bool {
