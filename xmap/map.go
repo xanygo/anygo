@@ -5,7 +5,7 @@
 package xmap
 
 // Get 从 map 中读取指定 key 的值。支持 map 为 nil。
-func Get[Map ~map[K]V, K comparable, V any](m Map, key K) (v V, found bool) {
+func Get[K comparable, V any](m map[K]V, key K) (v V, found bool) {
 	if len(m) == 0 {
 		return v, false
 	}
@@ -14,7 +14,7 @@ func Get[Map ~map[K]V, K comparable, V any](m Map, key K) (v V, found bool) {
 }
 
 // GetDf  从 map 中读取指定 key 的值,若 key 不存在则返回默认值。支持 map 为 nil。
-func GetDf[Map ~map[K]V, K comparable, V any](m Map, key K, def V) V {
+func GetDf[K comparable, V any](m map[K]V, key K, def V) V {
 	if len(m) == 0 {
 		return def
 	}
@@ -26,7 +26,7 @@ func GetDf[Map ~map[K]V, K comparable, V any](m Map, key K, def V) V {
 }
 
 // HasKey 判断 map 中是否存在特定 key。支持 map 为 nil。
-func HasKey[Map ~map[K]V, K comparable, V any](m Map, key K) bool {
+func HasKey[K comparable, V any](m map[K]V, key K) bool {
 	if len(m) == 0 {
 		return false
 	}
@@ -36,7 +36,7 @@ func HasKey[Map ~map[K]V, K comparable, V any](m Map, key K) bool {
 
 // HasAnyKey 判断 map 中是否存在任意 key。支持 map 为 nil。
 // 若 map 或者 keys 为空，均会返回 false
-func HasAnyKey[Map ~map[K]V, K comparable, V any](m Map, keys ...K) bool {
+func HasAnyKey[K comparable, V any](m map[K]V, keys ...K) bool {
 	if len(m) == 0 || len(keys) == 0 {
 		return false
 	}
@@ -50,7 +50,7 @@ func HasAnyKey[Map ~map[K]V, K comparable, V any](m Map, keys ...K) bool {
 }
 
 // HasKeyValue 判断 map 中是否有指定的 key 和 value。支持 map 为 nil。
-func HasKeyValue[Map ~map[K]V, K comparable, V comparable](m Map, key K, value V) bool {
+func HasKeyValue[K comparable, V comparable](m map[K]V, key K, value V) bool {
 	if len(m) == 0 {
 		return false
 	}
@@ -60,7 +60,7 @@ func HasKeyValue[Map ~map[K]V, K comparable, V comparable](m Map, key K, value V
 
 // HasAnyKeyValue 查找 map 中是否有 search 中的任意一项 key-value 。
 // 若 m 或 search 为空，均会返回 false
-func HasAnyKeyValue[Map ~map[K]V, K comparable, V comparable](m Map, search Map) bool {
+func HasAnyKeyValue[K comparable, V comparable](m map[K]V, search map[K]V) bool {
 	if len(m) == 0 || len(search) == 0 {
 		return false
 	}
@@ -74,7 +74,7 @@ func HasAnyKeyValue[Map ~map[K]V, K comparable, V comparable](m Map, search Map)
 }
 
 // Keys 返回 map 所有的 key。支持 map 为 nil。
-func Keys[Map ~map[K]V, K comparable, V any](m Map) []K {
+func Keys[K comparable, V any](m map[K]V) []K {
 	if len(m) == 0 {
 		return nil
 	}
@@ -86,7 +86,7 @@ func Keys[Map ~map[K]V, K comparable, V any](m Map) []K {
 }
 
 // Values 返回 map 所有的 value。支持 map 为 nil。
-func Values[Map ~map[K]V, K comparable, V any](m Map) []V {
+func Values[K comparable, V any](m map[K]V) []V {
 	if len(m) == 0 {
 		return nil
 	}
@@ -152,7 +152,7 @@ func FilterByValues[Map ~map[K]V, K comparable, V comparable](m Map, values ...V
 // FilterKeys 从 map 中 过滤出满足条件的 key 列表
 //
 // filter: 过滤函数，参数依次为 k、v 分别是 map 的 key 和 value、ok-已过滤满足条件的个数
-func FilterKeys[Map ~map[K]V, K comparable, V any](m Map, filter func(k K, v V, ok int) bool) []K {
+func FilterKeys[K comparable, V any](m map[K]V, filter func(k K, v V, ok int) bool) []K {
 	if len(m) == 0 {
 		return nil
 	}
@@ -168,7 +168,7 @@ func FilterKeys[Map ~map[K]V, K comparable, V any](m Map, filter func(k K, v V, 
 // FilterValues 从 map 中 过滤出满足条件的 value 列表
 //
 // filter: 过滤函数，参数依次为 k、v 分别是 map 的 key 和 value、ok-已过滤满足条件的个数
-func FilterValues[Map ~map[K]V, K comparable, V any](m Map, filter func(k K, v V, ok int) bool) []V {
+func FilterValues[K comparable, V any](m map[K]V, filter func(k K, v V, ok int) bool) []V {
 	if len(m) == 0 {
 		return nil
 	}

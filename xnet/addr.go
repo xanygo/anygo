@@ -8,6 +8,7 @@ import (
 	"context"
 	"net"
 
+	"encoding/binary"
 	"github.com/xanygo/anygo/xmap"
 )
 
@@ -51,4 +52,18 @@ func ContextWithAddr(ctx context.Context, addr net.Addr) context.Context {
 func AddrFromContext(ctx context.Context) net.Addr {
 	addr, _ := ctx.Value(ctxKeyAddr).(net.Addr)
 	return addr
+}
+
+func IP4ToLong(ip net.IP) uint32 {
+	parsedIP := ip.To4()
+	if parsedIP == nil {
+		return 0
+	}
+	return binary.BigEndian.Uint32(parsedIP)
+}
+
+func LongToIP4(long uint32) net.IP {
+	ip := make(net.IP, 4)
+	binary.BigEndian.PutUint32(ip, long)
+	return ip
 }

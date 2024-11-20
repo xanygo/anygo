@@ -23,7 +23,7 @@ func Unique[S ~[]T, T comparable](arr S) S {
 }
 
 // ContainsAny 判断 all 中是否包含 values 的任意一个值
-func ContainsAny[S ~[]E, E comparable](all S, values ...E) bool {
+func ContainsAny[E comparable](all []E, values ...E) bool {
 	if len(all) == 0 || len(values) == 0 {
 		return false
 	}
@@ -38,7 +38,7 @@ func ContainsAny[S ~[]E, E comparable](all S, values ...E) bool {
 
 // ToMap 转换为 map，map 的 key 是 slice 的值， map 的 value 是传入的 value
 // 总是返回不为 nil 的 map
-func ToMap[S ~[]E, E comparable, V any](s S, value V) map[E]V {
+func ToMap[E comparable, V any](s []E, value V) map[E]V {
 	result := make(map[E]V, len(s))
 	for i := 0; i < len(s); i++ {
 		result[s[i]] = value
@@ -47,7 +47,7 @@ func ToMap[S ~[]E, E comparable, V any](s S, value V) map[E]V {
 }
 
 // ToMapFunc 使用回调函数，将 slice 转换为 map
-func ToMapFunc[S ~[]E, E comparable, K comparable, V any](s S, fn func(index int, v E) (K, V)) map[K]V {
+func ToMapFunc[E comparable, K comparable, V any](s []E, fn func(index int, v E) (K, V)) map[K]V {
 	result := make(map[K]V, len(s))
 	for i := 0; i < len(s); i++ {
 		k, v := fn(i, s[i])
@@ -57,7 +57,7 @@ func ToMapFunc[S ~[]E, E comparable, K comparable, V any](s S, fn func(index int
 }
 
 // ToAnys 转换为 []any 类型
-func ToAnys[S ~[]E, E any](s S) []any {
+func ToAnys[E any](s []E) []any {
 	if len(s) == 0 {
 		return nil
 	}
@@ -125,7 +125,7 @@ func PopTailN[S ~[]E, E any](s S, n int) (new S, values S) {
 }
 
 // JoinFunc 将 slice 使用特定的 format 方法转换为 string ，然后使用 sep 链接为字符串
-func JoinFunc[S ~[]E, E any](arr S, format func(val E) string, sep string) string {
+func JoinFunc[E any](arr []E, format func(val E) string, sep string) string {
 	if len(arr) == 0 {
 		return ""
 	}
@@ -139,7 +139,7 @@ func JoinFunc[S ~[]E, E any](arr S, format func(val E) string, sep string) strin
 // Join 将 slice 使用默认的 format 方法转换为 string ，然后使用 sep 链接为字符串
 //
 // 若元素有实现 String()string 方法，会优先采用该值，否则会使用 fmt.Sprint
-func Join[S ~[]E, E any](arr S, sep string) string {
+func Join[E any](arr []E, sep string) string {
 	return JoinFunc(arr, func(val E) string {
 		var obj any = val
 		if sg, ok := obj.(fmt.Stringer); ok {
@@ -156,10 +156,23 @@ func Filter[S ~[]E, E any](arr S, filter func(index int, item E, ok int) bool) S
 	if len(arr) == 0 {
 		return nil
 	}
-	result := make(S, 0, len(arr))
+	var result S
 	for i := 0; i < len(arr); i++ {
 		if filter(i, arr[i], len(result)) {
 			result = append(result, arr[i])
+		}
+	}
+	return result
+}
+
+func FilterAs[E any, Y any](arr []E, filter func(index int, item E, ok int) (Y, bool)) []Y {
+	if len(arr) == 0 {
+		return nil
+	}
+	var result []Y
+	for i := 0; i < len(arr); i++ {
+		if item, ok := filter(i, arr[i], len(result)); ok {
+			result = append(result, item)
 		}
 	}
 	return result
