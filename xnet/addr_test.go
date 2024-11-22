@@ -6,10 +6,10 @@ package xnet
 
 import (
 	"context"
+	"net"
 	"testing"
 
 	"github.com/fsgo/fst"
-	"net"
 )
 
 func TestNewAddr(t *testing.T) {

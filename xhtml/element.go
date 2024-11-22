@@ -6,6 +6,7 @@ package xhtml
 
 import (
 	"errors"
+	"html/template"
 )
 
 // Element 所有 HTML 组件的基础定义
@@ -105,4 +106,12 @@ func (c *Any) HTML() ([]byte, error) {
 		bw.Write("</", c.Tag, ">")
 	}
 	return bw.HTML()
+}
+
+func (c *Any) TplHTML() template.HTML {
+	bf, err := c.HTML()
+	if err != nil {
+		return template.HTML(err.Error())
+	}
+	return template.HTML(bf)
 }

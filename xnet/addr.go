@@ -6,9 +6,9 @@ package xnet
 
 import (
 	"context"
+	"encoding/binary"
 	"net"
 
-	"encoding/binary"
 	"github.com/xanygo/anygo/xmap"
 )
 

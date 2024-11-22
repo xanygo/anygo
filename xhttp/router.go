@@ -7,6 +7,7 @@ package xhttp
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/xanygo/anygo/xhttp/internal/zroute"
 	"github.com/xanygo/anygo/xlog"
@@ -318,4 +319,8 @@ func contextWithRouteInfo(ctx context.Context, info RouteInfo) context.Context {
 // ReadRouteInfo 从 http.Request.Context() 信息里读取路由信息
 func ReadRouteInfo(ctx context.Context) RouteInfo {
 	return ctx.Value(ctxKeyRouteInfo).(RouteInfo)
+}
+
+func PathJoin(arr ...string) string {
+	return zroute.CleanPath(strings.Join(arr, ""))
 }

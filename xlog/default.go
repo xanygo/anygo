@@ -7,10 +7,10 @@ package xlog
 import (
 	"context"
 	"os"
+	"path/filepath"
 
 	"github.com/xanygo/anygo/xattr"
 	"github.com/xanygo/anygo/xsync"
-	"path/filepath"
 )
 
 var defaultLogger xsync.Value[Logger]

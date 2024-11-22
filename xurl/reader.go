@@ -373,3 +373,12 @@ func Uint64s(query url.Values, name string, sep string) ([]uint64, error) {
 	}
 	return result, nil
 }
+
+// Page 读取 query 中的页码参数
+func Page(query url.Values, name string) int {
+	num, err := Int(query, name)
+	if err != nil || num < 1 {
+		return 1
+	}
+	return num
+}
