@@ -47,7 +47,7 @@ func ToMap[E comparable, V any](s []E, value V) map[E]V {
 }
 
 // ToMapFunc 使用回调函数，将 slice 转换为 map
-func ToMapFunc[E comparable, K comparable, V any](s []E, fn func(index int, v E) (K, V)) map[K]V {
+func ToMapFunc[E any, K comparable, V any](s []E, fn func(index int, v E) (K, V)) map[K]V {
 	result := make(map[K]V, len(s))
 	for i := 0; i < len(s); i++ {
 		k, v := fn(i, s[i])

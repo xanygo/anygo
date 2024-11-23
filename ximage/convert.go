@@ -76,9 +76,19 @@ func ToGrayImage(img image.Image) *image.Gray {
 }
 
 func ToGrayColor(c color.Color) color.Gray {
-	r, g, b, _ := c.RGBA()
+	r, g, b, a := c.RGBA()
+	if a == 0 {
+		// 完全透明，返回白色，更符合一般情况
+		return color.Gray{Y: 255}
+	}
 	gray := uint8(0.2989*float64(r>>8) + 0.587*float64(g>>8) + 0.114*float64(b>>8))
-	return color.Gray{Y: gray}
+	if a == 0xffff {
+		return color.Gray{Y: gray}
+	}
+	// 对于半透明像素，按透明度加权计算灰度值
+	alpha := uint8(a >> 8)
+	weightedGray := uint8((float64(alpha) / 255.0) * float64(gray))
+	return color.Gray{Y: weightedGray}
 }
 
 // CanvasScale 将宽高调整为指定的比例，在调整时，会保持其中一条边的值不变，让另一条表按照比例放大
