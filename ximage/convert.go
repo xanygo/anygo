@@ -67,9 +67,8 @@ func ToGrayImage(img image.Image) *image.Gray {
 
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			r, g, b, _ := img.At(x, y).RGBA()
-			gray := uint8(0.2989*float64(r>>8) + 0.587*float64(g>>8) + 0.114*float64(b>>8))
-			out.SetGray(x, y, color.Gray{Y: gray})
+			gray := ToGrayColor(img.At(x, y))
+			out.SetGray(x, y, gray)
 		}
 	}
 	return out
