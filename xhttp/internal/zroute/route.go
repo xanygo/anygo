@@ -44,6 +44,7 @@ func ParserPattern(prefix string, pattern string) ([]*Route, error) {
 	if path == "" {
 		return nil, fmt.Errorf("invalid pattern %q", pattern)
 	}
+
 	path = CleanPath(prefix + path)
 	rs := make([]*Route, 0, len(methods))
 
@@ -259,14 +260,18 @@ func (n *wordNode) Match(str string) (string, bool) {
 	return result, true
 }
 
+const uuidReg = `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`
+
 // 解析正则路由地址：
 //
-//	正则表达式：
-//	/user/{category}/{id:[0-9]+}, /user/{id:[0-9]+}.html, /user/hello-{id:[0-9]+}-{age:[0-9]+}.html
+//		正则表达式：
+//		/user/{category}/{id:[0-9]+}, /user/{id:[0-9]+}.html, /user/hello-{id:[0-9]+}-{age:[0-9]+}.html
 //
-//	*通配符（简化正则）(* 可以匹配包含 / 的所有字符):
-//	   /user/*,  /user/*/detail, /user/*/detail/*, /user/*/detail/*.html
-//	   /user/{s1:*},  /user/{s1:*}/detail,  /user/{s1:*}/detail/{s2:*}
+//		 /{id:\d{2}-\d{3}-\d{4}}.{ext:\d{3}}
+//
+//		*通配符（简化正则）(* 可以匹配包含 / 的所有字符):
+//		/user/*,  /user/*/detail, /user/*/detail/*, /user/*/detail/*.html
+//	 /user/{s1:*},  /user/{s1:*}/detail,  /user/{s1:*}/detail/{s2:*}
 func parserRegexpPattern(pattern string) (string, error) {
 	cnt1 := strings.Count(pattern, "{")
 	cnt2 := strings.Count(pattern, "}")
@@ -277,13 +282,9 @@ func parserRegexpPattern(pattern string) (string, error) {
 	var regPatternNew string // 归一化后的正则地址
 	for {
 		leftIndex := strings.IndexByte(pattern, '{')
-		rightIndex := strings.IndexByte(pattern, '}')
-		if leftIndex > rightIndex {
-			return "", fmt.Errorf("invalid path %q", pattern)
-		}
 		starIndex := strings.IndexByte(pattern, '*')
 
-		// 先处理 /* 这种之间使用 * 的路由地址
+		// 先处理 /* 这种直接使用 * 的路由地址，如 /*/{id}
 		if starIndex != -1 && (starIndex < leftIndex || leftIndex == -1) {
 			name := fmt.Sprintf("p%d", len(names))
 			if names[name] {
@@ -295,27 +296,75 @@ func parserRegexpPattern(pattern string) (string, error) {
 			continue
 		}
 
-		if rightIndex != -1 {
-			str := pattern[leftIndex+1 : rightIndex]
-			name, reg, ok := strings.Cut(str, ":")
-			if names[name] {
-				return "", fmt.Errorf("dup name %q in path %q", name, pattern)
-			}
-			regPatternNew += pattern[:leftIndex]
-			names[name] = true
-			if ok { // {id:[0-9]+} 、{id:*}
-				if reg == "*" {
-					reg = ".*"
-				}
-				regPatternNew += fmt.Sprintf("(?P<%s>%s)", name, reg)
-			} else { // {id}
-				regPatternNew += fmt.Sprintf("(?P<%s>%s)", name, ".*")
-			}
-			pattern = pattern[rightIndex+1:]
-			continue
+		if leftIndex == -1 {
+			regPatternNew += regexp.QuoteMeta(pattern)
+			break
 		}
-		regPatternNew += regexp.QuoteMeta(pattern)
-		break
+		pos := findEightCurlyBrace(pattern[leftIndex:])
+		if pos < 0 {
+			return "", fmt.Errorf("invalid path %q", pattern)
+		}
+		rightIndex := leftIndex + pos
+
+		// 找到变量参数，的到如 category、id:[0-9]+、id:\d{2}-\d{3}-\d{4}
+		varTxt := pattern[leftIndex+1 : rightIndex]
+
+		name, reg, ok := strings.Cut(varTxt, ":")
+		if names[name] {
+			return "", fmt.Errorf("dup name %q in path %q", name, pattern)
+		}
+		regPatternNew += regexp.QuoteMeta(pattern[:leftIndex])
+		names[name] = true
+		if ok { // {id:[0-9]+} 、{id:*}
+			if txt, ok1 := regexpAlias[reg]; ok1 {
+				reg = txt
+			} else {
+				switch reg {
+				case "*":
+					reg = ".*"
+				case "UUID":
+					reg = uuidReg
+				case "UINT":
+					reg = `^[1-9][0-9]*$|^0$`
+				}
+			}
+			regPatternNew += fmt.Sprintf("(?P<%s>%s)", name, reg)
+		} else { // {id}
+			regPatternNew += fmt.Sprintf("(?P<%s>%s)", name, ".*")
+		}
+		pattern = pattern[rightIndex+1:]
 	}
 	return regPatternNew, nil
+}
+
+var regexpAlias = map[string]string{}
+
+func RegisterRegexpAlias(name string, reg string) {
+	if name == "" || reg == "" {
+		panic(fmt.Sprintf("invalid param: RegisterRegexpAlias(%q,%q)", name, reg))
+	}
+	_ = regexp.MustCompile(reg)
+	regexpAlias[name] = reg
+}
+
+// 查找 正则路由，如 /user/{category}/{id:[0-9]+}  、 /{id:\d{2}-\d{3}-\d{4}}.{ext:\d{3}} 中
+// 一个路由参数的中 和 { 对应的 }
+// 路由参数值得是： {category}、 {id:\d{2}-\d{3}-\d{4}}
+// 传入的参数是：
+// {category}/{id:[0-9]+}、{id:[0-9]+}
+// {id:\d{2}-\d{3}-\d{4}}.{ext:\d{3}} 、{ext:\d{3}}
+func findEightCurlyBrace(txt string) int {
+	var num int
+	for index, c := range txt {
+		switch c {
+		case '{':
+			num++
+		case '}':
+			num--
+			if num == 0 {
+				return index
+			}
+		}
+	}
+	return -1
 }

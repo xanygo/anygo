@@ -51,6 +51,12 @@ func NewRouter() *Router {
 //
 //     /user/{category}/{id:[0-9]+}, /user/{id:[0-9]+}.html, /user/hello-{id:[0-9]+}-{age:[0-9]+}.html
 //
+//     正则表达式别名：
+//     /{id:UUID} 、/{id:UINT}
+//     UUID 可匹配 xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx 这个格式的 UUID
+//     UINT 可匹配正整数
+//     除此之外，还可以使用 RegisterRegexpAlias 注册自定义的别名
+//
 //  4. *通配符（简化正则）(* 可以匹配包含 / 的所有字符)
 //     /user/*,  /user/*/detail, /user/*/detail/*, /user/*/detail/*.html
 //     /user/{s1:*},  /user/{s1:*}/detail,  /user/{s1:*}/detail/{s2:*}
@@ -323,4 +329,10 @@ func ReadRouteInfo(ctx context.Context) RouteInfo {
 
 func PathJoin(arr ...string) string {
 	return zroute.CleanPath(strings.Join(arr, ""))
+}
+
+// RegisterRegexpAlias 注册路由正则别买
+// 默认已集成 UUID、UINT
+func RegisterRegexpAlias(name string, reg string) {
+	zroute.RegisterRegexpAlias(name, reg)
 }

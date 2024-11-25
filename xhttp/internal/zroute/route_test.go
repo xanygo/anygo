@@ -5,6 +5,7 @@
 package zroute
 
 import (
+	"github.com/fsgo/fst"
 	"reflect"
 	"testing"
 )
@@ -68,6 +69,33 @@ func Test_splitPattern(t *testing.T) {
 			},
 			want:  []string{"ANY"},
 			want1: "/index",
+			want2: "id=1,a=2",
+		},
+		{
+			name: "case 7",
+			args: args{
+				pattern: `/{id} meta|id=1,a=2`,
+			},
+			want:  []string{"ANY"},
+			want1: "/{id}",
+			want2: "id=1,a=2",
+		},
+		{
+			name: "case 8",
+			args: args{
+				pattern: `/{id:[0-9]+} meta|id=1,a=2`,
+			},
+			want:  []string{"ANY"},
+			want1: "/{id:[0-9]+}",
+			want2: "id=1,a=2",
+		},
+		{
+			name: "case 9",
+			args: args{
+				pattern: `/{id:\d{3}} meta|id=1,a=2`,
+			},
+			want:  []string{"ANY"},
+			want1: "/{id:\\d{3}}",
 			want2: "id=1,a=2",
 		},
 	}
@@ -241,6 +269,20 @@ func Test_parserRegexpPattern(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "case 8",
+			args: args{
+				pattern: `/*/{id:[0-9]+}.html`,
+			},
+			want: `/(?P<p0>.*)/(?P<id>[0-9]+)\.html`,
+		},
+		{
+			name: "case 9",
+			args: args{
+				pattern: `/{id:UUID}.{ext}`,
+			},
+			want: `/(?P<id>` + uuidReg + `)\.(?P<ext>.*)`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -249,9 +291,7 @@ func Test_parserRegexpPattern(t *testing.T) {
 				t.Errorf("parserRegexpPattern() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if got != tt.want {
-				t.Errorf("parserRegexpPattern() got = %q, want %q", got, tt.want)
-			}
+			fst.Equal(t, tt.want, got)
 		})
 	}
 }
