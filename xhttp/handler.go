@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/xanygo/anygo/internal"
 	"github.com/xanygo/anygo/xhttp/internal/zroute"
 	"github.com/xanygo/anygo/xslice"
 	"github.com/xanygo/anygo/xsync"
@@ -107,6 +108,9 @@ func init() {
 }
 
 func notFound(w http.ResponseWriter, r *http.Request) {
+	if internal.HandlerImage404(w, r) {
+		return
+	}
 	w.WriteHeader(http.StatusNotFound)
 	accept := r.Header.Get("Accept-Language")
 	zhIndex := strings.Index(accept, "zh")

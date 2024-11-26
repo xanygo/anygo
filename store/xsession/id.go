@@ -6,23 +6,17 @@ package xsession
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
-	"io"
 	"time"
-	"unsafe"
 
 	"github.com/xanygo/anygo/internal/znum"
 	"github.com/xanygo/anygo/xctx"
+	"github.com/xanygo/anygo/xstr"
 )
 
 func NewID() string {
-	bf := make([]byte, 24)
-	_, _ = io.ReadFull(rand.Reader, bf)
-	out := make([]byte, base64.RawURLEncoding.EncodedLen(len(bf)))
-	base64.RawURLEncoding.Encode(out, bf)
 	tm := znum.FormatIntB62(time.Now().Unix() - 1730000000)
-	return tm + "|" + unsafe.String(&out[0], len(out))
+	id := xstr.RandomN(8)
+	return tm + "|" + id
 }
 
 var ctxKeySessionID = xctx.NewKey()
