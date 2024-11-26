@@ -99,7 +99,15 @@ func BenchmarkAES(b *testing.B) {
 }
 
 func TestCiphers(t *testing.T) {
-	cs := Ciphers{&AesBlock{}, &Base64{}}
+	cs := Ciphers{
+		&AesBlock{
+			Key: "demo",
+		},
+		&Base64{},
+		&AesOFB{
+			Key: "hello",
+		},
+	}
 	txt := []byte("hello")
 	got1, err1 := cs.Encrypt(txt)
 	fst.NoError(t, err1)

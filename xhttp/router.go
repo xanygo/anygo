@@ -55,6 +55,8 @@ func NewRouter() *Router {
 //     /{id:UUID} 、/{id:UINT}
 //     UUID 可匹配 xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx 这个格式的 UUID
 //     UINT 可匹配正整数
+//     Base62 匹配 [0-9a-zA-Z]+
+//     Base64URL 匹配 [0-9a-zA-Z\-_]+
 //     除此之外，还可以使用 RegisterRegexpAlias 注册自定义的别名
 //
 //  4. *通配符（简化正则）(* 可以匹配包含 / 的所有字符)

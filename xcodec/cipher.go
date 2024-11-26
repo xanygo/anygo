@@ -114,7 +114,7 @@ var _ Cipher = (*AesBlock)(nil)
 
 // AesBlock AES 加解密
 type AesBlock struct {
-	// Key 秘钥，必填
+	// Key 秘钥，必填，若长度为 16, 24, 32 则直接使用，否则使用 md5 值
 	Key string
 
 	// IV 初始化向量，可选，当不为空时，长度应为 16
@@ -161,6 +161,9 @@ type cryptoBlockBase struct {
 }
 
 func (base *cryptoBlockBase) init() {
+	if len(base.Key) == 0 {
+		panic("empty Key")
+	}
 	base.key = []byte(base.Key)
 	switch len(base.key) {
 	case 16, 24, 32:
@@ -173,7 +176,7 @@ func (base *cryptoBlockBase) init() {
 	if len(base.IV) == base.BlockSize {
 		base.iv = []byte(base.IV)
 	} else {
-		by2 := md5.Sum([]byte(base.Key + "|xanygo|" + base.Key))
+		by2 := md5.Sum([]byte(base.Key + "|xanygo|" + base.IV))
 		base.iv = by2[:base.BlockSize]
 	}
 }
@@ -235,7 +238,12 @@ func (base *cryptoBlockBase) Decrypt(src []byte) ([]byte, error) {
 var _ Cipher = (*AesOFB)(nil)
 
 type AesOFB struct {
+	// Key 必填，加密秘钥，若长度为 16, 24, 32 会直接使用，否则会使用 md5 值
 	Key string
+
+	// IV 初始化向量，可选，当不为空时，长度应为 16
+	// 当为空时，会基于 key 生成
+	IV string
 
 	key []byte
 	iv  []byte
@@ -244,15 +252,25 @@ type AesOFB struct {
 }
 
 func (a *AesOFB) init() {
+	if len(a.Key) == 0 {
+		panic("empty Key")
+	}
 	key := []byte(a.Key)
-	if len(key) != 32 {
+	switch len(key) {
+	case 16, 24, 32:
+		// 直接使用设置的 Key
+	default:
 		by1 := md5.Sum([]byte("anygo#" + a.Key))
 		key = []byte(hex.EncodeToString(by1[:]))
 	}
 	a.key = key
 
-	by2 := md5.Sum([]byte(a.Key + "|xanygo|" + a.Key))
-	a.iv = by2[:aes.BlockSize]
+	if len(a.IV) == aes.BlockSize {
+		a.iv = []byte(a.IV)
+	} else {
+		by2 := md5.Sum([]byte(a.Key + "|xanygo|" + a.IV))
+		a.iv = by2[:aes.BlockSize]
+	}
 }
 
 func (a *AesOFB) Encrypt(src []byte) ([]byte, error) {

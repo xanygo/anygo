@@ -323,6 +323,10 @@ func parserRegexpPattern(pattern string) (string, error) {
 					reg = ".*"
 				case "UUID":
 					reg = uuidReg
+				case "Base62":
+					reg = `[0-9a-zA-Z]+`
+				case "Base64URL":
+					reg = `[0-9a-zA-Z\-_]+`
 				case "UINT":
 					reg = `0|[1-9][0-9]*`
 				}
