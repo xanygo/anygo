@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/xanygo/anygo/xlog"
+	"github.com/xanygo/anygo/xstr"
 )
 
 const MethodAny = "ANY"
@@ -260,7 +261,7 @@ func (n *wordNode) Match(str string) (string, bool) {
 	return result, true
 }
 
-const uuidReg = `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`
+const uuidReg = `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`
 
 // 解析正则路由地址：
 //
@@ -281,11 +282,14 @@ func parserRegexpPattern(pattern string) (string, error) {
 	names := make(map[string]bool)
 	var regPatternNew string // 归一化后的正则地址
 	for {
-		leftIndex := strings.IndexByte(pattern, '{')
+		leftIndex, rightIndex, found := xstr.BytePairIndex(pattern, '{', '}')
+		if !found && (rightIndex != -1 || leftIndex != -1) {
+			return "", fmt.Errorf("invalid path %q", pattern)
+		}
 		starIndex := strings.IndexByte(pattern, '*')
 
 		// 先处理 /* 这种直接使用 * 的路由地址，如 /*/{id}
-		if starIndex != -1 && (starIndex < leftIndex || leftIndex == -1) {
+		if starIndex != -1 && (starIndex < leftIndex || !found) {
 			name := fmt.Sprintf("p%d", len(names))
 			if names[name] {
 				return "", fmt.Errorf("dup name %q in path %q", name, pattern)
@@ -296,15 +300,10 @@ func parserRegexpPattern(pattern string) (string, error) {
 			continue
 		}
 
-		if leftIndex == -1 {
+		if !found {
 			regPatternNew += regexp.QuoteMeta(pattern)
 			break
 		}
-		pos := findEightCurlyBrace(pattern[leftIndex:])
-		if pos < 0 {
-			return "", fmt.Errorf("invalid path %q", pattern)
-		}
-		rightIndex := leftIndex + pos
 
 		// 找到变量参数，的到如 category、id:[0-9]+、id:\d{2}-\d{3}-\d{4}
 		varTxt := pattern[leftIndex+1 : rightIndex]
@@ -325,7 +324,7 @@ func parserRegexpPattern(pattern string) (string, error) {
 				case "UUID":
 					reg = uuidReg
 				case "UINT":
-					reg = `^[1-9][0-9]*$|^0$`
+					reg = `0|[1-9][0-9]*`
 				}
 			}
 			regPatternNew += fmt.Sprintf("(?P<%s>%s)", name, reg)
@@ -345,26 +344,4 @@ func RegisterRegexpAlias(name string, reg string) {
 	}
 	_ = regexp.MustCompile(reg)
 	regexpAlias[name] = reg
-}
-
-// 查找 正则路由，如 /user/{category}/{id:[0-9]+}  、 /{id:\d{2}-\d{3}-\d{4}}.{ext:\d{3}} 中
-// 一个路由参数的中 和 { 对应的 }
-// 路由参数值得是： {category}、 {id:\d{2}-\d{3}-\d{4}}
-// 传入的参数是：
-// {category}/{id:[0-9]+}、{id:[0-9]+}
-// {id:\d{2}-\d{3}-\d{4}}.{ext:\d{3}} 、{ext:\d{3}}
-func findEightCurlyBrace(txt string) int {
-	var num int
-	for index, c := range txt {
-		switch c {
-		case '{':
-			num++
-		case '}':
-			num--
-			if num == 0 {
-				return index
-			}
-		}
-	}
-	return -1
 }

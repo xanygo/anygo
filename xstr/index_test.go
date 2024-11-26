@@ -242,3 +242,88 @@ func TestLastIndexByteN(t *testing.T) {
 		})
 	}
 }
+
+func TestBytePairIndex(t *testing.T) {
+	type args struct {
+		str   string
+		left  byte
+		right byte
+	}
+	tests := []struct {
+		name           string
+		args           args
+		wantLeftIndex  int
+		wantRightIndex int
+		wantOk         bool
+	}{
+		{
+			name: "case 1",
+			args: args{
+				str:   "(hello(a,b,c,d(e,f))) word(a,b)",
+				left:  '(',
+				right: ')',
+			},
+			wantLeftIndex:  0,
+			wantRightIndex: 20,
+			wantOk:         true,
+		},
+		{
+			name: "case 2",
+			args: args{
+				str:   "word(a,b)",
+				left:  '(',
+				right: ')',
+			},
+			wantLeftIndex:  4,
+			wantRightIndex: 8,
+			wantOk:         true,
+		},
+		{
+			name: "case 3",
+			args: args{
+				str:   "word(a,b",
+				left:  '(',
+				right: ')',
+			},
+			wantLeftIndex:  4,
+			wantRightIndex: -1,
+			wantOk:         false,
+		},
+		{
+			name: "case 4",
+			args: args{
+				str:   "word(a,b()",
+				left:  '(',
+				right: ')',
+			},
+			wantLeftIndex:  4,
+			wantRightIndex: 9,
+			wantOk:         false,
+		},
+		{
+			name: "case 5",
+			args: args{
+				str:   "/}id:[0-9]+{/",
+				left:  '{',
+				right: '}',
+			},
+			wantLeftIndex:  -1,
+			wantRightIndex: 1,
+			wantOk:         false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotLeftIndex, gotRightIndex, gotOk := BytePairIndex(tt.args.str, tt.args.left, tt.args.right)
+			if gotLeftIndex != tt.wantLeftIndex {
+				t.Errorf("BytePairIndex() gotLeftIndex = %v, want %v", gotLeftIndex, tt.wantLeftIndex)
+			}
+			if gotRightIndex != tt.wantRightIndex {
+				t.Errorf("BytePairIndex() gotRightIndex = %v, want %v", gotRightIndex, tt.wantRightIndex)
+			}
+			if gotOk != tt.wantOk {
+				t.Errorf("BytePairIndex() gotOk = %v, want %v", gotOk, tt.wantOk)
+			}
+		})
+	}
+}

@@ -229,3 +229,17 @@ func ExampleHasAnySuffix() {
 	// true
 	// true
 }
+
+func ExampleBytePairIndex() {
+	str1 := `(hello(a,b,c,d(e,f),g),h) word(a,b)`
+
+	leftIndex, rightIndex, ok := xstr.BytePairIndex(str1, '(', ')')
+	fmt.Println("leftIndex=", leftIndex, "rightIndex=", rightIndex, "ok=", ok)
+
+	substr := str1[leftIndex : rightIndex+1]
+	fmt.Println("substr=", substr)
+
+	// Output:
+	// leftIndex= 0 rightIndex= 24 ok= true
+	// substr= (hello(a,b,c,d(e,f),g),h)
+}
