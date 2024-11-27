@@ -281,7 +281,7 @@ func Test_parserRegexpPattern(t *testing.T) {
 			args: args{
 				pattern: `/{id:UUID}.{ext}`,
 			},
-			want: `/(?P<id>` + uuidReg + `)\.(?P<ext>.*)`,
+			want: `/(?P<id>` + uuidReg + `)\.(?P<ext>[^/]+)`,
 		},
 	}
 	for _, tt := range tests {

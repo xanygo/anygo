@@ -325,6 +325,8 @@ func parserRegexpPattern(pattern string) (string, error) {
 					reg = uuidReg
 				case "Base62":
 					reg = `[0-9a-zA-Z]+`
+				case "Base36":
+					reg = `[0-9a-z]+`
 				case "Base64URL":
 					reg = `[0-9a-zA-Z\-_]+`
 				case "UINT":
@@ -333,7 +335,7 @@ func parserRegexpPattern(pattern string) (string, error) {
 			}
 			regPatternNew += fmt.Sprintf("(?P<%s>%s)", name, reg)
 		} else { // {id}
-			regPatternNew += fmt.Sprintf("(?P<%s>%s)", name, ".*")
+			regPatternNew += fmt.Sprintf("(?P<%s>%s)", name, "[^/]+")
 		}
 		pattern = pattern[rightIndex+1:]
 	}
