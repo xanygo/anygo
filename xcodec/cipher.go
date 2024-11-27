@@ -280,7 +280,7 @@ func (a *AesOFB) Encrypt(src []byte) ([]byte, error) {
 	a.once.Do(a.init)
 	block, err := aes.NewCipher(a.key)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	stream := cipher.NewOFB(block, a.iv)
 	bf := &bytes.Buffer{}
@@ -303,13 +303,9 @@ func (a *AesOFB) Decrypt(src []byte) ([]byte, error) {
 	a.once.Do(a.init)
 	block, err := aes.NewCipher(a.key)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	stream := cipher.NewOFB(block, a.iv)
 	rd := &cipher.StreamReader{S: stream, R: bytes.NewReader(src)}
-	plainText, err := io.ReadAll(rd)
-	if err != nil {
-		return nil, err
-	}
-	return plainText, nil
+	return io.ReadAll(rd)
 }

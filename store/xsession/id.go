@@ -8,14 +8,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/xanygo/anygo/xcodec/xbase62"
+	"github.com/xanygo/anygo/xcodec/xbase"
 	"github.com/xanygo/anygo/xctx"
 	"github.com/xanygo/anygo/xstr"
 )
 
 func NewID() string {
-	tm := xbase62.EncodeInt64(time.Now().Unix() - 1730000000)
-	id := xstr.RandomN(8)
+	tm := xbase.Base62.EncodeInt64(time.Now().Unix() - 1730000000)
+	id := xstr.RandNChar(8)
 	return tm + "|" + id
 }
 

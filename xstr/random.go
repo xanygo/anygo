@@ -10,12 +10,32 @@ import (
 )
 
 // TableAlphaNum 所有字母和数字的合集
-const TableAlphaNum = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+const TableAlphaNum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
-func RandomN(n int) string {
+// RandNChar 返回一个长度是 n 的字符串
+func RandNChar(n int) string {
 	bf := make([]byte, n)
 	for i := 0; i < n; i++ {
 		bf[i] = TableAlphaNum[rand.IntN(len(TableAlphaNum))]
 	}
-	return unsafe.String(&bf[0], n)
+	return unsafe.String(unsafe.SliceData(bf), n)
+}
+func RandNByte(n int) []byte {
+	bf := make([]byte, n)
+	for i := 0; i < n; i++ {
+		bf[i] = TableAlphaNum[rand.IntN(len(TableAlphaNum))]
+	}
+	return bf
+}
+
+// RandChar 返回一个数字或者字母
+func RandChar() string {
+	n := rand.IntN(len(TableAlphaNum))
+	return string(TableAlphaNum[n])
+}
+
+// RandByte 返回一个数字或者字母
+func RandByte() byte {
+	n := rand.IntN(len(TableAlphaNum))
+	return TableAlphaNum[n]
 }
