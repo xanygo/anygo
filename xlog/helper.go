@@ -5,6 +5,7 @@
 package xlog
 
 import (
+	"github.com/xanygo/anygo/xstr"
 	"log/slog"
 	"path/filepath"
 )
@@ -20,8 +21,8 @@ func ReplaceAttr(groups []string, a slog.Attr) slog.Attr {
 	case slog.SourceKey:
 		if a.Value.Kind() == slog.KindAny {
 			if source, ok := a.Value.Any().(*slog.Source); ok {
-				// source.File = xstr.CutLastByteNAfter(source.File, '/', 3)
-				source.File = filepath.Base(source.File)
+				source.File = xstr.CutLastByteNAfter(source.File, '/', 3)
+				source.Function = filepath.Base(source.Function)
 			}
 		}
 	case slog.TimeKey:
