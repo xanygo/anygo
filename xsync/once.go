@@ -145,3 +145,38 @@ func (os *OnceSet[T]) Clear() {
 	os.has = false
 	os.mux.Unlock()
 }
+
+// OnceInit 延迟初始化一次
+type OnceInit[T any] struct {
+	// New 必填，在初始化的时候调用一次
+	New func() T
+
+	once  sync.Once
+	value Value[T]
+}
+
+func (oi *OnceInit[T]) doInit() {
+	oi.value.Store(oi.New())
+}
+
+func (oi *OnceInit[T]) Load() T {
+	oi.once.Do(oi.doInit)
+	return oi.value.Load()
+}
+
+func (oi *OnceInit[T]) Store(val T) {
+	oi.once.Do(empty)
+	oi.value.Store(val)
+}
+
+func (oi *OnceInit[T]) Swap(new T) (old T) {
+	oi.once.Do(empty)
+	return oi.value.Swap(new)
+}
+
+func (oi *OnceInit[T]) CompareAndSwap(old, new T) (swapped bool) {
+	oi.once.Do(empty)
+	return oi.value.CompareAndSwap(old, new)
+}
+
+func empty() {}

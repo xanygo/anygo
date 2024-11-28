@@ -11,15 +11,15 @@ import (
 	"github.com/xanygo/anygo/xsync"
 )
 
-var defaultClientLogger xsync.Value[Logger]
+var defaultClientLogger = &xsync.OnceInit[Logger]{
+	New: func() Logger {
+		return ClientLoggerOpt().MustNewLogger()
+	},
+}
 
-// ClientLogger 用于打印 client 请求/响应结果的 logger，若没有设置，则返回 Default()
+// ClientLogger 用于打印 client 请求/响应结果的 logger
 func ClientLogger() Logger {
-	lg := defaultClientLogger.Load()
-	if lg == nil {
-		return Default()
-	}
-	return lg
+	return defaultClientLogger.Load()
 }
 
 // SetClientLogger 设置打印 client 请求/响应结果的 logger

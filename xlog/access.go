@@ -11,15 +11,15 @@ import (
 	"github.com/xanygo/anygo/xsync"
 )
 
-var defaultAccessLogger xsync.Value[Logger]
+var defaultAccessLogger = &xsync.OnceInit[Logger]{
+	New: func() Logger {
+		return AccessLoggerOpt().MustNewLogger()
+	},
+}
 
 // AccessLogger 用于打印 server 访问日志的 logger，若没有设置，则返回 Default()
 func AccessLogger() Logger {
-	lg := defaultAccessLogger.Load()
-	if lg == nil {
-		return Default()
-	}
-	return lg
+	return defaultAccessLogger.Load()
 }
 
 // SetAccessLogger 设置用于打印 server 访问日志的 logger

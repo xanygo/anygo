@@ -59,10 +59,12 @@ func NewSimple(w io.Writer) *Simple {
 	if dw, ok := w.(DispatchWriter); ok {
 		return &Simple{
 			Handler: NewDispatchHandler(dw.Writers(), defaultJSONHandler),
+			w:       w,
 		}
 	}
 	return &Simple{
 		Handler: defaultJSONHandler(w),
+		w:       w,
 	}
 }
 
@@ -78,6 +80,7 @@ var _ Logger = (*Simple)(nil)
 
 // Simple 一个 Logger 默认实现
 type Simple struct {
+	w       io.Writer    // 只供 LevelWriter 方法使用
 	Handler Handler      // 必填
 	Errors  chan<- error // 可选，当输出日志内容出错时,将错误输出到此
 }
@@ -106,6 +109,17 @@ func (sl *Simple) Output(ctx context.Context, level Level, callerSkip int, msg s
 		default:
 		}
 	}
+}
+
+var _ HasLevelWriter = (*Simple)(nil)
+
+func (sl *Simple) LevelWriter(level Level) io.Writer {
+	if hl, ok := sl.Handler.(HasLevelWriter); ok {
+		if w := hl.LevelWriter(level); w != nil {
+			return w
+		}
+	}
+	return sl.w
 }
 
 func handlerOutput(ctx context.Context, handler Handler, level Level, callerSkip int, msg string, attrs ...Attr) error {
@@ -140,6 +154,7 @@ func MultiLogger(loggers ...Logger) Logger {
 }
 
 var _ Logger = (*multiLogger)(nil)
+var _ HasLevelWriter = (*multiLogger)(nil)
 
 type multiLogger struct {
 	loggers []Logger
@@ -165,4 +180,43 @@ func (m *multiLogger) Output(ctx context.Context, level Level, callerSkip int, m
 	for _, l := range m.loggers {
 		l.Output(ctx, level, callerSkip+1, msg, attr...)
 	}
+}
+
+func (m *multiLogger) LevelWriter(level Level) io.Writer {
+	for _, l := range m.loggers {
+		if hl, ok := l.(HasLevelWriter); ok {
+			if w := hl.LevelWriter(level); w != nil {
+				return w
+			}
+		}
+	}
+	return nil
+}
+
+type HasLevelWriter interface {
+	LevelWriter(level Level) io.Writer
+}
+
+func AsLevelWriter(l Logger, level Level) io.Writer {
+	if lw, ok := l.(HasLevelWriter); ok {
+		if w := lw.LevelWriter(level); w != nil {
+			return w
+		}
+	}
+	return &lgWriter{
+		logger: l,
+		level:  level,
+	}
+}
+
+var _ io.Writer = (*lgWriter)(nil)
+
+type lgWriter struct {
+	logger Logger
+	level  Level
+}
+
+func (w *lgWriter) Write(p []byte) (n int, err error) {
+	w.logger.Output(context.Background(), w.level, 1, string(p))
+	return len(p), nil
 }

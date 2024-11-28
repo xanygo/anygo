@@ -70,4 +70,5 @@ func InitAllDefaultLogger() {
 	SetDefault(DefaultLoggerOpt().MustNewLogger())
 	SetPanicLogger(PanicLoggerOpt().MustNewLogger())
 	SetAccessLogger(AccessLoggerOpt().MustNewLogger())
+	SetClientLogger(ClientLoggerOpt().MustNewLogger())
 }

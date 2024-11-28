@@ -35,6 +35,7 @@ func NewDispatchHandler(ws map[Level]io.WriteCloser, nhd NewHandlerFunc) Handler
 
 var _ io.Closer = (*dispatchHandler)(nil)
 var _ Handler = (*dispatchHandler)(nil)
+var _ HasLevelWriter = (*dispatchHandler)(nil)
 
 type dispatchHandler struct {
 	writers      map[Level]io.WriteCloser
@@ -47,6 +48,10 @@ func (h *dispatchHandler) Handle(ctx context.Context, record slog.Record) error 
 		return nil
 	}
 	return hd.Handle(ctx, record)
+}
+
+func (h *dispatchHandler) LevelWriter(level Level) io.Writer {
+	return h.writers[level]
 }
 
 func (h *dispatchHandler) Close() error {

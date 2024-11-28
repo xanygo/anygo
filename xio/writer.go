@@ -5,6 +5,7 @@
 package xio
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -94,4 +95,22 @@ func WriteStrings(bf StringWriter, ss ...string) (int, error) {
 		}
 	}
 	return total, nil
+}
+
+type PrintfWriter interface {
+	Printf(string, ...any)
+}
+
+func AsPrintfWriter(w io.Writer) PrintfWriter {
+	return &pw{w: w}
+}
+
+var _ PrintfWriter = (*pw)(nil)
+
+type pw struct {
+	w io.Writer
+}
+
+func (p *pw) Printf(str string, args ...any) {
+	_, _ = fmt.Fprintf(p.w, str, args...)
 }
