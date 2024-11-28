@@ -38,23 +38,39 @@ func IsMethod(method string) bool {
 	return ok
 }
 
-// SplitCamelCase 将驼峰函数名拆分为 2 部分，
-// 如 GetUser -> Get,User ; GetUserList ->  Get, UserList
-func SplitCamelCase(s string) (string, string) {
+// GetPrefixMethod 获取字符串的 Method 前缀
+// 如 GetUser -> GET，GetUserList ->  GET
+// index  ->  GET
+// PostXXX  -> POST
+// DeleteByID -> DELETE
+// Save ->  POST  // 以 Save 为前缀的都返回 POST
+func GetPrefixMethod(s string) string {
 	if len(s) == 0 {
-		return "", ""
+		return http.MethodGet
 	}
 
-	var splitIndex int
+	var index int
 	for i, char := range s {
 		if i > 0 && char >= 'A' && char <= 'Z' {
-			splitIndex = i
+			index = i
 			break
 		}
 	}
-
-	if splitIndex == 0 {
-		return s, ""
+	if index == 0 {
+		return http.MethodGet
 	}
-	return s[:splitIndex], s[splitIndex:]
+	method := s[:index]
+
+	switch method {
+	case "Save":
+		return http.MethodPost
+	case "Update":
+		return http.MethodPut
+	}
+
+	if IsMethod(method) {
+		return strings.ToUpper(method)
+	}
+
+	return http.MethodGet
 }

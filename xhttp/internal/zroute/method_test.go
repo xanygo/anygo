@@ -4,38 +4,42 @@
 
 package zroute
 
-import "testing"
+import (
+	"net/http"
+	"testing"
+)
 
-func TestSplitCamelCase(t *testing.T) {
+func TestGetPrefixMethod(t *testing.T) {
 	tests := []struct {
-		str   string
-		want  string
-		want1 string
+		str  string
+		want string
 	}{
 		{
-			str:   "Get",
-			want:  "Get",
-			want1: "",
+			str:  "Get",
+			want: http.MethodGet,
 		},
 		{
-			str:   "GetUser",
-			want:  "Get",
-			want1: "User",
+			str:  "GetUser",
+			want: http.MethodGet,
 		},
 		{
-			str:   "GetUserList",
-			want:  "Get",
-			want1: "UserList",
+			str:  "GetUserList",
+			want: http.MethodGet,
+		},
+		{
+			str:  "DeleteByID",
+			want: http.MethodDelete,
+		},
+		{
+			str:  "Index",
+			want: http.MethodGet,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.str, func(t *testing.T) {
-			got, got1 := SplitCamelCase(tt.str)
+			got := GetPrefixMethod(tt.str)
 			if got != tt.want {
 				t.Errorf("SplitCamelCase() got = %v, want %v", got, tt.want)
-			}
-			if got1 != tt.want1 {
-				t.Errorf("SplitCamelCase() got1 = %v, want %v", got1, tt.want1)
 			}
 		})
 	}

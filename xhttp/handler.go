@@ -141,19 +141,20 @@ type PatternHandler struct {
 //	 注册的路由只支持此种 HTTP 请求，如 Delete 方法只支持 HTTP DELETE 请求。
 //	 3. 方法名中包含 Save 的，注册为 POST 请求。
 //
-// 假设 RegisterGroup(r,"/user",&userHandler{}),userHandler{} 中所有实现了 func(http.ResponseWriter, *http.Request)
+// 假设 RegisterGroup(r,"/user/",&userHandler{}),userHandler{} 中所有实现了 func(http.ResponseWriter, *http.Request)
 // 这个函数签名的注册结果如下：
 //
-//	user.Get          --> GET      /user
-//	user.Delete       --> DELETE   /user
-//	user.Post         --> POST     /user
-//	user.GetByID      --> GET      /userByID
-//	user.DeleteByID   --> DELETE   /userByID
-//	user.Search       --> GET      /userSearch
-//	user.Add          --> GET      /userAdd
-//	user.Edit         --> GET      /userEdit
-//	user.Save         --> POST     /userSave
-func RegisterGroup(r *Router, pattern string, h GroupHandler, mds ...MiddlewareFunc) {
+//	user.Index        --> GET      /user/ 和 /user/Index
+//	user.Delete       --> DELETE   /user/
+//	user.Post         --> POST     /user/
+//	user.GetByID      --> GET      /user/GetByID
+//	user.DeleteByID   --> DELETE   /user/DeleteByID
+//	user.UpdateStatus --> PUT      /user/UpdateStatus
+//	user.Search       --> GET      /user/Search
+//	user.Add          --> GET      /user/Add
+//	user.Edit         --> GET      /user/Edit
+//	user.Save         --> POST     /user/Save
+func RegisterGroup(r *Router, prefix string, h GroupHandler, mds ...MiddlewareFunc) {
 	rt := reflect.TypeOf(h)
 	rv := reflect.ValueOf(h)
 
@@ -176,30 +177,15 @@ func RegisterGroup(r *Router, pattern string, h GroupHandler, mds ...MiddlewareF
 					continue
 				}
 				fns := xslice.Merge(info.Middleware, mds)
-				r.HandleFunc(pattern+info.Pattern, info.Func, fns...)
+				r.HandleFunc(prefix+"/"+info.Pattern, info.Func, fns...)
 				continue
 			}
 		}
 
-		if zroute.IsMethod(name) {
-			// 如方法名是  Get、Post、Delete 等
-			r.handleMethod(name, pattern, handler, mds...)
-		} else if strings.Contains(name, "Save") {
-			// 如方法名是  Save、SaveByID
-			r.PostFunc(pattern+name, handler, mds...)
-		} else {
-			// 如方法名是  GetUser、GetUserList、Search 等
-			str1, str2 := zroute.SplitCamelCase(name)
-			if str2 == "" {
-				r.GetFunc(pattern+name, handler, mds...)
-			} else {
-				if zroute.IsMethod(str1) {
-					// 如方法名是  GetByID
-					r.handleMethod(str1, pattern+str2, handler, mds...)
-				} else {
-					r.GetFunc(pattern+name, handler, mds...)
-				}
-			}
+		method := zroute.GetPrefixMethod(name)
+		if name == "Index" {
+			r.handleMethod(method, prefix, handler, mds...)
 		}
+		r.handleMethod(method, prefix+"/"+name, handler, mds...)
 	}
 }
