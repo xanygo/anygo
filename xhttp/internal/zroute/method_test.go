@@ -15,6 +15,10 @@ func TestGetPrefixMethod(t *testing.T) {
 		want string
 	}{
 		{
+			str:  "",
+			want: http.MethodGet,
+		},
+		{
 			str:  "Get",
 			want: http.MethodGet,
 		},
@@ -33,6 +37,26 @@ func TestGetPrefixMethod(t *testing.T) {
 		{
 			str:  "Index",
 			want: http.MethodGet,
+		},
+		{
+			str:  "Search",
+			want: http.MethodGet,
+		},
+		{
+			str:  "Save",
+			want: http.MethodPost,
+		},
+		{
+			str:  "SaveByID",
+			want: http.MethodPost,
+		},
+		{
+			str:  "Update",
+			want: http.MethodPut,
+		},
+		{
+			str:  "UpdateByID",
+			want: http.MethodPut,
 		},
 	}
 	for _, tt := range tests {

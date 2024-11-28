@@ -45,23 +45,18 @@ func IsMethod(method string) bool {
 // DeleteByID -> DELETE
 // Save ->  POST  // 以 Save 为前缀的都返回 POST
 func GetPrefixMethod(s string) string {
-	if len(s) == 0 {
-		return http.MethodGet
-	}
-
 	var index int
-	for i, char := range s {
-		if i > 0 && char >= 'A' && char <= 'Z' {
-			index = i
+	for ; index < len(s); index++ {
+		char := s[index]
+		if index > 0 && char >= 'A' && char <= 'Z' {
 			break
 		}
-	}
-	if index == 0 {
-		return http.MethodGet
 	}
 	method := s[:index]
 
 	switch method {
+	case "Index", "Search":
+		return http.MethodGet
 	case "Save":
 		return http.MethodPost
 	case "Update":
