@@ -11,23 +11,22 @@ import (
 	"strings"
 	"time"
 
+	"fmt"
 	"github.com/xanygo/anygo/xcache"
 	"github.com/xanygo/anygo/xnet/internal"
 	"github.com/xanygo/anygo/xsync"
 )
 
-type (
-	// Resolver 名字解析的接口定义
-	Resolver interface {
-		// LookupIP 根据传入的地址，查询返回其所有 IP 地址列表
-		//
-		// 当返回的 error == nil 时，[]net.IP 总是不为空
-		LookupIP(ctx context.Context, network string, host string) ([]net.IP, error)
-	}
+// Resolver 名字解析的接口定义
+type Resolver interface {
+	// LookupIP 根据传入的地址，查询返回其所有 IP 地址列表
+	//
+	// 当返回的 error == nil 时，[]net.IP 总是不为空
+	LookupIP(ctx context.Context, network string, host string) ([]net.IP, error)
+}
 
-	// LookupIPFunc 名字解析的方法定义
-	LookupIPFunc func(ctx context.Context, network string, host string) ([]net.IP, error)
-)
+// LookupIPFunc 名字解析的方法定义
+type LookupIPFunc func(ctx context.Context, network string, host string) ([]net.IP, error)
 
 var DefaultResolver Resolver = &ResolverImpl{}
 
@@ -148,11 +147,22 @@ func defaultResolverCacheTTL() time.Duration {
 	return time.Minute
 }
 
+type AfterLookupIPFunc func(ctx context.Context, network string, host string, ips []net.IP, err error) ([]net.IP, error)
+
+func (a AfterLookupIPFunc) IT() *ResolverInterceptor {
+	return &ResolverInterceptor{
+		AfterLookupIP: a,
+	}
+}
+
 type ResolverInterceptor struct {
 	LookupIP func(ctx context.Context, network string, host string, invoker LookupIPFunc) ([]net.IP, error)
 
+	// BeforeLookupIP 解析前的回调，可以对 ctx、network、 host 更新
 	BeforeLookupIP func(ctx context.Context, network string, host string) (context.Context, string, string)
-	AfterLookupIP  func(ctx context.Context, network string, host string, ips []net.IP, err error) ([]net.IP, error)
+
+	// AfterLookupIP 解析完成后的回调，可以对 ips 和 err 更新
+	AfterLookupIP func(ctx context.Context, network string, host string, ips []net.IP, err error) ([]net.IP, error)
 }
 
 var _ Interceptor = (*ResolverInterceptor)(nil)
@@ -175,4 +185,15 @@ func (rhs resolverInterceptors) CallLookupIP(ctx context.Context, network string
 	return rhs[idx].LookupIP(ctx, network, host, func(ctx context.Context, network string, host string) ([]net.IP, error) {
 		return rhs.CallLookupIP(ctx, network, host, invoker, idx+1)
 	})
+}
+
+// BlockPrivateResolution 禁止解析出私有和环回地址
+func BlockPrivateResolution(ctx context.Context, network string, host string, ips []net.IP, err error) ([]net.IP, error) {
+	for i := 0; i < len(ips); i++ {
+		ip := ips[i]
+		if ip.IsPrivate() || ip.IsLoopback() {
+			return ips, fmt.Errorf("blocked private ip: %s", ip.String())
+		}
+	}
+	return ips, err
 }

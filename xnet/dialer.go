@@ -9,7 +9,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/xanygo/anygo/xnet/internal"
 	"github.com/xanygo/anygo/xpp"
 )
 
@@ -121,12 +120,7 @@ func (d *DialerImpl) doDial(ctx context.Context, network string, address string)
 		if err != nil {
 			return nil, err
 		}
-
-		ip, _ := internal.ParseIPZone(host)
-		if ip != nil {
-			return d.dialStd(ctx, network, address)
-		}
-
+		// 不需要判断 host 已经是一个IP，统一交给 Resolver 去判断
 		ips, err := d.getResolver().LookupIP(ctx, string(nt), host)
 		if err != nil {
 			return nil, err
@@ -182,6 +176,14 @@ func (d *DialerImpl) dialHedging(ctx context.Context, network string, ips []net.
 
 func (d *DialerImpl) getInterceptors(ctx context.Context) dialerInterceptors {
 	return Interceptors[*DialerInterceptor](ctx, d.Interceptors)
+}
+
+type AfterDialContextFunc func(ctx context.Context, network string, address string, conn net.Conn, err error) (net.Conn, error)
+
+func (a AfterDialContextFunc) IT() *DialerInterceptor {
+	return &DialerInterceptor{
+		AfterDialContext: a,
+	}
 }
 
 var _ Interceptor = (*DialerInterceptor)(nil)

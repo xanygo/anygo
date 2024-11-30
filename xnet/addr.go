@@ -10,6 +10,7 @@ import (
 	"net"
 
 	"github.com/xanygo/anygo/xmap"
+	"github.com/xanygo/anygo/xnet/internal"
 )
 
 func NewAddr(network, host string) *Addr {
@@ -66,4 +67,10 @@ func LongToIP4(long uint32) net.IP {
 	ip := make(net.IP, 4)
 	binary.BigEndian.PutUint32(ip, long)
 	return ip
+}
+
+// IsIPAddress  判断传入的 host 是否是一个 ip
+func IsIPAddress(host string) bool {
+	ip, _ := internal.ParseIPZone(host)
+	return ip != nil
 }
