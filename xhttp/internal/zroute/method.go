@@ -57,7 +57,7 @@ func GetPrefixMethod(s string) string {
 	switch method {
 	case "Index", "Search":
 		return http.MethodGet
-	case "Save":
+	case "Save", "Upload":
 		return http.MethodPost
 	case "Update":
 		return http.MethodPut
