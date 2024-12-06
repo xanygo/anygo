@@ -46,6 +46,7 @@ var Funcs = template.FuncMap{
 
 	"xDateTime":   DateTime,
 	"xEachOfIter": EachOfIter,
+	"xRandOfIter": RandOfIter,
 
 	"xJSON": func(val any) string {
 		bf, err := json.MarshalIndent(val, " ", "  ")

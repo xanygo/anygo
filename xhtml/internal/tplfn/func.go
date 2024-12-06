@@ -7,6 +7,7 @@ package tplfn
 import (
 	"fmt"
 	"html/template"
+	"math/rand/v2"
 	"time"
 )
 
@@ -36,14 +37,15 @@ func Checked(value any) func(current any) template.HTMLAttr {
 	}
 }
 
-func EachOfIter[T any](values ...T) func() T {
+func EachOfIter(values ...any) Iter[any] {
 	var index int
 	total := len(values)
-	return func() T {
+	next := func() any {
 		val := values[index%total]
 		index++
 		return val
 	}
+	return IterNextFunc[any](next)
 }
 
 func DateTime(d time.Time) string {
@@ -51,4 +53,24 @@ func DateTime(d time.Time) string {
 		return ""
 	}
 	return d.Format("2006-01-02 15:04:05")
+}
+
+func RandOfIter(values ...any) Iter[any] {
+	next := func() (e any) {
+		if len(values) == 0 {
+			return e
+		}
+		return values[rand.IntN(len(values))]
+	}
+	return IterNextFunc[any](next)
+}
+
+type Iter[T any] interface {
+	Next() T
+}
+
+type IterNextFunc[T any] func() T
+
+func (f IterNextFunc[T]) Next() T {
+	return f()
 }
