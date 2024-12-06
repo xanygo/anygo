@@ -82,10 +82,10 @@ func TestIMG(t *testing.T) {
 func TestA(t *testing.T) {
 	t.Run("normal", func(t *testing.T) {
 		a := xhtml.NewA("/gogo")
-		a.Title("hello")
+		xhtml.SetTitle(a, "hello")
 		got, err := a.HTML()
 		fst.NoError(t, err)
-		want := `<a href="/gogo" title="hello"/>`
+		want := `<a href="/gogo" title="hello"></a>`
 		fst.Equal(t, want, string(got))
 	})
 }

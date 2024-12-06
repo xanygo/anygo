@@ -10,11 +10,18 @@ import (
 	"math/rand/v2"
 	"net/http"
 
+	"context"
+	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xstr"
+	"time"
 )
 
 type TPLHelper struct {
 	Request *http.Request
+}
+
+func (t *TPLHelper) Context() context.Context {
+	return t.Request.Context()
 }
 
 func TemplateFuncs() template.FuncMap {
@@ -49,6 +56,15 @@ var templateFuncs = template.FuncMap{
 
 	"xRandFloat64": rand.Float64,
 	"xRandFloat32": rand.Float32,
+
+	"xNewMap": xmap.Creat,
+
+	"xDateTime": func(d time.Time) string {
+		if d.IsZero() {
+			return ""
+		}
+		return d.Format("2006-01-02 15:04:05")
+	},
 }
 
 var tlpFuncTypeValue = tlpFuncType{}
