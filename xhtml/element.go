@@ -20,6 +20,24 @@ func (fn ElementFunc) HTML() ([]byte, error) {
 	return fn()
 }
 
+func ElementValue(code []byte, err error) Element {
+	return elementValue{
+		code: code,
+		err:  err,
+	}
+}
+
+var _ Element = (*elementValue)(nil)
+
+type elementValue struct {
+	code []byte
+	err  error
+}
+
+func (e elementValue) HTML() ([]byte, error) {
+	return e.code, e.err
+}
+
 // ToElements 转换为 Elements 类型
 func ToElements(es ...Element) Elements {
 	return es

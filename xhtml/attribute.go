@@ -292,9 +292,25 @@ func SetSrc(w AttrsMapper, src string) {
 	SetAttr(w, "src", src)
 }
 
+func SetHref(w AttrsMapper, href string) {
+	SetAttr(w, "href", href)
+}
+
 // SetTarget 设置 target 属性
 func SetTarget(w AttrsMapper, target string) {
 	SetAttr(w, "target", target)
+}
+
+func SetTargetBlank(w AttrsMapper) {
+	SetTarget(w, "_blank")
+}
+
+func AddTextContent(w Container, txt string) {
+	AddTo(w, TextString(txt))
+}
+
+func AddHTMLContent(w Container, txt string) {
+	AddTo(w, HTMLString(txt))
 }
 
 // SetType 设置 type 属性

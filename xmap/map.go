@@ -4,6 +4,8 @@
 
 package xmap
 
+import "fmt"
+
 // Get 从 map 中读取指定 key 的值。支持 map 为 nil。
 func Get[K comparable, V any](m map[K]V, key K) (v V, found bool) {
 	if len(m) == 0 {
@@ -179,4 +181,19 @@ func FilterValues[K comparable, V any](m map[K]V, filter func(k K, v V, ok int) 
 		}
 	}
 	return values
+}
+
+func Creat(pairs ...any) map[string]any {
+	if len(pairs)%2 != 0 {
+		panic("invalid map pairs")
+	}
+	result := make(map[string]any, len(pairs)/2)
+	for i := 0; i < len(pairs); i += 2 {
+		key, ok1 := pairs[i].(string)
+		if !ok1 {
+			panic(fmt.Sprintf("[%d]=%#v is not string", i, pairs[i]))
+		}
+		result[key] = pairs[i+1]
+	}
+	return result
 }

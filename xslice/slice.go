@@ -177,3 +177,15 @@ func FilterAs[E any, Y any](arr []E, filter func(index int, item E, ok int) (Y, 
 	}
 	return result
 }
+
+func FilterOne[S ~[]E, E any](arr S, filter func(index int, item E) bool) (e E, ok bool) {
+	if len(arr) == 0 {
+		return e, false
+	}
+	for i := 0; i < len(arr); i++ {
+		if filter(i, arr[i]) {
+			return arr[i], true
+		}
+	}
+	return e, false
+}

@@ -4,7 +4,9 @@
 
 package xdb
 
-import "math"
+import (
+	"math"
+)
 
 // Pagination 分页信息
 type Pagination struct {

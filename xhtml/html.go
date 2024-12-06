@@ -7,6 +7,8 @@
 
 package xhtml
 
+import "html/template"
+
 // NewHTML html 标签
 func NewHTML() *Any {
 	return NewAny("html")
@@ -130,61 +132,11 @@ func (m *IMG) HTML() ([]byte, error) {
 	return m.html("<img")
 }
 
-var _ Element = (*A)(nil)
-
 // NewA 创建一个 <a>
-func NewA(href string) *A {
-	return (&A{}).Href(href)
-}
-
-// A 地址标签 <a>
-type A struct {
-	selfCloseTag
-}
-
-func (a *A) set(key string, value string) *A {
-	a.selfCloseTag.set(key, value)
+func NewA(href string) *Any {
+	a := NewAny("a")
+	SetHref(a, href)
 	return a
-}
-
-// Href 设置 href 属性
-func (a *A) Href(href string) *A {
-	return a.set("href", href)
-}
-
-// HrefLang 设置 hreflang 属性
-func (a *A) HrefLang(hrefLang string) *A {
-	return a.set("hreflang", hrefLang)
-}
-
-// Title 设置 Title 属性
-func (a *A) Title(title string) *A {
-	return a.set("title", title)
-}
-
-// Target 设置 target 属性
-func (a *A) Target(target string) *A {
-	return a.set("target", target)
-}
-
-// Rel 设置 rel 属性
-func (a *A) Rel(rel string) *A {
-	return a.set("rel", rel)
-}
-
-// Type 设置 type 属性
-func (a *A) Type(tp string) *A {
-	return a.set("type", tp)
-}
-
-// Ping 设置 ping 属性
-func (a *A) Ping(ping string) *A {
-	return a.set("ping", ping)
-}
-
-// HTML 转换为 html
-func (a *A) HTML() ([]byte, error) {
-	return a.html("<a")
 }
 
 // NewMeta 创建一个新的 <meta>
@@ -373,4 +325,12 @@ func WithAddress(es ...Element) *Any {
 		Tag:  "address",
 		Body: es,
 	}
+}
+
+func Render(e Element) template.HTML {
+	bf, err := e.HTML()
+	if err != nil {
+		return template.HTML(err.Error())
+	}
+	return template.HTML(bf)
 }
