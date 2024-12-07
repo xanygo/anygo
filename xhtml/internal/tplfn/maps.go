@@ -5,11 +5,11 @@
 package tplfn
 
 import (
+	"encoding/json"
+	"fmt"
 	"html/template"
 	"math/rand/v2"
 
-	"encoding/json"
-	"fmt"
 	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xstr"
 )
@@ -42,7 +42,7 @@ var Funcs = template.FuncMap{
 	"xRandFloat64": rand.Float64,
 	"xRandFloat32": rand.Float32,
 
-	"xNewMap": xmap.Creat,
+	"xNewMap": xmap.Create,
 
 	"xDateTime":   DateTime,
 	"xEachOfIter": EachOfIter,
