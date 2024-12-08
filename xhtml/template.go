@@ -144,4 +144,8 @@ var FuncMap = template.FuncMap{
 	"xDump": func(value any) string {
 		return fmt.Sprintf("%#v", value)
 	},
+
+	"xIsOdd":  tplfn.IsOddNumber,  //  判断是否是奇数
+	"xIsEven": tplfn.IsEvenNumber, // 判断是否是偶数
+	"xModEQ":  tplfn.IsRemainder,  // 判断余数是否指定值
 }

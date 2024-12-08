@@ -92,3 +92,46 @@ func InputObjectName(values ...any) string {
 	}
 	return sb.String()
 }
+
+// IsOddNumber 判断是否奇数
+func IsOddNumber(num any) bool {
+	return IsRemainder(num, 2, 1)
+}
+
+func IsRemainder(num any, mod int, want int) bool {
+	switch vn := num.(type) {
+	case int:
+		return vn%mod == want
+	case int8:
+		return int(vn)%mod == want
+	case int16:
+		return int(vn)%mod == want
+	case int32:
+		return int(vn)%mod == want
+	case int64:
+		return int(vn)%mod == want
+
+	case uint:
+		return int(vn)%mod == want
+	case uint8:
+		return int(vn)%mod == want
+	case uint16:
+		return int(vn)%mod == want
+	case uint32:
+		return int(vn)%mod == want
+	case uint64:
+		return int(vn)%mod == want
+
+	case float32:
+		return int(vn)%mod == want
+	case float64:
+		return int(vn)%mod == want
+	default:
+		return false
+	}
+}
+
+// IsEvenNumber 判断是否偶数
+func IsEvenNumber(num any) bool {
+	return IsRemainder(num, 2, 0)
+}
