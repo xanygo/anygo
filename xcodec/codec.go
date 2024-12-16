@@ -7,6 +7,7 @@ package xcodec
 import (
 	"encoding/json"
 	"fmt"
+	"unsafe"
 )
 
 var (
@@ -89,4 +90,12 @@ func rawDecode(data []byte, obj any) error {
 	default:
 		return fmt.Errorf("not support type %T for rawDecode", obj)
 	}
+}
+
+func JSONString(obj any) string {
+	bf, err := json.Marshal(obj)
+	if err != nil {
+		return err.Error()
+	}
+	return unsafe.String(unsafe.SliceData(bf), len(bf))
 }

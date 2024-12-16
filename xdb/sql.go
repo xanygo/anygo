@@ -76,6 +76,7 @@ func PageList[T any](ctx context.Context, b Builder, page int, size int, search 
 			Value: value,
 			Order: idx,
 			Index: (page-1)*size + idx,
+			Ext:   map[string]any{},
 		}
 	}
 	return pageInfo, items, nil
@@ -88,6 +89,7 @@ type Record[T any] struct {
 	Value T
 	Order int // 当前页面索引
 	Index int // 在所有页面的索引
+	Ext   map[string]any
 }
 
 func (r Record[T]) HumanIndex() int {

@@ -12,6 +12,7 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/xanygo/anygo/xhtml/internal/tplfn"
 	"github.com/xanygo/anygo/xmap"
@@ -113,7 +114,8 @@ var FuncMap = template.FuncMap{
 
 	// 通过输入的 pair 创建一个 map，
 	// 如 {{ $obj := xNewMap "k1" "v1" "k2" 100 }}, 会生成map：$obj = {"k1" : "v1", "k2" : 100 }
-	"xNewMap": xmap.Create,
+	"xNewMap":  xmap.Create,
+	"xMapKeys": tplfn.MapKeys,
 
 	"xDateTime": tplfn.DateTime,
 
@@ -148,4 +150,12 @@ var FuncMap = template.FuncMap{
 	"xIsOdd":  tplfn.IsOddNumber,  //  判断是否是奇数
 	"xIsEven": tplfn.IsEvenNumber, // 判断是否是偶数
 	"xModEQ":  tplfn.IsRemainder,  // 判断余数是否指定值
+
+	"xNowFormat": func(layout string) string {
+		return time.Now().Format(layout)
+	},
+
+	"xHTML": func(str string) template.HTML {
+		return template.HTML(str)
+	},
 }

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"math/rand/v2"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -134,4 +135,22 @@ func IsRemainder(num any, mod int, want int) bool {
 // IsEvenNumber 判断是否偶数
 func IsEvenNumber(num any) bool {
 	return IsRemainder(num, 2, 0)
+}
+
+func MapKeys(m any) ([]any, error) {
+	if m == nil {
+		return nil, nil
+	}
+	v := reflect.ValueOf(m)
+	if v.Kind() != reflect.Map {
+		return nil, fmt.Errorf("input type is %q not a map", v.Kind().String())
+	}
+
+	keys := make([]any, 0, v.Len())
+
+	for _, key := range v.MapKeys() {
+		keys = append(keys, key.Interface())
+	}
+
+	return keys, nil
 }

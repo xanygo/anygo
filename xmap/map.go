@@ -181,13 +181,19 @@ func FilterValues[K comparable, V any](m map[K]V, filter func(k K, v V, ok int) 
 	return values
 }
 
+// Create 使用 pairs 对，创建一个 map,若 key 或者 value 为nil，则会跳过此条数据
 func Create(pairs ...any) map[any]any {
 	if len(pairs)%2 != 0 {
 		panic("invalid map pairs")
 	}
 	result := make(map[any]any, len(pairs)/2)
 	for i := 0; i < len(pairs); i += 2 {
-		result[pairs[i]] = pairs[i+1]
+		key := pairs[i]
+		val := pairs[i+1]
+		if key == nil || val == nil {
+			continue
+		}
+		result[key] = val
 	}
 	return result
 }
