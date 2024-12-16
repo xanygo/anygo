@@ -17,6 +17,7 @@ func TestCutIndex(t *testing.T) {
 		args       args
 		wantBefore string
 		wantAfter  string
+		wantFound  bool
 	}{
 		{
 			name: "case 1",
@@ -24,8 +25,9 @@ func TestCutIndex(t *testing.T) {
 				s:     "hello",
 				index: -1,
 			},
-			wantBefore: "",
-			wantAfter:  "hello",
+			wantBefore: "hello",
+			wantAfter:  "",
+			wantFound:  false,
 		},
 		{
 			name: "case 2",
@@ -35,6 +37,7 @@ func TestCutIndex(t *testing.T) {
 			},
 			wantBefore: "hello",
 			wantAfter:  "",
+			wantFound:  true,
 		},
 		{
 			name: "case 3",
@@ -44,6 +47,7 @@ func TestCutIndex(t *testing.T) {
 			},
 			wantBefore: "h",
 			wantAfter:  "ello",
+			wantFound:  true,
 		},
 		{
 			name: "case 4",
@@ -63,11 +67,15 @@ func TestCutIndex(t *testing.T) {
 			},
 			wantBefore: "h",
 			wantAfter:  "lo",
+			wantFound:  true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBefore, gotAfter := CutIndex(tt.args.s, tt.args.index, tt.args.len)
+			gotBefore, gotAfter, gotFound := CutIndex(tt.args.s, tt.args.index, tt.args.len)
+			if gotFound != tt.wantFound {
+				t.Errorf("CutIndex() gotFound = %v, want %v", gotFound, tt.wantFound)
+			}
 			if gotBefore != tt.wantBefore {
 				t.Errorf("CutIndex() gotBefore = %v, want %v", gotBefore, tt.wantBefore)
 			}

@@ -64,17 +64,17 @@ func ExampleLastIndexByteN() {
 
 func ExampleCutIndex() {
 	printCut := func(s string, index int) {
-		before, after := xstr.CutIndex(s, index, 1)
-		fmt.Printf("before=%q after=%q\n", before, after)
+		before, after, found := xstr.CutIndex(s, index, 1)
+		fmt.Printf("before=%q after=%q found=%v\n", before, after, found)
 	}
-	printCut("abc", 1)  // before="a" after="c"
-	printCut("abc", -1) // before="" after="abc"
-	printCut("abc", 10) // before="abc" after=""
+	printCut("abc", 1)  // before="a" after="c" found=true
+	printCut("abc", -1) // before="abc" after="" found=false
+	printCut("abc", 10) // before="abc" after="" found=true
 
 	// Output:
-	// before="a" after="c"
-	// before="" after="abc"
-	// before="abc" after=""
+	// before="a" after="c" found=true
+	// before="abc" after="" found=false
+	// before="abc" after="" found=false
 }
 
 func ExampleCutIndexBefore() {
@@ -109,16 +109,16 @@ func ExampleCutIndexAfter() {
 
 func ExampleCutLastByteN() {
 	printCut := func(s string, c byte, n int) {
-		before, after := xstr.CutLastByteN(s, c, n)
-		fmt.Printf("before=%q after=%q\n", before, after)
+		before, after, found := xstr.CutLastByteN(s, c, n)
+		fmt.Printf("before=%q after=%q found=%v\n", before, after, found)
 	}
 
 	printCut("/home/work/go/src/", '/', 2)  // before="/home/work/go" after="src/"
 	printCut("/home/work/go/src/", '/', 10) // before="" after="/home/work/go/src/"
 
 	// Output:
-	// before="/home/work/go" after="src/"
-	// before="" after="/home/work/go/src/"
+	// before="/home/work/go" after="src/" found=true
+	// before="/home/work/go/src/" after="" found=false
 }
 
 func ExampleCutLastByteNBefore() {
@@ -141,15 +141,15 @@ func ExampleCutLastByteNAfter() {
 
 func ExampleCutLastN() {
 	printCut := func(s string, sub string, n int) {
-		before, after := xstr.CutLastN(s, sub, n)
-		fmt.Printf("before=%q after=%q\n", before, after)
+		before, after, found := xstr.CutLastN(s, sub, n)
+		fmt.Printf("before=%q after=%q found=%v\n", before, after, found)
 	}
 	printCut("abc-ab-ab-c", "ab", 1) // before="" after="c-ab-ab-c"
 	printCut("abc-ab-ab-c", "ab", 2) // before="abc-" after="-ab-c"
 
 	// Output:
-	// before="" after="c-ab-ab-c"
-	// before="abc-" after="-ab-c"
+	// before="abc-ab-" after="-c" found=true
+	// before="abc-" after="-ab-c" found=true
 }
 
 func ExampleToInts() {
