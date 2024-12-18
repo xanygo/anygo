@@ -58,6 +58,9 @@ func DateTime(d time.Time) string {
 	}
 	return d.Format("2006-01-02 15:04:05")
 }
+func NowTimeFormat(format string) string {
+	return time.Now().Format(format)
+}
 
 func RandOfIter(values ...any) Iter[any] {
 	next := func() (e any) {

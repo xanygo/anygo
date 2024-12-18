@@ -7,7 +7,6 @@ package xhtml
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"math/rand/v2"
 	"net/http"
@@ -117,7 +116,8 @@ var FuncMap = template.FuncMap{
 	"xNewMap":  xmap.Create,
 	"xMapKeys": tplfn.MapKeys,
 
-	"xDateTime": tplfn.DateTime,
+	"xDateTime":   tplfn.DateTime,
+	"xNowTimeFmt": tplfn.NowTimeFormat,
 
 	// 对输入的参数，创建一个依次轮询的顺序迭代器
 	// 如 {{ $iter := xEachOfIter "a" "b" "c" }}
@@ -143,9 +143,7 @@ var FuncMap = template.FuncMap{
 		return string(bf)
 	},
 
-	"xDump": func(value any) string {
-		return fmt.Sprintf("%#v", value)
-	},
+	"xDump": tplfn.Dump,
 
 	"xIsOdd":  tplfn.IsOddNumber,  //  判断是否是奇数
 	"xIsEven": tplfn.IsEvenNumber, // 判断是否是偶数
@@ -157,5 +155,20 @@ var FuncMap = template.FuncMap{
 
 	"xHTML": func(str string) template.HTML {
 		return template.HTML(str)
+	},
+
+	"xNewInts": func(start int, end int) []int {
+		result := make([]int, 0, end-start)
+		for i := start; i < end; i++ {
+			result = append(result, i)
+		}
+		return result
+	},
+	"xNewIntsStep": func(start int, end int, step int) []int {
+		result := make([]int, 0, end-start)
+		for i := start; i < end; i += step {
+			result = append(result, i)
+		}
+		return result
 	},
 }

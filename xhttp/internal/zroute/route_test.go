@@ -5,9 +5,10 @@
 package zroute
 
 import (
-	"github.com/fsgo/fst"
 	"reflect"
 	"testing"
+
+	"github.com/fsgo/fst"
 )
 
 func Test_splitPattern(t *testing.T) {

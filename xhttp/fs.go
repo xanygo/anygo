@@ -14,9 +14,12 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 	"sync"
 
+	"encoding/hex"
 	"github.com/xanygo/anygo/xarchive"
+	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xslice"
 )
 
@@ -95,7 +98,7 @@ func (e *FS) init() {
 }
 
 func (e *FS) Open(name string) (fs.File, error) {
-	return e.FS.Open(name)
+	return e.FS.Open(fullFSPath(e.RootDir, name))
 }
 
 func (e *FS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -245,62 +248,63 @@ func (f *fsWrap) Exists(fp string) bool {
 
 var _ http.Handler = (*FSMerge)(nil)
 
+// FSMerge 合并多个 js 文件到一个
 type FSMerge struct {
-	FS          FSHandler
-	mergedFiles map[string]*mergeFile
+	FS     FSHandler
+	merged xmap.Sync[string, *mergedFile]
 }
 
 func (fm *FSMerge) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	filename := req.URL.Path
-	if len(fm.mergedFiles) > 0 {
-		file, ok := fm.mergedFiles[filename]
-		if ok {
-			if et := req.Header.Get("If-None-Match"); et != "" && et == file.Etag {
-				w.WriteHeader(http.StatusNotModified)
-				return
-			}
-			w.Header().Set("Content-Type", file.ContentType)
-			w.Header().Set("ETag", file.Etag)
-			_, _ = w.Write(file.Body)
+	file, ok := fm.merged.Load(filename)
+	if ok {
+		if et := req.Header.Get("If-None-Match"); et != "" && et == file.Etag {
+			w.WriteHeader(http.StatusNotModified)
 			return
 		}
+		w.Header().Set("Content-Type", file.ContentType)
+		w.Header().Set("ETag", file.Etag)
+		_, _ = w.Write(file.Body)
+		return
 	}
 	fm.FS.ServeHTTP(w, req)
 }
 
-func (fm *FSMerge) Merge(alias string, ct string, names ...string) error {
-	if fm.mergedFiles == nil {
-		fm.mergedFiles = make(map[string]*mergeFile)
-	}
-	mf, ok := fm.mergedFiles[alias]
+// MergeJS 合并多个 js 文件，并返回新的合并后的文件名。
+func (fm *FSMerge) MergeJS(names ...string) (string, error) {
+	str := strings.Join(names, "#")
+	hash := md5.Sum([]byte(str))
+	newName := hex.EncodeToString(hash[:]) + ".js"
+	mf, ok := fm.merged.Load(newName)
 	if ok {
-		return fmt.Errorf("already has alias %q", alias)
+		return newName, nil
 	}
-	mf = &mergeFile{
-		ContentType: ct,
-	}
+
 	bf := &bytes.Buffer{}
 	for _, name := range names {
 		file, err := fm.FS.Open(name)
 		if err != nil {
-			return fmt.Errorf("merge %q failed：%w", name, err)
+			return "", fmt.Errorf("open %q failed：%w", name, err)
 		}
 		if _, err = bf.ReadFrom(file); err != nil {
 			_ = file.Close()
-			return fmt.Errorf("read %q failed: %w", name, err)
+			return "", fmt.Errorf("read %q failed: %w", name, err)
 		}
 		_ = file.Close()
 
 		bf.WriteString("\n\n")
 	}
-	mf.Body = bf.Bytes()
-	mf.Etag = fmt.Sprintf(`"%x"`, md5.Sum(bf.Bytes()))
-
-	fm.mergedFiles[alias] = mf
-	return nil
+	hash2 := md5.Sum(bf.Bytes())
+	mf = &mergedFile{
+		ContentType: "application/javascript",
+		Body:        bf.Bytes(),
+		Etag:        hex.EncodeToString(hash2[:]),
+	}
+	fm.merged.Store(newName, mf)
+	return newName, nil
 }
 
-type mergeFile struct {
+type mergedFile struct {
 	ContentType string
 	Body        []byte
 	Etag        string
