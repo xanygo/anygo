@@ -171,4 +171,6 @@ var FuncMap = template.FuncMap{
 		}
 		return result
 	},
+
+	"xStrPrefix": strings.HasPrefix,
 }
