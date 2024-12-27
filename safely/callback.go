@@ -9,12 +9,13 @@ import (
 	"encoding"
 	"encoding/json"
 	"fmt"
-	"runtime"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
 
+	"github.com/xanygo/anygo/internal/xruntime"
 	"github.com/xanygo/anygo/xerror"
+	"unsafe"
 )
 
 var recoverID atomic.Int64
@@ -54,13 +55,14 @@ func RecoveredPECtx(ctx context.Context, err *PanicErr) {
 //	re: recover() 的内容不应该为 nil
 //	callerSkip: 追踪触发 panic 位置时，应跳过的调用层次
 func NewPanicErr(re any, callerSkip int, data ...any) *PanicErr {
-	_, file, line, _ := runtime.Caller(callerSkip)
+	file, line, fn := xruntime.PanicCaller(callerSkip)
 	return &PanicErr{
 		ID:    NewRecoverID(),
 		Panic: re,
 		Stack: debug.Stack(),
 		File:  file,
 		Line:  line,
+		Fn:    fn,
 		Data:  data,
 	}
 }
@@ -74,18 +76,21 @@ type PanicErr struct {
 	ID    int64  // recover id
 	Panic any    // recover() 的内容
 	Stack []byte // 堆栈信息
-	File  string // panic 或者 recover 的文件名
-	Line  int    // panic 或者 recover 的文件行
+	File  string // 触发 panic 的文件名
+	Line  int    // 触发 panic 的文件行
+	Fn    string // 触发 panic 的函数
 	Data  []any  // 其他数据
 }
 
 func (p *PanicErr) TraceData() map[string]any {
+	stack := unsafe.String(unsafe.SliceData(p.Stack), len(p.Stack))
 	return map[string]any{
 		"ID":    p.ID,
 		"Panic": p.Panic,
 		"File":  p.File,
 		"Line":  p.Line,
-		"Stack": string(p.Stack),
+		"Fn":    p.Fn,
+		"Stack": stack,
 	}
 }
 

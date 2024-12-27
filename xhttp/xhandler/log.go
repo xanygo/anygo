@@ -72,7 +72,7 @@ func (al *AccessLog) safelyRecover(w http.ResponseWriter, r *http.Request) {
 	} else {
 		xhttp.WriteTextStatus(w, http.StatusInternalServerError, []byte("Internal Server Error"))
 	}
-	al.Logger.Output(r.Context(), xlog.LevelError, 0, "panic", xlog.ErrorAttr("panic", err))
+	al.Logger.Error(r.Context(), "panic", xlog.ErrorAttr("panic", err))
 	if al.RePanic {
 		panic(err)
 	}
