@@ -4,6 +4,11 @@
 
 package xmap
 
+import (
+	"errors"
+	"fmt"
+)
+
 // Get 从 map 中读取指定 key 的值。支持 map 为 nil。
 func Get[K comparable, V any](m map[K]V, key K) (v V, found bool) {
 	if len(m) == 0 {
@@ -183,8 +188,17 @@ func FilterValues[K comparable, V any](m map[K]V, filter func(k K, v V, ok int) 
 
 // Create 使用 pairs 对，创建一个 map,若 key 或者 value 为nil，则会跳过此条数据
 func Create(pairs ...any) map[any]any {
+	result, err := CreateErr(pairs)
+	if err != nil {
+		panic(err)
+	}
+
+	return result
+}
+
+func CreateErr(pairs ...any) (map[any]any, error) {
 	if len(pairs)%2 != 0 {
-		panic("invalid map pairs")
+		return nil, errors.New("invalid map pairs")
 	}
 	result := make(map[any]any, len(pairs)/2)
 	for i := 0; i < len(pairs); i += 2 {
@@ -195,5 +209,25 @@ func Create(pairs ...any) map[any]any {
 		}
 		result[key] = val
 	}
-	return result
+	return result, nil
+}
+
+func CreateStrErr(pairs ...any) (map[string]any, error) {
+	if len(pairs)%2 != 0 {
+		return nil, errors.New("invalid map pairs")
+	}
+	result := make(map[string]any, len(pairs)/2)
+	for i := 0; i < len(pairs); i += 2 {
+		key := pairs[i]
+		val := pairs[i+1]
+		if key == nil || val == nil {
+			continue
+		}
+		ks, ok := key.(string)
+		if !ok {
+			return nil, fmt.Errorf("key(%d)=(%T)%#v is not string", i, key, key)
+		}
+		result[ks] = val
+	}
+	return result, nil
 }

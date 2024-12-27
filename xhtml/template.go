@@ -113,7 +113,8 @@ var FuncMap = template.FuncMap{
 
 	// 通过输入的 pair 创建一个 map，
 	// 如 {{ $obj := xNewMap "k1" "v1" "k2" 100 }}, 会生成map：$obj = {"k1" : "v1", "k2" : 100 }
-	"xNewMap":  xmap.Create,
+	// 创建的是 map[string]any 类型的 map
+	"xNewMap":  xmap.CreateStrErr,
 	"xMapKeys": tplfn.MapKeys,
 
 	"xDateTime":   tplfn.DateTime,
@@ -123,7 +124,7 @@ var FuncMap = template.FuncMap{
 	// 如 {{ $iter := xEachOfIter "a" "b" "c" }}
 	//  {{ range $index,$item:= .Items }}
 	//    {{ $item.Value}}
-	//    {{ $iter.Next }} // 依次输出 "a" "b" "c"
+	//    {{ $item.Next }} // 依次输出 "a" "b" "c"
 	//  {{ end }}
 	"xEachOfIter": tplfn.EachOfIter,
 
@@ -135,12 +136,12 @@ var FuncMap = template.FuncMap{
 	//  {{ end }}
 	"xRandOfIter": tplfn.RandOfIter,
 
-	"xJSON": func(val any) string {
-		bf, err := json.MarshalIndent(val, " ", "  ")
+	"xJSON": func(val any) (string, error) {
+		bf, err := json.Marshal(val)
 		if err != nil {
-			return err.Error()
+			return "", err
 		}
-		return string(bf)
+		return string(bf), nil
 	},
 
 	"xDump": tplfn.Dump,
@@ -172,5 +173,7 @@ var FuncMap = template.FuncMap{
 		return result
 	},
 
-	"xStrPrefix": strings.HasPrefix,
+	"xStrPrefix":   strings.HasPrefix,
+	"xStrSuffix":   strings.HasSuffix,
+	"xStrContains": strings.Contains,
 }

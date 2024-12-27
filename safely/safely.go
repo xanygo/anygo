@@ -26,7 +26,7 @@ func Run[T FnType1](fn T) (err error) {
 			_, file, line, _ := runtime.Caller(2)
 			pe := &PanicErr{
 				ID:    NewRecoverID(),
-				Re:    re,
+				Panic: re,
 				Stack: debug.Stack(),
 				File:  file,
 				Line:  line,
@@ -75,7 +75,7 @@ func RunCtx[T FnType2](ctx context.Context, fn T) (err error) {
 			_, file, line, _ := runtime.Caller(2)
 			pe := &PanicErr{
 				ID:    NewRecoverID(),
-				Re:    re,
+				Panic: re,
 				Stack: debug.Stack(),
 				File:  file,
 				Line:  line,

@@ -6,11 +6,15 @@ package safely
 
 import (
 	"context"
+	"encoding"
+	"encoding/json"
 	"fmt"
 	"runtime"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
+
+	"github.com/xanygo/anygo/xerror"
 )
 
 var recoverID atomic.Int64
@@ -53,7 +57,7 @@ func NewPanicErr(re any, callerSkip int, data ...any) *PanicErr {
 	_, file, line, _ := runtime.Caller(callerSkip)
 	return &PanicErr{
 		ID:    NewRecoverID(),
-		Re:    re,
+		Panic: re,
 		Stack: debug.Stack(),
 		File:  file,
 		Line:  line,
@@ -62,19 +66,35 @@ func NewPanicErr(re any, callerSkip int, data ...any) *PanicErr {
 }
 
 var _ error = (*PanicErr)(nil)
+var _ xerror.TraceError = (*PanicErr)(nil)
+var _ encoding.TextMarshaler = (*PanicErr)(nil)
 
 // PanicErr 一次 panic 的信息，以实现 error 接口
 type PanicErr struct {
 	ID    int64  // recover id
-	Re    any    // recover() 的内容
+	Panic any    // recover() 的内容
 	Stack []byte // 堆栈信息
 	File  string // panic 或者 recover 的文件名
 	Line  int    // panic 或者 recover 的文件行
 	Data  []any  // 其他数据
 }
 
+func (p *PanicErr) TraceData() map[string]any {
+	return map[string]any{
+		"ID":    p.ID,
+		"Panic": p.Panic,
+		"File":  p.File,
+		"Line":  p.Line,
+		"Stack": string(p.Stack),
+	}
+}
+
 func (p *PanicErr) Error() string {
-	return fmt.Sprintf("panic: %v", p.Re)
+	return fmt.Sprintf("panic(%d): %v", p.ID, p.Panic)
+}
+
+func (p *PanicErr) MarshalText() (text []byte, err error) {
+	return json.Marshal(p.TraceData())
 }
 
 // OnRecovered 注册 panic  recover() 之后的回调函数

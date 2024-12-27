@@ -8,6 +8,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -17,7 +18,6 @@ import (
 	"strings"
 	"sync"
 
-	"encoding/hex"
 	"github.com/xanygo/anygo/xarchive"
 	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xslice"
@@ -250,6 +250,7 @@ var _ http.Handler = (*FSMerge)(nil)
 
 // FSMerge 合并多个 js 文件到一个
 type FSMerge struct {
+	Minify map[string]func(b []byte) ([]byte, error)
 	FS     FSHandler
 	merged xmap.Sync[string, *mergedFile]
 }
@@ -294,10 +295,18 @@ func (fm *FSMerge) MergeJS(names ...string) (string, error) {
 
 		bf.WriteString("\n\n")
 	}
-	hash2 := md5.Sum(bf.Bytes())
+	code := bf.Bytes()
+	if len(fm.Minify) > 0 {
+		if fn, ok1 := fm.Minify["js"]; ok1 {
+			if code1, err1 := fn(code); err1 == nil {
+				code = code1
+			}
+		}
+	}
+	hash2 := md5.Sum(code)
 	mf = &mergedFile{
 		ContentType: "application/javascript",
-		Body:        bf.Bytes(),
+		Body:        code,
 		Etag:        hex.EncodeToString(hash2[:]),
 	}
 	fm.merged.Store(newName, mf)

@@ -5,8 +5,11 @@
 package xlog
 
 import (
+	"errors"
 	"log/slog"
 	"time"
+
+	"github.com/xanygo/anygo/xerror"
 )
 
 type Attr = slog.Attr
@@ -98,6 +101,10 @@ func Bytes(key string, value []byte) Attr {
 func ErrorAttr(key string, err error) Attr {
 	if err == nil {
 		return String(key, "")
+	}
+	var pt xerror.TraceError
+	if errors.As(err, &pt) {
+		return Any(key, pt.TraceData())
 	}
 	return String(key, err.Error())
 }

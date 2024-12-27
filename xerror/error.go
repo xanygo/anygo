@@ -9,6 +9,11 @@ import (
 	"strings"
 )
 
+type TraceError interface {
+	error
+	TraceData() map[string]any
+}
+
 var (
 	// NotFound 错误：数据找不到
 	NotFound = NewCodeError(1000, "not found")
@@ -20,6 +25,7 @@ var (
 	InvalidParam = NewCodeError(1002, "invalid param")
 )
 
+// IsNotFound 判断是否资源不存在错误
 func IsNotFound(err error) bool {
 	if errors.Is(err, NotFound) {
 		return true
@@ -37,6 +43,7 @@ type NotExistsError interface {
 	NotExists() bool
 }
 
+// IsInvalidParam 判断是否参数不对的错误
 func IsInvalidParam(err error) bool {
 	return errors.Is(err, InvalidParam)
 }

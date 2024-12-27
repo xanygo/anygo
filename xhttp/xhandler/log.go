@@ -55,23 +55,27 @@ func (al *AccessLog) Next(handler http.Handler) http.Handler {
 
 func (al *AccessLog) safely(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if re := recover(); re != nil {
-				err := safely.NewPanicErr(re, 2)
-				safely.RecoveredPECtx(r.Context(), err)
-				if al.OnPanic != nil {
-					al.OnPanic(w, r, re)
-				} else {
-					xhttp.WriteTextStatus(w, http.StatusInternalServerError, []byte("Internal Server Error"))
-				}
-				al.Logger.Error(r.Context(), "panic", xlog.ErrorAttr("panic", err))
-				if al.RePanic {
-					panic(err)
-				}
-			}
-		}()
+		defer al.safelyRecover(w, r)
 		handler.ServeHTTP(w, r)
 	})
+}
+
+func (al *AccessLog) safelyRecover(w http.ResponseWriter, r *http.Request) {
+	re := recover()
+	if re == nil {
+		return
+	}
+	err := safely.NewPanicErr(re, 2)
+	safely.RecoveredPECtx(r.Context(), err)
+	if al.OnPanic != nil {
+		al.OnPanic(w, r, re)
+	} else {
+		xhttp.WriteTextStatus(w, http.StatusInternalServerError, []byte("Internal Server Error"))
+	}
+	al.Logger.Output(r.Context(), xlog.LevelError, 0, "panic", xlog.ErrorAttr("panic", err))
+	if al.RePanic {
+		panic(err)
+	}
 }
 
 func (al *AccessLog) before(ctx context.Context, start time.Time, r *http.Request) {
