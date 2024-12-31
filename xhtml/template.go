@@ -8,10 +8,12 @@ import (
 	"context"
 	"encoding/json"
 	"html/template"
+	"io"
 	"math/rand/v2"
 	"net/http"
 	"strings"
 	"time"
+	"unsafe"
 
 	"github.com/xanygo/anygo/xhtml/internal/tplfn"
 	"github.com/xanygo/anygo/xmap"
@@ -176,4 +178,13 @@ var FuncMap = template.FuncMap{
 	"xStrPrefix":   strings.HasPrefix,
 	"xStrSuffix":   strings.HasSuffix,
 	"xStrContains": strings.Contains,
+}
+
+func Dump(w io.Writer, obj any) {
+	code := tplfn.Dump(obj)
+	bf := unsafe.Slice(unsafe.StringData(string(code)), len(code))
+	if hw, ok := w.(http.ResponseWriter); ok {
+		hw.Header().Set("Content-Type", "text/html; charset=utf-8")
+	}
+	_, _ = w.Write(bf)
 }

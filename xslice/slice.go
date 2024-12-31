@@ -189,3 +189,16 @@ func FilterOne[S ~[]E, E any](arr S, filter func(index int, item E) bool) (e E, 
 	}
 	return e, false
 }
+
+func MapFunc[S ~[]E, E any](arr S, fn func(index int, item E) (E, bool)) S {
+	if len(arr) == 0 {
+		return nil
+	}
+	result := make(S, 0, len(arr))
+	for i := 0; i < len(arr); i++ {
+		if nv, ok := fn(i, arr[i]); ok {
+			result = append(result, nv)
+		}
+	}
+	return result
+}

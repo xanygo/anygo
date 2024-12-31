@@ -220,7 +220,7 @@ func CreateStrErr(pairs ...any) (map[string]any, error) {
 	for i := 0; i < len(pairs); i += 2 {
 		key := pairs[i]
 		val := pairs[i+1]
-		if key == nil || val == nil {
+		if key == nil {
 			continue
 		}
 		ks, ok := key.(string)

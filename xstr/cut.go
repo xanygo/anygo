@@ -4,6 +4,11 @@
 
 package xstr
 
+import (
+	"math"
+	"strings"
+)
+
 // CutIndex 将字符串从索引位置拆分为两部分
 //
 //	sepIndex: 拆分位置
@@ -113,4 +118,25 @@ func Substr(s string, start, length int) string {
 		return s[start:]
 	}
 	return s[start:end]
+}
+
+func HasPrefixFold(s string, prefix string) bool {
+	return len(s) >= len(prefix) && strings.EqualFold(s[0:len(prefix)], prefix)
+}
+
+func HasSuffixFold(s string, suffix string) bool {
+	return len(s) >= len(suffix) && strings.EqualFold(s[len(s)-len(suffix):], suffix)
+}
+
+func SplitLen(s string, length int) []string {
+	total := math.Ceil(float64(len(s)) / float64(length))
+	result := make([]string, 0, int(total))
+	for i := 0; i < len(s); i += length {
+		end := i + length
+		if end > len(s) {
+			end = len(s)
+		}
+		result = append(result, s[i:end])
+	}
+	return result
 }

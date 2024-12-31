@@ -16,7 +16,7 @@ import (
 
 func Dump(value any) template.HTML {
 	var bs strings.Builder
-	bs.WriteString("<pre>")
+	bs.WriteString("<pre class='x-dump'>\n")
 	bs.WriteString(varDump(value))
 	bs.WriteString("</pre>")
 	return template.HTML(bs.String())
@@ -84,6 +84,6 @@ func printValue(v reflect.Value, w io.Writer, indent int) {
 			printValue(v.Elem(), w, indent+4)
 		}
 	default:
-		_, _ = fmt.Fprintf(w, indentation+"unknown type: %v\n", v)
+		_, _ = fmt.Fprintf(w, indentation+"%T: %#v\n", v.Interface(), v)
 	}
 }
