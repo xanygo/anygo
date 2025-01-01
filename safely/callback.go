@@ -12,10 +12,10 @@ import (
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
+	"unsafe"
 
 	"github.com/xanygo/anygo/internal/xruntime"
 	"github.com/xanygo/anygo/xerror"
-	"unsafe"
 )
 
 var recoverID atomic.Int64

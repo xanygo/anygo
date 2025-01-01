@@ -7,10 +7,12 @@ package xhttp
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"os"
@@ -19,6 +21,7 @@ import (
 	"sync"
 
 	"github.com/xanygo/anygo/xarchive"
+	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xslice"
 )
@@ -287,22 +290,17 @@ func (fm *FSMerge) MergeJS(names ...string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("open %q failed：%w", name, err)
 		}
-		if _, err = bf.ReadFrom(file); err != nil {
+		code, err := io.ReadAll(file)
+		if err != nil {
 			_ = file.Close()
 			return "", fmt.Errorf("read %q failed: %w", name, err)
 		}
 		_ = file.Close()
-
+		code = fm.tryMini(name, code)
+		bf.Write(code)
 		bf.WriteString("\n\n")
 	}
 	code := bf.Bytes()
-	if len(fm.Minify) > 0 {
-		if fn, ok1 := fm.Minify["js"]; ok1 {
-			if code1, err1 := fn(code); err1 == nil {
-				code = code1
-			}
-		}
-	}
 	hash2 := md5.Sum(code)
 	mf = &mergedFile{
 		ContentType: "application/javascript",
@@ -311,6 +309,25 @@ func (fm *FSMerge) MergeJS(names ...string) (string, error) {
 	}
 	fm.merged.Store(newName, mf)
 	return newName, nil
+}
+
+func (fm *FSMerge) tryMini(name string, code []byte) []byte {
+	if len(fm.Minify) == 0 {
+		return code
+	}
+	fn, ok := fm.Minify["js"]
+	if !ok || fn == nil {
+		return code
+	}
+	code1, err := fn(code)
+	if err == nil {
+		return code1
+	}
+	xlog.Warn(context.Background(), "FSMerge Minify[js] error",
+		xlog.String("filename", name),
+		xlog.ErrorAttr("error", err),
+	)
+	return code
 }
 
 type mergedFile struct {

@@ -12,6 +12,7 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -119,6 +120,9 @@ var FuncMap = template.FuncMap{
 	"xNewMap":  xmap.CreateStrErr,
 	"xMapKeys": tplfn.MapKeys,
 
+	// 若传入的 value 不为空，则返回自身。否则返回一个空的 map[sting]any
+	"xOrMap": tplfn.OrMap,
+
 	"xDateTime":   tplfn.DateTime,
 	"xNowTimeFmt": tplfn.NowTimeFormat,
 
@@ -159,6 +163,9 @@ var FuncMap = template.FuncMap{
 	"xHTML": func(str string) template.HTML {
 		return template.HTML(str)
 	},
+	"xHTMLAttr": func(str string) template.HTMLAttr {
+		return template.HTMLAttr(str)
+	},
 
 	"xNewInts": func(start int, end int) []int {
 		result := make([]int, 0, end-start)
@@ -178,6 +185,12 @@ var FuncMap = template.FuncMap{
 	"xStrPrefix":   strings.HasPrefix,
 	"xStrSuffix":   strings.HasSuffix,
 	"xStrContains": strings.Contains,
+
+	"xConst": getConst,
+
+	"xAssert": tplfn.Assert,
+
+	"xJoin": tplfn.Join,
 }
 
 func Dump(w io.Writer, obj any) {
@@ -187,4 +200,23 @@ func Dump(w io.Writer, obj any) {
 		hw.Header().Set("Content-Type", "text/html; charset=utf-8")
 	}
 	_, _ = w.Write(bf)
+}
+
+var constVars sync.Map
+
+func getConst(key string, def ...any) any {
+	val, ok := constVars.Load(key)
+	if ok || len(def) == 0 {
+		return val
+	}
+	return def[0]
+}
+
+func SetConst(key string, val any) {
+	constVars.LoadOrStore(key, val)
+}
+
+func init() {
+	const patternUri = `pattern="^(((https|http):\/\/\S+(\.\S+)+.*)|(\/\S+))$"`
+	SetConst("pattern-uri", template.HTMLAttr(patternUri))
 }

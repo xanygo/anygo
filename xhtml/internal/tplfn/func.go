@@ -58,6 +58,7 @@ func DateTime(d time.Time) string {
 	}
 	return d.Format("2006-01-02 15:04:05")
 }
+
 func NowTimeFormat(format string) string {
 	return time.Now().Format(format)
 }
@@ -156,4 +157,51 @@ func MapKeys(m any) ([]any, error) {
 	}
 
 	return keys, nil
+}
+
+func Assert(values ...any) (string, error) {
+	for idx, v := range values {
+		if v == nil {
+			return "", fmt.Errorf("required value is nil: param[%d] = %#v", idx, v)
+		}
+		ok1, ok2 := template.IsTrue(v)
+		if ok1 && ok2 {
+			continue
+		}
+		return "", fmt.Errorf("required value is empty: param[%d] = %#v", idx, v)
+	}
+	return "", nil
+}
+
+func OrMap(value any) any {
+	ok1, ok2 := template.IsTrue(value)
+	if ok1 && ok2 {
+		return value
+	}
+	template.HTMLEscaper()
+	return map[string]any{}
+}
+
+func Join(value any, args ...string) string {
+	if value == nil {
+		return ""
+	}
+	var ss []string
+	rv := reflect.ValueOf(value)
+	switch rv.Kind() {
+	case reflect.Array, reflect.Slice:
+		for i := 0; i < rv.Len(); i++ {
+			item := template.HTMLEscaper(rv.Index(i).Interface())
+			ss = append(ss, item)
+		}
+	default:
+		return template.HTMLEscaper(value)
+	}
+	var sep string
+	if len(args) == 1 {
+		sep = args[0]
+	} else {
+		sep = " , "
+	}
+	return strings.Join(ss, sep)
 }

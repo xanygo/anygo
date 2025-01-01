@@ -5,9 +5,10 @@
 package xurl
 
 import (
-	"github.com/fsgo/fst"
 	"net/url"
 	"testing"
+
+	"github.com/fsgo/fst"
 )
 
 func TestHostPort(t *testing.T) {

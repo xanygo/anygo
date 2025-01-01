@@ -6,12 +6,12 @@ package xnet
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"strings"
 	"time"
 
-	"fmt"
 	"github.com/xanygo/anygo/xcache"
 	"github.com/xanygo/anygo/xnet/internal"
 	"github.com/xanygo/anygo/xsync"
