@@ -26,6 +26,8 @@ import (
 var outfile = flag.String("o", "out.ez", "output file name")
 var token = flag.String("token", "anygo-3000", "token for encryption")
 
+var exeName = "[" + os.Args[0] + "] "
+
 func main() {
 	flag.Parse()
 	if *outfile == "" {
@@ -41,27 +43,42 @@ func main() {
 	}
 	ct, err := ez.Encrypt(content)
 	assert(err, "encrypt content")
+
+	xm := md5.New()
+	xm.Write(ct)
+	xm.Write(ez.ID())
+	sign := xm.Sum(nil)
+
+	prefix := getMsgPrefix()
+
+	old, _ := os.ReadFile(*outfile)
+	if len(old) > 32 && bytes.Equal(old[len(old)-16:], sign) {
+		fmt.Fprintf(os.Stderr, "%s %-15s %s\n", prefix, *outfile, "not changed")
+		return
+	}
+
 	file, err := os.Create(*outfile)
 	assert(err, "create output file: "+*outfile)
 	defer file.Close()
 	_, err = file.Write(ct)
 	assert(err, "write to output file")
 
-	xm := md5.New()
-	xm.Write(ct)
-	xm.Write(ez.ID())
-	sign := xm.Sum(nil)
 	_, err = file.Write(sign)
 	assert(err, "write sign output file")
 
-	wd, _ := os.Getwd()
-	wd = xstr.CutLastNAfter(wd, string(filepath.Separator), 3)
-	exeName := "[" + os.Args[0] + "]"
-	fmt.Fprintln(os.Stderr, exeName, wd, ":", flag.Args(), "->", *outfile, len(ct)+len(sign), "bytes", len(names), "files")
+	kb := fmt.Sprintf("%.2f", float64(len(ct)+len(sign))/1024.0)
+	fmt.Fprintln(os.Stderr, prefix, flag.Args(), "->", *outfile, kb, "kb", len(names), "files")
 	space := strings.Repeat(" ", len(exeName))
 	for idx, name := range names {
 		fmt.Fprintf(os.Stderr, "%s %03d    %s \n", space, idx, name)
 	}
+}
+
+func getMsgPrefix() string {
+	wd, _ := os.Getwd()
+	wd = xstr.CutLastNAfter(wd, string(filepath.Separator), 3)
+	txt := exeName + fmt.Sprintf("%30s", wd) + " : "
+	return txt
 }
 
 func createZip() []byte {
