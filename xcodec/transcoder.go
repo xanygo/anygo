@@ -4,7 +4,36 @@
 
 package xcodec
 
+import "io"
+
 type TranscoderFunc func([]byte) ([]byte, error)
+
+func (fn TranscoderFunc) AsWriter(out io.Writer) io.Writer {
+	w1 := &tw1{
+		onWrite: fn,
+		out:     out,
+	}
+	return w1
+}
+
+var _ io.Writer = (*tw1)(nil)
+
+type tw1 struct {
+	onWrite TranscoderFunc
+	out     io.Writer
+}
+
+func (w *tw1) Write(p []byte) (n int, err error) {
+	ep, err := w.onWrite(p)
+	if err != nil {
+		return 0, err
+	}
+	_, err1 := w.out.Write(ep)
+	if err1 != nil {
+		return 0, err1
+	}
+	return len(p), nil
+}
 
 type TranscoderFuncs []func([]byte) ([]byte, error)
 
@@ -17,6 +46,10 @@ func (ts TranscoderFuncs) Transcoding(data []byte) (result []byte, err error) {
 		}
 	}
 	return data, nil
+}
+
+func (ts TranscoderFuncs) AsWriter(out io.Writer) io.Writer {
+	return TranscoderFunc(ts.Transcoding).AsWriter(out)
 }
 
 func EncoderWithTranscoder(enc Encoder, trans TranscoderFunc) Encoder {

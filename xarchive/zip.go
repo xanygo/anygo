@@ -6,8 +6,14 @@ package xarchive
 
 import (
 	"archive/zip"
+	"bytes"
+	"crypto/md5"
+	"errors"
+	"fmt"
 	"path"
 	"strings"
+
+	"github.com/xanygo/anygo/xcodec"
 )
 
 func ZipFileNames(rd *zip.Reader, strip uint) []string {
@@ -31,4 +37,34 @@ func stripComponents(p string, n uint) string {
 		return ""
 	}
 	return path.Join(ps[sc:]...)
+}
+
+// ZipDecrypt 从加密的 zip 字节流中解析出 zip.Reader 信息
+// 该内容，可以使用 cmd/anygo-encrypt-zip 创建
+func ZipDecrypt(b []byte, dc xcodec.Decrypter2) (*zip.Reader, error) {
+	if len(b) < 16 {
+		return nil, fmt.Errorf("file too short %d bytes", len(b))
+	}
+	content := b[:len(b)-16]
+	xm := md5.New()
+	xm.Write(content)
+	xm.Write(dc.ID())
+	sign := xm.Sum(nil)
+	expect := b[len(b)-16:]
+	if !bytes.Equal(expect, sign) {
+		return nil, errors.New("invalid signature")
+	}
+	zipContent, err := dc.Decrypt(b)
+	if err != nil {
+		return nil, err
+	}
+	return zip.NewReader(bytes.NewReader(zipContent), int64(len(zipContent)))
+}
+
+func MustZipDecrypt(b []byte, dc xcodec.Decrypter2) *zip.Reader {
+	r, err := ZipDecrypt(b, dc)
+	if err != nil {
+		panic(err)
+	}
+	return r
 }

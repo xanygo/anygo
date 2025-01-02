@@ -8,7 +8,9 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"io"
@@ -29,6 +31,18 @@ type (
 	Cipher interface {
 		Encrypter
 		Decrypter
+	}
+)
+
+type (
+	Encrypter2 interface {
+		Encrypter
+		ID() []byte
+	}
+
+	Decrypter2 interface {
+		Decrypter
+		ID() []byte
 	}
 )
 
@@ -138,6 +152,11 @@ func (a *AesBlock) init() {
 	a.base.init()
 }
 
+func (a *AesBlock) ID() []byte {
+	a.once.Do(a.init)
+	return a.base.ID()
+}
+
 func (a *AesBlock) Encrypt(src []byte) ([]byte, error) {
 	a.once.Do(a.init)
 	return a.base.Encrypt(src)
@@ -158,6 +177,7 @@ type cryptoBlockBase struct {
 
 	key []byte
 	iv  []byte
+	id  []byte // key 和 iv 的签名
 }
 
 func (base *cryptoBlockBase) init() {
@@ -179,6 +199,17 @@ func (base *cryptoBlockBase) init() {
 		by2 := md5.Sum([]byte(base.Key + "|xanygo|" + base.IV))
 		base.iv = by2[:base.BlockSize]
 	}
+
+	hh := hmac.New(sha256.New, base.key)
+	_, err := hh.Write(base.iv)
+	if err != nil {
+		panic(err)
+	}
+	base.id = hh.Sum(nil)
+}
+
+func (base *cryptoBlockBase) ID() []byte {
+	return base.id
 }
 
 func (base *cryptoBlockBase) Encrypt(src []byte) ([]byte, error) {
@@ -247,6 +278,7 @@ type AesOFB struct {
 
 	key []byte
 	iv  []byte
+	id  []byte // key 和 iv 的签名
 
 	once sync.Once
 }
@@ -271,6 +303,18 @@ func (a *AesOFB) init() {
 		by2 := md5.Sum([]byte(a.Key + "|xanygo|" + a.IV))
 		a.iv = by2[:aes.BlockSize]
 	}
+
+	hh := hmac.New(sha256.New, a.key)
+	_, err := hh.Write(a.iv)
+	if err != nil {
+		panic(err)
+	}
+	a.id = hh.Sum(nil)
+}
+
+func (a *AesOFB) ID() []byte {
+	a.once.Do(a.init)
+	return a.id
 }
 
 func (a *AesOFB) Encrypt(src []byte) ([]byte, error) {
