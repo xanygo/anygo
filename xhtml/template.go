@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 	"unsafe"
 
 	"github.com/xanygo/anygo/xhtml/internal/tplfn"
@@ -67,7 +66,7 @@ func (t *TPLRequest) IfPathHas(sub string, echo any) any {
 // FuncMap 用于模版的辅助方法
 var FuncMap = template.FuncMap{
 	// 渲染一个 Element 为 HTML 字符串
-	"xRender": Render,
+	"xRender": render,
 
 	// 用于 type="check" 类型的 input 的 value 和 checked 属性输出
 	"xCheckedValue": tplfn.InputChecked,
@@ -123,8 +122,8 @@ var FuncMap = template.FuncMap{
 	// 若传入的 value 不为空，则返回自身。否则返回一个空的 map[sting]any
 	"xOrMap": tplfn.OrMap,
 
-	"xDateTime":   tplfn.DateTime,
-	"xNowTimeFmt": tplfn.NowTimeFormat,
+	"xDateTime":  tplfn.DateTime,
+	"xNowFormat": tplfn.NowTimeFormat,
 
 	// 对输入的参数，创建一个依次轮询的顺序迭代器
 	// 如 {{ $iter := xEachOfIter "a" "b" "c" }}
@@ -144,10 +143,7 @@ var FuncMap = template.FuncMap{
 
 	"xJSON": func(val any) (string, error) {
 		bf, err := json.Marshal(val)
-		if err != nil {
-			return "", err
-		}
-		return string(bf), nil
+		return string(bf), err
 	},
 
 	"xDump": tplfn.Dump,
@@ -155,10 +151,6 @@ var FuncMap = template.FuncMap{
 	"xIsOdd":  tplfn.IsOddNumber,  //  判断是否是奇数
 	"xIsEven": tplfn.IsEvenNumber, // 判断是否是偶数
 	"xModEQ":  tplfn.IsRemainder,  // 判断余数是否指定值
-
-	"xNowFormat": func(layout string) string {
-		return time.Now().Format(layout)
-	},
 
 	"xHTML": func(str string) template.HTML {
 		return template.HTML(str)
@@ -185,6 +177,8 @@ var FuncMap = template.FuncMap{
 	"xStrPrefix":   strings.HasPrefix,
 	"xStrSuffix":   strings.HasSuffix,
 	"xStrContains": strings.Contains,
+	"xStrSplit":    strings.Split,
+	"xStrFields":   strings.Fields,
 
 	"xConst": getConst,
 

@@ -9,6 +9,7 @@ import (
 	"reflect"
 
 	"github.com/xanygo/anygo/xhttp/internal/zroute"
+	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xslice"
 	"github.com/xanygo/anygo/xsync"
 )
@@ -67,6 +68,11 @@ func RegisterGroup(r *Router, prefix string, h GroupHandler, mds ...MiddlewareFu
 	rt := reflect.TypeOf(h)
 	rv := reflect.ValueOf(h)
 
+	meta := map[string]string{
+		"Prefix":       prefix,
+		"GroupHandler": rt.String(),
+	}
+
 	infos := h.GroupHandler()
 
 	for i := 0; i < rv.NumMethod(); i++ {
@@ -77,6 +83,9 @@ func RegisterGroup(r *Router, prefix string, h GroupHandler, mds ...MiddlewareFu
 			continue
 		}
 		name := mt.Name
+		meta["MethodName"] = name
+		metaStr := " meta|" + xmap.Join(meta, ",")
+
 		handler := http.HandlerFunc(hd)
 
 		if len(infos) > 0 {
@@ -86,15 +95,15 @@ func RegisterGroup(r *Router, prefix string, h GroupHandler, mds ...MiddlewareFu
 					continue
 				}
 				fns := xslice.Merge(info.Middleware, mds)
-				r.HandleFunc(prefix+"/"+info.Pattern, info.Func, fns...)
+				r.HandleFunc(prefix+"/"+info.Pattern+metaStr, info.Func, fns...)
 				continue
 			}
 		}
 
 		method := zroute.GetPrefixMethod(name)
 		if name == "Index" {
-			r.handleMethod(method, prefix, handler, mds...)
+			r.handleMethod(method, prefix+metaStr, handler, mds...)
 		}
-		r.handleMethod(method, prefix+"/"+name, handler, mds...)
+		r.handleMethod(method, prefix+"/"+name+metaStr, handler, mds...)
 	}
 }

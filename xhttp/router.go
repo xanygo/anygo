@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xhttp/internal/zroute"
 	"github.com/xanygo/anygo/xlog"
 )
@@ -313,6 +314,10 @@ type RouteInfo struct {
 
 	// MetaOther
 	MetaOther map[string]string
+}
+
+func (i *RouteInfo) String() string {
+	return xcodec.JSONString(i)
 }
 
 type ctxKey uint8

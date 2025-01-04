@@ -334,3 +334,8 @@ func Render(e Element) template.HTML {
 	}
 	return template.HTML(bf)
 }
+
+func render(e Element) (template.HTML, error) {
+	bf, err := e.HTML()
+	return template.HTML(bf), err
+}

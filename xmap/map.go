@@ -7,6 +7,8 @@ package xmap
 import (
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 )
 
 // Get 从 map 中读取指定 key 的值。支持 map 为 nil。
@@ -230,4 +232,18 @@ func CreateStrErr(pairs ...any) (map[string]any, error) {
 		result[ks] = val
 	}
 	return result, nil
+}
+
+func Join[K string, V any](m map[K]V, sep string) string {
+	if len(m) == 0 {
+		return ""
+	}
+	lines := make([]string, 0, len(m))
+	keys := Keys[K, V](m)
+	slices.Sort(keys)
+	for _, k := range keys {
+		line := fmt.Sprintf("%s=%v", k, m[k])
+		lines = append(lines, line)
+	}
+	return strings.Join(lines, sep)
 }

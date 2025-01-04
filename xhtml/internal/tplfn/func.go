@@ -14,11 +14,11 @@ import (
 )
 
 func InputSelected(value any) ValueAttr {
-	valuesStr := fmt.Sprint(value)
+	values := valuesMap(value)
 	fn := func(current any) template.HTMLAttr {
 		var selected string
 		cstr := fmt.Sprint(current)
-		if cstr == valuesStr {
+		if _, ok := values[cstr]; ok {
 			selected = " selected"
 		}
 		code := fmt.Sprintf("value=%q%s", template.HTMLEscapeString(cstr), selected)
@@ -27,12 +27,29 @@ func InputSelected(value any) ValueAttr {
 	return ValueAttrFunc(fn)
 }
 
+// valuesMap 用于 InputChecked 和 InputSelected ，当组件支持多选是，可以传入一个 slice
+func valuesMap(value any) map[string]struct{} {
+	values := make(map[string]struct{}, 1)
+	rv := reflect.ValueOf(value)
+	switch rv.Kind() {
+	case reflect.Array, reflect.Slice:
+		for i := 0; i < rv.Len(); i++ {
+			key := fmt.Sprint(rv.Index(i).Interface())
+			values[key] = struct{}{}
+		}
+	default:
+		key := fmt.Sprint(value)
+		values[key] = struct{}{}
+	}
+	return values
+}
+
 func InputChecked(value any) ValueAttr {
-	valuesStr := fmt.Sprint(value)
+	values := valuesMap(value)
 	fn := func(current any) template.HTMLAttr {
 		var checked string
 		cstr := fmt.Sprint(current)
-		if cstr == valuesStr {
+		if _, ok := values[cstr]; ok {
 			checked = " checked"
 		}
 		code := fmt.Sprintf("value=%q%s", template.HTMLEscapeString(cstr), checked)
