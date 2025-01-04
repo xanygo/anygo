@@ -30,5 +30,18 @@ jobs:
     - name: Build
       run: go build -v ./...
 
+    - name: Vet
+      run: go vet ./...
+
+    - name: staticCheck
+      uses: dominikh/staticcheck-action@v1
+      with:
+        version: "latest"
+        install-go: false
+        cache-key: ${{ matrix.go }}
+        working-directory: ${{ matrix.dir }}
+
     - name: Test
       run: go test -v -timeout=120s  -race ./...
+
+
