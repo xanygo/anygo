@@ -94,5 +94,3 @@ func ExampleParse() {
 	// Output:
 	// info.A = "bb"
 }
-
-func Example_AutoChecker() {}
