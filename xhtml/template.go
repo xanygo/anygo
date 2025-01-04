@@ -191,6 +191,23 @@ var FuncMap = template.FuncMap{
 	"xAssert": tplfn.Assert,
 
 	"xJoin": tplfn.Join,
+
+	"xMathAdd": tplfn.MathAdd,
+	"xMathSub": tplfn.MathSub,
+	"xMathMul": tplfn.MathMul,
+	"xMathDiv": tplfn.MathDiv,
+
+	"xCat": func(items ...string) string {
+		if len(items) == 0 {
+			return ""
+		}
+		return strings.Join(items, "")
+	},
+	"xLower":     strings.ToLower,
+	"xUpper":     strings.ToUpper,
+	"xTitle":     strings.ToTitle,
+	"xTrimSpace": strings.TrimSpace,
+	"xTrim":      strings.Trim,
 }
 
 func Dump(w io.Writer, obj any) {

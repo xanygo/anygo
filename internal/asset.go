@@ -6,7 +6,6 @@ package internal
 
 import (
 	"embed"
-	_ "embed"
 	"net/http"
 	"path"
 	"sync"

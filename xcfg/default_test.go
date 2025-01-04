@@ -19,7 +19,7 @@ import (
 func TestExists(t *testing.T) {
 	wd, err := os.Getwd()
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 
 	type args struct {

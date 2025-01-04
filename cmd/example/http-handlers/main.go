@@ -20,7 +20,7 @@ func main() {
 	router := xhttp.NewRouter()
 
 	router.GetFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/etag/index", 302)
+		http.Redirect(w, r, "/etag/index", http.StatusFound)
 	})
 
 	r1 := router.Prefix("/etag", (&xhandler.ETag{}).Next)

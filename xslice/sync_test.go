@@ -41,6 +41,7 @@ func TestSync(t *testing.T) {
 	fst.Equal(t, []int{3}, ss.Load())
 
 	old = append(old, 3)
+	_ = old
 	fst.Equal(t, []int{3}, ss.Load())
 
 	ss.Delete(0, 1)

@@ -279,7 +279,7 @@ func (fm *FSMerge) MergeJS(names ...string) (string, error) {
 	str := strings.Join(names, "#")
 	hash := md5.Sum([]byte(str))
 	newName := hex.EncodeToString(hash[:]) + ".js"
-	mf, ok := fm.merged.Load(newName)
+	_, ok := fm.merged.Load(newName)
 	if ok {
 		return newName, nil
 	}
@@ -302,7 +302,7 @@ func (fm *FSMerge) MergeJS(names ...string) (string, error) {
 	}
 	code := bf.Bytes()
 	hash2 := md5.Sum(code)
-	mf = &mergedFile{
+	mf := &mergedFile{
 		ContentType: "application/javascript",
 		Body:        code,
 		Etag:        hex.EncodeToString(hash2[:]),

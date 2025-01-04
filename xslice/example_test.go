@@ -106,10 +106,7 @@ func ExampleNewRing() {
 	fmt.Println("---")
 	r.Range(func(v int) bool {
 		fmt.Println("range v=", v)
-		if v%2 == 0 {
-			return false
-		}
-		return true
+		return v%2 != 0
 	})
 
 	// Output:

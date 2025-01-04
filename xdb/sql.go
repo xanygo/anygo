@@ -16,7 +16,6 @@ type Builder interface {
 type Condition struct {
 	builder strings.Builder
 	args    []any
-	orderBy []string
 }
 
 func (c *Condition) Append(op string, str string, args ...any) {

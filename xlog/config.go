@@ -37,8 +37,7 @@ type FileConfig struct {
 	// 若不配置，所有等级日志写入一份日志文件
 	Dispatch []FileConfigDispatch `yaml:"Dispatch"`
 
-	once    xsync.OnceDoValueErr[map[Level]io.WriteCloser]
-	writers map[Level]io.WriteCloser
+	once xsync.OnceDoValueErr[map[Level]io.WriteCloser]
 }
 
 func (fc *FileConfig) getMaxFiles() int {
