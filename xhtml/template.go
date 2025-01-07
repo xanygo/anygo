@@ -197,9 +197,9 @@ var FuncMap = template.FuncMap{
 		}
 		return strings.Join(items, "")
 	},
-	"xLower":     strings.ToLower,
-	"xUpper":     strings.ToUpper,
-	"xTitle":     strings.ToTitle,
+	"xToLower":   strings.ToLower,
+	"xToUpper":   strings.ToUpper,
+	"xToTitle":   strings.ToTitle,
 	"xTrimSpace": strings.TrimSpace,
 	"xTrim":      strings.Trim,
 }

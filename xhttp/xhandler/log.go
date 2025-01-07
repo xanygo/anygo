@@ -93,11 +93,14 @@ func (al *AccessLog) before(ctx context.Context, start time.Time, r *http.Reques
 	} else {
 		headers = al.OnHeaders(r.Header)
 	}
-	xlog.AddAttr(ctx,
-		xlog.Time("start", start),
+	xlog.AddMetaAttr(ctx,
 		xlog.String("method", r.Method),
 		xlog.String("uri", r.RequestURI),
 		xlog.String("remote", r.RemoteAddr),
+	)
+
+	xlog.AddAttr(ctx,
+		xlog.Time("start", start),
 		xlog.String("host", r.Host),
 		xlog.Int64("contentLength", r.ContentLength),
 		xlog.GroupAttrs("cookie", cookies...),

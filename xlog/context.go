@@ -73,6 +73,16 @@ func ForkMetaContext(ctx context.Context) context.Context {
 	return context.WithValue(ctx, ctxKeyMeta, bg)
 }
 
+// IsContext 是否已初始化的 普通 context
+func IsContext(ctx context.Context) bool {
+	return ctx.Value(ctxKeyBaggage) != nil
+}
+
+// IsMetaContext 是否已初始化的 meta context
+func IsMetaContext(ctx context.Context) bool {
+	return ctx.Value(ctxKeyMeta) != nil
+}
+
 func findMetaBaggage(ctx context.Context) *baggage {
 	val, _ := ctx.Value(ctxKeyMeta).(*baggage)
 	return val
@@ -164,4 +174,13 @@ func MetaAttrsFromCtx(ctx context.Context) []Attr {
 
 func FindMetaAttrFromCtx(ctx context.Context, key string) (Attr, bool) {
 	return findMetaBaggage(ctx).Find(key)
+}
+
+func AllAttrsFromCtx(ctx context.Context) []Attr {
+	var attrs []Attr
+	values := MetaAttrsFromCtx(ctx)
+	attrs = append(attrs, values...)
+	values = AttrsFromCtx(ctx)
+	attrs = append(attrs, values...)
+	return attrs
 }

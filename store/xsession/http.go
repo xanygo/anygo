@@ -13,6 +13,7 @@ import (
 
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xlog"
 )
 
 var _ Storage = (*CookieStore)(nil)
@@ -182,6 +183,9 @@ func (s *IDHTTPHandler) BeforeServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 
 		http.SetCookie(w, sc)
+	}
+	if xlog.IsMetaContext(r.Context()) {
+		xlog.AddMetaAttr(r.Context(), xlog.String("sessionID", id))
 	}
 	ctx := WithID(r.Context(), id)
 	return r.WithContext(ctx)

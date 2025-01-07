@@ -198,25 +198,31 @@ type HasLevelWriter interface {
 }
 
 func AsLevelWriter(l Logger, level Level) io.Writer {
+	return AsLevelWriter3(l, level, 1)
+}
+
+func AsLevelWriter3(l Logger, level Level, callerSkip int) io.Writer {
 	if lw, ok := l.(HasLevelWriter); ok {
 		if w := lw.LevelWriter(level); w != nil {
 			return w
 		}
 	}
 	return &lgWriter{
-		logger: l,
-		level:  level,
+		logger:     l,
+		level:      level,
+		callerSkip: callerSkip,
 	}
 }
 
 var _ io.Writer = (*lgWriter)(nil)
 
 type lgWriter struct {
-	logger Logger
-	level  Level
+	logger     Logger
+	level      Level
+	callerSkip int
 }
 
 func (w *lgWriter) Write(p []byte) (n int, err error) {
-	w.logger.Output(context.Background(), w.level, 1, string(p))
+	w.logger.Output(context.Background(), w.level, w.callerSkip, string(p))
 	return len(p), nil
 }

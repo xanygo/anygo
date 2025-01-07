@@ -110,7 +110,7 @@ func doInitErrTpl() {
 	if err != nil {
 		panic(err)
 	}
-	errPage404Zh = bytes.Clone(bf.Bytes())
+	errPage404En = bytes.Clone(bf.Bytes())
 }
 
 func notFound(w http.ResponseWriter, r *http.Request) {
