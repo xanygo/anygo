@@ -158,6 +158,12 @@ var FuncMap = template.FuncMap{
 	"xHTMLAttr": func(str string) template.HTMLAttr {
 		return template.HTMLAttr(str)
 	},
+	"xCss": func(str string) template.CSS {
+		return template.CSS(str)
+	},
+	"xJs": func(str string) template.JS {
+		return template.JS(str)
+	},
 
 	"xNewInts": func(start int, end int) []int {
 		result := make([]int, 0, end-start)
