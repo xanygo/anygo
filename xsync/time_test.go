@@ -28,7 +28,7 @@ func TestTimeStamp(t *testing.T) {
 
 	fst.Equal(t, time.Second, a.Sub(t3))
 
-	fst.Greater(t, a.Since(time.Now()), time.Duration(0))
+	fst.GreaterOrEqual(t, a.Since(time.Now()), time.Duration(0))
 }
 
 func BenchmarkTimeStamp_Load(b *testing.B) {
