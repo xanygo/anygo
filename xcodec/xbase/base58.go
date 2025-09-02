@@ -53,6 +53,7 @@ func (b *Base58Codec) Encode(input []byte) []byte {
 
 	return result
 }
+
 func (b *Base58Codec) EncodeToString(input []byte) string {
 	bf := b.Encode(input)
 	return unsafe.String(unsafe.SliceData(bf), len(bf))

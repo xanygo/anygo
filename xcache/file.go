@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -57,7 +58,7 @@ func (f *File[K, V]) Get(ctx context.Context, key K) (value V, err error) {
 
 	expire, data, err := f.readByKey(key, true)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return value, xerror.NotFound
 		}
 		return value, err
@@ -82,8 +83,8 @@ func (f *File[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration)
 	fp := f.cacheFilePath(key)
 	dir := filepath.Dir(fp)
 	_, err := os.Stat(dir)
-	if err != nil && os.IsNotExist(err) {
-		if err := os.MkdirAll(dir, 0755); err != nil && os.IsExist(err) {
+	if err != nil && errors.Is(err, fs.ErrNotExist) {
+		if err := os.MkdirAll(dir, 0755); err != nil && errors.Is(err, fs.ErrExist) {
 			return err
 		}
 	}
@@ -146,7 +147,7 @@ func (f *File[K, V]) Delete(ctx context.Context, keys ...K) error {
 	for _, key := range keys {
 		fp := f.cacheFilePath(key)
 		err := os.Remove(fp)
-		if err != nil && !os.IsNotExist(err) {
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			errs = append(errs, err)
 		}
 	}
@@ -241,7 +242,7 @@ func (f *File[K, V]) gc() {
 	defer f.gcRunning.Store(false)
 
 	err := filepath.Walk(f.Dir, func(path string, info os.FileInfo, err error) error {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return nil
 		}
 		if !info.IsDir() {

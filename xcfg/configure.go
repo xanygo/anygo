@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"maps"
 	"os"
 	"path/filepath"
@@ -103,7 +104,7 @@ func (c *Configure) realConfPath(confPath string) (path string, ext string, err 
 		return confPath, fileExt, nil
 	}
 
-	notExist := err1 != nil && os.IsNotExist(err1)
+	notExist := err1 != nil && errors.Is(err1, fs.ErrNotExist)
 	isDir := err1 == nil && info.IsDir()
 
 	// fileExt == "" 是为了兼容存在同名目录的情况
@@ -190,7 +191,7 @@ func (c *Configure) Exists(path string) bool {
 	if err == nil && !info.IsDir() {
 		return true
 	}
-	if !os.IsNotExist(err) {
+	if !errors.Is(err, fs.ErrNotExist) {
 		return false
 	}
 	for ext := range c.decoders {

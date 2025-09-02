@@ -5,6 +5,8 @@
 package xfs
 
 import (
+	"errors"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -19,7 +21,7 @@ type HasFd interface {
 // Exists 判断文件/目录是否存在
 func Exists(name string) (bool, error) {
 	_, err := os.Stat(name)
-	if os.IsNotExist(err) {
+	if errors.Is(err, fs.ErrNotExist) {
 		return false, nil
 	}
 	return err == nil, err
@@ -29,9 +31,9 @@ func Exists(name string) (bool, error) {
 // 若路径为文件，则删除，然后创建文件夹
 func KeepDirExists(dir string) error {
 	info, err := os.Stat(dir)
-	if os.IsNotExist(err) {
+	if errors.Is(err, fs.ErrNotExist) {
 		err = os.MkdirAll(dir, 0777)
-		if err == nil || os.IsExist(err) {
+		if err == nil || errors.Is(err, fs.ErrExist) {
 			return nil
 		}
 		return err
@@ -44,12 +46,12 @@ func KeepDirExists(dir string) error {
 		return nil
 	}
 
-	if err = os.Remove(dir); err != nil && !os.IsNotExist(err) {
+	if err = os.Remove(dir); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 
 	err = os.MkdirAll(dir, 0777)
-	if err == nil || os.IsExist(err) {
+	if err == nil || errors.Is(err, fs.ErrExist) {
 		return nil
 	}
 	return err
@@ -77,7 +79,7 @@ func CleanFiles(pattern string, remaining int) error {
 	var infos []*finfo
 	for _, p := range files {
 		info, err := os.Stat(p)
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}
 		if err != nil {

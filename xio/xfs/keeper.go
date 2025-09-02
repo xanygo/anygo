@@ -6,6 +6,7 @@ package xfs
 
 import (
 	"errors"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -170,7 +171,7 @@ func (kf *Keeper) exists(fp string) (bool, error) {
 		return false, nil
 	}
 	curInfo, err := os.Stat(fp)
-	if os.IsNotExist(err) {
+	if errors.Is(err, fs.ErrNotExist) {
 		return false, nil
 	} else if err != nil {
 		return false, err
