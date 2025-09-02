@@ -25,6 +25,7 @@ func (t *Tags[K, V, T]) Set(key K, value V, tags ...T) {
 	}
 }
 
+// Any 先依次使用 tags 查找，如无则尝试查找 defaultKey，若也不存在，则返回任意一个
 func (t *Tags[K, V, T]) Any(defaultKey K, tags ...T) (value V) {
 	if len(t.values) == 0 {
 		return value

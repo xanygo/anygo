@@ -9,10 +9,11 @@ import (
 	"strings"
 )
 
-func IsURL(str string) error {
+// IsHTTPURL 是否有效的 HTTP URL 地址
+func IsHTTPURL(str string) error {
 	scheme, _, ok := strings.Cut(str, "://")
 	if !ok || (scheme != "http" && scheme != "https") {
-		return fmt.Errorf("%q is not url", str)
+		return fmt.Errorf("%q is not HTTP url", str)
 	}
 	return nil
 }

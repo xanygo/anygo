@@ -141,8 +141,9 @@ func (s *Sync[T]) PopTailN(n int) (values []T) {
 }
 
 func (s *Sync[T]) Clone() *Sync[T] {
+	items := s.Load()
 	return &Sync[T]{
-		items: s.Load(),
+		items: append([]T(nil), items...),
 	}
 }
 
