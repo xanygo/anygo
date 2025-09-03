@@ -35,7 +35,7 @@ type File[K comparable, V any] struct {
 	Dir string
 
 	// GC 触发过期缓存清理的间隔时间，可选
-	// 若值 < 1秒，会使用默认值 300秒
+	// 若值 < 1秒，会使用默认值 300 秒
 	GC time.Duration
 
 	// Codec 必填，用于数据的编解码
@@ -83,8 +83,12 @@ func (f *File[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration)
 	fp := f.cacheFilePath(key)
 	dir := filepath.Dir(fp)
 	_, err := os.Stat(dir)
-	if err != nil && errors.Is(err, fs.ErrNotExist) {
-		if err := os.MkdirAll(dir, 0755); err != nil && errors.Is(err, fs.ErrExist) {
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			if err := os.MkdirAll(dir, 0755); err != nil && !errors.Is(err, fs.ErrExist) {
+				return err
+			}
+		} else {
 			return err
 		}
 	}
@@ -158,9 +162,8 @@ func (f *File[K, V]) Delete(ctx context.Context, keys ...K) error {
 }
 
 func (f *File[K, V]) cacheFilePath(key K) string {
-	h := md5.New()
-	h.Write([]byte(fmt.Sprint(key)))
-	s := hex.EncodeToString(h.Sum(nil))
+	sg := md5.Sum([]byte(fmt.Sprint(key)))
+	s := hex.EncodeToString(sg[:])
 	fp := filepath.Join(f.Dir, s[:3], s[3:6], s[6:9], s[9:12], s[12:15], s[16:])
 	return strings.Join([]string{fp, cacheFileExt}, "")
 }

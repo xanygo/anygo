@@ -21,22 +21,25 @@ type HasFd interface {
 // Exists 判断文件/目录是否存在
 func Exists(name string) (bool, error) {
 	_, err := os.Stat(name)
+	if err == nil {
+		return true, nil
+	}
 	if errors.Is(err, fs.ErrNotExist) {
 		return false, nil
 	}
-	return err == nil, err
+	return false, err
 }
 
 // KeepDirExists 保持文件夹存在，若不存在则创建
 // 若路径为文件，则删除，然后创建文件夹
 func KeepDirExists(dir string) error {
 	info, err := os.Stat(dir)
-	if errors.Is(err, fs.ErrNotExist) {
-		err = os.MkdirAll(dir, 0777)
-		if err == nil || errors.Is(err, fs.ErrExist) {
+	if err != nil && errors.Is(err, fs.ErrNotExist) {
+		err1 := os.MkdirAll(dir, 0777)
+		if err1 == nil || errors.Is(err1, fs.ErrExist) {
 			return nil
 		}
-		return err
+		return err1
 	}
 	if err != nil {
 		return err

@@ -11,7 +11,12 @@ import (
 	"strconv"
 )
 
-func ErrCode(err error) (int64, bool) {
+// ErrCode2 尝试读取错误码，若 err == nil，则总是返回 0, true。
+// 若 error 实现了 HasErrCode 接口，则读取成功，否则失败。
+func ErrCode2(err error) (code int64, ok bool) {
+	if err == nil {
+		return 0, true
+	}
 	var ec HasErrCode
 	if errors.As(err, &ec) {
 		return ec.ErrCode(), true
@@ -19,14 +24,17 @@ func ErrCode(err error) (int64, bool) {
 	return 0, false
 }
 
-func ErrCode2(err error, def int64) int64 {
-	code, ok := ErrCode(err)
+// ErrCode 读取错误码，若读取失败，则返回默认值 def
+// 若 err==nil，总是返回 0
+func ErrCode(err error, def int64) int64 {
+	code, ok := ErrCode2(err)
 	if ok {
 		return code
 	}
 	return def
 }
 
+// CodeError 带有错误码的 error 接口定义
 type CodeError interface {
 	error
 	HasErrCode

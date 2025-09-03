@@ -49,7 +49,7 @@ func (rd *Reader[K, V]) Get(ctx context.Context, key K) (v V, err error) {
 		Err:   err,
 	}
 	if err == nil {
-		rd.Cache.Set(ctx, key, value, rd.TTL)
+		err = rd.Cache.Set(ctx, key, value, rd.TTL)
 	} else if rd.FailTTL > 0 {
 		rd.Cache.Set(ctx, key, value, rd.FailTTL)
 	}

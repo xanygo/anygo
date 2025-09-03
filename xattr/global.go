@@ -15,9 +15,9 @@ var ridString string
 var startTime time.Time
 
 func init() {
+	startTime = time.Now().Local()
 	rid = rand.Int64()
 	ridString = strconv.FormatInt(rid, 10)
-	startTime = time.Now().Local()
 }
 
 // RandID 随机数，每次进程重启后发生变化

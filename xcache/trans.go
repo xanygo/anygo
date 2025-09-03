@@ -14,6 +14,7 @@ import (
 
 var _ Cache[string, any] = (*TransString[any])(nil)
 
+// TransString 使用底层存储 K-V 均为 string 类型的 cache，存储缓存数据
 type TransString[V any] struct {
 	Cache Cache[string, string]
 	Codec xcodec.Codec
