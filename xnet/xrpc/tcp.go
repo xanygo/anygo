@@ -39,7 +39,7 @@ func (c *TCPClient) getServiceRegistry() xservice2.Registry {
 	return xservice2.DefaultRegistry()
 }
 
-func (c *TCPClient) Invoke(ctx context.Context, service string, req Request, resp Response, opts ...ClientOption) (result error) {
+func (c *TCPClient) Invoke(ctx context.Context, service string, req Request, resp Response, opts ...Option) (result error) {
 	var err1 error
 	for i := 0; i < len(c.Interceptor); i++ {
 		it := c.Interceptor[i]
@@ -113,7 +113,7 @@ func (c *TCPClient) doWriteRead(ctx context.Context, req Request, resp Response,
 
 type TCPClientInterceptor struct {
 	BeforeInvoke func(ctx context.Context, service string, req Request, resp Response,
-		opts ...ClientOption) (context.Context, string, Request, Response, []ClientOption, error)
+		opts ...Option) (context.Context, string, Request, Response, []Option, error)
 
 	BeforePickAddress func(ctx context.Context, service string)
 	AfterPickAddress  func(ctx context.Context, service string, node xnaming.Node, err error)
@@ -123,6 +123,6 @@ type TCPClientInterceptor struct {
 
 var defaultTCPClient = &TCPClient{}
 
-func Invoke(ctx context.Context, service string, req Request, resp Response, opts ...ClientOption) (result error) {
+func Invoke(ctx context.Context, service string, req Request, resp Response, opts ...Option) (result error) {
 	return defaultTCPClient.Invoke(ctx, service, req, resp, opts...)
 }

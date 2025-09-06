@@ -12,7 +12,7 @@ import (
 	"github.com/xanygo/anygo/internal/zslice"
 )
 
-// SliceValue 值为 slice 的 并发安全的 map ( map[K][]V )
+// SliceValue 值为 slice 的 非并发安全的 map ( map[K][]V )
 type SliceValue[K, V comparable] struct {
 	data map[K][]V
 }
@@ -39,7 +39,7 @@ func (s *SliceValue[K, V]) GetFirst(key K) (v V) {
 	return vs[0]
 }
 
-func (s *SliceValue[K, V]) Add(key K, values ...V) {
+func (s *SliceValue[K, V]) AddUnique(key K, values ...V) {
 	if len(values) == 0 {
 		return
 	}
@@ -150,7 +150,7 @@ func (s *SliceValueSync[K, V]) GetFirst(key K) (v V) {
 	return vs[0]
 }
 
-func (s *SliceValueSync[K, V]) Add(key K, values ...V) {
+func (s *SliceValueSync[K, V]) AddUnique(key K, values ...V) {
 	if len(values) == 0 {
 		return
 	}

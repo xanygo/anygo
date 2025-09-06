@@ -184,7 +184,7 @@ func (s *OrderedSync[K, V]) Set(key K, value V) {
 func (s *OrderedSync[K, V]) Delete(keys ...K) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
-	if s.db == nil {
+	if len(s.db) == 0 {
 		return
 	}
 	for _, key := range keys {
@@ -201,7 +201,7 @@ func (s *OrderedSync[K, V]) Delete(keys ...K) {
 func (s *OrderedSync[K, V]) Get(key K) (V, bool) {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
-	if s.db == nil {
+	if len(s.db) == 0 {
 		var emp V
 		return emp, false
 	}
@@ -212,7 +212,7 @@ func (s *OrderedSync[K, V]) Get(key K) (V, bool) {
 func (s *OrderedSync[K, V]) GetDf(key K, def V) V {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
-	if s.db == nil {
+	if len(s.db) == 0 {
 		return def
 	}
 	v, ok := s.db[key]
@@ -225,7 +225,7 @@ func (s *OrderedSync[K, V]) GetDf(key K, def V) V {
 func (s *OrderedSync[K, V]) MustGet(key K) V {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
-	if s.db != nil {
+	if len(s.db) != 0 {
 		if v, ok := s.db[key]; ok {
 			return v
 		}
@@ -236,7 +236,7 @@ func (s *OrderedSync[K, V]) MustGet(key K) V {
 func (s *OrderedSync[K, V]) Has(key K) bool {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
-	if s.db == nil {
+	if len(s.db) == 0 {
 		return false
 	}
 	_, ok := s.db[key]
@@ -246,7 +246,7 @@ func (s *OrderedSync[K, V]) Has(key K) bool {
 func (s *OrderedSync[K, V]) HasAny(keys ...K) bool {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
-	if s.db == nil {
+	if len(s.db) == 0 {
 		return false
 	}
 	for _, key := range keys {
@@ -300,7 +300,7 @@ func (s *OrderedSync[K, V]) KVs(clone bool) ([]K, map[K]V) {
 func (s *OrderedSync[K, V]) Values() []V {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
-	if s.db == nil {
+	if len(s.db) == 0 {
 		return nil
 	}
 	values := make([]V, len(s.keys))

@@ -69,18 +69,16 @@ func (s *Sync[T]) Clear() {
 
 // Store 用传入的 slice 替换原有所有的值
 func (s *Sync[T]) Store(all []T) {
-	values := slices.Clone(all)
 	s.mux.Lock()
-	s.items = values
+	s.items = all
 	s.mux.Unlock()
 }
 
 // Swap 用传入的 slice 替换原有所有的值,并返回原有的值
 func (s *Sync[T]) Swap(all []T) []T {
-	values := slices.Clone(all)
 	s.mux.Lock()
 	old := s.items
-	s.items = values
+	s.items = all
 	s.mux.Unlock()
 	return old
 }
@@ -141,9 +139,8 @@ func (s *Sync[T]) PopTailN(n int) (values []T) {
 }
 
 func (s *Sync[T]) Clone() *Sync[T] {
-	items := s.Load()
 	return &Sync[T]{
-		items: append([]T(nil), items...),
+		items: slices.Clone(s.Load()),
 	}
 }
 

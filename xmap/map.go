@@ -5,7 +5,6 @@
 package xmap
 
 import (
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -188,9 +187,9 @@ func FilterValues[K comparable, V any](m map[K]V, filter func(k K, v V, ok int) 
 	return values
 }
 
-// Create 使用 pairs 对，创建一个 map,若 key 或者 value 为nil，则会跳过此条数据
-func Create(pairs ...any) map[any]any {
-	result, err := CreateErr(pairs)
+// MustCreate 使用 pairs 对，创建一个 map,若失败则 panic
+func MustCreate[K comparable, V any](pairs ...any) map[K]V {
+	result, err := Create[K, V](pairs)
 	if err != nil {
 		panic(err)
 	}
@@ -198,38 +197,25 @@ func Create(pairs ...any) map[any]any {
 	return result
 }
 
-func CreateErr(pairs ...any) (map[any]any, error) {
-	if len(pairs)%2 != 0 {
-		return nil, errors.New("invalid map pairs")
+func Create[K comparable, V any](pairs ...any) (map[K]V, error) {
+	total := len(pairs)
+	if total%2 != 0 {
+		return nil, fmt.Errorf("invalid map pairs, has an odd number (%d) of elements", total)
 	}
-	result := make(map[any]any, len(pairs)/2)
+	result := make(map[K]V, total/2)
 	for i := 0; i < len(pairs); i += 2 {
 		key := pairs[i]
 		val := pairs[i+1]
-		if key == nil || val == nil {
-			continue
-		}
-		result[key] = val
-	}
-	return result, nil
-}
 
-func CreateStrErr(pairs ...any) (map[string]any, error) {
-	if len(pairs)%2 != 0 {
-		return nil, errors.New("invalid map pairs")
-	}
-	result := make(map[string]any, len(pairs)/2)
-	for i := 0; i < len(pairs); i += 2 {
-		key := pairs[i]
-		val := pairs[i+1]
-		if key == nil {
-			continue
+		kt, ok1 := key.(K)
+		if !ok1 {
+			return nil, fmt.Errorf("key(%d)=(%T)%#v is not %T", i, key, key, kt)
 		}
-		ks, ok := key.(string)
-		if !ok {
-			return nil, fmt.Errorf("key(%d)=(%T)%#v is not string", i, key, key)
+		vt, ok2 := val.(V)
+		if !ok2 {
+			return nil, fmt.Errorf("value(%d)=(%T)%#v is not %T", i, val, val, vt)
 		}
-		result[ks] = val
+		result[kt] = vt
 	}
 	return result, nil
 }

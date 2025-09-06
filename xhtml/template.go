@@ -116,7 +116,7 @@ var FuncMap = template.FuncMap{
 	// 通过输入的 pair 创建一个 map，
 	// 如 {{ $obj := xNewMap "k1" "v1" "k2" 100 }}, 会生成map：$obj = {"k1" : "v1", "k2" : 100 }
 	// 创建的是 map[string]any 类型的 map
-	"xNewMap":  xmap.CreateStrErr,
+	"xNewMap":  xmap.Create[string, any],
 	"xMapKeys": tplfn.MapKeys,
 
 	// 若传入的 value 不为空，则返回自身。否则返回一个空的 map[sting]any

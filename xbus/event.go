@@ -4,7 +4,11 @@
 
 package xbus
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/xanygo/anygo/safely"
+)
 
 type EventBus[T any] struct {
 	subs []chan T
@@ -17,12 +21,17 @@ func (e *EventBus[T]) Publish(err T) {
 	subs := e.subs
 	e.mu.RUnlock()
 
+	var wg sync.WaitGroup
 	for i := 0; i < total; i++ {
-		select {
-		case subs[i] <- err:
-		default:
-		}
+		sub := subs[i]
+		wg.Go(safely.WrapVoid(func() {
+			select {
+			case sub <- err:
+			default:
+			}
+		}))
 	}
+	wg.Wait()
 }
 
 func (e *EventBus[T]) Subscribe() <-chan T {

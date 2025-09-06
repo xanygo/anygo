@@ -18,7 +18,7 @@ type testSliceValueSyncType[K, V comparable] interface {
 	Set(key K, values ...V)
 	Get(key K) []V
 	GetFirst(key K) (v V)
-	Add(key K, values ...V)
+	AddUnique(key K, values ...V)
 	Delete(keys ...K)
 	DeleteValue(key K, values ...V)
 	Has(key K) bool
@@ -47,12 +47,12 @@ func TestSlice(t *testing.T) {
 			s1.Set("k1", 2)
 			fst.Equal(t, []int{2}, s1.Get("k1"))
 
-			s1.Add("k2", 2, 3)
+			s1.AddUnique("k2", 2, 3)
 			fst.True(t, s1.Has("k2"))
 			fst.True(t, s1.HasValue("k2", 2, 3))
 			fst.False(t, s1.HasValue("k2", 4))
 
-			s1.Add("k2", 4)
+			s1.AddUnique("k2", 4)
 			fst.Equal(t, []int{2, 3, 4}, s1.Get("k2"))
 
 			keys := s1.Keys()
