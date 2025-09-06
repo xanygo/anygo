@@ -161,7 +161,7 @@ func (d *DialerImpl) dialHedging(ctx context.Context, network string, ips []net.
 		maxDelay = min(time.Until(dl), maxDelay)
 	}
 	minDelay := maxDelay / 2
-	part := minDelay / time.Duration(len(ips)-1)
+	part := minDelay / time.Duration(len(ips))
 	// 发送 backup request 请求
 	// 请求平均分布于超时时间的后半段
 	for idx, ip := range ips[1:] {

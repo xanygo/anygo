@@ -40,9 +40,15 @@ type CodeError interface {
 	HasErrCode
 }
 
-type HasErrCode interface {
-	ErrCode() int64
-}
+type (
+	HasErrCode interface {
+		ErrCode() int64
+	}
+
+	HasErrMsg interface {
+		ErrMsg() string
+	}
+)
 
 var _ error = (*codeError1)(nil)
 var _ HasErrCode = (*codeError1)(nil)
@@ -55,7 +61,7 @@ func NewCodeError(code int64, msg string) CodeError {
 }
 
 func fmtCode(code int64) string {
-	return "(errno:" + strconv.FormatInt(code, 10) + ") "
+	return " (errno:" + strconv.FormatInt(code, 10) + ") "
 }
 
 type codeError1 struct {
@@ -68,7 +74,7 @@ func (e *codeError1) ErrCode() int64 {
 }
 
 func (e *codeError1) Error() string {
-	return fmtCode(e.Code) + e.Msg
+	return e.Msg + fmtCode(e.Code)
 }
 
 func WithCode(err error, code int64) CodeError {
@@ -91,7 +97,7 @@ func (c *codeError2) Error() string {
 	if c.Err == nil {
 		return "<nil>"
 	}
-	return fmtCode(c.Code) + c.Err.Error()
+	return c.Err.Error() + fmtCode(c.Code)
 }
 
 func (c *codeError2) ErrCode() int64 {

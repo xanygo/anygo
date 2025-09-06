@@ -1,0 +1,25 @@
+
+
+
+
+## 配置文件格式：
+```toml
+Name = "demo"
+ConnectTime = 1000
+ReadTimeout = 1000
+
+
+
+[HTTP]
+Host = "demo.com"
+HTTPS = true
+[HTTP.Header]
+KA = ["a"]
+
+[DownStream]
+LoadBalancer = "rr"
+Address  = ["127.0.0.1:80"]
+
+[DownStream.IDC.bj]
+Address  = ["127.0.0.1:80"]
+```

@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/safely"
+	"github.com/xanygo/anygo/xbus"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xio"
@@ -45,7 +46,7 @@ type File[K comparable, V any] struct {
 
 	gcRunning atomic.Bool
 
-	errChan xerror.Chan
+	errChan xbus.EventBus[error]
 }
 
 func (f *File[K, V]) Get(ctx context.Context, key K) (value V, err error) {
@@ -249,14 +250,14 @@ func (f *File[K, V]) gc() {
 			return nil
 		}
 		if !info.IsDir() {
-			if err1 := f.checkFile(path); err1 != nil {
-				f.errChan.Send(fmt.Errorf("[xcache.File.gc] checkFile %q: %w", path, err1))
+			if err1 := f.checkFile(path); err1 != nil && f.errChan.Subscribed() {
+				f.errChan.Publish(fmt.Errorf("[xcache.File.gc] checkFile %q: %w", path, err1))
 			}
 		}
 		return nil
 	})
-	if err != nil {
-		f.errChan.Send(fmt.Errorf("[[xcache.File.gc]] Walk %q: %w", f.Dir, err))
+	if err != nil && f.errChan.Subscribed() {
+		f.errChan.Publish(fmt.Errorf("[[xcache.File.gc]] Walk %q: %w", f.Dir, err))
 	}
 }
 

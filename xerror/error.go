@@ -14,15 +14,23 @@ type TraceError interface {
 	TraceData() map[string]any
 }
 
+const (
+	CodeNotFound = iota + 1000
+	CodeInvalidStatus
+	CodeInvalidParam
+	CodeDuplicateKey
+)
+
 var (
 	// NotFound 错误：数据找不到
-	NotFound = NewCodeError(1000, "not found")
+	NotFound = NewCodeError(CodeNotFound, "not found")
 
 	// InvalidStatus 错误：数据的状态非正常
-	InvalidStatus = NewCodeError(1001, "invalid status")
+	InvalidStatus = NewCodeError(CodeInvalidStatus, "invalid status")
 
 	// InvalidParam 错误：无效的请求参数
-	InvalidParam = NewCodeError(1002, "invalid param")
+	InvalidParam = NewCodeError(CodeInvalidParam, "invalid param")
+	DuplicateKey = NewCodeError(CodeDuplicateKey, "duplicate primary key")
 )
 
 // IsNotFound 判断是否资源不存在错误
