@@ -10,7 +10,7 @@ jobs:
   build:
     strategy:
       matrix:
-        go: ['1.24','1.25']
+        go: ['1.25']
         servers: [ "ubuntu-latest","windows-latest","macos-latest","macos-13"]
     runs-on: ${{ matrix.servers }}
 

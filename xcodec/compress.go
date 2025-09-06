@@ -19,10 +19,10 @@ func GZipCompress(src []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := cp.Flush(); err != nil {
+	if err = cp.Flush(); err != nil {
 		return nil, err
 	}
-	if err := cp.Close(); err != nil {
+	if err = cp.Close(); err != nil {
 		return nil, err
 	}
 	return bf.Bytes(), nil
@@ -37,7 +37,7 @@ func GZipDecompress(src []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := rd.Close(); err != nil {
+	if err = rd.Close(); err != nil {
 		return nil, err
 	}
 	return bf, nil
@@ -50,10 +50,10 @@ func ZLibCompress(src []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := cp.Flush(); err != nil {
+	if err = cp.Flush(); err != nil {
 		return nil, err
 	}
-	if err := cp.Close(); err != nil {
+	if err = cp.Close(); err != nil {
 		return nil, err
 	}
 	return bf.Bytes(), nil
@@ -68,7 +68,7 @@ func ZLibDecompress(src []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := rd.Close(); err != nil {
+	if err = rd.Close(); err != nil {
 		return nil, err
 	}
 	return bf, nil
@@ -84,10 +84,10 @@ func FlateCompress(src []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := cp.Flush(); err != nil {
+	if err = cp.Flush(); err != nil {
 		return nil, err
 	}
-	if err := cp.Close(); err != nil {
+	if err = cp.Close(); err != nil {
 		return nil, err
 	}
 	return bf.Bytes(), nil
@@ -99,7 +99,7 @@ func FlateDecompress(src []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := rd.Close(); err != nil {
+	if err = rd.Close(); err != nil {
 		return nil, err
 	}
 	return bf, nil

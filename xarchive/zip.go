@@ -41,7 +41,7 @@ func stripComponents(p string, n uint) string {
 
 // ZipDecrypt 从加密的 zip 字节流中解析出 zip.Reader 信息
 // 该内容，可以使用 cmd/anygo-encrypt-zip 创建
-func ZipDecrypt(b []byte, dc xcodec.Decrypter2) (*zip.Reader, error) {
+func ZipDecrypt(b []byte, dc xcodec.IDDecrypter) (*zip.Reader, error) {
 	if len(b) < 16 {
 		return nil, fmt.Errorf("file too short %d bytes", len(b))
 	}
@@ -61,7 +61,7 @@ func ZipDecrypt(b []byte, dc xcodec.Decrypter2) (*zip.Reader, error) {
 	return zip.NewReader(bytes.NewReader(zipContent), int64(len(zipContent)))
 }
 
-func MustZipDecrypt(b []byte, dc xcodec.Decrypter2) *zip.Reader {
+func MustZipDecrypt(b []byte, dc xcodec.IDDecrypter) *zip.Reader {
 	r, err := ZipDecrypt(b, dc)
 	if err != nil {
 		panic(err)

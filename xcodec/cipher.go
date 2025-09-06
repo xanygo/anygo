@@ -18,8 +18,8 @@ import (
 )
 
 type (
-	// Encrypter 加密
-	Encrypter interface {
+	// Encryptor 加密
+	Encryptor interface {
 		Encrypt(src []byte) ([]byte, error)
 	}
 
@@ -29,18 +29,18 @@ type (
 	}
 
 	Cipher interface {
-		Encrypter
+		Encryptor
 		Decrypter
 	}
 )
 
 type (
-	Encrypter2 interface {
-		Encrypter
+	IDEncryptor interface {
+		Encryptor
 		ID() []byte
 	}
 
-	Decrypter2 interface {
+	IDDecrypter interface {
 		Decrypter
 		ID() []byte
 	}
@@ -58,9 +58,9 @@ func (fn DecryptFunc) Decrypt(src []byte) ([]byte, error) {
 	return fn(src)
 }
 
-type Encrypters []Encrypter
+type Encryptors []Encryptor
 
-func (es Encrypters) Encrypt(src []byte) (out []byte, err error) {
+func (es Encryptors) Encrypt(src []byte) (out []byte, err error) {
 	out = src
 	for _, cp := range es {
 		out, err = cp.Encrypt(out)
@@ -326,7 +326,7 @@ func (a *AesOFB) Encrypt(src []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	stream := cipher.NewOFB(block, a.iv)
+	stream := cipher.NewCTR(block, a.iv)
 	bf := &bytes.Buffer{}
 	w := &cipher.StreamWriter{S: stream, W: bf}
 	_, err = w.Write(src)
@@ -349,7 +349,7 @@ func (a *AesOFB) Decrypt(src []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	stream := cipher.NewOFB(block, a.iv)
+	stream := cipher.NewCTR(block, a.iv)
 	rd := &cipher.StreamReader{S: stream, R: bytes.NewReader(src)}
 	return io.ReadAll(rd)
 }

@@ -32,9 +32,9 @@ func (b Base64) Encrypt(src []byte) ([]byte, error) {
 
 func (b Base64) Decrypt(src []byte) ([]byte, error) {
 	enc := b.getEncoder()
-	dbuf := make([]byte, enc.DecodedLen(len(src)))
-	n, err := enc.Decode(dbuf, src)
-	return dbuf[:n], err
+	buf := make([]byte, enc.DecodedLen(len(src)))
+	n, err := enc.Decode(buf, src)
+	return buf[:n], err
 }
 
 var _ Cipher = (*Base32)(nil)
@@ -59,9 +59,9 @@ func (b Base32) Encrypt(src []byte) ([]byte, error) {
 
 func (b Base32) Decrypt(src []byte) ([]byte, error) {
 	enc := b.getEncoder()
-	dbuf := make([]byte, enc.DecodedLen(len(src)))
-	n, err := enc.Decode(dbuf, src)
-	return dbuf[:n], err
+	buf := make([]byte, enc.DecodedLen(len(src)))
+	n, err := enc.Decode(buf, src)
+	return buf[:n], err
 }
 
 var _ Cipher = (*HEX)(nil)
