@@ -90,19 +90,21 @@ func (resp *HTTPResponse) String() string {
 	panic("implement me")
 }
 
-func (resp *HTTPResponse) ReadFrom(r io.Reader) error {
+func (resp *HTTPResponse) ReadFrom(r io.Reader) (int64, error) {
 	bio := bufio.NewReader(r)
 	resp.resp, resp.readErr = http.ReadResponse(bio, nil)
+	var readLen int64
 	if resp.resp != nil {
 		defer resp.resp.Body.Close()
 		body, err := io.ReadAll(resp.resp.Body)
+		readLen = int64(len(body))
 		if err != nil {
 			resp.readErr = err
-			return err
+			return readLen, err
 		}
 		resp.resp.Body = io.NopCloser(bytes.NewReader(body))
 	}
-	return resp.readErr
+	return readLen, resp.readErr
 }
 
 func (resp *HTTPResponse) ErrCode() int64 {

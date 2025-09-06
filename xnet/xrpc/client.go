@@ -25,7 +25,7 @@ type Request interface {
 
 type Response interface {
 	String() string
-	ReadFrom(r io.Reader) error
+	io.ReaderFrom
 	xerror.HasErrCode
 	xerror.HasErrMsg
 }

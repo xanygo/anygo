@@ -107,7 +107,7 @@ func (c *TCPClient) doWriteRead(ctx context.Context, req Request, resp Response,
 		conn.Close()
 		return result
 	}
-	result = resp.ReadFrom(conn)
+	_, result = resp.ReadFrom(conn)
 	return result
 }
 
