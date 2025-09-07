@@ -29,6 +29,14 @@ func NewNode(name string, addr net.Addr) Node {
 	}
 }
 
+func NewNodes(addrs ...net.Addr) []Node {
+	nodes := make([]Node, len(addrs))
+	for i, addr := range addrs {
+		nodes[i] = NewNode(addr.String(), addr)
+	}
+	return nodes
+}
+
 var _ Node = (*nodeImpl)(nil)
 
 type nodeImpl struct {

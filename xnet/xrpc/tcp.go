@@ -12,19 +12,21 @@ import (
 
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
+	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xnaming"
-	xservice2 "github.com/xanygo/anygo/xnet/xservice"
+	"github.com/xanygo/anygo/xnet/xservice"
+	"github.com/xanygo/anygo/xoption"
 )
 
 var _ Client = (*TCPClient)(nil)
 
 type TCPClient struct {
 	Interceptor     []TCPClientInterceptor
-	ServiceRegistry xservice2.Registry
+	ServiceRegistry xservice.Registry
 	Dialer          xnet.Dialer
 }
 
-func (c *TCPClient) dial(ctx context.Context, addr net.Addr, opt *xservice2.Option) (net.Conn, error) {
+func (c *TCPClient) dial(ctx context.Context, addr net.Addr, opt xoption.Reader) (net.Conn, error) {
 	dialer := c.Dialer
 	if dialer == nil {
 		dialer = xnet.DefaultDialer
@@ -32,11 +34,11 @@ func (c *TCPClient) dial(ctx context.Context, addr net.Addr, opt *xservice2.Opti
 	return dialer.DialContext(ctx, addr.Network(), addr.String())
 }
 
-func (c *TCPClient) getServiceRegistry() xservice2.Registry {
+func (c *TCPClient) getServiceRegistry() xservice.Registry {
 	if c.ServiceRegistry != nil {
 		return c.ServiceRegistry
 	}
-	return xservice2.DefaultRegistry()
+	return xservice.DefaultRegistry()
 }
 
 func (c *TCPClient) Invoke(ctx context.Context, service string, req Request, resp Response, opts ...Option) (result error) {
@@ -50,9 +52,11 @@ func (c *TCPClient) Invoke(ctx context.Context, service string, req Request, res
 			}
 		}
 	}
-	opt := &xservice2.Option{}
+	cfg := &config{
+		opt: xoption.NewMapOption(),
+	}
 	for _, o := range opts {
-		o.withOption(opt)
+		o.withOption(cfg)
 	}
 
 	if result == nil {
@@ -60,26 +64,21 @@ func (c *TCPClient) Invoke(ctx context.Context, service string, req Request, res
 		if !ok {
 			result = fmt.Errorf("service %q %w", service, xerror.NotFound)
 		} else {
-			for i := 0; i < len(c.Interceptor); i++ {
-				it := c.Interceptor[i]
-				if it.BeforePickAddress != nil {
-					it.BeforePickAddress(ctx, service)
+			// 将临时 option 和 service 的 option 合并
+			opt := xoption.Readers(cfg.opt, ser.Option())
+
+			ctx = xoption.ContextWithReader(ctx, opt)
+
+			tryTotal := xoption.Retry(opt) + 1
+			for try := 0; try < tryTotal; try++ {
+				var conn net.Conn
+				conn, result = c.doConnect(ctx, service, ser.Balancer(), opt, cfg)
+				if result == nil {
+					result = c.doWriteRead(ctx, req, resp, opt, conn)
 				}
-			}
-			var node xnaming.Node
-			node, result = ser.Balancer().Pick(ctx)
-			for i := 0; i < len(c.Interceptor); i++ {
-				it := c.Interceptor[i]
-				if it.AfterPickAddress != nil {
-					it.AfterPickAddress(ctx, service, node, result)
+				if result == nil {
+					break
 				}
-			}
-			var conn net.Conn
-			if result == nil {
-				conn, result = c.dial(ctx, node.Addr(), opt)
-			}
-			if result == nil {
-				result = c.doWriteRead(ctx, req, resp, opt, conn)
 			}
 		}
 	}
@@ -93,8 +92,44 @@ func (c *TCPClient) Invoke(ctx context.Context, service string, req Request, res
 	return result
 }
 
-func (c *TCPClient) doWriteRead(ctx context.Context, req Request, resp Response, opt *xservice2.Option, conn net.Conn) (result error) {
-	totalTimeout := opt.GetWriteTimeout() + opt.GetReadTimeout()
+func (c *TCPClient) doConnect(ctx context.Context, service string, ap xbalance.Reader, opt xoption.Reader, cfg *config) (net.Conn, error) {
+	tryTotal := xoption.ConnectRetry(opt) + 1
+	connectTimeout := xoption.ConnectTimeout(opt)
+
+	if cfg.ap != nil {
+		ap = cfg.ap
+	}
+
+	doConnect := func(ctx context.Context, index int) (net.Conn, error) {
+		ctx, cancel := context.WithTimeout(ctx, connectTimeout)
+		defer cancel()
+
+		node, err := ap.Pick(ctx)
+		for i := 0; i < len(c.Interceptor); i++ {
+			it := c.Interceptor[i]
+			if it.AfterPickAddress != nil {
+				it.AfterPickAddress(ctx, service, node, err)
+			}
+		}
+
+		if err != nil {
+			return nil, err
+		}
+		return c.dial(ctx, node.Addr(), opt)
+	}
+
+	var err error
+	var conn net.Conn
+	for i := 0; i < tryTotal; i++ {
+		if conn, err = doConnect(ctx, i); err == nil {
+			return conn, nil
+		}
+	}
+	return nil, err
+}
+
+func (c *TCPClient) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption.Reader, conn net.Conn) (result error) {
+	totalTimeout := xoption.WriteReadTimeout(opt)
 	ctx, cancel := context.WithTimeout(ctx, totalTimeout)
 	defer cancel()
 	if result = conn.SetDeadline(time.Now().Add(totalTimeout)); result != nil {
@@ -108,6 +143,9 @@ func (c *TCPClient) doWriteRead(ctx context.Context, req Request, resp Response,
 		return result
 	}
 	_, result = resp.ReadFrom(conn)
+	if result != nil {
+		conn.Close()
+	}
 	return result
 }
 

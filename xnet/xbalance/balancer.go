@@ -20,6 +20,7 @@ var ErrEmptyNode = errors.New("empty node")
 const (
 	NameRoundRobin = "RoundRobin"
 	NameRandom     = "Random"
+	NameStatic     = "Static"
 )
 
 type (

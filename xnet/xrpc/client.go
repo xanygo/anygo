@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/xerror"
-	"github.com/xanygo/anygo/xnet/xservice"
+	"github.com/xanygo/anygo/xnet"
+	"github.com/xanygo/anygo/xnet/xbalance"
+	"github.com/xanygo/anygo/xoption"
 )
 
 type Client interface {
@@ -21,7 +23,7 @@ type Client interface {
 type Request interface {
 	String() string
 	APIName() string
-	WriteTo(ctx context.Context, w net.Conn, opt *xservice.Option) error
+	WriteTo(ctx context.Context, w net.Conn, opt xoption.Reader) error
 }
 
 type Response interface {
@@ -31,46 +33,57 @@ type Response interface {
 	xerror.HasErrMsg
 }
 
-type Option interface {
-	withOption(o *xservice.Option)
+type config struct {
+	opt *xoption.MapOption
+	ap  xbalance.Reader
 }
 
-type optionFunc func(o *xservice.Option)
+type Option interface {
+	withOption(o *config)
+}
 
-func (f optionFunc) withOption(o *xservice.Option) {
+type optionFunc func(o *config)
+
+func (f optionFunc) withOption(o *config) {
 	f(o)
 }
 
 func OptConnectTimeout(t time.Duration) Option {
-	return optionFunc(func(o *xservice.Option) {
-		o.ConnectTimeout = t
+	return optionFunc(func(o *config) {
+		xoption.SetConnectTimeout(o.opt, t)
 	})
 }
 
 func OptConnectRetry(n int) Option {
-	return optionFunc(func(o *xservice.Option) {
-		o.ConnectRetry = n
+	return optionFunc(func(o *config) {
+		xoption.SetConnectRetry(o.opt, n)
 	})
 }
 
 func OptWriteTimeout(t time.Duration) Option {
-	return optionFunc(func(o *xservice.Option) {
-		o.WriteTimeout = t
+	return optionFunc(func(o *config) {
+		xoption.SetWriteTimeout(o.opt, t)
 	})
 }
 
 func OptReadTimeout(t time.Duration) Option {
-	return optionFunc(func(o *xservice.Option) {
-		o.ReadTimeout = t
+	return optionFunc(func(o *config) {
+		xoption.SetReadTimeout(o.opt, t)
 	})
 }
 
 func OptRetry(n int) Option {
-	return optionFunc(func(o *xservice.Option) {
-		o.Retry = n
+	return optionFunc(func(o *config) {
+		xoption.SetRetry(o.opt, n)
 	})
 }
 
-func OptAddr(addr net.Addr) Option {
-	return optionFunc(func(o *xservice.Option) {})
+func OptAddr(addr ...net.Addr) Option {
+	return optionFunc(func(o *config) {
+		o.ap = xbalance.NewStaticByAddr(addr...)
+	})
+}
+
+func OptHostPort(hostPort string) Option {
+	return OptAddr(xnet.NewAddr("tcp", hostPort))
 }

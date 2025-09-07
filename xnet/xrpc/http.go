@@ -15,6 +15,7 @@ import (
 
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet/xservice"
+	"github.com/xanygo/anygo/xoption"
 )
 
 var _ Request = (*HTTPRequest)(nil)
@@ -39,7 +40,7 @@ func (r *HTTPRequest) APIName() string {
 	return r.Path
 }
 
-func (r *HTTPRequest) WriteTo(ctx context.Context, conn net.Conn, opt *xservice.Option) error {
+func (r *HTTPRequest) WriteTo(ctx context.Context, conn net.Conn, opt xoption.Reader) error {
 	api, err := r.getURL(opt, conn.RemoteAddr().String())
 	if err != nil {
 		return err
@@ -51,8 +52,8 @@ func (r *HTTPRequest) WriteTo(ctx context.Context, conn net.Conn, opt *xservice.
 	return req.Write(conn)
 }
 
-func (r *HTTPRequest) getURL(so *xservice.Option, address string) (string, error) {
-	opt := so.HTTP
+func (r *HTTPRequest) getURL(so xoption.Reader, address string) (string, error) {
+	opt := xservice.OptHTTP(so)
 	var scheme string = "http"
 	if opt.HTTPS {
 		scheme = "https"

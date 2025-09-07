@@ -6,6 +6,7 @@ package xservice
 
 import (
 	"errors"
+	"net/http"
 	"strings"
 	"time"
 
@@ -13,11 +14,12 @@ import (
 	"github.com/xanygo/anygo/xcfg"
 	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xnaming"
+	"github.com/xanygo/anygo/xoption"
 )
 
 type Config struct {
 	Name           string           `json:"Name" yaml:"Name" validator:"required"`
-	ConnectTimeout int64            `json:"ConnectTimeout" yaml:"ConnectTimeout"`
+	ConnectTimeout int64            `json:"ConnectTimeout" yaml:"ConnectTimeout"` // 连接超时,可选
 	ConnectRetry   int              `json:"ConnectRetry" yaml:"ConnectRetry"`
 	WriteTimeout   int64            `json:"WriteTimeout" yaml:"WriteTimeout"`
 	ReadTimeout    int64            `json:"ReadTimeout" yaml:"ReadTimeout"`
@@ -43,22 +45,36 @@ type ConfigDownStreamIDC struct {
 	Address []string `json:"Address" yaml:"Address" validator:"required,dive,required"`
 }
 
+type HTTPOption struct {
+	Host   string // 主机名，可选
+	HTTPS  bool   // 是否发起 HTTPS 请求，可选，默认 false
+	Header http.Header
+}
+
+func (ho HTTPOption) Clone() HTTPOption {
+	return HTTPOption{
+		Host:   ho.Host,
+		HTTPS:  ho.HTTPS,
+		Header: ho.Header.Clone(),
+	}
+}
+
 func (c *Config) Parser(idc string) (Service, error) {
 	c.Name = strings.TrimSpace(c.Name)
 	if c.Name == "" {
 		return nil, errors.New("name is empty")
 	}
+	opt := xoption.NewDynamic()
+	xoption.SetConnectTimeout(opt, time.Duration(c.ConnectTimeout)*time.Millisecond)
+	xoption.SetConnectRetry(opt, c.ConnectRetry)
+	xoption.SetWriteTimeout(opt, time.Duration(c.WriteTimeout)*time.Millisecond)
+	xoption.SetReadTimeout(opt, time.Duration(c.ReadTimeout)*time.Millisecond)
+	xoption.SetRetry(opt, c.Retry)
+
 	impl := &serviceImpl{
 		broker: xbus.NewBroker(),
 		name:   c.Name,
-		opt: Option{
-			ConnectTimeout: time.Duration(c.ConnectTimeout) * time.Millisecond,
-			ConnectRetry:   c.ConnectRetry,
-			WriteTimeout:   time.Duration(c.WriteTimeout) * time.Millisecond,
-			ReadTimeout:    time.Duration(c.ReadTimeout) * time.Millisecond,
-			Retry:          c.Retry,
-			HTTP:           c.HTTP.Clone(),
-		},
+		opt:    opt,
 	}
 
 	primaryAddress := c.DownStream.getIDCAddress(idc)

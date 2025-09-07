@@ -24,6 +24,10 @@ func (t Topic) String() string {
 	return t.str
 }
 
+func (t Topic) Name() string {
+	return t.name
+}
+
 func (t Topic) Match(b Topic) bool {
 	// ID 为 0 时表示任意，所以也可以匹配
 	return t.id == b.id || t.id == 0 || b.id == 0
@@ -45,7 +49,8 @@ func newTopic(id int64, name string) Topic {
 
 type Message struct {
 	Topic   Topic
-	Payload any
+	Key     any // 可选，消息的名称
+	Payload any // 必填，消息体
 }
 
 // Producer 消息生产者
