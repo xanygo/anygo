@@ -18,14 +18,15 @@ import (
 )
 
 type Config struct {
-	Name           string           `json:"Name" yaml:"Name" validator:"required"`
-	ConnectTimeout int64            `json:"ConnectTimeout" yaml:"ConnectTimeout"` // 连接超时,可选
-	ConnectRetry   int              `json:"ConnectRetry" yaml:"ConnectRetry"`
-	WriteTimeout   int64            `json:"WriteTimeout" yaml:"WriteTimeout"`
-	ReadTimeout    int64            `json:"ReadTimeout" yaml:"ReadTimeout"`
-	Retry          int              `json:"Retry" yaml:"Retry"`
-	HTTP           HTTPOption       `json:"HTTP" yaml:"HTTP"`
-	DownStream     ConfigDownStream `json:"DownStream" yaml:"DownStream" validator:"required,dive,required"`
+	Name            string           `json:"Name" yaml:"Name" validator:"required"`
+	ConnectTimeout  int64            `json:"ConnectTimeout" yaml:"ConnectTimeout"` // 连接超时,可选
+	ConnectRetry    int              `json:"ConnectRetry" yaml:"ConnectRetry"`
+	WriteTimeout    int64            `json:"WriteTimeout" yaml:"WriteTimeout"`
+	ReadTimeout     int64            `json:"ReadTimeout" yaml:"ReadTimeout"`
+	Retry           int              `json:"Retry" yaml:"Retry"`
+	MaxResponseSize int64            `json:"MaxResponseSize" yaml:"MaxResponseSize"`
+	HTTP            HTTPOption       `json:"HTTP" yaml:"HTTP"`
+	DownStream      ConfigDownStream `json:"DownStream" yaml:"DownStream" validator:"required,dive,required"`
 }
 
 type ConfigDownStream struct {
@@ -70,6 +71,7 @@ func (c *Config) Parser(idc string) (Service, error) {
 	xoption.SetWriteTimeout(opt, time.Duration(c.WriteTimeout)*time.Millisecond)
 	xoption.SetReadTimeout(opt, time.Duration(c.ReadTimeout)*time.Millisecond)
 	xoption.SetRetry(opt, c.Retry)
+	xoption.SetMaxResponseSize(opt, c.MaxResponseSize)
 
 	impl := &serviceImpl{
 		broker: xbus.NewBroker(),

@@ -28,6 +28,7 @@ type Reader interface {
 
 type Writer interface {
 	Set(key Key, val any)
+	Delete(keys ...Key)
 }
 
 type Key struct {
@@ -73,6 +74,12 @@ func (d *Dynamic) Get(key Key) (any, bool) {
 
 func (d *Dynamic) Set(key Key, val any) {
 	d.values.Store(key, val)
+}
+
+func (d *Dynamic) Delete(keys ...Key) {
+	for _, key := range keys {
+		d.values.Delete(key)
+	}
 }
 
 func (d *Dynamic) Clone() *Dynamic {
@@ -156,6 +163,12 @@ func (m *MapOption) Range(fn func(key Key, val any) bool) {
 
 func (m *MapOption) Set(key Key, val any) {
 	m.value[key] = val
+}
+
+func (m *MapOption) Delete(keys ...Key) {
+	for _, key := range keys {
+		delete(m.value, key)
+	}
 }
 
 var ctxReaderKey = xctx.NewKey()

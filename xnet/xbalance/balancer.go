@@ -43,6 +43,10 @@ type (
 		// Update 更新节点列表（动态服务发现时用）
 		Update(ctx context.Context, nodes []xnaming.Node) error
 	}
+
+	HasReader interface {
+		Balancer() Reader
+	}
 )
 
 var factories = map[string]func() LoadBalancer{

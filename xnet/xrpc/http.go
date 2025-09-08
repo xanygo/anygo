@@ -6,14 +6,16 @@ package xrpc
 
 import (
 	"bufio"
-	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
 
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xnet"
+	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xservice"
 	"github.com/xanygo/anygo/xoption"
 )
@@ -40,7 +42,11 @@ func (r *HTTPRequest) APIName() string {
 	return r.Path
 }
 
-func (r *HTTPRequest) WriteTo(ctx context.Context, conn net.Conn, opt xoption.Reader) error {
+func (r *HTTPRequest) WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error {
+	conn, ok := w.(net.Conn)
+	if !ok {
+		return fmt.Errorf("writer (%T) not a net.Conn", w)
+	}
 	api, err := r.getURL(opt, conn.RemoteAddr().String())
 	if err != nil {
 		return err
@@ -49,7 +55,7 @@ func (r *HTTPRequest) WriteTo(ctx context.Context, conn net.Conn, opt xoption.Re
 	if err != nil {
 		return err
 	}
-	return req.Write(conn)
+	return req.Write(w)
 }
 
 func (r *HTTPRequest) getURL(so xoption.Reader, address string) (string, error) {
@@ -83,29 +89,25 @@ var _ Response = (*HTTPResponse)(nil)
 
 type HTTPResponse struct {
 	resp    *http.Response
+	Handler func(ctx context.Context, resp *http.Response) error
 	readErr error
 }
 
 func (resp *HTTPResponse) String() string {
-	// TODO implement me
-	panic("implement me")
+	if resp.resp == nil {
+		return "HTTPResponse"
+	}
+	return "HTTPResponse:" + resp.resp.Status
 }
 
-func (resp *HTTPResponse) ReadFrom(r io.Reader) (int64, error) {
+func (resp *HTTPResponse) LoadFrom(ctx context.Context, r io.Reader, opt xoption.Reader) error {
 	bio := bufio.NewReader(r)
 	resp.resp, resp.readErr = http.ReadResponse(bio, nil)
-	var readLen int64
-	if resp.resp != nil {
-		defer resp.resp.Body.Close()
-		body, err := io.ReadAll(resp.resp.Body)
-		readLen = int64(len(body))
-		if err != nil {
-			resp.readErr = err
-			return readLen, err
-		}
-		resp.resp.Body = io.NopCloser(bytes.NewReader(body))
+	if resp.readErr != nil {
+		return resp.readErr
 	}
-	return readLen, resp.readErr
+	resp.readErr = resp.Handler(ctx, resp.resp)
+	return resp.readErr
 }
 
 func (resp *HTTPResponse) ErrCode() int64 {
@@ -130,4 +132,35 @@ func (resp *HTTPResponse) ErrMsg() string {
 
 func (resp *HTTPResponse) Response() *http.Response {
 	return resp.resp
+}
+
+var _ Request = (*HTTPRequestNative)(nil)
+
+type HTTPRequestNative struct {
+	API     string
+	Request *http.Request
+}
+
+func (h *HTTPRequestNative) String() string {
+	return "HTTPRequestNative:" + h.APIName()
+}
+
+func (h *HTTPRequestNative) APIName() string {
+	if h.API != "" {
+		return h.API
+	}
+	return h.Request.URL.Path
+}
+
+func (h *HTTPRequestNative) WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error {
+	req := h.Request.WithContext(ctx)
+	return req.Write(w)
+}
+
+var _ xbalance.HasReader = (*HTTPRequestNative)(nil)
+
+func (h *HTTPRequestNative) Balancer() xbalance.Reader {
+	host := h.Request.URL.Hostname()
+	port := h.Request.URL.Port()
+	return xbalance.NewStaticByAddr(xnet.NewAddr("tcp", net.JoinHostPort(host, port)))
 }

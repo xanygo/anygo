@@ -23,12 +23,12 @@ type Client interface {
 type Request interface {
 	String() string
 	APIName() string
-	WriteTo(ctx context.Context, w net.Conn, opt xoption.Reader) error
+	WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error
 }
 
 type Response interface {
 	String() string
-	io.ReaderFrom
+	LoadFrom(ctx context.Context, r io.Reader, opt xoption.Reader) error
 	xerror.HasErrCode
 	xerror.HasErrMsg
 }

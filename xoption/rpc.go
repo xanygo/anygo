@@ -12,16 +12,17 @@ import (
 )
 
 var (
-	KeyConnectTimeout = NewKey("ConnectTimeout")
-	KeyConnectRetry   = NewKey("ConnectRetry")
-	KeyWriteTimeout   = NewKey("WriteTimeout")
-	KeyReadTimeout    = NewKey("ReadTimeout")
-	KeyRetry          = NewKey("Retry")
-	KeyBalancer       = NewKey("Balancer") // 负载均衡策略名称
+	KeyConnectTimeout  = NewKey("ConnectTimeout")
+	KeyConnectRetry    = NewKey("ConnectRetry")
+	KeyWriteTimeout    = NewKey("WriteTimeout")
+	KeyReadTimeout     = NewKey("ReadTimeout")
+	KeyRetry           = NewKey("Retry")
+	KeyBalancer        = NewKey("Balancer") // 负载均衡策略名称
+	KeyMaxResponseSize = NewKey("MaxResponseSize")
 )
 
 func SetConnectTimeout(opt Writer, timeout time.Duration) {
-	if timeout >= 0 {
+	if timeout > 0 {
 		opt.Set(KeyConnectTimeout, timeout)
 	}
 }
@@ -39,7 +40,7 @@ func ConnectRetry(opt Reader) int {
 }
 
 func SetWriteTimeout(opt Writer, timeout time.Duration) {
-	if timeout >= 0 {
+	if timeout > 0 {
 		opt.Set(KeyWriteTimeout, timeout)
 	}
 }
@@ -65,6 +66,20 @@ func SetRetry(opt Writer, retry int) {
 
 func Retry(opt Reader) int {
 	return Int(opt, KeyRetry, 0)
+}
+
+func SetMaxResponseSize(opt Writer, maxSize int64) {
+	if maxSize > 0 {
+		opt.Set(KeyMaxResponseSize, maxSize)
+	}
+}
+
+const (
+	mb = 1 << 20 // 1 MB
+)
+
+func MaxResponseSize(opt Reader) int64 {
+	return Int64(opt, KeyMaxResponseSize, 10*mb)
 }
 
 func WriteReadTimeout(opt Reader) time.Duration {

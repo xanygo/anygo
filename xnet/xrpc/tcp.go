@@ -7,6 +7,7 @@ package xrpc
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"time"
 
@@ -69,10 +70,17 @@ func (c *TCPClient) Invoke(ctx context.Context, service string, req Request, res
 
 			ctx = xoption.ContextWithReader(ctx, opt)
 
+			ap := ser.Balancer()
+			if hb, ok1 := req.(xbalance.HasReader); ok1 {
+				if ap1 := hb.Balancer(); ap1 != nil {
+					ap = ap1
+				}
+			}
+
 			tryTotal := xoption.Retry(opt) + 1
 			for try := 0; try < tryTotal; try++ {
 				var conn net.Conn
-				conn, result = c.doConnect(ctx, service, ser.Balancer(), opt, cfg)
+				conn, result = c.doConnect(ctx, service, ap, opt, cfg)
 				if result == nil {
 					result = c.doWriteRead(ctx, req, resp, opt, conn)
 				}
@@ -128,25 +136,22 @@ func (c *TCPClient) doConnect(ctx context.Context, service string, ap xbalance.R
 	return nil, err
 }
 
-func (c *TCPClient) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption.Reader, conn net.Conn) (result error) {
+func (c *TCPClient) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption.Reader, conn net.Conn) (err error) {
+	defer conn.Close()
 	totalTimeout := xoption.WriteReadTimeout(opt)
 	ctx, cancel := context.WithTimeout(ctx, totalTimeout)
 	defer cancel()
-	if result = conn.SetDeadline(time.Now().Add(totalTimeout)); result != nil {
-		conn.Close()
-		return result
+	if err = conn.SetDeadline(time.Now().Add(totalTimeout)); err != nil {
+		return err
 	}
 	// 暂时不将读写超时分开控制
-	result = req.WriteTo(ctx, conn, opt)
-	if result != nil {
-		conn.Close()
-		return result
+	err = req.WriteTo(ctx, conn, opt)
+	if err != nil {
+		return err
 	}
-	_, result = resp.ReadFrom(conn)
-	if result != nil {
-		conn.Close()
-	}
-	return result
+	maxBody := xoption.MaxResponseSize(opt)
+	rd := io.LimitReader(conn, maxBody)
+	return resp.LoadFrom(ctx, rd, opt)
 }
 
 type TCPClientInterceptor struct {
