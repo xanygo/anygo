@@ -6,11 +6,14 @@ package xrpc
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
+	"slices"
 	"time"
 
+	"github.com/xanygo/anygo/xctx"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
@@ -19,40 +22,66 @@ import (
 	"github.com/xanygo/anygo/xoption"
 )
 
-var _ Client = (*TCPClient)(nil)
+var _ Client = (*TCP)(nil)
 
-type TCPClient struct {
-	Interceptor     []TCPClientInterceptor
+type TCP struct {
+	Interceptor     []TCPInterceptor
 	ServiceRegistry xservice.Registry
 	Dialer          xnet.Dialer
 }
 
-func (c *TCPClient) dial(ctx context.Context, addr net.Addr, opt xoption.Reader) (net.Conn, error) {
+func (c *TCP) dial(ctx context.Context, addr net.Addr, opt xoption.Reader) (net.Conn, error) {
 	dialer := c.Dialer
 	if dialer == nil {
 		dialer = xnet.DefaultDialer
 	}
-	return dialer.DialContext(ctx, addr.Network(), addr.String())
+	conn, err := dialer.DialContext(ctx, addr.Network(), addr.String())
+	if err != nil {
+		return nil, err
+	}
+	tc := xoption.TLSConfig(opt)
+	if tc != nil {
+		cc := tls.Client(conn, tc)
+		if err = cc.HandshakeContext(ctx); err != nil {
+			conn.Close()
+			return nil, err
+		}
+		return cc, nil
+	}
+	return conn, nil
 }
 
-func (c *TCPClient) getServiceRegistry() xservice.Registry {
+func (c *TCP) getServiceRegistry() xservice.Registry {
 	if c.ServiceRegistry != nil {
 		return c.ServiceRegistry
 	}
 	return xservice.DefaultRegistry()
 }
 
-func (c *TCPClient) Invoke(ctx context.Context, service string, req Request, resp Response, opts ...Option) (result error) {
+func (c *TCP) allITs(ctx context.Context) []TCPInterceptor {
+	its := slices.Clone(globalTCPInterceptors)
+	if len(c.Interceptor) > 0 {
+		its = append(its, c.Interceptor...)
+	}
+	if items := TCPITFromContext(ctx); len(items) > 0 {
+		its = append(its, items...)
+	}
+	return its
+}
+
+func (c *TCP) Invoke(ctx context.Context, service string, req Request, resp Response, opts ...Option) (result error) {
+	start := time.Now()
+	its := c.allITs(ctx)
 	var err1 error
-	for i := 0; i < len(c.Interceptor); i++ {
-		it := c.Interceptor[i]
+	for _, it := range its {
 		if it.BeforeInvoke != nil {
-			ctx, service, req, resp, opts, err1 = it.BeforeInvoke(ctx, service, req, resp, opts...)
+			ctx, req, resp, opts, err1 = it.BeforeInvoke(ctx, service, req, resp, opts...)
 			if err1 != nil {
 				result = err1
 			}
 		}
 	}
+
 	cfg := &config{
 		opt: xoption.NewMapOption(),
 	}
@@ -60,6 +89,7 @@ func (c *TCPClient) Invoke(ctx context.Context, service string, req Request, res
 		o.withOption(cfg)
 	}
 
+	var tryInfo TryInfo
 	if result == nil {
 		ser, ok := c.getServiceRegistry().Find(service)
 		if !ok {
@@ -68,21 +98,38 @@ func (c *TCPClient) Invoke(ctx context.Context, service string, req Request, res
 			// 将临时 option 和 service 的 option 合并
 			opt := xoption.Readers(cfg.opt, ser.Option())
 
-			ctx = xoption.ContextWithReader(ctx, opt)
-
-			ap := ser.Balancer()
-			if hb, ok1 := req.(xbalance.HasReader); ok1 {
-				if ap1 := hb.Balancer(); ap1 != nil {
-					ap = ap1
+			if hr, ok1 := req.(HasOptionReader); ok1 {
+				if opt1 := hr.OptionReader(ctx, opt); opt1 != nil {
+					opt = xoption.Readers(opt1, cfg.opt, ser.Option())
 				}
 			}
 
+			ctx = xoption.ContextWithReader(ctx, opt)
+
+			ap := ser.Balancer()
+			if ap1 := xbalance.OptReader(opt); ap1 != nil {
+				ap = ap1
+			}
+
 			tryTotal := xoption.Retry(opt) + 1
+			tryInfo = TryInfo{
+				Total: tryTotal,
+				Start: time.Now(),
+			}
 			for try := 0; try < tryTotal; try++ {
+				tryInfo.Index = try
 				var conn net.Conn
-				conn, result = c.doConnect(ctx, service, ap, opt, cfg)
+				conn, result = c.doConnect(ctx, service, ap, opt, cfg, its)
+
 				if result == nil {
+					tryInfo.Start = time.Now()
 					result = c.doWriteRead(ctx, req, resp, opt, conn)
+					tryInfo.End = time.Now()
+					for _, it := range its {
+						if it.AfterWriteRead != nil {
+							it.AfterWriteRead(ctx, service, req, resp, tryInfo, result)
+						}
+					}
 				}
 				if result == nil {
 					break
@@ -91,16 +138,18 @@ func (c *TCPClient) Invoke(ctx context.Context, service string, req Request, res
 		}
 	}
 
-	for i := 0; i < len(c.Interceptor); i++ {
-		it := c.Interceptor[i]
+	tryInfo.Start = start
+	tryInfo.End = time.Now()
+
+	for _, it := range its {
 		if it.AfterInvoke != nil {
-			result = it.AfterInvoke(ctx, service, req, resp, result)
+			it.AfterInvoke(ctx, service, req, resp, tryInfo, result)
 		}
 	}
 	return result
 }
 
-func (c *TCPClient) doConnect(ctx context.Context, service string, ap xbalance.Reader, opt xoption.Reader, cfg *config) (net.Conn, error) {
+func (c *TCP) doConnect(ctx context.Context, service string, ap xbalance.Reader, opt xoption.Reader, cfg *config, its []TCPInterceptor) (net.Conn, error) {
 	tryTotal := xoption.ConnectRetry(opt) + 1
 	connectTimeout := xoption.ConnectTimeout(opt)
 
@@ -109,21 +158,41 @@ func (c *TCPClient) doConnect(ctx context.Context, service string, ap xbalance.R
 	}
 
 	doConnect := func(ctx context.Context, index int) (net.Conn, error) {
+		tryInfo := TryInfo{
+			Total: tryTotal,
+			Index: index,
+		}
 		ctx, cancel := context.WithTimeout(ctx, connectTimeout)
 		defer cancel()
 
+		for _, it := range its {
+			if it.BeforePickAddress != nil {
+				it.BeforePickAddress(ctx, service, tryInfo)
+			}
+		}
+
+		tryInfo.Start = time.Now()
 		node, err := ap.Pick(ctx)
-		for i := 0; i < len(c.Interceptor); i++ {
-			it := c.Interceptor[i]
+		tryInfo.End = time.Now()
+
+		for _, it := range its {
 			if it.AfterPickAddress != nil {
-				it.AfterPickAddress(ctx, service, node, err)
+				it.AfterPickAddress(ctx, service, tryInfo, node, err)
 			}
 		}
 
 		if err != nil {
 			return nil, err
 		}
-		return c.dial(ctx, node.Addr(), opt)
+		tryInfo.Start = time.Now()
+		conn, err := c.dial(ctx, node.Addr(), opt)
+		tryInfo.End = time.Now()
+		for _, it := range its {
+			if it.AfterDial != nil {
+				it.AfterDial(ctx, service, node, tryInfo, conn, err)
+			}
+		}
+		return conn, err
 	}
 
 	var err error
@@ -136,7 +205,7 @@ func (c *TCPClient) doConnect(ctx context.Context, service string, ap xbalance.R
 	return nil, err
 }
 
-func (c *TCPClient) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption.Reader, conn net.Conn) (err error) {
+func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption.Reader, conn net.Conn) (err error) {
 	defer conn.Close()
 	totalTimeout := xoption.WriteReadTimeout(opt)
 	ctx, cancel := context.WithTimeout(ctx, totalTimeout)
@@ -154,18 +223,41 @@ func (c *TCPClient) doWriteRead(ctx context.Context, req Request, resp Response,
 	return resp.LoadFrom(ctx, rd, opt)
 }
 
-type TCPClientInterceptor struct {
+type TCPInterceptor struct {
 	BeforeInvoke func(ctx context.Context, service string, req Request, resp Response,
-		opts ...Option) (context.Context, string, Request, Response, []Option, error)
+		opts ...Option) (context.Context, Request, Response, []Option, error)
 
-	BeforePickAddress func(ctx context.Context, service string)
-	AfterPickAddress  func(ctx context.Context, service string, node xnaming.Node, err error)
+	BeforePickAddress func(ctx context.Context, service string, try TryInfo)
+	AfterPickAddress  func(ctx context.Context, service string, try TryInfo, node xnaming.Node, err error)
 
-	AfterInvoke func(ctx context.Context, service string, req Request, resp Response, err error) error
+	// AfterDial 拨号完成后执行，最多执行 ( retry + 1 ) * ( connectRetry +1) 次
+	AfterDial func(ctx context.Context, service string, node xnaming.Node, try TryInfo, conn net.Conn, err error)
+
+	// AfterWriteRead 每 Write + Read 完成后都会执行一次，最多执行 retry+1 次
+	AfterWriteRead func(ctx context.Context, service string, req Request, resp Response, try TryInfo, err error)
+
+	// AfterInvoke 在 Invoke 执行完成后，执行一次
+	AfterInvoke func(ctx context.Context, service string, req Request, resp Response, try TryInfo, err error)
 }
 
-var defaultTCPClient = &TCPClient{}
+var defaultTCPClient = &TCP{}
 
 func Invoke(ctx context.Context, service string, req Request, resp Response, opts ...Option) (result error) {
 	return defaultTCPClient.Invoke(ctx, service, req, resp, opts...)
+}
+
+var globalTCPInterceptors []TCPInterceptor
+
+func RegisterTCPIT(its ...TCPInterceptor) {
+	globalTCPInterceptors = append(globalTCPInterceptors, its...)
+}
+
+var ctxTCPITKey = xctx.NewKey()
+
+func ContextWithTCPIT(ctx context.Context, its ...TCPInterceptor) context.Context {
+	return xctx.WithValues(ctx, ctxTCPITKey, its...)
+}
+
+func TCPITFromContext(ctx context.Context) []TCPInterceptor {
+	return xctx.Values[*xctx.Key, TCPInterceptor](ctx, ctxTCPITKey, true)
 }

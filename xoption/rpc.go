@@ -5,6 +5,7 @@
 package xoption
 
 import (
+	"crypto/tls"
 	"fmt"
 	"time"
 
@@ -19,6 +20,8 @@ var (
 	KeyRetry           = NewKey("Retry")
 	KeyBalancer        = NewKey("Balancer") // 负载均衡策略名称
 	KeyMaxResponseSize = NewKey("MaxResponseSize")
+
+	KeyTLSConfig = NewKey("tls.Config")
 )
 
 func SetConnectTimeout(opt Writer, timeout time.Duration) {
@@ -128,4 +131,12 @@ func convertDoSet[T any](opt Writer, value any, fn func(opt Writer, val T)) erro
 	}
 	fn(opt, cv)
 	return nil
+}
+
+func SetTLSConfig(opt Writer, c *tls.Config) {
+	opt.Set(KeyTLSConfig, c)
+}
+
+func TLSConfig(opt Reader) *tls.Config {
+	return GetAsDefault[*tls.Config](opt, KeyTLSConfig, nil)
 }

@@ -171,6 +171,10 @@ func (m *MapOption) Delete(keys ...Key) {
 	}
 }
 
+func (m *MapOption) Empty() bool {
+	return len(m.value) == 0
+}
+
 var ctxReaderKey = xctx.NewKey()
 
 func ContextWithReader(ctx context.Context, option Reader) context.Context {

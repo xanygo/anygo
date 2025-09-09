@@ -16,6 +16,11 @@ HTTPS = true
 [HTTP.Header]
 KA = ["a"]
 
+[TLS]
+Enable = true
+SkipVerify = true # 是否跳过安全验证
+ServerName = "example.com"
+
 [DownStream]
 LoadBalancer = "rr"
 Address  = ["127.0.0.1:80"]

@@ -6,6 +6,8 @@ package xrpc
 
 import (
 	"context"
+	"crypto/tls"
+	"fmt"
 	"io"
 	"net"
 	"time"
@@ -31,6 +33,10 @@ type Response interface {
 	LoadFrom(ctx context.Context, r io.Reader, opt xoption.Reader) error
 	xerror.HasErrCode
 	xerror.HasErrMsg
+}
+
+type HasOptionReader interface {
+	OptionReader(ctx context.Context, rd xoption.Reader) xoption.Reader
 }
 
 type config struct {
@@ -86,4 +92,29 @@ func OptAddr(addr ...net.Addr) Option {
 
 func OptHostPort(hostPort string) Option {
 	return OptAddr(xnet.NewAddr("tcp", hostPort))
+}
+
+func OptTLSConfig(c *tls.Config) Option {
+	return optionFunc(func(o *config) {
+		xoption.SetTLSConfig(o.opt, c)
+	})
+}
+
+type TryInfo struct {
+	Index int
+	Total int
+	Start time.Time
+	End   time.Time
+}
+
+func (t TryInfo) String() string {
+	return fmt.Sprintf("%d/%d", t.Index, t.Total)
+}
+
+func (t TryInfo) IsEnd() bool {
+	return t.Index+1 >= t.Total
+}
+
+func (t TryInfo) Cost() time.Duration {
+	return t.End.Sub(t.Start)
 }

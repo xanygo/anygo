@@ -7,11 +7,13 @@ package xrpc
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
@@ -55,6 +57,7 @@ func (r *HTTPRequest) WriteTo(ctx context.Context, w io.Writer, opt xoption.Read
 	if err != nil {
 		return err
 	}
+	setHTTPRequestUA(req)
 	return req.Write(w)
 }
 
@@ -85,11 +88,32 @@ func (r *HTTPRequest) getMethod() string {
 	return r.Method
 }
 
+func (r *HTTPRequest) OptionReader(ctx context.Context, rd xoption.Reader) xoption.Reader {
+	opt := xoption.NewMapOption()
+	hc := xservice.OptHTTP(rd)
+	if hc.HTTPS {
+		tc := &tls.Config{
+			ServerName: hc.Host,
+		}
+		tc1 := xoption.TLSConfig(rd)
+		if tc1.InsecureSkipVerify {
+			tc.InsecureSkipVerify = true
+		}
+		xoption.SetTLSConfig(opt, tc)
+	}
+
+	if opt.Empty() {
+		return nil
+	}
+	return opt
+}
+
 var _ Response = (*HTTPResponse)(nil)
 
 type HTTPResponse struct {
-	resp    *http.Response
 	Handler func(ctx context.Context, resp *http.Response) error
+
+	resp    *http.Response
 	readErr error
 }
 
@@ -154,13 +178,52 @@ func (h *HTTPRequestNative) APIName() string {
 
 func (h *HTTPRequestNative) WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error {
 	req := h.Request.WithContext(ctx)
+	setHTTPRequestUA(req)
 	return req.Write(w)
 }
 
-var _ xbalance.HasReader = (*HTTPRequestNative)(nil)
-
-func (h *HTTPRequestNative) Balancer() xbalance.Reader {
+func (h *HTTPRequestNative) balancer() xbalance.Reader {
 	host := h.Request.URL.Hostname()
 	port := h.Request.URL.Port()
+	if port == "" {
+		if strings.EqualFold(h.Request.URL.Scheme, "http") {
+			port = "80"
+		} else if strings.EqualFold(h.Request.URL.Scheme, "https") {
+			port = "443"
+		}
+	}
 	return xbalance.NewStaticByAddr(xnet.NewAddr("tcp", net.JoinHostPort(host, port)))
+}
+
+func (h *HTTPRequestNative) OptionReader(ctx context.Context, opt xoption.Reader) xoption.Reader {
+	mp := xoption.NewMapOption()
+	xbalance.OptSetReader(mp, h.balancer())
+	if tc := h.tslConfig(opt); tc != nil {
+		xoption.SetTLSConfig(mp, tc)
+	}
+	return mp
+}
+
+func (h *HTTPRequestNative) tslConfig(rd xoption.Reader) *tls.Config {
+	if !strings.EqualFold(h.Request.URL.Scheme, "https") {
+		return nil
+	}
+	serverName := h.Request.Host
+	tc := xoption.TLSConfig(rd)
+	if tc != nil {
+		if serverName != "" {
+			tc = tc.Clone()
+			tc.ServerName = serverName
+		}
+		return tc
+	}
+	return &tls.Config{
+		ServerName: serverName,
+	}
+}
+
+func setHTTPRequestUA(req *http.Request) {
+	if req.UserAgent() == "" {
+		req.Header.Set("User-Agent", "anygo-xrpc/1.0")
+	}
 }
