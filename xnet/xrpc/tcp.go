@@ -20,7 +20,10 @@ import (
 	"github.com/xanygo/anygo/xnet/xnaming"
 	"github.com/xanygo/anygo/xnet/xservice"
 	"github.com/xanygo/anygo/xoption"
+	"github.com/xanygo/anygo/xsync"
 )
+
+const HostDummy = "dummy"
 
 var _ Client = (*TCP)(nil)
 
@@ -240,10 +243,22 @@ type TCPInterceptor struct {
 	AfterInvoke func(ctx context.Context, service string, req Request, resp Response, try TryInfo, err error)
 }
 
-var defaultTCPClient = &TCP{}
+var defaultTCPClient = &xsync.OnceInit[*TCP]{
+	New: func() *TCP {
+		return &TCP{}
+	},
+}
+
+func DefaultTCPClient() *TCP {
+	return defaultTCPClient.Load()
+}
+
+func SetDefaultTCPClient(c *TCP) {
+	defaultTCPClient.Store(c)
+}
 
 func Invoke(ctx context.Context, service string, req Request, resp Response, opts ...Option) (result error) {
-	return defaultTCPClient.Invoke(ctx, service, req, resp, opts...)
+	return DefaultTCPClient().Invoke(ctx, service, req, resp, opts...)
 }
 
 var globalTCPInterceptors []TCPInterceptor

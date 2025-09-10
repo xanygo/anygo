@@ -21,19 +21,6 @@ import (
 	"github.com/xanygo/anygo/xsync"
 )
 
-var defaultLoader = &xsync.OnceInit[*Loader]{
-	New: func() *Loader {
-		return &Loader{
-			Logger:      xlog.Default(),
-			WatchReload: time.Second,
-		}
-	},
-}
-
-func DefaultLoader() *Loader {
-	return defaultLoader.Load()
-}
-
 type Loader struct {
 	Registry    Registry      // 可选，存储管理 Service 的组件，为 nil 时，使用 efaultRegistry()
 	IDC         string        // 可选，当前机房名称，为空时从 xattr.IDC() 取值
@@ -183,4 +170,21 @@ func (l *Loader) loadOneStart(ctx context.Context, name string) (Service, error)
 func (l *Loader) Stop(ctx context.Context) {
 	l.once.Do(l.initOnce)
 	l.cycleWorker.Stop(ctx)
+}
+
+var defaultLoader = &xsync.OnceInit[*Loader]{
+	New: func() *Loader {
+		return &Loader{
+			Logger:      xlog.Default(),
+			WatchReload: time.Second,
+		}
+	},
+}
+
+func DefaultLoader() *Loader {
+	return defaultLoader.Load()
+}
+
+func LoadDir(ctx context.Context, patterns ...string) error {
+	return DefaultLoader().LoadDir(ctx, patterns...)
 }

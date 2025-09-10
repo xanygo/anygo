@@ -1,11 +1,10 @@
 //  Copyright(C) 2025 github.com/hidu  All Rights Reserved.
 //  Author: hidu <duv123+git@gmail.com>
-//  Date: 2025-09-04
+//  Date: 2025-09-10
 
-package xrpc
+package xhttpc
 
 import (
-	"bufio"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -15,16 +14,18 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
+	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
 	"github.com/xanygo/anygo/xoption"
 )
 
-var _ Request = (*HTTPRequest)(nil)
+const HostDummy = xrpc.HostDummy
 
-type HTTPRequest struct {
+var _ xrpc.Request = (*Request)(nil)
+
+type Request struct {
 	API    string // APIName
 	Method string
 	Path   string
@@ -33,22 +34,22 @@ type HTTPRequest struct {
 	Body   io.Reader
 }
 
-func (r *HTTPRequest) Protocol() string {
+func (r *Request) Protocol() string {
 	return "HTTP"
 }
 
-func (r *HTTPRequest) String() string {
-	return "HTTPRequest:" + r.APIName()
+func (r *Request) String() string {
+	return "Request:" + r.APIName()
 }
 
-func (r *HTTPRequest) APIName() string {
+func (r *Request) APIName() string {
 	if r.API != "" {
 		return r.API
 	}
 	return r.Path
 }
 
-func (r *HTTPRequest) WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error {
+func (r *Request) WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error {
 	conn, ok := w.(net.Conn)
 	if !ok {
 		return fmt.Errorf("writer (%T) not a net.Conn", w)
@@ -65,7 +66,7 @@ func (r *HTTPRequest) WriteTo(ctx context.Context, w io.Writer, opt xoption.Read
 	return req.Write(w)
 }
 
-func (r *HTTPRequest) getURL(so xoption.Reader, address string) (string, error) {
+func (r *Request) getURL(so xoption.Reader, address string) (string, error) {
 	opt := xservice.OptHTTP(so)
 	var scheme string = "http"
 	if opt.HTTPS {
@@ -75,6 +76,10 @@ func (r *HTTPRequest) getURL(so xoption.Reader, address string) (string, error) 
 	if err != nil {
 		return "", err
 	}
+	if u.Host == HostDummy {
+		u.Host = ""
+	}
+
 	u.Scheme = scheme
 	if opt.Host != "" {
 		u.Host = opt.Host
@@ -85,14 +90,14 @@ func (r *HTTPRequest) getURL(so xoption.Reader, address string) (string, error) 
 	return u.String(), nil
 }
 
-func (r *HTTPRequest) getMethod() string {
+func (r *Request) getMethod() string {
 	if r.Method == "" {
 		return http.MethodGet
 	}
 	return r.Method
 }
 
-func (r *HTTPRequest) OptionReader(ctx context.Context, rd xoption.Reader) xoption.Reader {
+func (r *Request) OptionReader(ctx context.Context, rd xoption.Reader) xoption.Reader {
 	opt := xoption.NewMapOption()
 	hc := xservice.OptHTTP(rd)
 	if hc.HTTPS {
@@ -112,86 +117,42 @@ func (r *HTTPRequest) OptionReader(ctx context.Context, rd xoption.Reader) xopti
 	return opt
 }
 
-var _ Response = (*HTTPResponse)(nil)
+var _ xrpc.Request = (*RequestNative)(nil)
 
-type HTTPResponse struct {
-	Handler func(ctx context.Context, resp *http.Response) error
-
-	resp    *http.Response
-	readErr error
-}
-
-func (resp *HTTPResponse) String() string {
-	if resp.resp == nil {
-		return "HTTPResponse"
-	}
-	return "HTTPResponse:" + resp.resp.Status
-}
-
-func (resp *HTTPResponse) LoadFrom(ctx context.Context, r io.Reader, opt xoption.Reader) error {
-	bio := bufio.NewReader(r)
-	resp.resp, resp.readErr = http.ReadResponse(bio, nil)
-	if resp.readErr != nil {
-		return resp.readErr
-	}
-	resp.readErr = resp.Handler(ctx, resp.resp)
-	return resp.readErr
-}
-
-func (resp *HTTPResponse) ErrCode() int64 {
-	if resp.readErr != nil {
-		return xerror.ErrCode(resp.readErr, 255)
-	}
-	if resp.resp != nil {
-		return int64(resp.resp.StatusCode)
-	}
-	return 2
-}
-
-func (resp *HTTPResponse) ErrMsg() string {
-	if resp.readErr != nil {
-		return resp.readErr.Error()
-	}
-	if resp.resp != nil {
-		return resp.resp.Status
-	}
-	return "response not exists"
-}
-
-func (resp *HTTPResponse) Response() *http.Response {
-	return resp.resp
-}
-
-var _ Request = (*HTTPRequestNative)(nil)
-
-type HTTPRequestNative struct {
+type RequestNative struct {
 	API     string
 	Request *http.Request
 }
 
-func (h *HTTPRequestNative) Protocol() string {
+func (h *RequestNative) Protocol() string {
 	return "HTTP"
 }
 
-func (h *HTTPRequestNative) String() string {
+func (h *RequestNative) String() string {
 	return "HTTPRequestNative:" + h.APIName()
 }
 
-func (h *HTTPRequestNative) APIName() string {
+func (h *RequestNative) APIName() string {
 	if h.API != "" {
 		return h.API
 	}
 	return h.Request.URL.Path
 }
 
-func (h *HTTPRequestNative) WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error {
+func (h *RequestNative) WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error {
 	req := h.Request.WithContext(ctx)
+	if req.Host == HostDummy {
+		req.Host = ""
+	}
 	setHTTPRequestUA(req)
 	return req.Write(w)
 }
 
-func (h *HTTPRequestNative) balancer() xbalance.Reader {
+func (h *RequestNative) balancer() xbalance.Reader {
 	host := h.Request.URL.Hostname()
+	if host == HostDummy {
+		return nil
+	}
 	port := h.Request.URL.Port()
 	if port == "" {
 		if strings.EqualFold(h.Request.URL.Scheme, "http") {
@@ -203,16 +164,18 @@ func (h *HTTPRequestNative) balancer() xbalance.Reader {
 	return xbalance.NewStaticByAddr(xnet.NewAddr("tcp", net.JoinHostPort(host, port)))
 }
 
-func (h *HTTPRequestNative) OptionReader(ctx context.Context, opt xoption.Reader) xoption.Reader {
+func (h *RequestNative) OptionReader(ctx context.Context, opt xoption.Reader) xoption.Reader {
 	mp := xoption.NewMapOption()
-	xbalance.OptSetReader(mp, h.balancer())
+	if ap := h.balancer(); ap != nil {
+		xbalance.OptSetReader(mp, ap)
+	}
 	if tc := h.tslConfig(opt); tc != nil {
 		xoption.SetTLSConfig(mp, tc)
 	}
 	return mp
 }
 
-func (h *HTTPRequestNative) tslConfig(rd xoption.Reader) *tls.Config {
+func (h *RequestNative) tslConfig(rd xoption.Reader) *tls.Config {
 	if !strings.EqualFold(h.Request.URL.Scheme, "https") {
 		return nil
 	}
