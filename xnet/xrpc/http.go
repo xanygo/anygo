@@ -33,6 +33,10 @@ type HTTPRequest struct {
 	Body   io.Reader
 }
 
+func (r *HTTPRequest) Protocol() string {
+	return "HTTP"
+}
+
 func (r *HTTPRequest) String() string {
 	return "HTTPRequest:" + r.APIName()
 }
@@ -163,6 +167,10 @@ var _ Request = (*HTTPRequestNative)(nil)
 type HTTPRequestNative struct {
 	API     string
 	Request *http.Request
+}
+
+func (h *HTTPRequestNative) Protocol() string {
+	return "HTTP"
 }
 
 func (h *HTTPRequestNative) String() string {

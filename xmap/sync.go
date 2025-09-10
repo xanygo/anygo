@@ -101,6 +101,11 @@ func (m *Sync[K, V]) ToMap() map[K]V {
 	return val
 }
 
+func (m *Sync[K, V]) Exists(key K) bool {
+	_, ok := m.storage.Load(key)
+	return ok
+}
+
 func (m *Sync[K, V]) Clear() {
 	m.storage.Clear()
 }

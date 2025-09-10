@@ -7,7 +7,9 @@ package xservice
 import (
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -126,6 +128,11 @@ func ParserConfigFile(path string) (*Config, error) {
 	var cfg Config
 	if err := xcfg.Parse(path, &cfg); err != nil {
 		return nil, err
+	}
+	baseName := filepath.Base(path)
+	pureName := strings.TrimSuffix(baseName, filepath.Ext(baseName))
+	if pureName != cfg.Name {
+		return nil, fmt.Errorf("service Name expected %q, got %q", pureName, cfg.Name)
 	}
 	return &cfg, nil
 }

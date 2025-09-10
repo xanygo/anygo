@@ -26,24 +26,20 @@ func (l *Logger) Interceptor() TCPInterceptor {
 	}
 }
 
-var protocolHTTP = xlog.String("protocol", "HTTP")
-
 func (l *Logger) beforeInvoke(ctx context.Context, service string, req Request, resp Response,
-	opts ...Option) (context.Context, Request, Response, []Option, error) {
+	opts ...Option) (context.Context, Request, Response, []Option) {
 	ctx = xlog.NewContext(ctx)
 	xlog.AddAttr(ctx,
-		xlog.String("service", service),
-		protocolHTTP,
-		xlog.String("api", req.APIName()),
+		xlog.String("Service", service),
+		xlog.String("Protocol", req.Protocol()),
+		xlog.String("API", req.APIName()),
 	)
-	return ctx, req, resp, opts, nil
+	return ctx, req, resp, opts
 }
 
 func (l *Logger) afterPickAddress(ctx context.Context, _ string, try TryInfo, node xnaming.Node, err error) {
-	if node != nil {
-		xlog.AddAttr(ctx, xlog.String("remote", node.Addr().String()))
-	} else if err != nil {
-		xlog.AddAttr(ctx, xlog.ErrorAttr("pickErr", err))
+	if err != nil {
+		xlog.AddAttr(ctx, xlog.ErrorAttr("PickErr", err))
 	}
 }
 
@@ -55,13 +51,14 @@ func (l *Logger) afterDial(ctx context.Context, service string, node xnaming.Nod
 	}
 
 	if err == nil {
-		current["Local"] = conn.LocalAddr().String()
+		current["LocalAddr"] = conn.LocalAddr().String()
+		current["RemoteAddr"] = conn.RemoteAddr().String()
 	} else {
 		current["Err"] = err.Error()
 	}
 
 	var items []any
-	const key = "dial"
+	const key = "Dial"
 	attr, ok := xlog.FindAttrFromCtx(ctx, key)
 	if ok {
 		items = attr.Value.Any().([]any)
@@ -82,7 +79,7 @@ func (l *Logger) afterWriteRead(ctx context.Context, _ string, _ Request, resp R
 		item["Err"] = err.Error()
 	}
 
-	const key = "writeRead"
+	const key = "WriteRead"
 
 	var items []any
 
@@ -98,8 +95,8 @@ func (l *Logger) afterWriteRead(ctx context.Context, _ string, _ Request, resp R
 func (l *Logger) afterInvoke(ctx context.Context, _ string, _ Request, resp Response, try TryInfo, err error) {
 	errMsg := resp.ErrMsg()
 	attrs := []xlog.Attr{
-		xlog.String("try", try.String()),
-		xlog.Int64("cost", try.Cost().Milliseconds()),
+		xlog.String("Try", try.String()),
+		xlog.Int64("Cost", try.Cost().Milliseconds()),
 	}
 	// callerSkip =3 : 使日志中的 "source":<"function","file"> 定位到调用 RPC 方法的业务代码位置
 	l.Logger.Output(ctx, xlog.LevelInfo, 3, errMsg, attrs...)

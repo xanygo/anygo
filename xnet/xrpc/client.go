@@ -15,6 +15,7 @@ import (
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
+	"github.com/xanygo/anygo/xnet/xservice"
 	"github.com/xanygo/anygo/xoption"
 )
 
@@ -24,6 +25,7 @@ type Client interface {
 
 type Request interface {
 	String() string
+	Protocol() string
 	APIName() string
 	WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error
 }
@@ -42,6 +44,7 @@ type HasOptionReader interface {
 type config struct {
 	opt *xoption.MapOption
 	ap  xbalance.Reader
+	ser xservice.Service
 }
 
 type Option interface {
@@ -97,6 +100,12 @@ func OptHostPort(hostPort string) Option {
 func OptTLSConfig(c *tls.Config) Option {
 	return optionFunc(func(o *config) {
 		xoption.SetTLSConfig(o.opt, c)
+	})
+}
+
+func OptService(s xservice.Service) Option {
+	return optionFunc(func(o *config) {
+		o.ser = s
 	})
 }
 

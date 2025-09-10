@@ -72,69 +72,69 @@ func (c *TCP) allITs(ctx context.Context) []TCPInterceptor {
 func (c *TCP) Invoke(ctx context.Context, service string, req Request, resp Response, opts ...Option) (result error) {
 	start := time.Now()
 	its := c.allITs(ctx)
-	var err1 error
 	for _, it := range its {
-		if it.BeforeInvoke != nil {
-			ctx, req, resp, opts, err1 = it.BeforeInvoke(ctx, service, req, resp, opts...)
-			if err1 != nil {
-				result = err1
-			}
+		if it.BeforeInvoke == nil {
+			continue
 		}
+		ctx, req, resp, opts = it.BeforeInvoke(ctx, service, req, resp, opts...)
 	}
 
 	cfg := &config{
 		opt: xoption.NewMapOption(),
 	}
+
 	for _, o := range opts {
 		o.withOption(cfg)
 	}
 
 	var tryInfo TryInfo
-	if result == nil {
-		ser, ok := c.getServiceRegistry().Find(service)
+	ser := cfg.ser
+	if ser == nil {
+		var ok bool
+		ser, ok = c.getServiceRegistry().Find(service)
 		if !ok {
 			result = fmt.Errorf("service %q %w", service, xerror.NotFound)
-		} else {
-			// 将临时 option 和 service 的 option 合并
-			opt := xoption.Readers(cfg.opt, ser.Option())
+		}
+	}
 
-			if hr, ok1 := req.(HasOptionReader); ok1 {
-				if opt1 := hr.OptionReader(ctx, opt); opt1 != nil {
-					opt = xoption.Readers(opt1, cfg.opt, ser.Option())
+	// 将临时 option 和 service 的 option 合并
+	opt := xoption.Readers(cfg.opt, ser.Option())
+
+	if hr, ok1 := req.(HasOptionReader); ok1 {
+		if opt1 := hr.OptionReader(ctx, opt); opt1 != nil {
+			opt = xoption.Readers(opt1, cfg.opt, ser.Option())
+		}
+	}
+
+	ctx = xoption.ContextWithReader(ctx, opt)
+
+	ap := ser.Balancer()
+	if ap1 := xbalance.OptReader(opt); ap1 != nil {
+		ap = ap1
+	}
+
+	tryTotal := xoption.Retry(opt) + 1
+	tryInfo = TryInfo{
+		Total: tryTotal,
+		Start: time.Now(),
+	}
+	for try := 0; try < tryTotal; try++ {
+		tryInfo.Index = try
+		var conn net.Conn
+		conn, result = c.doConnect(ctx, service, ap, opt, cfg, its)
+
+		if result == nil {
+			tryInfo.Start = time.Now()
+			result = c.doWriteRead(ctx, req, resp, opt, conn)
+			tryInfo.End = time.Now()
+			for _, it := range its {
+				if it.AfterWriteRead != nil {
+					it.AfterWriteRead(ctx, service, req, resp, tryInfo, result)
 				}
 			}
-
-			ctx = xoption.ContextWithReader(ctx, opt)
-
-			ap := ser.Balancer()
-			if ap1 := xbalance.OptReader(opt); ap1 != nil {
-				ap = ap1
-			}
-
-			tryTotal := xoption.Retry(opt) + 1
-			tryInfo = TryInfo{
-				Total: tryTotal,
-				Start: time.Now(),
-			}
-			for try := 0; try < tryTotal; try++ {
-				tryInfo.Index = try
-				var conn net.Conn
-				conn, result = c.doConnect(ctx, service, ap, opt, cfg, its)
-
-				if result == nil {
-					tryInfo.Start = time.Now()
-					result = c.doWriteRead(ctx, req, resp, opt, conn)
-					tryInfo.End = time.Now()
-					for _, it := range its {
-						if it.AfterWriteRead != nil {
-							it.AfterWriteRead(ctx, service, req, resp, tryInfo, result)
-						}
-					}
-				}
-				if result == nil {
-					break
-				}
-			}
+		}
+		if result == nil {
+			break
 		}
 	}
 
@@ -225,7 +225,7 @@ func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt x
 
 type TCPInterceptor struct {
 	BeforeInvoke func(ctx context.Context, service string, req Request, resp Response,
-		opts ...Option) (context.Context, Request, Response, []Option, error)
+		opts ...Option) (context.Context, Request, Response, []Option)
 
 	BeforePickAddress func(ctx context.Context, service string, try TryInfo)
 	AfterPickAddress  func(ctx context.Context, service string, try TryInfo, node xnaming.Node, err error)

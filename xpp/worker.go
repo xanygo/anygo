@@ -10,14 +10,8 @@ import (
 	"fmt"
 	"sync/atomic"
 	"time"
-)
 
-type (
-	CycleWorker interface {
-		Name() string
-		Start(ctx context.Context, cycle time.Duration) error
-		Stop(ctx context.Context) error
-	}
+	"github.com/xanygo/anygo/safely"
 )
 
 type (
@@ -78,29 +72,45 @@ func TryStopWorker(ctx context.Context, workers ...any) error {
 	if len(workers) == 0 {
 		return nil
 	}
-	var errs []error
+	var wg safely.WaitGo
 	for _, worker := range workers {
-		if w, ok := worker.(stopper1); ok {
-			if err := w.Stop(ctx); err != nil {
-				if nw, ok := w.(named); ok {
-					err = fmt.Errorf("worker %s: %w", nw.Name(), err)
+		wg.Go1(func() error {
+			if w, ok := worker.(stopper1); ok {
+				err := w.Stop(ctx)
+				if err != nil {
+					if nw, ok := w.(named); ok {
+						err = fmt.Errorf("worker %s: %w", nw.Name(), err)
+					}
 				}
-				errs = append(errs, err)
+				return err
+			} else if nw, ok := worker.(stopper2); ok {
+				nw.Stop()
 			}
-		} else if nw, ok := worker.(stopper2); ok {
-			nw.Stop()
-		}
+			return nil
+		})
 	}
-	if len(errs) > 0 {
-		return nil
-	}
-	return errors.Join(errs...)
+	return wg.Wait()
 }
 
+type (
+	CycleWorker interface {
+		Name() string
+		Start(ctx context.Context, cycle time.Duration) error
+		Stop(ctx context.Context) error
+	}
+)
+
+var _ CycleWorker = (*CycleWorkerTpl)(nil)
+
 type CycleWorkerTpl struct {
-	Do      func(ctx context.Context) error
-	running atomic.Bool
-	tm      *time.Timer
+	Do         func(ctx context.Context) error
+	WorkerName string
+	running    atomic.Bool
+	tm         *time.Timer
+}
+
+func (c *CycleWorkerTpl) Name() string {
+	return c.WorkerName
 }
 
 func (c *CycleWorkerTpl) Start(ctx context.Context, cycle time.Duration) error {
