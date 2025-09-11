@@ -15,7 +15,7 @@ var _ LoadBalancer = (*RoundRobin)(nil)
 
 type RoundRobin struct {
 	nodes []xnaming.Node
-	rw    sync.RWMutex
+	rw    sync.Mutex
 	index int64
 }
 
@@ -24,8 +24,8 @@ func (r *RoundRobin) Name() string {
 }
 
 func (r *RoundRobin) Pick(ctx context.Context) (xnaming.Node, error) {
-	r.rw.RLock()
-	defer r.rw.RUnlock()
+	r.rw.Lock()
+	defer r.rw.Unlock()
 	total := len(r.nodes)
 	if total == 0 {
 		return nil, ErrEmptyNode
@@ -41,7 +41,7 @@ func (r *RoundRobin) Init(param any, nodes []xnaming.Node) error {
 
 func (r *RoundRobin) Update(ctx context.Context, nodes []xnaming.Node) error {
 	r.rw.Lock()
-	defer r.rw.Unlock()
 	r.nodes = nodes
+	r.rw.Unlock()
 	return nil
 }

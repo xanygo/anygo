@@ -21,16 +21,19 @@ type Option interface {
 	Writer
 }
 
+// Reader 只读的配置组件接口定义
 type Reader interface {
 	Get(key Key) (any, bool)
 	Range(fn func(key Key, val any) bool)
 }
 
+// Writer 只写的配置组件接口定义
 type Writer interface {
 	Set(key Key, val any)
 	Delete(keys ...Key)
 }
 
+// Key 配置的 key 类型
 type Key struct {
 	id   int64
 	name string
@@ -47,6 +50,7 @@ func (k Key) Name() string {
 
 var globalKeyID atomic.Int64
 
+// NewKey 创建一个新的全局唯一的 Key
 func NewKey(name string) Key {
 	id := globalKeyID.Add(1)
 	return Key{
@@ -64,6 +68,7 @@ func NewDynamic() *Dynamic {
 	}
 }
 
+// Dynamic 并发安全的，可动态、并发读写的 配置存储管理器
 type Dynamic struct {
 	values *sync.Map
 }
@@ -136,24 +141,25 @@ func (e EmptyReader) Get(key Key) (any, bool) {
 
 func (e EmptyReader) Range(fn func(key Key, val any) bool) {}
 
-func NewMapOption() *MapOption {
-	return &MapOption{
+func NewSimple() *Simple {
+	return &Simple{
 		value: make(map[Key]any, 4),
 	}
 }
 
-var _ Option = (*MapOption)(nil)
+var _ Option = (*Simple)(nil)
 
-type MapOption struct {
+// Simple 一个简单的，非并发安全的配置存储管理器
+type Simple struct {
 	value map[Key]any
 }
 
-func (m *MapOption) Get(key Key) (any, bool) {
+func (m *Simple) Get(key Key) (any, bool) {
 	v, ok := m.value[key]
 	return v, ok
 }
 
-func (m *MapOption) Range(fn func(key Key, val any) bool) {
+func (m *Simple) Range(fn func(key Key, val any) bool) {
 	for k, v := range m.value {
 		if !fn(k, v) {
 			return
@@ -161,17 +167,17 @@ func (m *MapOption) Range(fn func(key Key, val any) bool) {
 	}
 }
 
-func (m *MapOption) Set(key Key, val any) {
+func (m *Simple) Set(key Key, val any) {
 	m.value[key] = val
 }
 
-func (m *MapOption) Delete(keys ...Key) {
+func (m *Simple) Delete(keys ...Key) {
 	for _, key := range keys {
 		delete(m.value, key)
 	}
 }
 
-func (m *MapOption) Empty() bool {
+func (m *Simple) Empty() bool {
 	return len(m.value) == 0
 }
 
@@ -181,7 +187,7 @@ func ContextWithReader(ctx context.Context, option Reader) context.Context {
 	return context.WithValue(ctx, ctxReaderKey, option)
 }
 
-func OptionFromContext(ctx context.Context) Reader {
+func ReaderFromContext(ctx context.Context) Reader {
 	obj := ctx.Value(ctxReaderKey)
 	if opt, ok := obj.(Reader); ok {
 		return opt

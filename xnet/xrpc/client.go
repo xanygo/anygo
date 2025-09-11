@@ -42,7 +42,7 @@ type HasOptionReader interface {
 }
 
 type config struct {
-	opt *xoption.MapOption
+	opt *xoption.Simple
 	ap  xbalance.Reader
 	ser xservice.Service
 }

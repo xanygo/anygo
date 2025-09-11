@@ -25,7 +25,7 @@ var _ Naming = (*FileStore)(nil)
 //	127.0.0.2:8000
 //
 //	# backup node
-//	10.0.0.1:9000
+//	10.0.0.1:9000  # comment
 type FileStore struct {
 }
 

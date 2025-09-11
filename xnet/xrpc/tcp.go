@@ -82,7 +82,7 @@ func (c *TCP) Invoke(ctx context.Context, service string, req Request, resp Resp
 	}
 
 	cfg := &config{
-		opt: xoption.NewMapOption(),
+		opt: xoption.NewSimple(),
 	}
 	ctxOpts := OptionsFromContext(ctx)
 	for _, opt := range ctxOpts {

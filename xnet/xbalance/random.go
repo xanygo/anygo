@@ -40,7 +40,7 @@ func (r *Random) Init(param any, nodes []xnaming.Node) error {
 
 func (r *Random) Update(ctx context.Context, nodes []xnaming.Node) error {
 	r.rw.Lock()
-	defer r.rw.Unlock()
 	r.nodes = nodes
+	r.rw.Unlock()
 	return nil
 }

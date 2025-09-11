@@ -98,7 +98,7 @@ func (r *Request) getMethod() string {
 }
 
 func (r *Request) OptionReader(ctx context.Context, rd xoption.Reader) xoption.Reader {
-	opt := xoption.NewMapOption()
+	opt := xoption.NewSimple()
 	hc := xservice.OptHTTP(rd)
 	if hc.HTTPS {
 		tc := &tls.Config{
@@ -165,7 +165,7 @@ func (h *NativeRequest) balancer() xbalance.Reader {
 }
 
 func (h *NativeRequest) OptionReader(ctx context.Context, opt xoption.Reader) xoption.Reader {
-	mp := xoption.NewMapOption()
+	mp := xoption.NewSimple()
 	if ap := h.balancer(); ap != nil {
 		xbalance.OptSetReader(mp, ap)
 	}
