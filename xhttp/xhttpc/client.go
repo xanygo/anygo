@@ -17,7 +17,7 @@ import (
 )
 
 func Invoke(ctx context.Context, service string, req *http.Request, handler HandlerFunc, opts ...xrpc.Option) error {
-	hr := &RequestNative{
+	hr := &NativeRequest{
 		Request: req,
 	}
 	resp := &Response{

@@ -16,9 +16,9 @@ import (
 
 type HandlerFunc func(ctx context.Context, resp *http.Response) error
 
-type handlerFuncs []HandlerFunc
+type handlerCombine []HandlerFunc
 
-func (hfs handlerFuncs) Handle(ctx context.Context, resp *http.Response) error {
+func (hfs handlerCombine) Handle(ctx context.Context, resp *http.Response) error {
 	for _, f := range hfs {
 		if err := f(ctx, resp); err != nil {
 			return err
@@ -27,18 +27,18 @@ func (hfs handlerFuncs) Handle(ctx context.Context, resp *http.Response) error {
 	return nil
 }
 
-func HandlerFuncs(hfs ...HandlerFunc) HandlerFunc {
-	return handlerFuncs(hfs).Handle
+func Combine(hfs ...HandlerFunc) HandlerFunc {
+	return handlerCombine(hfs).Handle
 }
 
-func HandlerLimitBody(size int64) HandlerFunc {
+func LimitBody(size int64) HandlerFunc {
 	return func(ctx context.Context, resp *http.Response) error {
 		resp.Body = xio.LimitReaderCloser(resp.Body, size)
 		return nil
 	}
 }
 
-func HandlerStatusIn(codes ...int) HandlerFunc {
+func StatusIn(codes ...int) HandlerFunc {
 	mp := make(map[int]bool, len(codes))
 	for _, code := range codes {
 		mp[code] = true
@@ -51,7 +51,7 @@ func HandlerStatusIn(codes ...int) HandlerFunc {
 	}
 }
 
-func HandlerStatusRange(begin int, end int) HandlerFunc {
+func StatusRange(begin int, end int) HandlerFunc {
 	return func(ctx context.Context, resp *http.Response) error {
 		if resp.StatusCode < begin || resp.StatusCode > end {
 			return fmt.Errorf("invalid status code %d", resp.StatusCode)
@@ -60,7 +60,7 @@ func HandlerStatusRange(begin int, end int) HandlerFunc {
 	}
 }
 
-func HandlerDecodeBody(dc xcodec.Decoder, a any) HandlerFunc {
+func DecodeBody(dc xcodec.Decoder, a any) HandlerFunc {
 	return func(ctx context.Context, resp *http.Response) error {
 		status := resp.StatusCode
 		if status < 200 || status >= 500 {
@@ -75,6 +75,6 @@ func HandlerDecodeBody(dc xcodec.Decoder, a any) HandlerFunc {
 	}
 }
 
-func HandlerJSONBody(a any) HandlerFunc {
-	return HandlerDecodeBody(xcodec.JSON, a)
+func JSONBody(a any) HandlerFunc {
+	return DecodeBody(xcodec.JSON, a)
 }

@@ -13,7 +13,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/xanygo/anygo/xctx"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
@@ -84,6 +83,10 @@ func (c *TCP) Invoke(ctx context.Context, service string, req Request, resp Resp
 
 	cfg := &config{
 		opt: xoption.NewMapOption(),
+	}
+	ctxOpts := OptionsFromContext(ctx)
+	for _, opt := range ctxOpts {
+		opt.withOption(cfg)
 	}
 
 	for _, o := range opts {
@@ -265,14 +268,4 @@ var globalTCPInterceptors []TCPInterceptor
 
 func RegisterTCPIT(its ...TCPInterceptor) {
 	globalTCPInterceptors = append(globalTCPInterceptors, its...)
-}
-
-var ctxTCPITKey = xctx.NewKey()
-
-func ContextWithTCPIT(ctx context.Context, its ...TCPInterceptor) context.Context {
-	return xctx.WithValues(ctx, ctxTCPITKey, its...)
-}
-
-func TCPITFromContext(ctx context.Context) []TCPInterceptor {
-	return xctx.Values[*xctx.Key, TCPInterceptor](ctx, ctxTCPITKey, true)
 }

@@ -117,29 +117,29 @@ func (r *Request) OptionReader(ctx context.Context, rd xoption.Reader) xoption.R
 	return opt
 }
 
-var _ xrpc.Request = (*RequestNative)(nil)
+var _ xrpc.Request = (*NativeRequest)(nil)
 
-type RequestNative struct {
+type NativeRequest struct {
 	API     string
 	Request *http.Request
 }
 
-func (h *RequestNative) Protocol() string {
+func (h *NativeRequest) Protocol() string {
 	return "HTTP"
 }
 
-func (h *RequestNative) String() string {
+func (h *NativeRequest) String() string {
 	return "HTTPRequestNative:" + h.APIName()
 }
 
-func (h *RequestNative) APIName() string {
+func (h *NativeRequest) APIName() string {
 	if h.API != "" {
 		return h.API
 	}
 	return h.Request.URL.Path
 }
 
-func (h *RequestNative) WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error {
+func (h *NativeRequest) WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error {
 	req := h.Request.WithContext(ctx)
 	if req.Host == HostDummy {
 		req.Host = ""
@@ -148,7 +148,7 @@ func (h *RequestNative) WriteTo(ctx context.Context, w io.Writer, opt xoption.Re
 	return req.Write(w)
 }
 
-func (h *RequestNative) balancer() xbalance.Reader {
+func (h *NativeRequest) balancer() xbalance.Reader {
 	host := h.Request.URL.Hostname()
 	if host == HostDummy {
 		return nil
@@ -164,7 +164,7 @@ func (h *RequestNative) balancer() xbalance.Reader {
 	return xbalance.NewStaticByAddr(xnet.NewAddr("tcp", net.JoinHostPort(host, port)))
 }
 
-func (h *RequestNative) OptionReader(ctx context.Context, opt xoption.Reader) xoption.Reader {
+func (h *NativeRequest) OptionReader(ctx context.Context, opt xoption.Reader) xoption.Reader {
 	mp := xoption.NewMapOption()
 	if ap := h.balancer(); ap != nil {
 		xbalance.OptSetReader(mp, ap)
@@ -175,7 +175,7 @@ func (h *RequestNative) OptionReader(ctx context.Context, opt xoption.Reader) xo
 	return mp
 }
 
-func (h *RequestNative) tslConfig(rd xoption.Reader) *tls.Config {
+func (h *NativeRequest) tslConfig(rd xoption.Reader) *tls.Config {
 	if !strings.EqualFold(h.Request.URL.Scheme, "https") {
 		return nil
 	}
