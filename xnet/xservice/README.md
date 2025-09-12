@@ -8,7 +8,6 @@ Name = "demo"
 ConnectTime = 1000
 ReadTimeout = 1000
 
-
 [HTTP]
 Host = "demo.com"
 HTTPS = true
@@ -16,8 +15,7 @@ HTTPS = true
 KA = ["a"]
 
 [TLS]
-Enable = true
-SkipVerify = true # 是否跳过安全验证
+SkipVerify = false # 是否跳过安全验证
 ServerName = "example.com"
 
 [DownStream]

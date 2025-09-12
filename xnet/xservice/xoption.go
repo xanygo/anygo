@@ -8,10 +8,10 @@ import "github.com/xanygo/anygo/xoption"
 
 var xOptKeyHTTP = xoption.NewKey("HTTP")
 
-func SetXOptHTTP(opt xoption.Writer, val HTTPOption) {
+func SetOptHTTP(opt xoption.Writer, val HTTPPart) {
 	opt.Set(xOptKeyHTTP, val)
 }
 
-func OptHTTP(opt xoption.Reader) HTTPOption {
-	return xoption.GetAsDefault[HTTPOption](opt, xOptKeyHTTP, HTTPOption{})
+func OptHTTP(opt xoption.Reader) HTTPPart {
+	return xoption.GetAsDefault[HTTPPart](opt, xOptKeyHTTP, HTTPPart{})
 }

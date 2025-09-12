@@ -6,9 +6,11 @@ package xservice
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -29,56 +31,105 @@ type Config struct {
 	Retry           int                  `json:"Retry" yaml:"Retry"`
 	MaxResponseSize int64                `json:"MaxResponseSize" yaml:"MaxResponseSize"`
 	Proxy           *xoption.ProxyConfig `json:"Proxy" yaml:"Proxy"`
-	HTTP            HTTPOption           `json:"HTTP" yaml:"HTTP"`
-	TLS             *ConfigTSL
-	DownStream      ConfigDownStream `json:"DownStream" yaml:"DownStream" validator:"required,dive,required"`
+	HTTP            *HTTPPart            `json:"HTTP" yaml:"HTTP"`
+	TLS             *TSLPart
+	DownStream      DownStreamPart `json:"DownStream" yaml:"DownStream" validator:"required,dive,required"`
 }
 
-type ConfigDownStream struct {
+type DownStreamPart struct {
 	LoadBalancer string   `json:"LoadBalancer" yaml:"LoadBalancer"`
 	Address      []string `json:"Address" yaml:"Address"`
-	IDC          map[string]ConfigDownStreamIDC
+	IDC          map[string]DownStreamIDCPart
 }
 
-func (c *ConfigDownStream) getIDCAddress(idc string) []string {
+func (c *DownStreamPart) getIDCAddress(idc string) []string {
 	if len(c.IDC) == 0 {
 		return nil
 	}
 	return c.IDC[idc].Address
 }
 
-type ConfigDownStreamIDC struct {
+type DownStreamIDCPart struct {
 	Address []string `json:"Address" yaml:"Address" validator:"required,dive,required"`
 }
 
-type HTTPOption struct {
-	Host   string // 主机名，可选
-	HTTPS  bool   // 是否发起 HTTPS 请求，可选，默认 false
-	Header http.Header
+type HTTPPart struct {
+	Host   string      `json:"Host" yaml:"Host"`   // 主机名，可选
+	HTTPS  bool        `json:"HTTPS" yaml:"HTTPS"` // 是否发起 HTTPS 请求，可选，默认 false
+	Header http.Header `json:"Header" yaml:"Header"`
 }
 
-func (ho HTTPOption) Clone() HTTPOption {
-	return HTTPOption{
+func (ho *HTTPPart) Clone() *HTTPPart {
+	return &HTTPPart{
 		Host:   ho.Host,
 		HTTPS:  ho.HTTPS,
 		Header: ho.Header.Clone(),
 	}
 }
 
-type ConfigTSL struct {
-	Enable     bool
-	SkipVerify bool
-	ServerName string
+type TSLPart struct {
+	SkipVerify bool   `json:"SkipVerify" yaml:"SkipVerify"`
+	ServerName string `json:"ServerName" yaml:"ServerName"`
+
+	// CAFile 根证书（CA），用于信任自签名证书,如   ca.crt
+	CAFile string `json:"CAFile" yaml:"CAFile"`
+
+	// CertFile 客户端证书,如"client.crt"
+	CertFile string `json:"CertFile" yaml:"CertFile"`
+
+	// KeyFile 客户端证私钥，如  client.key
+	KeyFile string `json:"KeyFile" yaml:"KeyFile"`
 }
 
-func (c ConfigTSL) As() *tls.Config {
-	if !c.Enable {
-		return nil
+func (c *TSLPart) readPEMorFile(data string) ([]byte, error) {
+	if strings.HasPrefix(data, "-----BEGIN") {
+		return []byte(data), nil // 直接是 PEM 内容
 	}
-	return &tls.Config{
+	return os.ReadFile(data) // 当文件路径
+}
+
+func (c *TSLPart) parser() (*tls.Config, error) {
+	tc := &tls.Config{
 		InsecureSkipVerify: c.SkipVerify,
 		ServerName:         c.ServerName,
 	}
+	c.CAFile = strings.TrimSpace(c.CAFile)
+	if c.CAFile != "" {
+		caCertPool, err := x509.SystemCertPool()
+		if err != nil {
+			return nil, fmt.Errorf("load system CA pool: %w", err)
+		}
+		caCert, err := c.readPEMorFile(c.CAFile)
+		if err != nil {
+			return nil, fmt.Errorf("read CA file: %w", err)
+		}
+		if !caCertPool.AppendCertsFromPEM(caCert) {
+			return nil, errors.New("append CA cert failed")
+		}
+		tc.RootCAs = caCertPool
+	}
+
+	c.CertFile = strings.TrimSpace(c.CertFile)
+	c.KeyFile = strings.TrimSpace(c.KeyFile)
+
+	// 如果指定了客户端证书
+	if c.CertFile != "" && c.KeyFile != "" {
+		certPEM, err := c.readPEMorFile(c.CertFile)
+		if err != nil {
+			return nil, fmt.Errorf("load cert: %w", err)
+		}
+		keyPEM, err := c.readPEMorFile(c.KeyFile)
+		if err != nil {
+			return nil, fmt.Errorf("load key: %w", err)
+		}
+		cert, err := tls.X509KeyPair(certPEM, keyPEM)
+		if err != nil {
+			return nil, fmt.Errorf("parser cert/key: %w", err)
+		}
+		tc.Certificates = []tls.Certificate{cert}
+	}
+
+	return tc, nil
 }
 
 func (c *Config) Parser(idc string) (Service, error) {
@@ -93,11 +144,18 @@ func (c *Config) Parser(idc string) (Service, error) {
 	xoption.SetReadTimeout(opt, time.Duration(c.ReadTimeout)*time.Millisecond)
 	xoption.SetRetry(opt, c.Retry)
 	xoption.SetMaxResponseSize(opt, c.MaxResponseSize)
-	if c.TLS != nil && c.TLS.Enable {
-		xoption.SetTLSConfig(opt, c.TLS.As())
+	if c.TLS != nil {
+		tc, err := c.TLS.parser()
+		if err != nil {
+			return nil, err
+		}
+		xoption.SetTLSConfig(opt, tc)
 	}
 	if c.Proxy != nil {
 		xoption.SetProxy(opt, c.Proxy)
+	}
+	if c.HTTP != nil {
+		SetOptHTTP(opt, *c.HTTP)
 	}
 
 	impl := &serviceImpl{

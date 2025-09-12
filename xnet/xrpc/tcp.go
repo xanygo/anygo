@@ -21,8 +21,6 @@ import (
 	"github.com/xanygo/anygo/xsync"
 )
 
-const HostDummy = "dummy"
-
 var _ Client = (*TCP)(nil)
 
 type TCP struct {

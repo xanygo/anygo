@@ -23,8 +23,6 @@ import (
 	"github.com/xanygo/anygo/xoption"
 )
 
-const HostDummy = xrpc.HostDummy
-
 var _ xrpc.Request = (*Request)(nil)
 
 type Request struct {
@@ -84,7 +82,7 @@ func (r *Request) getURL(so xoption.Reader, address string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if u.Host == HostDummy {
+	if u.Host == xservice.DummyAddress {
 		u.Host = ""
 	}
 
@@ -109,14 +107,11 @@ func (r *Request) OptionReader(ctx context.Context, rd xoption.Reader) xoption.R
 	opt := xoption.NewSimple()
 	hc := xservice.OptHTTP(rd)
 	if hc.HTTPS {
-		tc := &tls.Config{
-			ServerName: hc.Host,
+		tc1 := xoption.TLSConfig(rd).Clone()
+		if tc1.ServerName == "" {
+			tc1.ServerName = hc.Host
 		}
-		tc1 := xoption.TLSConfig(rd)
-		if tc1.InsecureSkipVerify {
-			tc.InsecureSkipVerify = true
-		}
-		xoption.SetTLSConfig(opt, tc)
+		xoption.SetTLSConfig(opt, tc1)
 	}
 
 	if opt.Empty() {
@@ -149,7 +144,7 @@ func (h *NativeRequest) APIName() string {
 
 func (h *NativeRequest) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.Reader) error {
 	req := h.Request.WithContext(ctx)
-	if req.Host == HostDummy {
+	if req.Host == xservice.DummyAddress {
 		req.Host = ""
 	}
 	setHTTPRequestUA(req)
@@ -168,7 +163,7 @@ func (h *NativeRequest) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xo
 
 func (h *NativeRequest) balancer(opt xoption.Reader) xbalance.Reader {
 	host := h.Request.URL.Hostname()
-	if host == HostDummy {
+	if host == xservice.DummyAddress {
 		return nil
 	}
 	proxy := xoption.Proxy(opt)
