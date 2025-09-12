@@ -132,7 +132,7 @@ func (c *TCP) Invoke(ctx context.Context, service string, req Request, resp Resp
 			tryInfo.End = time.Now()
 			for _, it := range its {
 				if it.AfterWriteRead != nil {
-					it.AfterWriteRead(ctx, service, req, resp, tryInfo, result)
+					it.AfterWriteRead(ctx, service, conn, req, resp, tryInfo, result)
 				}
 			}
 		}
@@ -191,7 +191,7 @@ func (c *TCP) doConnect(ctx context.Context, service string, ap xbalance.Reader,
 		conn, err := c.dial(ctx, node.Addr, opt)
 		tryInfo.End = time.Now()
 		connNode := &xnet.ConnNode{
-			Conn: conn,
+			Conn: xnet.NewTraceConn(conn),
 			Addr: *node,
 		}
 		for _, it := range its {
@@ -245,7 +245,7 @@ type TCPInterceptor struct {
 	AfterDial func(ctx context.Context, service string, try TryInfo, conn *xnet.ConnNode, err error)
 
 	// AfterWriteRead 每 Write + Read 完成后都会执行一次，最多执行 retry+1 次
-	AfterWriteRead func(ctx context.Context, service string, req Request, resp Response, try TryInfo, err error)
+	AfterWriteRead func(ctx context.Context, service string, conn *xnet.ConnNode, req Request, resp Response, try TryInfo, err error)
 
 	// AfterInvoke 在 Invoke 执行完成后，执行一次
 	AfterInvoke func(ctx context.Context, service string, req Request, resp Response, try TryInfo, err error)

@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xrpc"
@@ -59,6 +60,7 @@ func (r *Request) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.
 		return err
 	}
 	setHTTPRequestUA(req)
+	setHTTPRequestLogID(ctx, req)
 	proxy := xoption.Proxy(opt)
 	if proxy != nil {
 		tr := &httpProxyTransporter{
@@ -148,6 +150,7 @@ func (h *NativeRequest) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xo
 		req.Host = ""
 	}
 	setHTTPRequestUA(req)
+	setHTTPRequestLogID(ctx, req)
 	proxy := xoption.Proxy(opt)
 	if proxy != nil {
 		tr := &httpProxyTransporter{
@@ -199,6 +202,13 @@ func (h *NativeRequest) tslConfig(rd xoption.Reader) *tls.Config {
 func setHTTPRequestUA(req *http.Request) {
 	if req.UserAgent() == "" {
 		req.Header.Set("User-Agent", "anygo-xrpc/1.0")
+	}
+}
+
+func setHTTPRequestLogID(ctx context.Context, req *http.Request) {
+	logID := xlog.FindLogID(ctx)
+	if logID != "" {
+		req.Header.Set("X-Log-ID", logID)
 	}
 }
 

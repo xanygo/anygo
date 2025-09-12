@@ -184,3 +184,29 @@ func AllAttrsFromCtx(ctx context.Context) []Attr {
 	attrs = append(attrs, values...)
 	return attrs
 }
+
+// Append （普通日志字段）找到日志字段名为 key 的 Attr，往起元素列表追加元素
+func Append(ctx context.Context, key string, values ...any) {
+	var items []any
+
+	attr, ok := FindAttrFromCtx(ctx, key)
+	if ok {
+		items = attr.Value.Any().([]any)
+	}
+	items = append(items, values...)
+	attr1 := Any(key, items)
+	AddAttr(ctx, attr1)
+}
+
+// AppendMeta （元信息日志字段）找到日志字段名为 key 的 Attr，往起元素列表追加元素
+func AppendMeta(ctx context.Context, key string, values ...any) {
+	var items []any
+
+	attr, ok := FindMetaAttrFromCtx(ctx, key)
+	if ok {
+		items = attr.Value.Any().([]any)
+	}
+	items = append(items, values...)
+	attr1 := Any(key, items)
+	AddMetaAttr(ctx, attr1)
+}

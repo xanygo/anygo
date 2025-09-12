@@ -64,3 +64,7 @@ func (resp *Response) ErrMsg() string {
 func (resp *Response) Response() *http.Response {
 	return resp.resp
 }
+
+func (resp *Response) Unwrap() any {
+	return resp.resp
+}

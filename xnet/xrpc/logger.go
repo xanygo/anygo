@@ -6,6 +6,7 @@ package xrpc
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xnet"
@@ -43,59 +44,62 @@ func (l *Logger) afterPickAddress(ctx context.Context, _ string, try TryInfo, no
 }
 
 func (l *Logger) afterDial(ctx context.Context, service string, try TryInfo, conn *xnet.ConnNode, err error) {
-	current := map[string]any{
+	info := map[string]any{
 		"Remote": conn.Addr.HostPort,
-		"Cost":   try.Cost().Milliseconds(),
+		"Cost":   try.Cost().String(),
 		"Try":    try.String(),
 	}
 
 	if err == nil {
-		current["LocalAddr"] = conn.Conn.LocalAddr().String()
-		current["RemoteAddr"] = conn.Conn.RemoteAddr().String()
+		info["LocalAddr"] = conn.Conn.LocalAddr().String()
+		info["RemoteAddr"] = conn.Conn.RemoteAddr().String()
 	} else {
-		current["Err"] = err.Error()
+		info["Err"] = err.Error()
 	}
-
-	var items []any
 	const key = "Dial"
-	attr, ok := xlog.FindAttrFromCtx(ctx, key)
-	if ok {
-		items = attr.Value.Any().([]any)
-	}
-	items = append(items, current)
-	attr = xlog.Any(key, items)
-	xlog.AddAttr(ctx, attr)
+	xlog.Append(ctx, key, info)
 }
 
-func (l *Logger) afterWriteRead(ctx context.Context, _ string, _ Request, resp Response, try TryInfo, err error) {
+func (l *Logger) afterWriteRead(ctx context.Context, _ string, conn *xnet.ConnNode, _ Request, resp Response, try TryInfo, err error) {
 	item := map[string]any{
 		"ErrCode": resp.ErrCode(),
 		"ErrMsg":  resp.ErrMsg(),
-		"Cost":    try.Cost().Milliseconds(),
+		"Cost":    try.Cost().String(),
 		"Try":     try.String(),
 	}
 	if err != nil {
 		item["Err"] = err.Error()
 	}
 
+	if tc, ok := conn.Conn.(*xnet.TraceConn); ok {
+		item["Conn"] = map[string]any{
+			"ReadBytes":  tc.ReadBytes(),
+			"WriteBytes": tc.WriteBytes(),
+			"ReadCost":   tc.ReadCost().String(),
+			"WriteCost":  tc.WriteCost().String(),
+		}
+	}
+
+	if rr, ok := resp.Unwrap().(*http.Response); ok {
+		respInfo := map[string]any{
+			"Proto":   rr.Proto,
+			"Status":  rr.Status,
+			"BodyLen": rr.ContentLength,
+			"CT":      rr.Header.Get("Content-Type"),
+		}
+		item["Response"] = respInfo
+	}
+
 	const key = "WriteRead"
 
-	var items []any
-
-	attr, ok := xlog.FindAttrFromCtx(ctx, key)
-	if ok {
-		items = attr.Value.Any().([]any)
-	}
-	items = append(items, item)
-	attr1 := xlog.Any(key, items)
-	xlog.AddAttr(ctx, attr1)
+	xlog.Append(ctx, key, item)
 }
 
 func (l *Logger) afterInvoke(ctx context.Context, _ string, _ Request, resp Response, try TryInfo, err error) {
 	errMsg := resp.ErrMsg()
 	attrs := []xlog.Attr{
 		xlog.String("Try", try.String()),
-		xlog.Int64("Cost", try.Cost().Milliseconds()),
+		xlog.String("Cost", try.Cost().String()),
 	}
 	// callerSkip =3 : 使日志中的 "source":<"function","file"> 定位到调用 RPC 方法的业务代码位置
 	l.Logger.Output(ctx, xlog.LevelInfo, 3, errMsg, attrs...)

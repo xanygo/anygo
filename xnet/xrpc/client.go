@@ -35,6 +35,7 @@ type Response interface {
 	LoadFrom(ctx context.Context, r io.Reader, opt xoption.Reader) error
 	xerror.HasErrCode
 	xerror.HasErrMsg
+	Unwrap() any
 }
 
 type HasOptionReader interface {

@@ -7,9 +7,11 @@ package xnet
 import (
 	"context"
 	"net"
+	"sync/atomic"
 	"time"
 
 	"github.com/xanygo/anygo/internal/zslice"
+	"github.com/xanygo/anygo/xsync"
 )
 
 // NewConn  对 net.Conn 封装，以支持 ConnInterceptor
@@ -359,4 +361,89 @@ func (chs connInterceptors) CallSetWriteDeadline(info ConnInfo, dl time.Time, in
 	return chs[idx].SetWriteDeadline(info, dl, func(dl time.Time) error {
 		return chs.CallSetWriteDeadline(info, dl, invoker, idx+1)
 	})
+}
+
+func NewTraceConn(conn net.Conn) *TraceConn {
+	return &TraceConn{
+		conn:      conn,
+		creatTime: time.Now(),
+	}
+}
+
+var _ net.Conn = (*TraceConn)(nil)
+
+type TraceConn struct {
+	conn            net.Conn
+	readTotalBytes  atomic.Int64
+	writeTotalBytes atomic.Int64
+
+	creatTime      time.Time
+	readTotalTime  xsync.TimeDuration
+	writeTotalTime xsync.TimeDuration
+}
+
+func (t *TraceConn) Read(b []byte) (n int, err error) {
+	start := time.Now()
+	n, err = t.conn.Read(b)
+	t.readTotalTime.Add(time.Since(start))
+
+	t.readTotalBytes.Add(int64(n))
+	return n, err
+}
+
+func (t *TraceConn) Write(b []byte) (n int, err error) {
+	start := time.Now()
+	n, err = t.conn.Write(b)
+	t.writeTotalTime.Add(time.Since(start))
+
+	t.writeTotalBytes.Add(int64(n))
+	return n, err
+}
+
+func (t *TraceConn) Close() error {
+	return t.conn.Close()
+}
+
+func (t *TraceConn) LocalAddr() net.Addr {
+	return t.conn.LocalAddr()
+}
+
+func (t *TraceConn) RemoteAddr() net.Addr {
+	return t.conn.RemoteAddr()
+}
+
+func (t *TraceConn) SetDeadline(tm time.Time) error {
+	return t.conn.SetDeadline(tm)
+}
+
+func (t *TraceConn) SetReadDeadline(tm time.Time) error {
+	return t.conn.SetReadDeadline(tm)
+}
+
+func (t *TraceConn) SetWriteDeadline(tm time.Time) error {
+	return t.conn.SetWriteDeadline(tm)
+}
+
+func (t *TraceConn) Unwrap() net.Conn {
+	return t.conn
+}
+
+func (t *TraceConn) ReadBytes() int64 {
+	return t.readTotalBytes.Load()
+}
+
+func (t *TraceConn) WriteBytes() int64 {
+	return t.writeTotalBytes.Load()
+}
+
+func (t *TraceConn) ReadCost() time.Duration {
+	return t.readTotalTime.Load()
+}
+
+func (t *TraceConn) WriteCost() time.Duration {
+	return t.writeTotalTime.Load()
+}
+
+func (t *TraceConn) CreateTime() time.Time {
+	return t.creatTime
 }
