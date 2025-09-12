@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/fsgo/fst"
+
+	"github.com/xanygo/anygo/xnet"
 )
 
 func TestFileStore_Lookup(t *testing.T) {
@@ -18,11 +20,11 @@ func TestFileStore_Lookup(t *testing.T) {
 	testNodesEqual(t, nodes1, []string{"127.0.0.1:8000", "127.0.0.2:8000", "10.0.0.1:9000"})
 }
 
-func testNodesEqual(t *testing.T, nodes []Node, want []string) {
+func testNodesEqual(t *testing.T, nodes []xnet.AddrNode, want []string) {
 	fst.Len(t, nodes, len(want))
 	var addrs []string
 	for _, node := range nodes {
-		addrs = append(addrs, node.Addr().String())
+		addrs = append(addrs, node.Addr.String())
 	}
 	fst.Equal(t, want, addrs)
 }

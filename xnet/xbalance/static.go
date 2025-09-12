@@ -9,13 +9,13 @@ import (
 	"net"
 	"sync/atomic"
 
-	"github.com/xanygo/anygo/xnet/xnaming"
+	"github.com/xanygo/anygo/xnet"
 )
 
 var _ Reader = (*Static)(nil)
 
 type Static struct {
-	nodes []xnaming.Node
+	nodes []xnet.AddrNode
 	index atomic.Int32
 }
 
@@ -23,20 +23,20 @@ func (s *Static) Name() string {
 	return NameStatic
 }
 
-func (s *Static) Pick(ctx context.Context) (xnaming.Node, error) {
+func (s *Static) Pick(ctx context.Context) (*xnet.AddrNode, error) {
 	total := len(s.nodes)
 	if total == 0 {
 		return nil, ErrEmptyNode
 	}
 	index := s.index.Add(1) - 1
 	idx := int(index % int32(total))
-	return s.nodes[idx], nil
+	return &s.nodes[idx], nil
 }
 
-func NewStatic(nodes ...xnaming.Node) *Static {
+func NewStatic(nodes ...xnet.AddrNode) *Static {
 	return &Static{nodes: nodes}
 }
 
 func NewStaticByAddr(addrs ...net.Addr) *Static {
-	return &Static{nodes: xnaming.NewNodes(addrs...)}
+	return &Static{nodes: xnet.NewAddrNodes(addrs...)}
 }

@@ -7,50 +7,12 @@ package xnaming
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"net"
 	"sort"
 
 	"github.com/xanygo/anygo/xbus"
+	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xsync"
 )
-
-type Node interface {
-	// Name 原始名称，如当传入 一个域名的时候，此值为域名，若是 HostPort 则是 HostPort
-	Name() string
-
-	// Addr 地址
-	Addr() net.Addr
-}
-
-func NewNode(name string, addr net.Addr) Node {
-	return &nodeImpl{
-		name: name,
-		addr: addr,
-	}
-}
-
-func NewNodes(addrs ...net.Addr) []Node {
-	nodes := make([]Node, len(addrs))
-	for i, addr := range addrs {
-		nodes[i] = NewNode(addr.String(), addr)
-	}
-	return nodes
-}
-
-var _ Node = (*nodeImpl)(nil)
-
-type nodeImpl struct {
-	name string
-	addr net.Addr
-}
-
-func (n *nodeImpl) Name() string {
-	return n.name
-}
-
-func (n *nodeImpl) Addr() net.Addr {
-	return n.addr
-}
 
 func newNodeProducer() *nodeProducer {
 	return &nodeProducer{
@@ -62,7 +24,7 @@ var _ xbus.Producer = (*nodeProducer)(nil)
 
 type nodeProducer struct {
 	ch    chan xbus.Message
-	nodes xsync.Value[[]Node]
+	nodes xsync.Value[[]xnet.AddrNode]
 	sign  xsync.Value[string]
 }
 
@@ -70,11 +32,11 @@ func (nw *nodeProducer) Messages() <-chan xbus.Message {
 	return nw.ch
 }
 
-func (nw *nodeProducer) Nodes() []Node {
+func (nw *nodeProducer) Nodes() []xnet.AddrNode {
 	return nw.nodes.Load()
 }
 
-func (nw *nodeProducer) Update(nodes []Node) {
+func (nw *nodeProducer) Update(nodes []xnet.AddrNode) {
 	var newSign string
 	if len(nodes) == len(nw.nodes.Load()) {
 		newSign = nw.genSign(nodes)
@@ -93,13 +55,13 @@ func (nw *nodeProducer) Update(nodes []Node) {
 	}
 }
 
-func (nw *nodeProducer) genSign(nodes []Node) string {
+func (nw *nodeProducer) genSign(nodes []xnet.AddrNode) string {
 	sort.Slice(nodes, func(i, j int) bool {
-		return nodes[i].Addr().String() < nodes[j].Addr().String()
+		return nodes[i].Addr.String() < nodes[j].Addr.String()
 	})
 	h := md5.New()
 	for _, node := range nodes {
-		_, _ = h.Write([]byte(node.Addr().String()))
+		_, _ = h.Write([]byte(node.Addr.String()))
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xbus"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xnaming"
 )
 
@@ -33,15 +34,15 @@ type (
 		Name() string
 
 		// Pick 选择一个节点，用于发送请求
-		Pick(ctx context.Context) (xnaming.Node, error)
+		Pick(ctx context.Context) (*xnet.AddrNode, error)
 	}
 
 	Writer interface {
 		// Init 首次初始化
-		Init(param any, nodes []xnaming.Node) error
+		Init(param any, nodes []xnet.AddrNode) error
 
 		// Update 更新节点列表（动态服务发现时用）
-		Update(ctx context.Context, nodes []xnaming.Node) error
+		Update(ctx context.Context, nodes []xnet.AddrNode) error
 	}
 )
 
@@ -100,15 +101,15 @@ func (w *worker) Name() string {
 	return w.b.Name()
 }
 
-func (w *worker) Pick(ctx context.Context) (xnaming.Node, error) {
+func (w *worker) Pick(ctx context.Context) (*xnet.AddrNode, error) {
 	return w.b.Pick(ctx)
 }
 
-func (w *worker) Init(param any, nodes []xnaming.Node) error {
+func (w *worker) Init(param any, nodes []xnet.AddrNode) error {
 	return w.b.Init(param, nodes)
 }
 
-func (w *worker) Update(ctx context.Context, nodes []xnaming.Node) error {
+func (w *worker) Update(ctx context.Context, nodes []xnet.AddrNode) error {
 	return w.b.Update(ctx, nodes)
 }
 
@@ -116,7 +117,7 @@ func (w *worker) Consume(ctx context.Context, msg xbus.Message) error {
 	if msg.Topic != xnaming.Topic {
 		return nil
 	}
-	nodes, ok := msg.Payload.([]xnaming.Node)
+	nodes, ok := msg.Payload.([]xnet.AddrNode)
 	if !ok {
 		return fmt.Errorf("invalid payload: %T", msg.Payload)
 	}

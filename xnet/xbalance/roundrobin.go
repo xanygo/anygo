@@ -8,13 +8,13 @@ import (
 	"context"
 	"sync"
 
-	"github.com/xanygo/anygo/xnet/xnaming"
+	"github.com/xanygo/anygo/xnet"
 )
 
 var _ LoadBalancer = (*RoundRobin)(nil)
 
 type RoundRobin struct {
-	nodes []xnaming.Node
+	nodes []xnet.AddrNode
 	rw    sync.Mutex
 	index int64
 }
@@ -23,7 +23,7 @@ func (r *RoundRobin) Name() string {
 	return NameRoundRobin
 }
 
-func (r *RoundRobin) Pick(ctx context.Context) (xnaming.Node, error) {
+func (r *RoundRobin) Pick(ctx context.Context) (*xnet.AddrNode, error) {
 	r.rw.Lock()
 	defer r.rw.Unlock()
 	total := len(r.nodes)
@@ -32,14 +32,14 @@ func (r *RoundRobin) Pick(ctx context.Context) (xnaming.Node, error) {
 	}
 	r.index++
 	idx := int(r.index % int64(total))
-	return r.nodes[idx], nil
+	return &r.nodes[idx], nil
 }
 
-func (r *RoundRobin) Init(param any, nodes []xnaming.Node) error {
+func (r *RoundRobin) Init(param any, nodes []xnet.AddrNode) error {
 	return r.Update(context.Background(), nodes)
 }
 
-func (r *RoundRobin) Update(ctx context.Context, nodes []xnaming.Node) error {
+func (r *RoundRobin) Update(ctx context.Context, nodes []xnet.AddrNode) error {
 	r.rw.Lock()
 	r.nodes = nodes
 	r.rw.Unlock()

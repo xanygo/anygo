@@ -27,7 +27,7 @@ type Request interface {
 	String() string
 	Protocol() string
 	APIName() string
-	WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error
+	WriteTo(ctx context.Context, w *xnet.ConnNode, opt xoption.Reader) error
 }
 
 type Response interface {

@@ -6,10 +6,9 @@ package xrpc
 
 import (
 	"context"
-	"net"
 
 	"github.com/xanygo/anygo/xlog"
-	"github.com/xanygo/anygo/xnet/xnaming"
+	"github.com/xanygo/anygo/xnet"
 )
 
 type Logger struct {
@@ -37,22 +36,22 @@ func (l *Logger) beforeInvoke(ctx context.Context, service string, req Request, 
 	return ctx, req, resp, opts
 }
 
-func (l *Logger) afterPickAddress(ctx context.Context, _ string, try TryInfo, node xnaming.Node, err error) {
+func (l *Logger) afterPickAddress(ctx context.Context, _ string, try TryInfo, node *xnet.AddrNode, err error) {
 	if err != nil {
 		xlog.AddAttr(ctx, xlog.ErrorAttr("PickErr", err))
 	}
 }
 
-func (l *Logger) afterDial(ctx context.Context, service string, node xnaming.Node, try TryInfo, conn net.Conn, err error) {
+func (l *Logger) afterDial(ctx context.Context, service string, try TryInfo, conn *xnet.ConnNode, err error) {
 	current := map[string]any{
-		"Remote": node.Addr().String(),
+		"Remote": conn.Addr.HostPort,
 		"Cost":   try.Cost().Milliseconds(),
 		"Try":    try.String(),
 	}
 
 	if err == nil {
-		current["LocalAddr"] = conn.LocalAddr().String()
-		current["RemoteAddr"] = conn.RemoteAddr().String()
+		current["LocalAddr"] = conn.Conn.LocalAddr().String()
+		current["RemoteAddr"] = conn.Conn.RemoteAddr().String()
 	} else {
 		current["Err"] = err.Error()
 	}

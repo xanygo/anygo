@@ -20,14 +20,16 @@ func (i *HostPort) Scheme() string {
 	return ""
 }
 
-func (i *HostPort) Lookup(ctx context.Context, idc string, hostPort string, param url.Values) ([]Node, error) {
+func (i *HostPort) Lookup(ctx context.Context, idc string, hostPort string, param url.Values) ([]xnet.AddrNode, error) {
 	_, _, err := net.SplitHostPort(hostPort)
 	if err != nil {
 		return nil, err
 	}
-	addr := xnet.NewAddr("tcp", hostPort)
-	node := NewNode(hostPort, addr)
-	return []Node{node}, nil
+	node := xnet.AddrNode{
+		HostPort: hostPort,
+		Addr:     xnet.NewAddr("tcp", hostPort),
+	}
+	return []xnet.AddrNode{node}, nil
 }
 
 func init() {

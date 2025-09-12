@@ -21,7 +21,7 @@ func (d *DNS) Scheme() string {
 	return "dns"
 }
 
-func (d *DNS) Lookup(ctx context.Context, idc string, hostPort string, param url.Values) ([]Node, error) {
+func (d *DNS) Lookup(ctx context.Context, idc string, hostPort string, param url.Values) ([]xnet.AddrNode, error) {
 	host, port, err := net.SplitHostPort(hostPort)
 	if err != nil {
 		return nil, err
@@ -30,10 +30,13 @@ func (d *DNS) Lookup(ctx context.Context, idc string, hostPort string, param url
 	if err != nil {
 		return nil, err
 	}
-	nodes := make([]Node, 0, len(ips))
+	nodes := make([]xnet.AddrNode, 0, len(ips))
 	for _, ip := range ips {
 		addr := net.JoinHostPort(ip.String(), port)
-		node := NewNode(hostPort, xnet.NewAddr("tcp", addr))
+		node := xnet.AddrNode{
+			HostPort: hostPort,
+			Addr:     xnet.NewAddr("tcp", addr),
+		}
 		nodes = append(nodes, node)
 	}
 	return nodes, nil

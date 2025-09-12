@@ -33,13 +33,13 @@ func (f *FileStore) Scheme() string {
 	return "file"
 }
 
-func (f *FileStore) Lookup(ctx context.Context, idc string, fileName string, param url.Values) ([]Node, error) {
+func (f *FileStore) Lookup(ctx context.Context, idc string, fileName string, param url.Values) ([]xnet.AddrNode, error) {
 	content, err := os.ReadFile(fileName)
 	if err != nil {
 		return nil, err
 	}
 	lines := strings.Split(string(content), "\n")
-	nodes := make([]Node, 0, len(lines))
+	nodes := make([]xnet.AddrNode, 0, len(lines))
 	for _, line := range lines {
 		line, _, _ = strings.Cut(line, "#") // 去掉 # 注释的内容
 		line = strings.TrimSpace(line)
@@ -50,8 +50,10 @@ func (f *FileStore) Lookup(ctx context.Context, idc string, fileName string, par
 		if err != nil {
 			return nil, err
 		}
-		addr := xnet.NewAddr("tcp", line)
-		node := NewNode(line, addr)
+		node := xnet.AddrNode{
+			HostPort: line,
+			Addr:     xnet.NewAddr("tcp", line),
+		}
 		nodes = append(nodes, node)
 	}
 	if len(nodes) == 0 {

@@ -5,8 +5,10 @@
 package xhttpc
 
 import (
+	"bufio"
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net"
@@ -49,12 +51,8 @@ func (r *Request) APIName() string {
 	return r.Path
 }
 
-func (r *Request) WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error {
-	conn, ok := w.(net.Conn)
-	if !ok {
-		return fmt.Errorf("writer (%T) not a net.Conn", w)
-	}
-	api, err := r.getURL(opt, conn.RemoteAddr().String())
+func (r *Request) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.Reader) error {
+	api, err := r.getURL(opt, node.Addr.HostPort)
 	if err != nil {
 		return err
 	}
@@ -63,7 +61,17 @@ func (r *Request) WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) 
 		return err
 	}
 	setHTTPRequestUA(req)
-	return req.Write(w)
+	proxy := xoption.Proxy(opt)
+	if proxy != nil {
+		tr := &httpProxyTransporter{
+			conn:   node,
+			config: proxy,
+			req:    req,
+			opt:    opt,
+		}
+		return tr.write(ctx)
+	}
+	return req.Write(node.Conn)
 }
 
 func (r *Request) getURL(so xoption.Reader, address string) (string, error) {
@@ -139,34 +147,41 @@ func (h *NativeRequest) APIName() string {
 	return h.Request.URL.Path
 }
 
-func (h *NativeRequest) WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error {
+func (h *NativeRequest) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.Reader) error {
 	req := h.Request.WithContext(ctx)
 	if req.Host == HostDummy {
 		req.Host = ""
 	}
 	setHTTPRequestUA(req)
-	return req.Write(w)
+	proxy := xoption.Proxy(opt)
+	if proxy != nil {
+		tr := &httpProxyTransporter{
+			conn:   node,
+			config: proxy,
+			req:    req,
+			opt:    opt,
+		}
+		return tr.write(ctx)
+	}
+	return req.Write(node.Conn)
 }
 
-func (h *NativeRequest) balancer() xbalance.Reader {
+func (h *NativeRequest) balancer(opt xoption.Reader) xbalance.Reader {
 	host := h.Request.URL.Hostname()
 	if host == HostDummy {
 		return nil
 	}
-	port := h.Request.URL.Port()
-	if port == "" {
-		if strings.EqualFold(h.Request.URL.Scheme, "http") {
-			port = "80"
-		} else if strings.EqualFold(h.Request.URL.Scheme, "https") {
-			port = "443"
-		}
+	proxy := xoption.Proxy(opt)
+	if proxy != nil {
+		return nil
 	}
-	return xbalance.NewStaticByAddr(xnet.NewAddr("tcp", net.JoinHostPort(host, port)))
+	hostPort := getHostPort(h.Request)
+	return xbalance.NewStaticByAddr(xnet.NewAddr("tcp", hostPort))
 }
 
 func (h *NativeRequest) OptionReader(ctx context.Context, opt xoption.Reader) xoption.Reader {
 	mp := xoption.NewSimple()
-	if ap := h.balancer(); ap != nil {
+	if ap := h.balancer(opt); ap != nil {
 		xbalance.OptSetReader(mp, ap)
 	}
 	if tc := h.tslConfig(opt); tc != nil {
@@ -179,22 +194,116 @@ func (h *NativeRequest) tslConfig(rd xoption.Reader) *tls.Config {
 	if !strings.EqualFold(h.Request.URL.Scheme, "https") {
 		return nil
 	}
-	serverName := h.Request.Host
-	tc := xoption.TLSConfig(rd)
-	if tc != nil {
-		if serverName != "" {
-			tc = tc.Clone()
-			tc.ServerName = serverName
-		}
-		return tc
+	proxy := xoption.Proxy(rd)
+	if proxy != nil {
+		return nil
 	}
-	return &tls.Config{
-		ServerName: serverName,
-	}
+	return getTlsConfig(h.Request, rd)
 }
 
 func setHTTPRequestUA(req *http.Request) {
 	if req.UserAgent() == "" {
 		req.Header.Set("User-Agent", "anygo-xrpc/1.0")
 	}
+}
+
+type httpProxyTransporter struct {
+	conn   *xnet.ConnNode
+	config *xoption.ProxyConfig
+	req    *http.Request
+	opt    xoption.Reader
+}
+
+func getHostPort(req *http.Request) string {
+	serverName := req.URL.Hostname()
+	port := req.URL.Port()
+	if port != "" {
+		return net.JoinHostPort(serverName, port)
+	}
+	if req.URL.Scheme == "https" {
+		port = "443"
+	} else {
+		port = "80"
+	}
+	return net.JoinHostPort(serverName, port)
+}
+
+// getProxyRequest 创建和 proxy 交互的首个 Request
+func (p *httpProxyTransporter) getProxyRequest(ctx context.Context) (*http.Request, error) {
+	hostPort := getHostPort(p.req)
+
+	cr, err := http.NewRequestWithContext(ctx, http.MethodConnect, "http://"+hostPort, nil)
+	if err != nil {
+		return nil, err
+	}
+	cr.Host = hostPort
+	cr.Header.Set("Proxy-Connection", "keep-alive")
+	if p.config.Username != "" {
+		switch p.config.AuthType {
+		case "", "Basic":
+			code := base64.StdEncoding.EncodeToString([]byte(p.config.Username + ":" + p.config.Password))
+			cr.Header.Set("Proxy-Authorization", "Basic "+code)
+		}
+	}
+	return cr, nil
+}
+
+func (p *httpProxyTransporter) write(ctx context.Context) error {
+	isHTTPS := p.req.URL.Scheme == "https"
+	if !isHTTPS {
+		return p.req.WriteProxy(p.conn.Conn)
+	}
+
+	cr, err := p.getProxyRequest(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = cr.Write(p.conn.Conn)
+	if err != nil {
+		return nil
+	}
+	bio := bufio.NewReader(p.conn.Conn)
+	resp, err := http.ReadResponse(bio, nil)
+	if err != nil {
+		return err
+	}
+	// 代理服务器应该响应：HTTP/1.1 200 Connection Established
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad response status: %d  %s", resp.StatusCode, resp.Status)
+	}
+	tc := getTlsConfig(p.req, p.opt)
+
+	// 被代理的不是 HTTPS 地址，直接发送请求
+	if tc == nil {
+		return p.req.Write(p.conn.Conn)
+	}
+
+	// 被代理的是 HTTPS 地址，创建加密链接，通过加密链接发送 Request、读取 Response
+	pc := tls.Client(p.conn.Conn, tc)
+	err = pc.HandshakeContext(ctx)
+	if err != nil {
+		return err
+	}
+	p.conn.TlsConn = pc
+	return p.req.Write(pc)
+}
+
+func getTlsConfig(req *http.Request, opt xoption.Reader) *tls.Config {
+	if !strings.EqualFold(req.URL.Scheme, "https") {
+		return nil
+	}
+	serverName := req.URL.Hostname()
+	tc := xoption.TLSConfig(opt)
+	if tc != nil {
+		tc = tc.Clone()
+		if serverName != "" {
+			tc.ServerName = serverName
+		}
+	} else {
+		tc = &tls.Config{
+			ServerName: serverName,
+		}
+	}
+	return tc
 }

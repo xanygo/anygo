@@ -21,14 +21,15 @@ import (
 )
 
 type Config struct {
-	Name            string     `json:"Name" yaml:"Name" validator:"required"`
-	ConnectTimeout  int64      `json:"ConnectTimeout" yaml:"ConnectTimeout"` // 连接超时,可选
-	ConnectRetry    int        `json:"ConnectRetry" yaml:"ConnectRetry"`
-	WriteTimeout    int64      `json:"WriteTimeout" yaml:"WriteTimeout"`
-	ReadTimeout     int64      `json:"ReadTimeout" yaml:"ReadTimeout"`
-	Retry           int        `json:"Retry" yaml:"Retry"`
-	MaxResponseSize int64      `json:"MaxResponseSize" yaml:"MaxResponseSize"`
-	HTTP            HTTPOption `json:"HTTP" yaml:"HTTP"`
+	Name            string               `json:"Name" yaml:"Name" validator:"required"`
+	ConnectTimeout  int64                `json:"ConnectTimeout" yaml:"ConnectTimeout"` // 连接超时,可选
+	ConnectRetry    int                  `json:"ConnectRetry" yaml:"ConnectRetry"`
+	WriteTimeout    int64                `json:"WriteTimeout" yaml:"WriteTimeout"`
+	ReadTimeout     int64                `json:"ReadTimeout" yaml:"ReadTimeout"`
+	Retry           int                  `json:"Retry" yaml:"Retry"`
+	MaxResponseSize int64                `json:"MaxResponseSize" yaml:"MaxResponseSize"`
+	Proxy           *xoption.ProxyConfig `json:"Proxy" yaml:"Proxy"`
+	HTTP            HTTPOption           `json:"HTTP" yaml:"HTTP"`
 	TLS             *ConfigTSL
 	DownStream      ConfigDownStream `json:"DownStream" yaml:"DownStream" validator:"required,dive,required"`
 }
@@ -94,6 +95,9 @@ func (c *Config) Parser(idc string) (Service, error) {
 	xoption.SetMaxResponseSize(opt, c.MaxResponseSize)
 	if c.TLS != nil && c.TLS.Enable {
 		xoption.SetTLSConfig(opt, c.TLS.As())
+	}
+	if c.Proxy != nil {
+		xoption.SetProxy(opt, c.Proxy)
 	}
 
 	impl := &serviceImpl{

@@ -16,7 +16,6 @@ import (
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
-	"github.com/xanygo/anygo/xnet/xnaming"
 	"github.com/xanygo/anygo/xnet/xservice"
 	"github.com/xanygo/anygo/xoption"
 	"github.com/xanygo/anygo/xsync"
@@ -126,7 +125,7 @@ func (c *TCP) Invoke(ctx context.Context, service string, req Request, resp Resp
 	}
 	for try := 0; try < tryTotal; try++ {
 		tryInfo.Index = try
-		var conn net.Conn
+		var conn *xnet.ConnNode
 		conn, result = c.doConnect(ctx, service, ap, opt, cfg, its)
 
 		if result == nil {
@@ -155,7 +154,7 @@ func (c *TCP) Invoke(ctx context.Context, service string, req Request, resp Resp
 	return result
 }
 
-func (c *TCP) doConnect(ctx context.Context, service string, ap xbalance.Reader, opt xoption.Reader, cfg *config, its []TCPInterceptor) (net.Conn, error) {
+func (c *TCP) doConnect(ctx context.Context, service string, ap xbalance.Reader, opt xoption.Reader, cfg *config, its []TCPInterceptor) (*xnet.ConnNode, error) {
 	tryTotal := xoption.ConnectRetry(opt) + 1
 	connectTimeout := xoption.ConnectTimeout(opt)
 
@@ -163,7 +162,7 @@ func (c *TCP) doConnect(ctx context.Context, service string, ap xbalance.Reader,
 		ap = cfg.ap
 	}
 
-	doConnect := func(ctx context.Context, index int) (net.Conn, error) {
+	doConnect := func(ctx context.Context, index int) (*xnet.ConnNode, error) {
 		tryInfo := TryInfo{
 			Total: tryTotal,
 			Index: index,
@@ -191,18 +190,22 @@ func (c *TCP) doConnect(ctx context.Context, service string, ap xbalance.Reader,
 			return nil, err
 		}
 		tryInfo.Start = time.Now()
-		conn, err := c.dial(ctx, node.Addr(), opt)
+		conn, err := c.dial(ctx, node.Addr, opt)
 		tryInfo.End = time.Now()
+		connNode := &xnet.ConnNode{
+			Conn: conn,
+			Addr: *node,
+		}
 		for _, it := range its {
 			if it.AfterDial != nil {
-				it.AfterDial(ctx, service, node, tryInfo, conn, err)
+				it.AfterDial(ctx, service, tryInfo, connNode, err)
 			}
 		}
-		return conn, err
+		return connNode, err
 	}
 
 	var err error
-	var conn net.Conn
+	var conn *xnet.ConnNode
 	for i := 0; i < tryTotal; i++ {
 		if conn, err = doConnect(ctx, i); err == nil {
 			return conn, nil
@@ -211,7 +214,8 @@ func (c *TCP) doConnect(ctx context.Context, service string, ap xbalance.Reader,
 	return nil, err
 }
 
-func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption.Reader, conn net.Conn) (err error) {
+func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption.Reader, node *xnet.ConnNode) (err error) {
+	var conn net.Conn = node.Conn
 	defer conn.Close()
 	totalTimeout := xoption.WriteReadTimeout(opt)
 	ctx, cancel := context.WithTimeout(ctx, totalTimeout)
@@ -220,9 +224,12 @@ func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt x
 		return err
 	}
 	// 暂时不将读写超时分开控制
-	err = req.WriteTo(ctx, conn, opt)
+	err = req.WriteTo(ctx, node, opt)
 	if err != nil {
 		return err
+	}
+	if node.TlsConn != nil {
+		conn = node.TlsConn
 	}
 	maxBody := xoption.MaxResponseSize(opt)
 	rd := io.LimitReader(conn, maxBody)
@@ -234,10 +241,10 @@ type TCPInterceptor struct {
 		opts ...Option) (context.Context, Request, Response, []Option)
 
 	BeforePickAddress func(ctx context.Context, service string, try TryInfo)
-	AfterPickAddress  func(ctx context.Context, service string, try TryInfo, node xnaming.Node, err error)
+	AfterPickAddress  func(ctx context.Context, service string, try TryInfo, node *xnet.AddrNode, err error)
 
 	// AfterDial 拨号完成后执行，最多执行 ( retry + 1 ) * ( connectRetry +1) 次
-	AfterDial func(ctx context.Context, service string, node xnaming.Node, try TryInfo, conn net.Conn, err error)
+	AfterDial func(ctx context.Context, service string, try TryInfo, conn *xnet.ConnNode, err error)
 
 	// AfterWriteRead 每 Write + Read 完成后都会执行一次，最多执行 retry+1 次
 	AfterWriteRead func(ctx context.Context, service string, req Request, resp Response, try TryInfo, err error)

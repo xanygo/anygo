@@ -9,13 +9,13 @@ import (
 	"math/rand/v2"
 	"sync"
 
-	"github.com/xanygo/anygo/xnet/xnaming"
+	"github.com/xanygo/anygo/xnet"
 )
 
 var _ LoadBalancer = (*Random)(nil)
 
 type Random struct {
-	nodes []xnaming.Node
+	nodes []xnet.AddrNode
 	rw    sync.RWMutex
 }
 
@@ -23,7 +23,7 @@ func (r *Random) Name() string {
 	return NameRandom
 }
 
-func (r *Random) Pick(_ context.Context) (xnaming.Node, error) {
+func (r *Random) Pick(_ context.Context) (*xnet.AddrNode, error) {
 	r.rw.RLock()
 	defer r.rw.RUnlock()
 	total := len(r.nodes)
@@ -31,14 +31,14 @@ func (r *Random) Pick(_ context.Context) (xnaming.Node, error) {
 		return nil, ErrEmptyNode
 	}
 	idx := rand.IntN(total)
-	return r.nodes[idx], nil
+	return &r.nodes[idx], nil
 }
 
-func (r *Random) Init(param any, nodes []xnaming.Node) error {
+func (r *Random) Init(param any, nodes []xnet.AddrNode) error {
 	return r.Update(context.Background(), nodes)
 }
 
-func (r *Random) Update(ctx context.Context, nodes []xnaming.Node) error {
+func (r *Random) Update(ctx context.Context, nodes []xnet.AddrNode) error {
 	r.rw.Lock()
 	r.nodes = nodes
 	r.rw.Unlock()

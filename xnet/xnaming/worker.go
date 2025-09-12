@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/xbus"
+	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xpp"
 )
 
@@ -44,7 +45,7 @@ func (n *Worker) Name() string {
 	return "CycleWorker"
 }
 
-func (n *Worker) Nodes() []Node {
+func (n *Worker) Nodes() []xnet.AddrNode {
 	n.once.Do(n.initOnce)
 	return n.producer.Nodes()
 }
@@ -84,8 +85,8 @@ func (n *Worker) do(ctx context.Context) error {
 	return err2
 }
 
-func (n *Worker) search(ctx context.Context, idc string, items []string) ([]Node, error) {
-	var allNodes []Node
+func (n *Worker) search(ctx context.Context, idc string, items []string) ([]xnet.AddrNode, error) {
+	var allNodes []xnet.AddrNode
 	var errs []error
 	for idx, item := range items {
 		item = strings.TrimSpace(item)

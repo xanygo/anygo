@@ -11,6 +11,7 @@ import (
 	"net/url"
 
 	"github.com/xanygo/anygo/xbus"
+	"github.com/xanygo/anygo/xnet"
 )
 
 // Topic 用于 xbus 传递消息的 topic
@@ -18,7 +19,7 @@ var Topic = xbus.NewTopic("naming nodes")
 
 type Naming interface {
 	Scheme() string
-	Lookup(ctx context.Context, idc string, name string, param url.Values) ([]Node, error)
+	Lookup(ctx context.Context, idc string, name string, param url.Values) ([]xnet.AddrNode, error)
 }
 
 var factories = map[string]Naming{}
@@ -37,7 +38,7 @@ func MustRegister(n Naming) {
 	}
 }
 
-func Lookup(ctx context.Context, scheme string, idc string, name string, param url.Values) ([]Node, error) {
+func Lookup(ctx context.Context, scheme string, idc string, name string, param url.Values) ([]xnet.AddrNode, error) {
 	n, ok := factories[scheme]
 	if !ok {
 		return nil, fmt.Errorf("not support such scheme %q", scheme)
