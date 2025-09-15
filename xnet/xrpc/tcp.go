@@ -16,6 +16,7 @@ import (
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
+	"github.com/xanygo/anygo/xnet/xproxy"
 	"github.com/xanygo/anygo/xnet/xservice"
 	"github.com/xanygo/anygo/xoption"
 	"github.com/xanygo/anygo/xsync"
@@ -29,25 +30,54 @@ type TCP struct {
 	Dialer          xnet.Dialer
 }
 
-func (c *TCP) dial(ctx context.Context, addr net.Addr, opt xoption.Reader) (net.Conn, error) {
+// dial 拨号
+// 即使拨号失败，返回的 *xnet.ConnNode 总是不会为 nil
+func (c *TCP) dial(ctx context.Context, downstream xnet.AddrNode, opt xoption.Reader) (*xnet.ConnNode, error) {
+	cn := &xnet.ConnNode{
+		Addr: downstream,
+	}
+	var proxyDriver xproxy.Driver
+	proxyConfig := xproxy.OptConfig(opt)
+	if proxyConfig != nil {
+		var err error
+		proxyDriver, err = xproxy.Find(proxyConfig.Protocol)
+		if err != nil {
+			return cn, err
+		}
+	}
+
+	addr := downstream.Addr
 	dialer := c.Dialer
 	if dialer == nil {
 		dialer = xnet.DefaultDialer
 	}
 	conn, err := dialer.DialContext(ctx, addr.Network(), addr.String())
 	if err != nil {
-		return nil, err
+		return cn, err
 	}
-	tc := xoption.TLSConfig(opt)
-	if tc != nil {
-		cc := tls.Client(conn, tc)
-		if err = cc.HandshakeContext(ctx); err != nil {
+	cn.Conn = conn
+
+	if proxyDriver != nil {
+		target := xoption.TargetAddress(opt)
+		cn, err = xproxy.Proxy(ctx, proxyDriver, cn, proxyConfig, target)
+		if err != nil {
 			conn.Close()
-			return nil, err
+			return cn, err
 		}
-		return cc, nil
 	}
-	return conn, nil
+
+	tc := xoption.GetTLSConfig(opt)
+	if tc != nil {
+		tlsConn := tls.Client(cn.Conn, tc)
+		err = tlsConn.HandshakeContext(ctx)
+		if err != nil {
+			conn.Close()
+			return cn, err
+		}
+		cn.Conn = tlsConn
+		return cn, nil
+	}
+	return cn, nil
 }
 
 func (c *TCP) getServiceRegistry() xservice.Registry {
@@ -159,7 +189,6 @@ func (c *TCP) doConnect(ctx context.Context, service string, ap xbalance.Reader,
 	if cfg.ap != nil {
 		ap = cfg.ap
 	}
-
 	doConnect := func(ctx context.Context, index int) (*xnet.ConnNode, error) {
 		tryInfo := TryInfo{
 			Total: tryTotal,
@@ -187,13 +216,10 @@ func (c *TCP) doConnect(ctx context.Context, service string, ap xbalance.Reader,
 		if err != nil {
 			return nil, err
 		}
+
 		tryInfo.Start = time.Now()
-		conn, err := c.dial(ctx, node.Addr, opt)
+		connNode, err := c.dial(ctx, *node, opt)
 		tryInfo.End = time.Now()
-		connNode := &xnet.ConnNode{
-			Conn: xnet.NewTraceConn(conn),
-			Addr: *node,
-		}
 		for _, it := range its {
 			if it.AfterDial != nil {
 				it.AfterDial(ctx, service, tryInfo, connNode, err)

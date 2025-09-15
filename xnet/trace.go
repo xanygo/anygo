@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const UserAgent = "anygo-xrpc/1.0"
+
 // PrintLogITs 打印域名解析过程、拨号过程日志的拦截器
 var PrintLogITs = []Interceptor{
 	PrintResolverLogIT,

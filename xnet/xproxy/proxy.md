@@ -3,7 +3,7 @@
 ## 1. 建立隧道
 ```
 CONNECT www.example.com:443 HTTP/1.1\r\n
-Host: www.example.com:443\r\n
+Host: www.proxy.com:1080\r\n
 Proxy-Connection: Keep-Alive\r\n
 \r\n
 ```

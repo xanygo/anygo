@@ -5,11 +5,8 @@
 package xhttpc
 
 import (
-	"bufio"
 	"context"
 	"crypto/tls"
-	"encoding/base64"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -19,6 +16,7 @@ import (
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
+	"github.com/xanygo/anygo/xnet/xproxy"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
 	"github.com/xanygo/anygo/xoption"
@@ -30,6 +28,7 @@ type Request struct {
 	API    string // APIName
 	Method string
 	Path   string
+	HTTPS  bool
 	Query  url.Values
 	Header http.Header
 	Body   io.Reader
@@ -61,16 +60,6 @@ func (r *Request) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.
 	}
 	setHTTPRequestUA(req)
 	setHTTPRequestLogID(ctx, req)
-	proxy := xoption.Proxy(opt)
-	if proxy != nil {
-		tr := &httpProxyTransporter{
-			conn:   node,
-			config: proxy,
-			req:    req,
-			opt:    opt,
-		}
-		return tr.write(ctx)
-	}
 	return req.Write(node.Conn)
 }
 
@@ -105,17 +94,37 @@ func (r *Request) getMethod() string {
 	return r.Method
 }
 
+func (r *Request) balancer(opt xoption.Reader, u *url.URL) xbalance.Reader {
+	if u.Host == "" || u.Hostname() == xservice.Dummy {
+		return nil
+	}
+	proxy := xproxy.OptConfig(opt)
+	if proxy != nil {
+		return nil
+	}
+	hostPort := getHostPort(u)
+	return xbalance.NewStaticByAddr(xnet.NewAddr("tcp", hostPort))
+}
+
 func (r *Request) OptionReader(ctx context.Context, rd xoption.Reader) xoption.Reader {
+	u, err := url.Parse(r.Path)
+	if err != nil {
+		return nil
+	}
 	opt := xoption.NewSimple()
-	hc := xservice.OptHTTP(rd)
-	if hc.HTTPS {
-		tc1 := xoption.TLSConfig(rd).Clone()
-		if tc1.ServerName == "" {
-			tc1.ServerName = hc.Host
-		}
-		xoption.SetTLSConfig(opt, tc1)
+	if b := r.balancer(rd, u); b != nil {
+		xbalance.OptSetReader(opt, b)
+	}
+	if proxy := xproxy.OptConfig(opt); proxy != nil {
+		hostPort := getHostPort(u)
+		xoption.SetTargetAddress(opt, hostPort)
 	}
 
+	hc := xservice.OptHTTP(rd)
+	if hc.HTTPS || r.HTTPS {
+		tc := mustGetTslConfig(u, opt)
+		xoption.SetTLSConfig(opt, tc)
+	}
 	if opt.Empty() {
 		return nil
 	}
@@ -151,29 +160,20 @@ func (h *NativeRequest) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xo
 	}
 	setHTTPRequestUA(req)
 	setHTTPRequestLogID(ctx, req)
-	proxy := xoption.Proxy(opt)
-	if proxy != nil {
-		tr := &httpProxyTransporter{
-			conn:   node,
-			config: proxy,
-			req:    req,
-			opt:    opt,
-		}
-		return tr.write(ctx)
-	}
 	return req.Write(node.Conn)
 }
 
 func (h *NativeRequest) balancer(opt xoption.Reader) xbalance.Reader {
 	host := h.Request.URL.Hostname()
-	if host == xservice.DummyAddress {
+	if host == xservice.Dummy {
 		return nil
 	}
-	proxy := xoption.Proxy(opt)
+	proxy := xproxy.OptConfig(opt)
 	if proxy != nil {
+		// 有代理的情况下，应该连接代理
 		return nil
 	}
-	hostPort := getHostPort(h.Request)
+	hostPort := getHostPort(h.Request.URL)
 	return xbalance.NewStaticByAddr(xnet.NewAddr("tcp", hostPort))
 }
 
@@ -182,26 +182,46 @@ func (h *NativeRequest) OptionReader(ctx context.Context, opt xoption.Reader) xo
 	if ap := h.balancer(opt); ap != nil {
 		xbalance.OptSetReader(mp, ap)
 	}
+
+	if proxy := xproxy.OptConfig(opt); proxy != nil {
+		hostPort := getHostPort(h.Request.URL)
+		xoption.SetTargetAddress(mp, hostPort)
+	}
 	if tc := h.tslConfig(opt); tc != nil {
 		xoption.SetTLSConfig(mp, tc)
 	}
 	return mp
 }
 
-func (h *NativeRequest) tslConfig(rd xoption.Reader) *tls.Config {
+func (h *NativeRequest) tslConfig(opt xoption.Reader) *tls.Config {
 	if !strings.EqualFold(h.Request.URL.Scheme, "https") {
 		return nil
 	}
-	proxy := xoption.Proxy(rd)
-	if proxy != nil {
-		return nil
+	return mustGetTslConfig(h.Request.URL, opt)
+}
+
+func mustGetTslConfig(u *url.URL, opt xoption.Reader) *tls.Config {
+	serverName := u.Host
+	if serverName == xservice.Dummy {
+		serverName = ""
 	}
-	return getTlsConfig(h.Request, rd)
+	tc := xoption.GetTLSConfig(opt)
+	if tc != nil {
+		tc = tc.Clone()
+	} else {
+		tc = &tls.Config{}
+	}
+	if serverName != "" {
+		tc.ServerName = serverName
+	} else {
+		tc.InsecureSkipVerify = true
+	}
+	return tc
 }
 
 func setHTTPRequestUA(req *http.Request) {
 	if req.UserAgent() == "" {
-		req.Header.Set("User-Agent", "anygo-xrpc/1.0")
+		req.Header.Set("User-Agent", xnet.UserAgent)
 	}
 }
 
@@ -212,103 +232,17 @@ func setHTTPRequestLogID(ctx context.Context, req *http.Request) {
 	}
 }
 
-type httpProxyTransporter struct {
-	conn   *xnet.ConnNode
-	config *xoption.ProxyConfig
-	req    *http.Request
-	opt    xoption.Reader
-}
-
-func getHostPort(req *http.Request) string {
-	serverName := req.URL.Hostname()
-	port := req.URL.Port()
+func getHostPort(u *url.URL) string {
+	// 此处不需要考虑 Hostname 为 dummy 的情况
+	serverName := u.Hostname()
+	port := u.Port()
 	if port != "" {
 		return net.JoinHostPort(serverName, port)
 	}
-	if req.URL.Scheme == "https" {
+	if u.Scheme == "https" {
 		port = "443"
 	} else {
 		port = "80"
 	}
 	return net.JoinHostPort(serverName, port)
-}
-
-// getProxyRequest 创建和 proxy 交互的首个 Request
-func (p *httpProxyTransporter) getProxyRequest(ctx context.Context) (*http.Request, error) {
-	hostPort := getHostPort(p.req)
-
-	cr, err := http.NewRequestWithContext(ctx, http.MethodConnect, "http://"+hostPort, nil)
-	if err != nil {
-		return nil, err
-	}
-	cr.Host = hostPort
-	cr.Header.Set("Proxy-Connection", "keep-alive")
-	if p.config.Username != "" {
-		switch p.config.AuthType {
-		case "", "Basic":
-			code := base64.StdEncoding.EncodeToString([]byte(p.config.Username + ":" + p.config.Password))
-			cr.Header.Set("Proxy-Authorization", "Basic "+code)
-		}
-	}
-	return cr, nil
-}
-
-func (p *httpProxyTransporter) write(ctx context.Context) error {
-	isHTTPS := p.req.URL.Scheme == "https"
-	if !isHTTPS {
-		return p.req.WriteProxy(p.conn.Conn)
-	}
-
-	cr, err := p.getProxyRequest(ctx)
-	if err != nil {
-		return err
-	}
-
-	err = cr.Write(p.conn.Conn)
-	if err != nil {
-		return nil
-	}
-	bio := bufio.NewReader(p.conn.Conn)
-	resp, err := http.ReadResponse(bio, nil)
-	if err != nil {
-		return err
-	}
-	// 代理服务器应该响应：HTTP/1.1 200 Connection Established
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad response status: %d  %s", resp.StatusCode, resp.Status)
-	}
-	tc := getTlsConfig(p.req, p.opt)
-
-	// 被代理的不是 HTTPS 地址，直接发送请求
-	if tc == nil {
-		return p.req.Write(p.conn.Conn)
-	}
-
-	// 被代理的是 HTTPS 地址，创建加密链接，通过加密链接发送 Request、读取 Response
-	pc := tls.Client(p.conn.Conn, tc)
-	err = pc.HandshakeContext(ctx)
-	if err != nil {
-		return err
-	}
-	p.conn.TlsConn = pc
-	return p.req.Write(pc)
-}
-
-func getTlsConfig(req *http.Request, opt xoption.Reader) *tls.Config {
-	if !strings.EqualFold(req.URL.Scheme, "https") {
-		return nil
-	}
-	serverName := req.URL.Hostname()
-	tc := xoption.TLSConfig(opt)
-	if tc != nil {
-		tc = tc.Clone()
-		if serverName != "" {
-			tc.ServerName = serverName
-		}
-	} else {
-		tc = &tls.Config{
-			ServerName: serverName,
-		}
-	}
-	return tc
 }

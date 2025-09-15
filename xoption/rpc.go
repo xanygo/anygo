@@ -5,12 +5,10 @@
 package xoption
 
 import (
-	"crypto/tls"
 	"fmt"
 	"time"
 
 	"github.com/xanygo/anygo/xbus"
-	"github.com/xanygo/anygo/xvalidator"
 )
 
 var (
@@ -22,8 +20,7 @@ var (
 	KeyBalancer        = NewKey("Balancer") // 负载均衡策略名称
 	KeyMaxResponseSize = NewKey("MaxResponseSize")
 
-	KeyTLSConfig = NewKey("tls.Config")
-	KeyProxy     = NewKey("Proxy") // proxy 类型，支持的值： HTTP
+	KeyTargetAddress = NewKey("TargetAddress") // 实际目标服务器的 host:port
 )
 
 func SetConnectTimeout(opt Writer, timeout time.Duration) {
@@ -121,8 +118,6 @@ func ConsumeRPCConfig(d Writer, msg xbus.Message) error {
 		return convertDoSet[int](d, msg.Payload, SetRetry)
 	case KeyBalancer, KeyBalancer.Name():
 		return convertDoSet[string](d, msg.Payload, SetBalancer)
-	case KeyProxy, KeyProxy.Name():
-		return convertDoSet[*ProxyConfig](d, msg.Payload, SetProxy)
 	}
 
 	return nil
@@ -137,36 +132,10 @@ func convertDoSet[T any](opt Writer, value any, fn func(opt Writer, val T)) erro
 	return nil
 }
 
-func SetTLSConfig(opt Writer, c *tls.Config) {
-	opt.Set(KeyTLSConfig, c)
+func SetTargetAddress(opt Writer, address string) {
+	opt.Set(KeyTargetAddress, address)
 }
 
-func TLSConfig(opt Reader) *tls.Config {
-	return GetAsDefault[*tls.Config](opt, KeyTLSConfig, nil)
-}
-
-type ProxyConfig struct {
-	Type     string `json:"Type" yaml:"Type"`         // 代理类型，必填，可选值： HTTP、SOCKS5（未支持）
-	AuthType string `json:"AuthType" yaml:"AuthType"` // 认证类型，可选，可选值为： Basic(默认)
-	Username string `json:"Username" yaml:"Username"` // 认证账号，可选，有值时才会发送认证信息
-	Password string `json:"Password" yaml:"Password"` // 认证密码，可选
-}
-
-var _ xvalidator.AutoChecker = (*ProxyConfig)(nil)
-
-func (pc *ProxyConfig) AutoCheck() error {
-	switch pc.Type {
-	case "HTTP", "SOCKS5":
-	default:
-		return fmt.Errorf("invalid proxy type: %q", pc.Type)
-	}
-	return nil
-}
-
-func SetProxy(opt Writer, proxy *ProxyConfig) {
-	opt.Set(KeyProxy, proxy)
-}
-
-func Proxy(opt Reader) *ProxyConfig {
-	return GetAsDefault[*ProxyConfig](opt, KeyProxy, nil)
+func TargetAddress(opt Reader) string {
+	return GetAsDefault[string](opt, KeyTargetAddress, "")
 }
