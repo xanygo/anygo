@@ -37,17 +37,26 @@ func (l *Logger) beforeInvoke(ctx context.Context, service string, req Request, 
 	return ctx, req, resp, opts
 }
 
-func (l *Logger) afterPickAddress(ctx context.Context, _ string, try TryInfo, node *xnet.AddrNode, err error) {
-	if err != nil {
-		xlog.AddAttr(ctx, xlog.ErrorAttr("PickErr", err))
+func (l *Logger) afterPickAddress(ctx context.Context, service string, try Action, node *xnet.AddrNode, err error) {
+	info := map[string]any{
+		"Service": service,
+		"Try":     try.TryString(),
+		"Cost":    try.Cost().String(),
+		"Address": node.HostPort,
 	}
+	if err != nil {
+		info["Err"] = err.Error()
+	}
+	const key = "Pick"
+	xlog.Append(ctx, key, info)
 }
 
-func (l *Logger) afterDial(ctx context.Context, service string, try TryInfo, conn *xnet.ConnNode, err error) {
+func (l *Logger) afterDial(ctx context.Context, service string, try Action, conn *xnet.ConnNode, err error) {
 	info := map[string]any{
-		"Remote": conn.Addr.HostPort,
-		"Cost":   try.Cost().String(),
-		"Try":    try.String(),
+		"Service": service,
+		"Remote":  conn.Addr.HostPort,
+		"Cost":    try.Cost().String(),
+		"Try":     try.TryString(),
 	}
 
 	if err == nil {
@@ -60,12 +69,12 @@ func (l *Logger) afterDial(ctx context.Context, service string, try TryInfo, con
 	xlog.Append(ctx, key, info)
 }
 
-func (l *Logger) afterWriteRead(ctx context.Context, _ string, conn *xnet.ConnNode, _ Request, resp Response, try TryInfo, err error) {
+func (l *Logger) afterWriteRead(ctx context.Context, _ string, conn *xnet.ConnNode, _ Request, resp Response, try Action, err error) {
 	item := map[string]any{
 		"ErrCode": resp.ErrCode(),
 		"ErrMsg":  resp.ErrMsg(),
 		"Cost":    try.Cost().String(),
-		"Try":     try.String(),
+		"Try":     try.TryString(),
 	}
 	if err != nil {
 		item["Err"] = err.Error()
@@ -95,10 +104,10 @@ func (l *Logger) afterWriteRead(ctx context.Context, _ string, conn *xnet.ConnNo
 	xlog.Append(ctx, key, item)
 }
 
-func (l *Logger) afterInvoke(ctx context.Context, _ string, _ Request, resp Response, try TryInfo, err error) {
+func (l *Logger) afterInvoke(ctx context.Context, _ string, _ Request, resp Response, try Action, err error) {
 	errMsg := resp.ErrMsg()
 	attrs := []xlog.Attr{
-		xlog.String("Try", try.String()),
+		xlog.String("Try", try.TryString()),
 		xlog.String("Cost", try.Cost().String()),
 	}
 	// callerSkip =3 : 使日志中的 "source":<"function","file"> 定位到调用 RPC 方法的业务代码位置

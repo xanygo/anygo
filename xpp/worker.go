@@ -92,13 +92,12 @@ func TryStopWorker(ctx context.Context, workers ...any) error {
 	return wg.Wait()
 }
 
-type (
-	CycleWorker interface {
-		Name() string
-		Start(ctx context.Context, cycle time.Duration) error
-		Stop(ctx context.Context) error
-	}
-)
+// CycleWorker 会周期性执行逻辑的 Worker
+type CycleWorker interface {
+	Name() string
+	Start(ctx context.Context, cycle time.Duration) error
+	Stop(ctx context.Context) error
+}
 
 var _ CycleWorker = (*CycleWorkerTpl)(nil)
 

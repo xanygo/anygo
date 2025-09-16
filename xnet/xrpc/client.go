@@ -7,7 +7,6 @@ package xrpc
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"io"
 	"net"
 	"time"
@@ -108,23 +107,4 @@ func OptService(s xservice.Service) Option {
 	return optionFunc(func(o *config) {
 		o.ser = s
 	})
-}
-
-type TryInfo struct {
-	Index int
-	Total int
-	Start time.Time
-	End   time.Time
-}
-
-func (t TryInfo) String() string {
-	return fmt.Sprintf("%d/%d", t.Index, t.Total)
-}
-
-func (t TryInfo) IsEnd() bool {
-	return t.Index+1 >= t.Total
-}
-
-func (t TryInfo) Cost() time.Duration {
-	return t.End.Sub(t.Start)
 }

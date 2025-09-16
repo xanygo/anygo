@@ -30,54 +30,11 @@ type TCP struct {
 	Dialer          xnet.Dialer
 }
 
-// dial 拨号
-// 即使拨号失败，返回的 *xnet.ConnNode 总是不会为 nil
-func (c *TCP) dial(ctx context.Context, downstream xnet.AddrNode, opt xoption.Reader) (*xnet.ConnNode, error) {
-	cn := &xnet.ConnNode{
-		Addr: downstream,
+func (c *TCP) getDialer() xnet.Dialer {
+	if c.Dialer != nil {
+		return c.Dialer
 	}
-	var proxyDriver xproxy.Driver
-	proxyConfig := xproxy.OptConfig(opt)
-	if proxyConfig != nil {
-		var err error
-		proxyDriver, err = xproxy.Find(proxyConfig.Protocol)
-		if err != nil {
-			return cn, err
-		}
-	}
-
-	addr := downstream.Addr
-	dialer := c.Dialer
-	if dialer == nil {
-		dialer = xnet.DefaultDialer
-	}
-	conn, err := dialer.DialContext(ctx, addr.Network(), addr.String())
-	if err != nil {
-		return cn, err
-	}
-	cn.Conn = conn
-
-	if proxyDriver != nil {
-		target := xoption.TargetAddress(opt)
-		cn, err = xproxy.Proxy(ctx, proxyDriver, cn, proxyConfig, target)
-		if err != nil {
-			conn.Close()
-			return cn, err
-		}
-	}
-
-	tc := xoption.GetTLSConfig(opt)
-	if tc != nil {
-		tlsConn := tls.Client(cn.Conn, tc)
-		err = tlsConn.HandshakeContext(ctx)
-		if err != nil {
-			conn.Close()
-			return cn, err
-		}
-		cn.Conn = tlsConn
-		return cn, nil
-	}
-	return cn, nil
+	return xnet.DefaultDialer
 }
 
 func (c *TCP) getServiceRegistry() xservice.Registry {
@@ -98,14 +55,23 @@ func (c *TCP) allITs(ctx context.Context) []TCPInterceptor {
 	return its
 }
 
-func (c *TCP) Invoke(ctx context.Context, service string, req Request, resp Response, opts ...Option) (result error) {
-	start := time.Now()
+func (c *TCP) Invoke(ctx context.Context, serviceName string, req Request, resp Response, opts ...Option) (result error) {
+	action := NewAction("Invoke", 0)
 	its := c.allITs(ctx)
+	defer func() {
+		action.End = time.Now()
+		for _, it := range its {
+			if it.AfterInvoke != nil {
+				it.AfterInvoke(ctx, serviceName, req, resp, action, result)
+			}
+		}
+	}()
+
 	for _, it := range its {
 		if it.BeforeInvoke == nil {
 			continue
 		}
-		ctx, req, resp, opts = it.BeforeInvoke(ctx, service, req, resp, opts...)
+		ctx, req, resp, opts = it.BeforeInvoke(ctx, serviceName, req, resp, opts...)
 	}
 
 	cfg := &config{
@@ -120,122 +86,62 @@ func (c *TCP) Invoke(ctx context.Context, service string, req Request, resp Resp
 		o.withOption(cfg)
 	}
 
-	var tryInfo TryInfo
-	ser := cfg.ser
-	if ser == nil {
+	service := cfg.ser
+	if service == nil {
 		var ok bool
-		ser, ok = c.getServiceRegistry().Find(service)
+		service, ok = c.getServiceRegistry().Find(serviceName)
 		if !ok {
-			result = fmt.Errorf("service %q %w", service, xerror.NotFound)
+			return fmt.Errorf("service %q %w", serviceName, xerror.NotFound)
 		}
 	}
 
 	// 将临时 option 和 service 的 option 合并
-	opt := xoption.Readers(cfg.opt, ser.Option())
+	opt := xoption.Readers(cfg.opt, service.Option())
 
 	if hr, ok1 := req.(HasOptionReader); ok1 {
 		if opt1 := hr.OptionReader(ctx, opt); opt1 != nil {
-			opt = xoption.Readers(opt1, cfg.opt, ser.Option())
+			opt = xoption.Readers(opt1, cfg.opt, service.Option())
 		}
 	}
 
 	ctx = xoption.ContextWithReader(ctx, opt)
 
-	ap := ser.Balancer()
-	if ap1 := xbalance.OptReader(opt); ap1 != nil {
-		ap = ap1
+	td := tcpClientDialer{
+		dialer:      c.getDialer(),
+		registry:    c.getServiceRegistry(),
+		interceptor: its,
+		service:     service,
+		option:      opt,
+		config:      cfg,
+	}
+	connectFn, err := td.getConnectFunc()
+	if err != nil {
+		return err
 	}
 
 	tryTotal := xoption.Retry(opt) + 1
-	tryInfo = TryInfo{
-		Total: tryTotal,
-		Start: time.Now(),
-	}
+
 	for try := 0; try < tryTotal; try++ {
-		tryInfo.Index = try
 		var conn *xnet.ConnNode
-		conn, result = c.doConnect(ctx, service, ap, opt, cfg, its)
+		conn, result = connectFn(ctx)
 
 		if result == nil {
-			tryInfo.Start = time.Now()
+			actionWR := NewAction("WriteRead", tryTotal)
+			actionWR.TryIndex = try
 			result = c.doWriteRead(ctx, req, resp, opt, conn)
-			tryInfo.End = time.Now()
+			actionWR.End = time.Now()
 			for _, it := range its {
 				if it.AfterWriteRead != nil {
-					it.AfterWriteRead(ctx, service, conn, req, resp, tryInfo, result)
+					it.AfterWriteRead(ctx, serviceName, conn, req, resp, actionWR, result)
 				}
 			}
 		}
 		if result == nil {
-			break
+			return nil
 		}
 	}
 
-	tryInfo.Start = start
-	tryInfo.End = time.Now()
-
-	for _, it := range its {
-		if it.AfterInvoke != nil {
-			it.AfterInvoke(ctx, service, req, resp, tryInfo, result)
-		}
-	}
 	return result
-}
-
-func (c *TCP) doConnect(ctx context.Context, service string, ap xbalance.Reader, opt xoption.Reader, cfg *config, its []TCPInterceptor) (*xnet.ConnNode, error) {
-	tryTotal := xoption.ConnectRetry(opt) + 1
-	connectTimeout := xoption.ConnectTimeout(opt)
-
-	if cfg.ap != nil {
-		ap = cfg.ap
-	}
-	doConnect := func(ctx context.Context, index int) (*xnet.ConnNode, error) {
-		tryInfo := TryInfo{
-			Total: tryTotal,
-			Index: index,
-		}
-		ctx, cancel := context.WithTimeout(ctx, connectTimeout)
-		defer cancel()
-
-		for _, it := range its {
-			if it.BeforePickAddress != nil {
-				it.BeforePickAddress(ctx, service, tryInfo)
-			}
-		}
-
-		tryInfo.Start = time.Now()
-		node, err := ap.Pick(ctx)
-		tryInfo.End = time.Now()
-
-		for _, it := range its {
-			if it.AfterPickAddress != nil {
-				it.AfterPickAddress(ctx, service, tryInfo, node, err)
-			}
-		}
-
-		if err != nil {
-			return nil, err
-		}
-
-		tryInfo.Start = time.Now()
-		connNode, err := c.dial(ctx, *node, opt)
-		tryInfo.End = time.Now()
-		for _, it := range its {
-			if it.AfterDial != nil {
-				it.AfterDial(ctx, service, tryInfo, connNode, err)
-			}
-		}
-		return connNode, err
-	}
-
-	var err error
-	var conn *xnet.ConnNode
-	for i := 0; i < tryTotal; i++ {
-		if conn, err = doConnect(ctx, i); err == nil {
-			return conn, nil
-		}
-	}
-	return nil, err
 }
 
 func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption.Reader, node *xnet.ConnNode) (err error) {
@@ -260,21 +166,191 @@ func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt x
 	return resp.LoadFrom(ctx, rd, opt)
 }
 
+type tcpClientDialer struct {
+	dialer      xnet.Dialer
+	registry    xservice.Registry
+	interceptor []TCPInterceptor
+	service     xservice.Service
+	option      xoption.Reader
+	config      *config
+}
+
+func (td tcpClientDialer) getConnectFunc() (func(ctx context.Context) (*xnet.ConnNode, error), error) {
+	// 关于命名：
+	// downstream: 用于读取即将连接的服务器地址，包括代理服务器地址
+	// target:  最终目标服务器地址，被代理的服务器地址
+	// 在有代理的情况下，downstream 是代理服务器地址，target 是被代理服务器地址
+
+	downstreamAP := td.service.Balancer()
+	targetAP := downstreamAP
+
+	if tp := xbalance.OptTarget(td.option); tp != nil {
+		targetAP = tp
+	}
+
+	connectServiceName := td.service.Name()
+	option := td.option
+
+	proxyConfig := xproxy.OptConfig(td.option)
+	var proxyService xservice.Service
+	if proxyConfig != nil && proxyConfig.Use != "" {
+		var ok bool
+		proxyService, ok = td.registry.Find(proxyConfig.Use)
+		if !ok {
+			return nil, fmt.Errorf("proxy service %q %w", proxyConfig.Use, xerror.NotFound)
+		}
+		opt := proxyService.Option()
+		pc := xproxy.OptConfig(opt)
+		if pc == nil || pc.Protocol == "" {
+			return nil, fmt.Errorf("serivce %q missing Proxy config", proxyConfig.Use)
+		}
+		connectServiceName = proxyConfig.Use
+		downstreamAP = proxyService.Balancer()
+		option = xoption.Readers(td.config.opt, opt)
+	}
+
+	if ap1 := xbalance.OptDownstream(option); ap1 != nil {
+		downstreamAP = ap1
+	}
+
+	if td.config.ap != nil {
+		downstreamAP = td.config.ap
+	}
+
+	return func(ctx context.Context) (*xnet.ConnNode, error) {
+		return td.doConnect(ctx, connectServiceName, downstreamAP, option, targetAP, td.option)
+	}, nil
+}
+
+func (td tcpClientDialer) doConnect(ctx context.Context, service string, downstreamAP xbalance.Reader, downstreamOpt xoption.Reader, targetAP xbalance.Reader, targetOpt xoption.Reader) (*xnet.ConnNode, error) {
+	ctx = xoption.ContextWithReader(ctx, downstreamOpt)
+
+	tryTotal := xoption.ConnectRetry(downstreamOpt) + 1
+	connectTimeout := xoption.ConnectTimeout(downstreamOpt)
+
+	doConnect := func(ctx context.Context, index int) (*xnet.ConnNode, error) {
+		ctx, cancel := context.WithTimeout(ctx, connectTimeout)
+		defer cancel()
+
+		action := NewAction("Pick", tryTotal)
+		for _, it := range td.interceptor {
+			if it.BeforePickAddress != nil {
+				it.BeforePickAddress(ctx, service, action)
+			}
+		}
+
+		node, err := downstreamAP.Pick(ctx)
+		action.End = time.Now()
+
+		for _, it := range td.interceptor {
+			if it.AfterPickAddress != nil {
+				it.AfterPickAddress(ctx, service, action, node, err)
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
+		targetNode := node
+		if targetAP != nil && targetAP != downstreamAP {
+			ta, err := targetAP.Pick(ctx)
+			if err != nil {
+				return nil, err
+			}
+			targetNode = ta
+		}
+
+		action = NewAction("Dial", tryTotal)
+		connNode, err := td.dial(ctx, *node, downstreamOpt, *targetNode, targetOpt)
+		action.End = time.Now()
+		if err != nil && connNode == nil {
+			connNode = &xnet.ConnNode{
+				Addr: *node,
+			}
+		}
+		for _, it := range td.interceptor {
+			if it.AfterDial != nil {
+				it.AfterDial(ctx, service, action, connNode, err)
+			}
+		}
+		return connNode, err
+	}
+
+	var err error
+	var conn *xnet.ConnNode
+	for i := 0; i < tryTotal; i++ {
+		if conn, err = doConnect(ctx, i); err == nil {
+			return conn, nil
+		}
+	}
+	return nil, err
+}
+
+func (td tcpClientDialer) dial(ctx context.Context, downstream xnet.AddrNode, downstreamOpt xoption.Reader, target xnet.AddrNode, targetOpt xoption.Reader) (*xnet.ConnNode, error) {
+	var proxyDriver xproxy.Driver
+	proxyConfig := xproxy.OptConfig(downstreamOpt)
+	if proxyConfig != nil {
+		var err error
+		proxyDriver, err = xproxy.Find(proxyConfig.Protocol)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	addr := downstream.Addr
+	conn, err := td.dialer.DialContext(ctx, addr.Network(), addr.String())
+	if err != nil {
+		return nil, err
+	}
+	result := &xnet.ConnNode{
+		Addr: downstream,
+		Conn: conn,
+	}
+
+	if proxyDriver != nil {
+		result, err = xproxy.Proxy(ctx, proxyDriver, result, proxyConfig, target)
+		if err != nil {
+			conn.Close()
+			return nil, err
+		}
+	}
+
+	result, err = td.targetTLSHandshake(ctx, result, targetOpt, target)
+
+	return result, err
+}
+
+func (td tcpClientDialer) targetTLSHandshake(ctx context.Context, conn *xnet.ConnNode, targetOpt xoption.Reader, target xnet.AddrNode) (*xnet.ConnNode, error) {
+	tc := xoption.GetTLSConfig(targetOpt)
+	if tc == nil {
+		return conn, nil
+	}
+	tc = tc.Clone()
+	tc.ServerName = target.Host()
+	tlsConn := tls.Client(conn.Conn, tc)
+
+	if err := tlsConn.HandshakeContext(ctx); err != nil {
+		conn.Conn.Close()
+		return nil, fmt.Errorf("%w, server=%q", err, tc.ServerName)
+	}
+	conn.Conn = tlsConn
+	return conn, nil
+}
+
 type TCPInterceptor struct {
 	BeforeInvoke func(ctx context.Context, service string, req Request, resp Response,
 		opts ...Option) (context.Context, Request, Response, []Option)
 
-	BeforePickAddress func(ctx context.Context, service string, try TryInfo)
-	AfterPickAddress  func(ctx context.Context, service string, try TryInfo, node *xnet.AddrNode, err error)
+	BeforePickAddress func(ctx context.Context, service string, try Action)
+	AfterPickAddress  func(ctx context.Context, service string, try Action, node *xnet.AddrNode, err error)
 
 	// AfterDial 拨号完成后执行，最多执行 ( retry + 1 ) * ( connectRetry +1) 次
-	AfterDial func(ctx context.Context, service string, try TryInfo, conn *xnet.ConnNode, err error)
+	AfterDial func(ctx context.Context, service string, try Action, conn *xnet.ConnNode, err error)
 
 	// AfterWriteRead 每 Write + Read 完成后都会执行一次，最多执行 retry+1 次
-	AfterWriteRead func(ctx context.Context, service string, conn *xnet.ConnNode, req Request, resp Response, try TryInfo, err error)
+	AfterWriteRead func(ctx context.Context, service string, conn *xnet.ConnNode, req Request, resp Response, try Action, err error)
 
 	// AfterInvoke 在 Invoke 执行完成后，执行一次
-	AfterInvoke func(ctx context.Context, service string, req Request, resp Response, try TryInfo, err error)
+	AfterInvoke func(ctx context.Context, service string, req Request, resp Response, try Action, err error)
 }
 
 var defaultTCPClient = &xsync.OnceInit[*TCP]{

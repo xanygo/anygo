@@ -69,9 +69,8 @@ func (h *httpsProxy) Proxy(ctx context.Context, proxyConn *xnet.ConnNode, c *Con
 		}
 	} else {
 		cfg = cfg.Clone()
+		cfg.ServerName = proxyConn.Addr.Host()
 	}
-
-	cfg.ServerName = proxyConn.Addr.HostPort
 
 	tc := tls.Client(proxyConn.Conn, cfg)
 	if err = tc.HandshakeContext(ctx); err != nil {

@@ -6,12 +6,10 @@ package xhttpc
 
 import (
 	"context"
-	"crypto/tls"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xnet"
@@ -58,17 +56,15 @@ func (r *Request) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.
 	if err != nil {
 		return err
 	}
-	setHTTPRequestUA(req)
-	setHTTPRequestLogID(ctx, req)
+	if req.Host == xservice.Dummy {
+		req.Host = ""
+	}
+	setHeader(ctx, req, opt)
 	return req.Write(node.Conn)
 }
 
 func (r *Request) getURL(so xoption.Reader, address string) (string, error) {
 	opt := xservice.OptHTTP(so)
-	var scheme string = "http"
-	if opt.HTTPS {
-		scheme = "https"
-	}
 	u, err := url.Parse(r.Path)
 	if err != nil {
 		return "", err
@@ -77,7 +73,7 @@ func (r *Request) getURL(so xoption.Reader, address string) (string, error) {
 		u.Host = ""
 	}
 
-	u.Scheme = scheme
+	u.Scheme = "http" // 不需要区分是 HTTP 还是 HTTPS
 	if opt.Host != "" {
 		u.Host = opt.Host
 	}
@@ -103,7 +99,10 @@ func (r *Request) balancer(opt xoption.Reader, u *url.URL) xbalance.Reader {
 		return nil
 	}
 	hostPort := getHostPort(u)
-	return xbalance.NewStaticByAddr(xnet.NewAddr("tcp", hostPort))
+	if hostPort != "" {
+		return xbalance.NewStaticByAddr(xnet.NewAddr("tcp", hostPort))
+	}
+	return nil
 }
 
 func (r *Request) OptionReader(ctx context.Context, rd xoption.Reader) xoption.Reader {
@@ -113,22 +112,14 @@ func (r *Request) OptionReader(ctx context.Context, rd xoption.Reader) xoption.R
 	}
 	opt := xoption.NewSimple()
 	if b := r.balancer(rd, u); b != nil {
-		xbalance.OptSetReader(opt, b)
+		xbalance.OptSetDownstream(opt, b)
 	}
 	if proxy := xproxy.OptConfig(opt); proxy != nil {
-		hostPort := getHostPort(u)
-		xoption.SetTargetAddress(opt, hostPort)
+		if hostPort := getHostPort(u); hostPort != "" {
+			xbalance.OptSetTarget(opt, xbalance.NewStaticByAddr(xnet.NewAddr("tcp", hostPort)))
+		}
 	}
-
-	hc := xservice.OptHTTP(rd)
-	if hc.HTTPS || r.HTTPS {
-		tc := mustGetTslConfig(u, opt)
-		xoption.SetTLSConfig(opt, tc)
-	}
-	if opt.Empty() {
-		return nil
-	}
-	return opt
+	return opt.Value()
 }
 
 var _ xrpc.Request = (*NativeRequest)(nil)
@@ -155,11 +146,13 @@ func (h *NativeRequest) APIName() string {
 
 func (h *NativeRequest) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.Reader) error {
 	req := h.Request.WithContext(ctx)
-	if req.Host == xservice.DummyAddress {
+	if req.Host == xservice.Dummy {
 		req.Host = ""
 	}
-	setHTTPRequestUA(req)
-	setHTTPRequestLogID(ctx, req)
+	if req.Host == "" {
+		req.Host = node.Addr.Host()
+	}
+	setHeader(ctx, req, opt)
 	return req.Write(node.Conn)
 }
 
@@ -173,59 +166,37 @@ func (h *NativeRequest) balancer(opt xoption.Reader) xbalance.Reader {
 		// 有代理的情况下，应该连接代理
 		return nil
 	}
-	hostPort := getHostPort(h.Request.URL)
-	return xbalance.NewStaticByAddr(xnet.NewAddr("tcp", hostPort))
+	if hostPort := getHostPort(h.Request.URL); hostPort != "" {
+		return xbalance.NewStaticByAddr(xnet.NewAddr("tcp", hostPort))
+	}
+	return nil
 }
 
 func (h *NativeRequest) OptionReader(ctx context.Context, opt xoption.Reader) xoption.Reader {
 	mp := xoption.NewSimple()
 	if ap := h.balancer(opt); ap != nil {
-		xbalance.OptSetReader(mp, ap)
+		xbalance.OptSetDownstream(mp, ap)
 	}
 
 	if proxy := xproxy.OptConfig(opt); proxy != nil {
-		hostPort := getHostPort(h.Request.URL)
-		xoption.SetTargetAddress(mp, hostPort)
+		if hostPort := getHostPort(h.Request.URL); hostPort != "" {
+			xbalance.OptSetTarget(mp, xbalance.NewStaticByAddr(xnet.NewAddr("tcp", hostPort)))
+		}
 	}
-	if tc := h.tslConfig(opt); tc != nil {
-		xoption.SetTLSConfig(mp, tc)
-	}
-	return mp
+	return mp.Value()
 }
 
-func (h *NativeRequest) tslConfig(opt xoption.Reader) *tls.Config {
-	if !strings.EqualFold(h.Request.URL.Scheme, "https") {
-		return nil
+func setHeader(ctx context.Context, req *http.Request, opt xoption.Reader) {
+	hc := xservice.OptHTTP(opt)
+	if hc.Host != "" {
+		req.Host = hc.Host
 	}
-	return mustGetTslConfig(h.Request.URL, opt)
-}
-
-func mustGetTslConfig(u *url.URL, opt xoption.Reader) *tls.Config {
-	serverName := u.Host
-	if serverName == xservice.Dummy {
-		serverName = ""
+	for k, v := range hc.Header {
+		req.Header[k] = v
 	}
-	tc := xoption.GetTLSConfig(opt)
-	if tc != nil {
-		tc = tc.Clone()
-	} else {
-		tc = &tls.Config{}
-	}
-	if serverName != "" {
-		tc.ServerName = serverName
-	} else {
-		tc.InsecureSkipVerify = true
-	}
-	return tc
-}
-
-func setHTTPRequestUA(req *http.Request) {
 	if req.UserAgent() == "" {
 		req.Header.Set("User-Agent", xnet.UserAgent)
 	}
-}
-
-func setHTTPRequestLogID(ctx context.Context, req *http.Request) {
 	logID := xlog.FindLogID(ctx)
 	if logID != "" {
 		req.Header.Set("X-Log-ID", logID)
@@ -235,6 +206,9 @@ func setHTTPRequestLogID(ctx context.Context, req *http.Request) {
 func getHostPort(u *url.URL) string {
 	// 此处不需要考虑 Hostname 为 dummy 的情况
 	serverName := u.Hostname()
+	if serverName == "" {
+		return ""
+	}
 	port := u.Port()
 	if port != "" {
 		return net.JoinHostPort(serverName, port)

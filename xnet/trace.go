@@ -6,9 +6,10 @@ package xnet
 
 import (
 	"context"
-	"log"
 	"net"
 	"time"
+
+	"github.com/xanygo/anygo/xlog"
 )
 
 const UserAgent = "anygo-xrpc/1.0"
@@ -25,7 +26,18 @@ var PrintResolverLogIT = &ResolverInterceptor{
 		start := time.Now()
 		result, err := invoker(ctx, network, host)
 		cost := time.Since(start)
-		log.Printf("LookupIP( %q, %q ) = ( %v, %v ) cost = %s\n", network, host, result, err, cost)
+		attrs := []xlog.Attr{
+			xlog.String("network", network),
+			xlog.String("host", host),
+			xlog.String("cost", cost.String()),
+			xlog.Any("result", result),
+			xlog.ErrorAttr("error", err),
+		}
+		if err == nil {
+			xlog.Info(ctx, "LookupIP", attrs...)
+		} else {
+			xlog.Error(ctx, "LookupIP", attrs...)
+		}
 		return result, err
 	},
 }
@@ -36,11 +48,20 @@ var PrintDialLogIT = &DialerInterceptor{
 		start := time.Now()
 		result, err := invoker(ctx, network, address)
 		cost := time.Since(start)
-		if err == nil {
-			log.Printf("DialContext( %q, %q ), localAddr=%q, cost = %s\n", network, address, result.LocalAddr().String(), cost)
-		} else {
-			log.Printf("DialContext( %q, %q ) failed, err=%v, cost = %s\n", network, address, err, cost)
+		attrs := []xlog.Attr{
+			xlog.String("network", network),
+			xlog.String("address", address),
+			xlog.Any("result", result),
+			xlog.ErrorAttr("error", err),
+			xlog.String("cost", cost.String()),
+			xlog.ErrorAttr("error", err),
 		}
+		if err == nil {
+			xlog.Info(ctx, "DialContext", attrs...)
+		} else {
+			xlog.Error(ctx, "DialContext", attrs...)
+		}
+
 		return result, err
 	},
 }

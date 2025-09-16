@@ -52,15 +52,13 @@ type DownStreamIDCPart struct {
 }
 
 type HTTPPart struct {
-	Host   string      `json:"Host" yaml:"Host"`   // 主机名，可选
-	HTTPS  bool        `json:"HTTPS" yaml:"HTTPS"` // 是否发起 HTTPS 请求，可选，默认 false
+	Host   string      `json:"Host" yaml:"Host"` // 主机名，可选
 	Header http.Header `json:"Header" yaml:"Header"`
 }
 
 func (ho *HTTPPart) Clone() *HTTPPart {
 	return &HTTPPart{
 		Host:   ho.Host,
-		HTTPS:  ho.HTTPS,
 		Header: ho.Header.Clone(),
 	}
 }
@@ -85,6 +83,9 @@ func (c *Config) Parser(idc string) (Service, error) {
 		xoption.SetTLSConfig(opt, tc)
 	}
 	if c.Proxy != nil {
+		if c.Proxy.Use != "" && c.Proxy.Use == c.Name {
+			return nil, fmt.Errorf("invalid proxy.Use=%q for service %q", c.Proxy.Use, c.Name)
+		}
 		xproxy.SetOptConfig(opt, c.Proxy)
 	}
 	if c.HTTP != nil {

@@ -155,6 +155,9 @@ type Simple struct {
 }
 
 func (m *Simple) Get(key Key) (any, bool) {
+	if m == nil || len(m.value) == 0 {
+		return nil, false
+	}
 	v, ok := m.value[key]
 	return v, ok
 }
@@ -179,6 +182,13 @@ func (m *Simple) Delete(keys ...Key) {
 
 func (m *Simple) Empty() bool {
 	return len(m.value) == 0
+}
+
+func (m *Simple) Value() *Simple {
+	if m.Empty() {
+		return nil
+	}
+	return m
 }
 
 var ctxReaderKey = xctx.NewKey()

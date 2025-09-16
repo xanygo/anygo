@@ -14,6 +14,11 @@ HTTPS = true
 [HTTP.Header]
 KA = ["a"]
 
+
+[Proxy]
+Protocol = "HTTP"
+Use = "proxy1"
+
 [TLS]
 SkipVerify = false # 是否跳过安全验证
 ServerName = "example.com"

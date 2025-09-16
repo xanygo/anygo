@@ -19,8 +19,6 @@ var (
 	KeyRetry           = NewKey("Retry")
 	KeyBalancer        = NewKey("Balancer") // 负载均衡策略名称
 	KeyMaxResponseSize = NewKey("MaxResponseSize")
-
-	KeyTargetAddress = NewKey("TargetAddress") // 实际目标服务器的 host:port
 )
 
 func SetConnectTimeout(opt Writer, timeout time.Duration) {
@@ -130,12 +128,4 @@ func convertDoSet[T any](opt Writer, value any, fn func(opt Writer, val T)) erro
 	}
 	fn(opt, cv)
 	return nil
-}
-
-func SetTargetAddress(opt Writer, address string) {
-	opt.Set(KeyTargetAddress, address)
-}
-
-func TargetAddress(opt Reader) string {
-	return GetAsDefault[string](opt, KeyTargetAddress, "")
 }
