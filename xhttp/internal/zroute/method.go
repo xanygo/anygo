@@ -24,17 +24,18 @@ var allMethods = []string{
 	http.MethodOptions,
 	http.MethodTrace,
 }
-var methods = map[string]string{}
+
+var methodsMap = map[string]string{}
 
 func init() {
 	for _, method := range allMethods {
-		methods[method] = method
+		methodsMap[method] = method
 	}
 }
 
 func IsMethod(method string) bool {
 	method = strings.ToUpper(method)
-	_, ok := methods[method]
+	_, ok := methodsMap[method]
 	return ok
 }
 
