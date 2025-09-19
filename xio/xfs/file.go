@@ -34,6 +34,9 @@ func Exists(name string) (bool, error) {
 // 若路径为文件，则删除，然后创建文件夹
 func KeepDirExists(dir string) error {
 	info, err := os.Stat(dir)
+	if err == nil && info.IsDir() {
+		return nil
+	}
 	if err != nil && errors.Is(err, fs.ErrNotExist) {
 		err1 := os.MkdirAll(dir, 0777)
 		if err1 == nil || errors.Is(err1, fs.ErrExist) {
@@ -45,10 +48,7 @@ func KeepDirExists(dir string) error {
 		return err
 	}
 
-	if info.IsDir() {
-		return nil
-	}
-
+	// 若不是目录，则删除掉
 	if err = os.Remove(dir); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}

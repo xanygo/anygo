@@ -176,6 +176,8 @@ func FromContext(ctx context.Context) *Session {
 	return StorageFromContext(ctx).GetOrCreate(ctx, IDFromContext(ctx))
 }
 
+// Set 将数据 val 使用 json 编码，并调用 Session.Set 保存
+// 注意：使用此方法写入的数据，必须使用 Load 或 Get 等来读取，不可以直接使用 Session 对象的 Load、Get 等方法
 func Set[T any](s *Session, key string, val T) error {
 	bf, err := json.Marshal(val)
 	if err != nil {

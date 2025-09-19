@@ -17,8 +17,15 @@ import (
 
 func main() {
 	router := xhttp.NewRouter()
-	router.Use((&xsession.IDHTTPHandler{}).Next)
-	router.Use((&xsession.CookieStoreHandler{}).Trans().Next)
+	sh := &xsession.HTTPHandler{
+		NewStorage: func(writer http.ResponseWriter, request *http.Request) xsession.Storage {
+			return &xsession.CookieStore{
+				Writer:  writer,
+				Request: request,
+			}
+		},
+	}
+	router.Use(sh.Next)
 
 	router.GetFunc("/set", func(w http.ResponseWriter, r *http.Request) {
 		ss := xsession.FromContext(r.Context())

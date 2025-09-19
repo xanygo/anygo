@@ -120,10 +120,6 @@ func (kf *Keeper) checkFile() error {
 		return err
 	}
 
-	dir := filepath.Dir(fp)
-	if err := KeepDirExists(dir); err != nil {
-		return err
-	}
 	file, err := kf.openFile(fp)
 	if err != nil {
 		return err
@@ -156,8 +152,13 @@ func (kf *Keeper) checkFile() error {
 }
 
 func (kf *Keeper) openFile(fp string) (*os.File, error) {
+	dir := filepath.Dir(fp)
+	err := KeepDirExists(dir)
+	if err != nil {
+		return nil, err
+	}
 	if kf.OpenFile != nil {
-		return kf.openFile(fp)
+		return kf.OpenFile(fp)
 	}
 	return os.OpenFile(fp, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 }
@@ -171,7 +172,7 @@ func (kf *Keeper) exists(fp string) (bool, error) {
 		return false, nil
 	}
 	curInfo, err := os.Stat(fp)
-	if errors.Is(err, fs.ErrNotExist) {
+	if err != nil && errors.Is(err, fs.ErrNotExist) {
 		return false, nil
 	} else if err != nil {
 		return false, err

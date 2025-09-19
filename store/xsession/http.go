@@ -108,56 +108,14 @@ func (cs *CookieStore) Save(ctx context.Context, session *Session) error {
 	return nil
 }
 
-type StorageHTTPHandler struct {
-	NewStorage func(http.ResponseWriter, *http.Request) Storage
+type HTTPHandler struct {
+	CookieName string                                           // 在 cookie 中存储 sessionID 的名字，可选，默认为 sid
+	OnSet      func(ck *http.Cookie)                            // 在 cookie 中存储 sessionID 的时候回调，可选
+	NewStorage func(http.ResponseWriter, *http.Request) Storage // 必填，session 数据存储引擎
+	AutoSave   bool                                             // 使用自动对 session 保存
 }
 
-func (hb *StorageHTTPHandler) BeforeServeHTTP(w http.ResponseWriter, r *http.Request) *http.Request {
-	store := hb.NewStorage(w, r)
-	ctx := WithStorage(r.Context(), store)
-	return r.WithContext(ctx)
-}
-
-func (hb *StorageHTTPHandler) Next(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r = hb.BeforeServeHTTP(w, r)
-		h.ServeHTTP(w, r)
-	})
-}
-
-type CookieStoreHandler struct {
-	// CookieName 存储会话信息的 cookie 名称，可选，为空时使用 "session"
-	CookieName string
-
-	// Cipher 数据压缩方法，可选
-	Cipher xcodec.Cipher
-
-	// BeforeSave 可选，用于设置 cookie 的 属性
-	BeforeSave func(c *http.Cookie)
-}
-
-func (csh *CookieStoreHandler) Trans() *StorageHTTPHandler {
-	return &StorageHTTPHandler{
-		NewStorage: csh.newCookieStore,
-	}
-}
-
-func (csh *CookieStoreHandler) newCookieStore(w http.ResponseWriter, req *http.Request) Storage {
-	return &CookieStore{
-		Writer:     w,
-		Request:    req,
-		CookieName: csh.CookieName,
-		Cipher:     csh.Cipher,
-		BeforeSave: csh.BeforeSave,
-	}
-}
-
-type IDHTTPHandler struct {
-	CookieName string
-	OnSet      func(ck *http.Cookie)
-}
-
-func (s *IDHTTPHandler) getCookieName() string {
+func (s *HTTPHandler) getCookieName() string {
 	if s.CookieName != "" {
 		return s.CookieName
 	}
@@ -166,7 +124,7 @@ func (s *IDHTTPHandler) getCookieName() string {
 
 var defaultExpire = time.Now().AddDate(100, 0, 0)
 
-func (s *IDHTTPHandler) BeforeServeHTTP(w http.ResponseWriter, r *http.Request) *http.Request {
+func (s *HTTPHandler) setSessionID(w http.ResponseWriter, r *http.Request) (*http.Request, string) {
 	name := s.getCookieName()
 	var id string
 	cookie, err := r.Cookie(name)
@@ -191,12 +149,23 @@ func (s *IDHTTPHandler) BeforeServeHTTP(w http.ResponseWriter, r *http.Request) 
 		xlog.AddMetaAttr(r.Context(), xlog.String("sessionID", id))
 	}
 	ctx := WithID(r.Context(), id)
-	return r.WithContext(ctx)
+	return r.WithContext(ctx), id
 }
 
-func (s *IDHTTPHandler) Next(h http.Handler) http.Handler {
+func (s *HTTPHandler) Next(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r = s.BeforeServeHTTP(w, r)
+		var sid string
+		r, sid = s.setSessionID(w, r)
+		store := s.NewStorage(w, r)
+
+		session := store.GetOrCreate(r.Context(), sid)
+		if s.AutoSave {
+			defer store.Save(r.Context(), session)
+		}
+		session.Set("_", "") // 触发更新
+
+		ctx := WithStorage(r.Context(), store)
+		r = r.WithContext(ctx)
 		h.ServeHTTP(w, r)
 	})
 }

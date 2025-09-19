@@ -41,3 +41,14 @@ func TestFormCodec_Decode(t *testing.T) {
 	fst.Error(t, err3)
 	fst.Empty(t, got3)
 }
+
+func Test_Raw(t *testing.T) {
+	str := "hello"
+	got1, err1 := Raw.Encode(str)
+	fst.NoError(t, err1)
+	fst.Equal(t, "hello", string(got1))
+	var got2 []byte
+	err2 := Raw.Decode(got1, &got2)
+	fst.NoError(t, err2)
+	fst.Equal(t, "hello", string(got2))
+}
