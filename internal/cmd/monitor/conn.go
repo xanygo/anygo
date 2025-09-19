@@ -5,14 +5,23 @@
 package monitor
 
 import (
+	"fmt"
 	"log"
+	"os"
+	"path/filepath"
+	"time"
 
+	"github.com/xanygo/anygo/xio/xfs"
 	"github.com/xanygo/anygo/xnet"
 )
 
 type ConnMonitor struct {
 	Logger    *log.Logger
-	PrintType string //
+	PrintType string
+	OutputDir string
+	NoRead    bool
+	ID        int64
+	Time      time.Time
 }
 
 func (c *ConnMonitor) Interceptor() *xnet.ConnInterceptor {
@@ -35,7 +44,32 @@ func (c *ConnMonitor) afterRead(info xnet.ConnInfo, b []byte, readSize int, err 
 		format += "%s"
 	}
 	format += "\n\n"
-	c.Logger.Printf(format, readSize, b[:readSize])
+
+	if !c.NoRead {
+		c.Logger.Printf(format, readSize, b[:readSize])
+	}
+
+	c.writeFile(fmt.Sprintf(format, readSize, b[:readSize]))
+}
+
+func (c *ConnMonitor) writeFile(str string) {
+	if c.OutputDir == "" {
+		return
+	}
+	xfs.KeepDirExists(c.OutputDir)
+	name := fmt.Sprintf("%d_%06d_%s.txt", os.Getpid(), c.ID, c.Time.Format("02150405"))
+	filePath := filepath.Join(c.OutputDir, name)
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		c.Logger.Println("OpenFile err:", err)
+		return
+	}
+	defer file.Close()
+	_, err = file.WriteString(str + "\n\n")
+	if err != nil {
+		c.Logger.Println("file.WriteString err:", err)
+		return
+	}
 }
 
 func (c *ConnMonitor) afterWrite(info xnet.ConnInfo, b []byte, wroteSize int, err error) {
@@ -52,4 +86,6 @@ func (c *ConnMonitor) afterWrite(info xnet.ConnInfo, b []byte, wroteSize int, er
 	}
 	format += "\n\n"
 	c.Logger.Printf(format, wroteSize, b[:wroteSize])
+
+	c.writeFile(fmt.Sprintf(format, wroteSize, b[:wroteSize]))
 }

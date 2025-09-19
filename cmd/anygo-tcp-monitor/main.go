@@ -22,6 +22,8 @@ import (
 var localAddress = flag.String("l", ":8200", "local server listen address")
 var remoteAddress = flag.String("r", "", "remote server address,eg example.com:80")
 var printType = flag.String("p", "s", "print type, s:string, b:binary, c:char")
+var outDir = flag.String("o", "", "output directory")
+var noRead = flag.Bool("nr", false, "don't print read data to stdout")
 
 func main() {
 	flag.Parse()
@@ -62,8 +64,12 @@ func onConnect(conn net.Conn) {
 	defer remote.Close()
 
 	mit := &monitor.ConnMonitor{
+		ID:        id,
 		Logger:    lg,
 		PrintType: *printType,
+		OutputDir: *outDir,
+		NoRead:    *noRead,
+		Time:      time.Now(),
 	}
 	remote = xnet.NewConn(remote, mit.Interceptor())
 

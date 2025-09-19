@@ -325,12 +325,14 @@ func (td tcpClientDialer) targetTLSHandshake(ctx context.Context, conn *xnet.Con
 		return conn, nil
 	}
 	tc = tc.Clone()
-	tc.ServerName = target.Host()
+	if tc.ServerName == "" {
+		tc.ServerName = target.Host()
+	}
 	tlsConn := tls.Client(conn.Conn, tc)
 
 	if err := tlsConn.HandshakeContext(ctx); err != nil {
 		conn.Conn.Close()
-		return nil, fmt.Errorf("%w, server=%q", err, tc.ServerName)
+		return nil, fmt.Errorf("%w, ServerName=%q", err, tc.ServerName)
 	}
 	conn.Conn = tlsConn
 	return conn, nil

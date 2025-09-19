@@ -17,3 +17,12 @@ func IsHTTPURL(str string) error {
 	}
 	return nil
 }
+
+func StringIn(name, value string, values ...string) error {
+	for _, v := range values {
+		if value == v {
+			return nil
+		}
+	}
+	return fmt.Errorf("%s=%q is not in %q", name, value, values)
+}

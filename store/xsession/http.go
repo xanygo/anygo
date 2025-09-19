@@ -98,6 +98,8 @@ func (cs *CookieStore) Save(ctx context.Context, session *Session) error {
 		Name:     cs.getCookieName(),
 		Value:    string(bf),
 		HttpOnly: true,
+		Path:     "/",
+		Expires:  defaultExpire,
 	}
 	if cs.BeforeSave != nil {
 		cs.BeforeSave(cookie)
@@ -168,7 +170,7 @@ func (s *IDHTTPHandler) BeforeServeHTTP(w http.ResponseWriter, r *http.Request) 
 	name := s.getCookieName()
 	var id string
 	cookie, err := r.Cookie(name)
-	if err == nil && len(cookie.Value) > 32 {
+	if err == nil && len(cookie.Value) > 5 {
 		id = cookie.Value
 	} else {
 		id = NewID()
@@ -177,6 +179,7 @@ func (s *IDHTTPHandler) BeforeServeHTTP(w http.ResponseWriter, r *http.Request) 
 			Value:    id,
 			HttpOnly: true,
 			Expires:  defaultExpire,
+			Path:     "/",
 		}
 		if s.OnSet != nil {
 			s.OnSet(sc)

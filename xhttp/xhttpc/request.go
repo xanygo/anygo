@@ -6,6 +6,7 @@ package xhttpc
 
 import (
 	"context"
+	"crypto/tls"
 	"io"
 	"net"
 	"net/http"
@@ -100,9 +101,22 @@ func (r *Request) balancer(opt xoption.Reader, u *url.URL) xbalance.Reader {
 	}
 	hostPort := getHostPort(u)
 	if hostPort != "" {
-		return xbalance.NewStaticByAddr(xnet.NewAddr("tcp", hostPort))
+		node := xnet.AddrNode{
+			Addr:     xnet.NewAddr("tcp", hostPort),
+			HostPort: hostPort,
+		}
+		return xbalance.NewStatic(node)
 	}
 	return nil
+}
+
+func (r *Request) tlsConfig(u *url.URL) *tls.Config {
+	if !r.HTTPS {
+		return nil
+	}
+	return &tls.Config{
+		ServerName: u.Hostname(),
+	}
 }
 
 func (r *Request) OptionReader(ctx context.Context, rd xoption.Reader) xoption.Reader {
@@ -113,6 +127,9 @@ func (r *Request) OptionReader(ctx context.Context, rd xoption.Reader) xoption.R
 	opt := xoption.NewSimple()
 	if b := r.balancer(rd, u); b != nil {
 		xbalance.OptSetDownstream(opt, b)
+	}
+	if tc := r.tlsConfig(u); tc != nil {
+		xoption.SetTLSConfig(opt, tc)
 	}
 	if proxy := xproxy.OptConfig(opt); proxy != nil {
 		if hostPort := getHostPort(u); hostPort != "" {
@@ -172,15 +189,32 @@ func (h *NativeRequest) balancer(opt xoption.Reader) xbalance.Reader {
 	return nil
 }
 
+func (h *NativeRequest) tlsConfig() *tls.Config {
+	if h.Request.URL.Scheme != "https" {
+		return nil
+	}
+	return &tls.Config{
+		ServerName: h.Request.URL.Hostname(),
+	}
+}
+
 func (h *NativeRequest) OptionReader(ctx context.Context, opt xoption.Reader) xoption.Reader {
 	mp := xoption.NewSimple()
 	if ap := h.balancer(opt); ap != nil {
 		xbalance.OptSetDownstream(mp, ap)
 	}
 
+	if tc := h.tlsConfig(); tc != nil {
+		xoption.SetTLSConfig(mp, tc)
+	}
+
 	if proxy := xproxy.OptConfig(opt); proxy != nil {
 		if hostPort := getHostPort(h.Request.URL); hostPort != "" {
-			xbalance.OptSetTarget(mp, xbalance.NewStaticByAddr(xnet.NewAddr("tcp", hostPort)))
+			node := xnet.AddrNode{
+				Addr:     xnet.NewAddr("tcp", hostPort),
+				HostPort: getHostPort(h.Request.URL),
+			}
+			xbalance.OptSetTarget(mp, xbalance.NewStatic(node))
 		}
 	}
 	return mp.Value()
