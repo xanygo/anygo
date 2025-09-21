@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/xanygo/anygo/xslice"
+	"github.com/xanygo/anygo/ds/xslice"
 )
 
 const (

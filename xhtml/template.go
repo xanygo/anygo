@@ -15,10 +15,10 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/xanygo/anygo/ds/xstr"
+	"github.com/xanygo/anygo/ds/xurl"
 	"github.com/xanygo/anygo/xhtml/internal/tplfn"
 	"github.com/xanygo/anygo/xmap"
-	"github.com/xanygo/anygo/xstr"
-	"github.com/xanygo/anygo/xurl"
 )
 
 func NewTPLRequest(req *http.Request) *TPLRequest {

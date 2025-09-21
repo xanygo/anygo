@@ -8,7 +8,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/xanygo/anygo/xcache"
+	"github.com/xanygo/anygo/store/xcache"
 )
 
 var _ Storage = (*MemoryStore)(nil)

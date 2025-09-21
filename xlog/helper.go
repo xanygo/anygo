@@ -8,7 +8,7 @@ import (
 	"log/slog"
 	"path/filepath"
 
-	"github.com/xanygo/anygo/xstr"
+	"github.com/xanygo/anygo/ds/xstr"
 )
 
 // ReplaceAttr Logger Handler 的用于重写 Attr 函数，目前包含功能：

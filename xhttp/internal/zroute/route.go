@@ -10,8 +10,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/xanygo/anygo/ds/xstr"
 	"github.com/xanygo/anygo/xlog"
-	"github.com/xanygo/anygo/xstr"
 )
 
 const MethodAny = "ANY"

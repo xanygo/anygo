@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/xpp"
-	"github.com/xanygo/anygo/xslice"
 )
 
 // Keeper 保持文件存在

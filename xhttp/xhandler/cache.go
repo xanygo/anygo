@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/xanygo/anygo/xcache"
+	xcache2 "github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xhttp"
 	"github.com/xanygo/anygo/xlog"
@@ -19,7 +19,7 @@ import (
 // Cache 给 GET 请求添加缓存
 type Cache struct {
 	// Store 必填，缓存对象
-	Store xcache.Cache[string, string]
+	Store xcache2.Cache[string, string]
 
 	// Key 必填，缓存的 key，在 Handler 未执行前执行
 	// 返回值的第一个参数是缓存的 key，第二个参数是缓存有效期，若为 0 则不缓存
@@ -35,7 +35,7 @@ func (c *Cache) checkCan(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func (c *Cache) Next(handler http.Handler) http.Handler {
-	cache := &xcache.TransString[*cachedResponse]{
+	cache := &xcache2.TransString[*cachedResponse]{
 		Cache: c.Store,
 		Codec: xcodec.JSON,
 	}

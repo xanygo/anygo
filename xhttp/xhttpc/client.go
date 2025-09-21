@@ -13,7 +13,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/xanygo/anygo/xcache"
+	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"

@@ -8,9 +8,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xstr"
 	"github.com/xanygo/anygo/xcodec/xbase"
 	"github.com/xanygo/anygo/xctx"
-	"github.com/xanygo/anygo/xstr"
 )
 
 func NewID() string {

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"slices"
 
-	"github.com/xanygo/anygo/xslice"
+	"github.com/xanygo/anygo/ds/xslice"
 )
 
 // HTTPLanguageHandler  读取 HTTP 的 Accept-Language 和 cookie 中存储的首选项信息的中间件

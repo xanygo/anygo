@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"reflect"
 
+	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/xhttp/internal/zroute"
 	"github.com/xanygo/anygo/xmap"
-	"github.com/xanygo/anygo/xslice"
 	"github.com/xanygo/anygo/xsync"
 )
 

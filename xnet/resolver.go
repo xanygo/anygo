@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xanygo/anygo/xcache"
+	xcache2 "github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xnet/internal"
 	"github.com/xanygo/anygo/xsync"
 )
@@ -47,7 +47,7 @@ type ResolverImpl struct {
 	//  若上述两者均无有效值，最终会使用默认值 1分钟。
 	CacheTTL time.Duration
 
-	cacheOnce xsync.OnceDoValue[*xcache.Reader[string, []net.IP]]
+	cacheOnce xsync.OnceDoValue[*xcache2.Reader[string, []net.IP]]
 }
 
 func (r *ResolverImpl) getInterceptors(ctx context.Context) resolverInterceptors {
@@ -109,17 +109,17 @@ func (r *ResolverImpl) WithInterceptor(its ...*ResolverInterceptor) {
 	r.Interceptors = append(r.Interceptors, its...)
 }
 
-func (r *ResolverImpl) getCacheOnce() *xcache.Reader[string, []net.IP] {
+func (r *ResolverImpl) getCacheOnce() *xcache2.Reader[string, []net.IP] {
 	return r.cacheOnce.Do(r.getCache)
 }
 
-func (r *ResolverImpl) getCache() *xcache.Reader[string, []net.IP] {
+func (r *ResolverImpl) getCache() *xcache2.Reader[string, []net.IP] {
 	ttl := r.getTTL()
 	if ttl <= 0 {
 		return nil
 	}
-	lru := xcache.NewLRU[string, xcache.ValueError[[]net.IP]](10000)
-	cache := &xcache.Reader[string, []net.IP]{
+	lru := xcache2.NewLRU[string, xcache2.ValueError[[]net.IP]](10000)
+	cache := &xcache2.Reader[string, []net.IP]{
 		Cache:   lru,
 		TTL:     ttl,
 		FailTTL: min(max(ttl/10, 100*time.Millisecond), time.Second),

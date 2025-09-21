@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xpp"
-	"github.com/xanygo/anygo/xslice"
 )
 
 type WatcherEventType string

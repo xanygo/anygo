@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-11-13
 
-package xarchive
+package xzip
 
 import (
 	"archive/zip"
@@ -16,7 +16,7 @@ import (
 	"github.com/xanygo/anygo/xcodec"
 )
 
-func ZipFileNames(rd *zip.Reader, strip uint) []string {
+func FileNames(rd *zip.Reader, strip uint) []string {
 	result := make([]string, 0, len(rd.File))
 	for _, f := range rd.File {
 		np := stripComponents(f.Name, strip)
@@ -39,9 +39,9 @@ func stripComponents(p string, n uint) string {
 	return path.Join(ps[sc:]...)
 }
 
-// ZipDecrypt 从加密的 zip 字节流中解析出 zip.Reader 信息
+// Decrypt 从加密的 zip 字节流中解析出 zip.Reader 信息
 // 该内容，可以使用 cmd/anygo-encrypt-zip 创建
-func ZipDecrypt(b []byte, dc xcodec.IDDecrypter) (*zip.Reader, error) {
+func Decrypt(b []byte, dc xcodec.IDDecrypter) (*zip.Reader, error) {
 	if len(b) < 16 {
 		return nil, fmt.Errorf("file too short %d bytes", len(b))
 	}
@@ -61,8 +61,8 @@ func ZipDecrypt(b []byte, dc xcodec.IDDecrypter) (*zip.Reader, error) {
 	return zip.NewReader(bytes.NewReader(zipContent), int64(len(zipContent)))
 }
 
-func MustZipDecrypt(b []byte, dc xcodec.IDDecrypter) *zip.Reader {
-	r, err := ZipDecrypt(b, dc)
+func MustDecrypt(b []byte, dc xcodec.IDDecrypter) *zip.Reader {
+	r, err := Decrypt(b, dc)
 	if err != nil {
 		panic(err)
 	}

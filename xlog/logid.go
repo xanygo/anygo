@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xstr"
 	"github.com/xanygo/anygo/xcodec/xbase"
-	"github.com/xanygo/anygo/xstr"
 )
 
 const fieldLogID = "logid"

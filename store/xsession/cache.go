@@ -8,12 +8,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/xanygo/anygo/xcache"
+	xcache2 "github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xcodec"
 )
 
 func NewFileStore(dir string, ttl time.Duration) *CacheStore {
-	cache := &xcache.File[string, []byte]{
+	cache := &xcache2.File[string, []byte]{
 		Dir:   dir,
 		Codec: xcodec.Raw,
 	}
@@ -28,7 +28,7 @@ var _ Storage = (*CacheStore)(nil)
 // CacheStore 在缓存中存储 session 信息
 type CacheStore struct {
 	TTL   time.Duration
-	Cache xcache.Cache[string, []byte]
+	Cache xcache2.Cache[string, []byte]
 }
 
 func (fs *CacheStore) Get(ctx context.Context, id string) (*Session, error) {

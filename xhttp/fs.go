@@ -20,10 +20,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/xanygo/anygo/xarchive"
+	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/ds/xzip"
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xmap"
-	"github.com/xanygo/anygo/xslice"
 )
 
 type FSHandler interface {
@@ -167,7 +167,7 @@ func (z *ZipFile) Init() error {
 func (z *ZipFile) init() {
 	if z.Reader != nil {
 		z.initReader = z.Reader
-		z.initFileNames = xslice.ToMap(xarchive.ZipFileNames(z.Reader, 0), true)
+		z.initFileNames = xslice.ToMap(xzip.FileNames(z.Reader, 0), true)
 		return
 	}
 	if len(z.Content) == 0 {
@@ -176,7 +176,7 @@ func (z *ZipFile) init() {
 	}
 	z.initReader, z.initErr = zip.NewReader(bytes.NewReader(z.Content), int64(len(z.Content)))
 	if z.initReader != nil {
-		z.initFileNames = xslice.ToMap(xarchive.ZipFileNames(z.initReader, 0), true)
+		z.initFileNames = xslice.ToMap(xzip.FileNames(z.initReader, 0), true)
 	}
 }
 

@@ -18,9 +18,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/xanygo/anygo/xarchive"
+	"github.com/xanygo/anygo/ds/xstr"
+	"github.com/xanygo/anygo/ds/xzip"
 	"github.com/xanygo/anygo/xcodec"
-	"github.com/xanygo/anygo/xstr"
 )
 
 var outfile = flag.String("o", "out.ez", "output file name")
@@ -36,7 +36,7 @@ func main() {
 	content := createZip()
 	rd, err := zip.NewReader(bytes.NewReader(content), int64(len(content)))
 	assert(err, "zip.NewReader")
-	names := xarchive.ZipFileNames(rd, 0)
+	names := xzip.FileNames(rd, 0)
 
 	ez := &xcodec.AesOFB{
 		Key: *token,

@@ -8,27 +8,27 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/xanygo/anygo/xslice"
+	xslice2 "github.com/xanygo/anygo/ds/xslice"
 )
 
 func ExampleMerge() {
-	fmt.Println(xslice.Merge([]int{1}, []int{2, 3})) // [1 2 3]
+	fmt.Println(xslice2.Merge([]int{1}, []int{2, 3})) // [1 2 3]
 
 	// Output:
 	// [1 2 3]
 }
 
 func ExampleUnique() {
-	fmt.Println(xslice.Unique([]int{1, 2, 1, 3})) // [1 2 3]
+	fmt.Println(xslice2.Unique([]int{1, 2, 1, 3})) // [1 2 3]
 
 	// Output:
 	// [1 2 3]
 }
 
 func ExampleContainsAny() {
-	fmt.Println(xslice.ContainsAny([]int{1, 2, 3}, 1))    // true
-	fmt.Println(xslice.ContainsAny([]int{1, 2, 3}, 4))    // false
-	fmt.Println(xslice.ContainsAny([]int{1, 2, 3}, 3, 4)) // true
+	fmt.Println(xslice2.ContainsAny([]int{1, 2, 3}, 1))    // true
+	fmt.Println(xslice2.ContainsAny([]int{1, 2, 3}, 4))    // false
+	fmt.Println(xslice2.ContainsAny([]int{1, 2, 3}, 3, 4)) // true
 
 	// Output:
 	// true
@@ -37,8 +37,8 @@ func ExampleContainsAny() {
 }
 
 func ExampleToMap() {
-	fmt.Println(xslice.ToMap([]int{1, 2, 3}, true)) // map[1:true 2:true 3:true]
-	fmt.Println(xslice.ToMap([]int{1, 2, 3}, "ok")) // map[1:ok 2:ok 3:ok]
+	fmt.Println(xslice2.ToMap([]int{1, 2, 3}, true)) // map[1:true 2:true 3:true]
+	fmt.Println(xslice2.ToMap([]int{1, 2, 3}, "ok")) // map[1:ok 2:ok 3:ok]
 
 	// Output:
 	// map[1:true 2:true 3:true]
@@ -47,7 +47,7 @@ func ExampleToMap() {
 
 func ExampleToMapFunc() {
 	ss := []int{1, 2, 3}
-	result := xslice.ToMapFunc(ss, func(index int, v int) (string, string) {
+	result := xslice2.ToMapFunc(ss, func(index int, v int) (string, string) {
 		key := fmt.Sprintf("key-%d", index)
 		value := fmt.Sprintf("value-%d", v)
 		return key, value
@@ -59,23 +59,23 @@ func ExampleToMapFunc() {
 }
 
 func ExampleToAnys() {
-	fmt.Printf("%#v\n", xslice.ToAnys([]int{1, 2, 3})) // []interface {}{1, 2, 3}
+	fmt.Printf("%#v\n", xslice2.ToAnys([]int{1, 2, 3})) // []interface {}{1, 2, 3}
 
 	// Output:
 	// []interface {}{1, 2, 3}
 }
 
 func ExampleDeleteValue() {
-	fmt.Println(xslice.DeleteValue([]int{1, 2, 3, 4}, 2, 4)) // [1 3]
+	fmt.Println(xslice2.DeleteValue([]int{1, 2, 3, 4}, 2, 4)) // [1 3]
 
 	// Output:
 	// [1 3]
 }
 
 func ExampleJoinFunc() {
-	fmt.Println(xslice.JoinFunc([]int{1, 2}, strconv.Itoa, "-")) // 1-2
+	fmt.Println(xslice2.JoinFunc([]int{1, 2}, strconv.Itoa, "-")) // 1-2
 
-	fmt.Println(xslice.JoinFunc([]int{1, 2}, func(val int) string {
+	fmt.Println(xslice2.JoinFunc([]int{1, 2}, func(val int) string {
 		return fmt.Sprintf("%02d", val)
 	}, "-")) //  01-02
 
@@ -85,14 +85,14 @@ func ExampleJoinFunc() {
 }
 
 func ExampleJoin() {
-	fmt.Println(xslice.Join([]int{1, 2}, "-")) // 1-2
+	fmt.Println(xslice2.Join([]int{1, 2}, "-")) // 1-2
 
 	// Output:
 	// 1-2
 }
 
 func ExampleNewRing() {
-	r := xslice.NewRing[int](3)
+	r := xslice2.NewRing[int](3)
 
 	r.Add(1, 2)
 	fmt.Println("Values=", r.Values(), "Len=", r.Len()) // Values= [1 2] Len= 2
@@ -120,7 +120,7 @@ func ExampleNewRing() {
 
 func ExampleFilter() {
 	arr := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	result := xslice.Filter(arr, func(index int, item int, ok int) bool {
+	result := xslice2.Filter(arr, func(index int, item int, ok int) bool {
 		return item%2 == 0
 	})
 	fmt.Println(result)
