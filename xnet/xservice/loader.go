@@ -13,12 +13,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xmap"
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xattr"
 	"github.com/xanygo/anygo/xlog"
-	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xpp"
-	"github.com/xanygo/anygo/xsync"
 )
 
 type Loader struct {

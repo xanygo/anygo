@@ -13,7 +13,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/xanygo/anygo/xmap"
+	"github.com/xanygo/anygo/ds/xmap"
 )
 
 type Server interface {

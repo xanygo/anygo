@@ -11,7 +11,7 @@ import (
 
 	"github.com/fsgo/fst"
 
-	"github.com/xanygo/anygo/xmap"
+	"github.com/xanygo/anygo/ds/xmap"
 )
 
 type testOrderedType[K comparable, V any] interface {

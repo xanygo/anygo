@@ -20,10 +20,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/ds/xzip"
 	"github.com/xanygo/anygo/xlog"
-	"github.com/xanygo/anygo/xmap"
 )
 
 type FSHandler interface {

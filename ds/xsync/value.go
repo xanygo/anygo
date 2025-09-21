@@ -9,12 +9,13 @@ import (
 	"sync/atomic"
 )
 
-func NewValue[T any](def T) *Value[T] {
+func NewValue[T any](defaultValue T) *Value[T] {
 	v := &Value[T]{}
-	v.Store(def)
+	v.Store(defaultValue)
 	return v
 }
 
+// Value 有默认值的 Value
 type Value[T any] struct {
 	value atomic.Value
 	once  sync.Once

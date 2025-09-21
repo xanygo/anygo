@@ -9,7 +9,7 @@ import (
 	"image"
 	"image/png"
 
-	"github.com/xanygo/anygo/xsync"
+	"github.com/xanygo/anygo/ds/xsync"
 )
 
 var pool = xsync.NewBytesBufferPool(0)

@@ -9,9 +9,9 @@ import (
 	"encoding/hex"
 	"sort"
 
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xbus"
 	"github.com/xanygo/anygo/xnet"
-	"github.com/xanygo/anygo/xsync"
 )
 
 func newNodeProducer() *nodeProducer {

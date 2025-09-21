@@ -11,17 +11,17 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/xanygo/anygo/ds/xmap"
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xctx"
 	"github.com/xanygo/anygo/xerror"
-	"github.com/xanygo/anygo/xmap"
-	"github.com/xanygo/anygo/xsync"
 )
 
 type Session struct {
 	id      string
 	created xsync.Value[time.Time]
 	updated xsync.Value[time.Time]
-	values  *xmap.Sync[string, string]
+	values  xmap.Sync[string, string]
 	storage Storage
 }
 
@@ -128,7 +128,6 @@ func (v *Value) ToSession(s Storage) *Session {
 	se := &Session{
 		id:      v.ID,
 		storage: s,
-		values:  &xmap.Sync[string, string]{},
 	}
 	se.created.Store(v.Created)
 	se.updated.Store(v.Updated)

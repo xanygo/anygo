@@ -7,8 +7,8 @@ package xservice
 import (
 	"fmt"
 
+	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/xerror"
-	"github.com/xanygo/anygo/xmap"
 )
 
 // Registry 下游服务管理器

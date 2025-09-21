@@ -10,9 +10,9 @@ import (
 	"io"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xcfg"
 	"github.com/xanygo/anygo/xio/xfs"
-	"github.com/xanygo/anygo/xsync"
 )
 
 var _ DispatchWriter = (*FileConfig)(nil)

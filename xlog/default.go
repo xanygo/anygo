@@ -9,8 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xattr"
-	"github.com/xanygo/anygo/xsync"
 )
 
 var defaultLogger xsync.Value[Logger]

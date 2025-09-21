@@ -8,8 +8,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xpp"
-	"github.com/xanygo/anygo/xsync"
 )
 
 const (

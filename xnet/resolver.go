@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xsync"
 	xcache2 "github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xnet/internal"
-	"github.com/xanygo/anygo/xsync"
 )
 
 // Resolver 名字解析的接口定义

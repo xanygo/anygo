@@ -13,13 +13,13 @@ import (
 	"slices"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xproxy"
 	"github.com/xanygo/anygo/xnet/xservice"
 	"github.com/xanygo/anygo/xoption"
-	"github.com/xanygo/anygo/xsync"
 )
 
 var _ Client = (*TCP)(nil)

@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/xanygo/anygo/xmap"
+	xmap2 "github.com/xanygo/anygo/ds/xmap"
 )
 
 func ExampleOrdered_Values() {
-	mp := &xmap.OrderedSync[string, int]{}
+	mp := &xmap2.OrderedSync[string, int]{}
 	mp.Set("k0", 0)
 	mp.Set("k1", 1)
 	mp.Set("k2", 2)
@@ -24,7 +24,7 @@ func ExampleOrdered_Values() {
 }
 
 func ExampleOrdered_Keys() {
-	mp := &xmap.OrderedSync[string, int]{}
+	mp := &xmap2.OrderedSync[string, int]{}
 	mp.Set("k0", 0)
 	mp.Set("k1", 1)
 	mp.Set("k2", 2)
@@ -39,11 +39,11 @@ func ExampleGet() {
 	var m1 map[string]int
 
 	// Get from nil map
-	got1, ok1 := xmap.Get(m1, "k1")
+	got1, ok1 := xmap2.Get(m1, "k1")
 	fmt.Println("k1=", got1, ok1) //  k1= 0 false
 
 	m1 = map[string]int{"k1": 1}
-	got2, ok2 := xmap.Get(m1, "k1")
+	got2, ok2 := xmap2.Get(m1, "k1")
 	fmt.Println("k1=", got2, ok2) //  k1= 1 true
 
 	// Output:
@@ -55,13 +55,13 @@ func ExampleGetDf() {
 	var m1 map[string]int
 
 	// Get from nil map
-	fmt.Println("k1=", xmap.GetDf(m1, "k1", 0)) //  k1= 0
-	fmt.Println("k1=", xmap.GetDf(m1, "k1", 1)) //  k1= 1
+	fmt.Println("k1=", xmap2.GetDf(m1, "k1", 0)) //  k1= 0
+	fmt.Println("k1=", xmap2.GetDf(m1, "k1", 1)) //  k1= 1
 
 	m1 = map[string]int{"k1": 1}
-	fmt.Println("k1=", xmap.GetDf(m1, "k1", 0)) //  k1= 1
-	fmt.Println("k2=", xmap.GetDf(m1, "k2", 0)) //  k2= 0
-	fmt.Println("k2=", xmap.GetDf(m1, "k2", 1)) //  k2= 1
+	fmt.Println("k1=", xmap2.GetDf(m1, "k1", 0)) //  k1= 1
+	fmt.Println("k2=", xmap2.GetDf(m1, "k2", 0)) //  k2= 0
+	fmt.Println("k2=", xmap2.GetDf(m1, "k2", 1)) //  k2= 1
 
 	// Output:
 	// k1= 0
@@ -78,7 +78,7 @@ func ExampleFilter() {
 		2: 2,
 		3: 3,
 	}
-	result := xmap.Filter(m, func(k int, v int, ok int) bool {
+	result := xmap2.Filter(m, func(k int, v int, ok int) bool {
 		return v%2 == 0
 	})
 	fmt.Println(result)
@@ -94,7 +94,7 @@ func ExampleFilterKeys() {
 		2: 22,
 		3: 33,
 	}
-	result := xmap.FilterKeys(m, func(k int, v int, ok int) bool {
+	result := xmap2.FilterKeys(m, func(k int, v int, ok int) bool {
 		return v%2 == 0
 	})
 	sort.Ints(result)
@@ -112,7 +112,7 @@ func ExampleFilterValues() {
 		2: 22,
 		3: 33,
 	}
-	result := xmap.FilterValues(m, func(k int, v int, ok int) bool {
+	result := xmap2.FilterValues(m, func(k int, v int, ok int) bool {
 		return v%2 == 0
 	})
 	sort.Ints(result)

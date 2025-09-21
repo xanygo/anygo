@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"reflect"
 
+	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xhttp/internal/zroute"
-	"github.com/xanygo/anygo/xmap"
-	"github.com/xanygo/anygo/xsync"
 )
 
 var notFoundHandler xsync.Value[http.Handler]
