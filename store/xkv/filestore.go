@@ -21,9 +21,7 @@ import (
 	"github.com/xanygo/anygo/store/xkv/internal"
 )
 
-var ErrInvalidType = internal.ErrInvalidType
-
-var _ Storage = (*FileStorage)(nil)
+var _ StringStorage = (*FileStorage)(nil)
 
 // FileStorage 基于本地文件系统的 KV 存储实现
 type FileStorage struct {
@@ -47,7 +45,7 @@ func (f *FileStorage) getDataDir(key string) string {
 	return fp
 }
 
-func (f *FileStorage) String(key string) String {
+func (f *FileStorage) String(key string) String[string] {
 	return &fileString{
 		FileBase: internal.FileBase{
 			Key: key,
@@ -56,7 +54,7 @@ func (f *FileStorage) String(key string) String {
 	}
 }
 
-func (f *FileStorage) List(key string) List {
+func (f *FileStorage) List(key string) List[string] {
 	return &fileList{
 		FileBase: internal.FileBase{
 			Key: key,
@@ -65,7 +63,7 @@ func (f *FileStorage) List(key string) List {
 	}
 }
 
-func (f *FileStorage) Hash(key string) Hash {
+func (f *FileStorage) Hash(key string) Hash[string] {
 	return &fileHash{
 		FileBase: internal.FileBase{
 			Key: key,
@@ -74,7 +72,7 @@ func (f *FileStorage) Hash(key string) Hash {
 	}
 }
 
-func (f *FileStorage) Set(key string) Set {
+func (f *FileStorage) Set(key string) Set[string] {
 	return &fileSet{
 		FileBase: internal.FileBase{
 			Key: key,
@@ -83,7 +81,7 @@ func (f *FileStorage) Set(key string) Set {
 	}
 }
 
-func (f *FileStorage) ZSet(key string) ZSet {
+func (f *FileStorage) ZSet(key string) ZSet[string] {
 	return &fileZSet{
 		FileBase: internal.FileBase{
 			Key: key,
@@ -92,7 +90,7 @@ func (f *FileStorage) ZSet(key string) ZSet {
 	}
 }
 
-var _ String = (*fileString)(nil)
+var _ String[string] = (*fileString)(nil)
 
 type fileString struct {
 	internal.FileBase
@@ -138,7 +136,7 @@ func (f *fileString) Decr(ctx context.Context) (int64, error) {
 	return num, nil
 }
 
-var _ List = (*fileList)(nil)
+var _ List[string] = (*fileList)(nil)
 
 type fileList struct {
 	internal.FileBase
@@ -282,7 +280,7 @@ func (f fileList) Range(ctx context.Context, fn func(val string) bool) error {
 	return err
 }
 
-var _ Hash = (*fileHash)(nil)
+var _ Hash[string] = (*fileHash)(nil)
 
 type fileHash struct {
 	internal.FileBase
@@ -354,7 +352,7 @@ func (f fileHash) HGetAll(ctx context.Context) (map[string]string, error) {
 	return result, err
 }
 
-var _ Set = (*fileSet)(nil)
+var _ Set[string] = (*fileSet)(nil)
 
 type fileSet struct {
 	internal.FileBase
@@ -394,7 +392,7 @@ func (f fileSet) SMembers(ctx context.Context) ([]string, error) {
 	return result, err
 }
 
-var _ ZSet = (*fileZSet)(nil)
+var _ ZSet[string] = (*fileZSet)(nil)
 
 type fileZSet struct {
 	internal.FileBase

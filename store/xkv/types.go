@@ -4,14 +4,20 @@
 
 package xkv
 
-import "context"
+import (
+	"context"
 
-type String interface {
+	"github.com/xanygo/anygo/store/xkv/internal"
+)
+
+var ErrInvalidType = internal.ErrInvalidType
+
+type String[V any] interface {
 	// Set 设置字符串的值（类似 Redis 的 SET 命令）
-	Set(ctx context.Context, value string) error
+	Set(ctx context.Context, value V) error
 
 	// Get 获取字符串的值（类似 Redis 的 GET 命令）
-	Get(ctx context.Context) (string, error)
+	Get(ctx context.Context) (V, error)
 
 	// Incr 将字符串中的数字自增 1（类似 Redis 的 INCR 命令）
 	Incr(ctx context.Context) (int64, error)
@@ -20,79 +26,81 @@ type String interface {
 	Decr(ctx context.Context) (int64, error)
 }
 
-type List interface {
+type List[V any] interface {
 	// LPush 在列表左侧插入元素（类似 Redis 的 LPUSH 命令）
-	LPush(ctx context.Context, val string) error
+	LPush(ctx context.Context, val V) error
 
 	// RPush 在列表右侧插入元素（类似 Redis 的 RPUSH 命令）
-	RPush(ctx context.Context, val string) error
+	RPush(ctx context.Context, val V) error
 
 	// LPop 移除并返回列表最左侧的元素（类似 Redis 的 LPOP 命令）
-	LPop(ctx context.Context) (string, bool, error)
+	LPop(ctx context.Context) (V, bool, error)
 
 	// RPop 移除并返回列表最右侧的元素（类似 Redis 的 RPOP 命令）
-	RPop(ctx context.Context) (string, bool, error)
+	RPop(ctx context.Context) (V, bool, error)
 
 	// Range 不保证顺序的遍历
-	Range(ctx context.Context, fn func(val string) bool) error
+	Range(ctx context.Context, fn func(val V) bool) error
 
-	LRange(ctx context.Context, fn func(val string) bool) error
+	LRange(ctx context.Context, fn func(val V) bool) error
 
-	RRange(ctx context.Context, fn func(val string) bool) error
+	RRange(ctx context.Context, fn func(val V) bool) error
 }
 
-type Hash interface {
+type Hash[V any] interface {
 	// HSet 设置哈希表字段的值（类似 Redis 的 HSET 命令）
-	HSet(ctx context.Context, field, value string) error
+	HSet(ctx context.Context, field string, value V) error
 
 	// HGet 获取哈希表字段的值（类似 Redis 的 HGET 命令）
-	HGet(ctx context.Context, field string) (string, bool, error)
+	HGet(ctx context.Context, field string) (V, bool, error)
 
 	// HDel 删除哈希表中的某个字段（类似 Redis 的 HDEL 命令）
 	HDel(ctx context.Context, field string) error
 
 	// HRange 遍历哈希表中的所有字段和
-	HRange(ctx context.Context, fn func(field, value string) bool) error
+	HRange(ctx context.Context, fn func(field string, value V) bool) error
 
 	// HGetAll 返回哈希表中的所有字段和值（类似 Redis 的 HGETALL 命令）
-	HGetAll(ctx context.Context) (map[string]string, error)
+	HGetAll(ctx context.Context) (map[string]V, error)
 }
 
 // Set 无序、唯一元素集合
-type Set interface {
+type Set[V any] interface {
 	// SAdd 向集合中添加一个成员（类似 Redis 的 SADD 命令）
-	SAdd(ctx context.Context, val string) error
+	SAdd(ctx context.Context, val V) error
 
 	// SRem 从集合中移除一个成员（类似 Redis 的 SREM 命令）
-	SRem(ctx context.Context, val string) error
+	SRem(ctx context.Context, val V) error
 
 	// SRange 遍历
-	SRange(ctx context.Context, fn func(val string) bool) error
+	SRange(ctx context.Context, fn func(val V) bool) error
 
 	// SMembers 返回集合中的所有成员（类似 Redis 的 SMEMBERS 命令）
-	SMembers(ctx context.Context) ([]string, error)
+	SMembers(ctx context.Context) ([]V, error)
 }
 
 // ZSet Sorted Set
-type ZSet interface {
+type ZSet[V any] interface {
 	// ZAdd 向有序集合中添加一个成员及其分数（类似 Redis 的 ZADD 命令）
-	ZAdd(ctx context.Context, score float64, member string) error
+	ZAdd(ctx context.Context, score float64, member V) error
 
 	// ZScore 读取分数
-	ZScore(ctx context.Context, member string) (float64, bool, error)
+	ZScore(ctx context.Context, member V) (float64, bool, error)
 
 	// ZRange 按分数升序返回所有元素（类似 Redis 的 ZRANGE 命令）
-	ZRange(ctx context.Context, fn func(member string, score float64) bool) error
+	ZRange(ctx context.Context, fn func(member V, score float64) bool) error
 
 	// ZRem 移除有序集合中的指定成员（类似 Redis 的 ZREM 命令）
-	ZRem(ctx context.Context, member string) error
+	ZRem(ctx context.Context, member V) error
 }
 
-type Storage interface {
-	String(key string) String
-	List(key string) List
-	Hash(key string) Hash
-	Set(key string) Set
-	ZSet(key string) ZSet
+type Storage[V any] interface {
+	String(key string) String[V]
+	List(key string) List[V]
+	Hash(key string) Hash[V]
+	Set(key string) Set[V]
+	ZSet(key string) ZSet[V]
 	Delete(ctx context.Context, key string) error
 }
+
+type StringStorage = Storage[string]

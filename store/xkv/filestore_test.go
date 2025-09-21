@@ -22,7 +22,7 @@ func TestFileStorage(t *testing.T) {
 	testStorage(t, ff)
 }
 
-func testStorage(t *testing.T, ff xkv.Storage) {
+func testStorage(t *testing.T, ff xkv.StringStorage) {
 	t.Run("string", func(t *testing.T) {
 		ss1 := ff.String("hello")
 		got1, err1 := ss1.Get(context.Background())

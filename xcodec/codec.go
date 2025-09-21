@@ -86,7 +86,7 @@ func rawEncode(obj any) ([]byte, error) {
 	case []byte:
 		return val, nil
 	case string:
-		return []byte(val), nil
+		return unsafe.Slice(unsafe.StringData(val), len(val)), nil
 	default:
 		return nil, fmt.Errorf("not support type %T for rawEncode", obj)
 	}
@@ -131,14 +131,14 @@ func (f FormCodec) Encode(a any) ([]byte, error) {
 	switch vv := a.(type) {
 	case url.Values:
 		str := vv.Encode()
-		return []byte(str), nil
+		return unsafe.Slice(unsafe.StringData(str), len(str)), nil
 	case map[string]string:
 		uv := make(url.Values, len(vv))
 		for k, v := range vv {
 			uv.Set(k, v)
 		}
 		str := uv.Encode()
-		return []byte(str), nil
+		return unsafe.Slice(unsafe.StringData(str), len(str)), nil
 	default:
 		return nil, fmt.Errorf("not support type %T for FormEncode", a)
 	}
@@ -169,4 +169,17 @@ func (f FormCodec) Decode(bf []byte, a any) error {
 	default:
 		return fmt.Errorf("not support type %T for FormDecode", a)
 	}
+}
+
+func EncodeToString(enc Encoder, obj any) (string, error) {
+	bf, err := enc.Encode(obj)
+	if err != nil {
+		return "", err
+	}
+	return unsafe.String(unsafe.SliceData(bf), len(bf)), nil
+}
+
+func DecodeFromString(dec Decoder, str string, obj any) error {
+	bf := unsafe.Slice(unsafe.StringData(str), len(str))
+	return dec.Decode(bf, obj)
 }

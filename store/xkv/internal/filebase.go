@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unsafe"
 
 	"github.com/xanygo/anygo/xio/xfs"
 )
@@ -110,7 +111,7 @@ func (fb FileBase) ReadFile(baseName string, delete bool) (string, bool, error) 
 		_ = os.Remove(fp)
 	}
 	if err == nil {
-		return string(bf), true, nil
+		return unsafe.String(unsafe.SliceData(bf), len(bf)), true, nil
 	}
 	if errors.Is(err, os.ErrNotExist) {
 		return "", false, nil
