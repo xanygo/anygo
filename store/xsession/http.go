@@ -165,6 +165,7 @@ func (s *HTTPHandler) Next(h http.Handler) http.Handler {
 		session.Set("_", "") // 触发更新
 
 		ctx := WithStorage(r.Context(), store)
+		ctx = WithSession(ctx, session)
 		r = r.WithContext(ctx)
 		h.ServeHTTP(w, r)
 	})

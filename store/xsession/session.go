@@ -21,7 +21,7 @@ type Session struct {
 	id      string
 	created xsync.Value[time.Time]
 	updated xsync.Value[time.Time]
-	values  xmap.Sync[string, string]
+	values  *xmap.Sync[string, string]
 	storage Storage
 }
 
@@ -128,6 +128,7 @@ func (v *Value) ToSession(s Storage) *Session {
 	se := &Session{
 		id:      v.ID,
 		storage: s,
+		values:  &xmap.Sync[string, string]{},
 	}
 	se.created.Store(v.Created)
 	se.updated.Store(v.Updated)
@@ -157,15 +158,27 @@ func ParserValue(bf []byte) (*Value, error) {
 }
 
 type Storage interface {
+	// Get 从存储中加载 Session 数据，若不存在会报错
 	Get(ctx context.Context, id string) (*Session, error)
+
+	// GetOrCreate 从存储中加载 Session 数据，若不存在则生成一个新的
 	GetOrCreate(ctx context.Context, id string) *Session
+
+	// Save 保存数据
 	Save(ctx context.Context, session *Session) error
 }
 
-var ctxKeyStore = xctx.NewKey()
+var (
+	ctxKeyStore   = xctx.NewKey()
+	ctxKeySession = xctx.NewKey()
+)
 
 func WithStorage(ctx context.Context, store Storage) context.Context {
 	return context.WithValue(ctx, ctxKeyStore, store)
+}
+
+func WithSession(ctx context.Context, store *Session) context.Context {
+	return context.WithValue(ctx, ctxKeySession, store)
 }
 
 func StorageFromContext(ctx context.Context) Storage {
@@ -173,7 +186,8 @@ func StorageFromContext(ctx context.Context) Storage {
 }
 
 func FromContext(ctx context.Context) *Session {
-	return StorageFromContext(ctx).GetOrCreate(ctx, IDFromContext(ctx))
+	ss, _ := ctx.Value(ctxKeySession).(*Session)
+	return ss
 }
 
 // Set 将数据 val 使用 json 编码，并调用 Session.Set 保存

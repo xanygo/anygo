@@ -19,9 +19,13 @@ type Transformer[V any] struct {
 }
 
 func (tr Transformer[V]) String(key string) String[V] {
+	return AsString[V](tr.Storage, tr.Codec, key)
+}
+
+func AsString[V any](s StringStorage, codec xcodec.Codec, key string) String[V] {
 	return transString[V]{
-		ss:    tr.Storage.String(key),
-		codec: tr.Codec,
+		ss:    s.String(key),
+		codec: codec,
 	}
 }
 
@@ -58,9 +62,13 @@ func (ts transString[V]) Decr(ctx context.Context) (int64, error) {
 }
 
 func (tr Transformer[V]) List(key string) List[V] {
+	return AsList[V](tr.Storage, tr.Codec, key)
+}
+
+func AsList[V any](s StringStorage, codec xcodec.Codec, key string) List[V] {
 	return transList[V]{
-		ss:    tr.Storage.List(key),
-		codec: tr.Codec,
+		ss:    s.List(key),
+		codec: codec,
 	}
 }
 
@@ -154,9 +162,13 @@ func (t transList[V]) RRange(ctx context.Context, fn func(val V) bool) error {
 }
 
 func (tr Transformer[V]) Hash(key string) Hash[V] {
+	return AsHash[V](tr.Storage, tr.Codec, key)
+}
+
+func AsHash[V any](s StringStorage, codec xcodec.Codec, key string) Hash[V] {
 	return transHash[V]{
-		ss:    tr.Storage.Hash(key),
-		codec: tr.Codec,
+		ss:    s.Hash(key),
+		codec: codec,
 	}
 }
 
@@ -214,9 +226,13 @@ func (t transHash[V]) HGetAll(ctx context.Context) (map[string]V, error) {
 }
 
 func (tr Transformer[V]) Set(key string) Set[V] {
+	return AsSet[V](tr.Storage, tr.Codec, key)
+}
+
+func AsSet[V any](s StringStorage, codec xcodec.Codec, key string) Set[V] {
 	return transSet[V]{
-		ss:    tr.Storage.Set(key),
-		codec: tr.Codec,
+		ss:    s.Set(key),
+		codec: codec,
 	}
 }
 
@@ -270,9 +286,13 @@ func (t transSet[V]) SMembers(ctx context.Context) ([]V, error) {
 }
 
 func (tr Transformer[V]) ZSet(key string) ZSet[V] {
+	return AsZSet[V](tr.Storage, tr.Codec, key)
+}
+
+func AsZSet[V any](s StringStorage, codec xcodec.Codec, key string) ZSet[V] {
 	return transZSet[V]{
-		ss:    tr.Storage.ZSet(key),
-		codec: tr.Codec,
+		ss:    s.ZSet(key),
+		codec: codec,
 	}
 }
 
