@@ -11,9 +11,12 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
+	"github.com/xanygo/anygo/xcache"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xnet/xrpc"
+	"github.com/xanygo/anygo/xnet/xservice"
 )
 
 func Invoke(ctx context.Context, service string, req *http.Request, handler HandlerFunc, opts ...xrpc.Option) error {
@@ -70,4 +73,80 @@ func PostForm(ctx context.Context, service string, url string, body url.Values, 
 
 func PostJSON(ctx context.Context, service string, url string, body any, handler HandlerFunc, opts ...xrpc.Option) error {
 	return InvokeWithCodec(ctx, service, http.MethodPost, url, body, xcodec.JSON, handler, opts...)
+}
+
+// CacheClient 带有缓存的 HTTP Client
+type CacheClient struct {
+	Cache   xcache.Cache[string, *StoredResponse] // 必填，缓存对象
+	Request *http.Request                         // 必填，请求
+	Key     string                                // 可选，缓存的 key，默认为读取 Request.URL 作为 key
+
+	TTL         time.Duration  // 可选，缓存时间，默认 1 小时
+	Decoder     xcodec.Decoder // 可选，默认为 JSON
+	HandlerFunc HandlerFunc    // 可选，默认为验证 statusCode==200
+	Service     string         // 可选，默认为 dummy
+	Opts        []xrpc.Option  // 可选
+}
+
+func (ci CacheClient) getTTL() time.Duration {
+	if ci.TTL == 0 {
+		return time.Hour
+	}
+	return ci.TTL
+}
+
+func (ci CacheClient) getService() string {
+	if ci.Service == "" {
+		return xservice.Dummy
+	}
+	return ci.Service
+}
+
+func (ci CacheClient) getDecoder() xcodec.Decoder {
+	if ci.Decoder == nil {
+		return xcodec.JSON
+	}
+	return ci.Decoder
+}
+
+func (ci CacheClient) Invoke(ctx context.Context, result any) error {
+	service := ci.getService()
+	key := service + "|" + ci.Request.Method + "|" + ci.Request.URL.String() + ci.Key
+	storedResponse, err := ci.Cache.Get(ctx, key)
+	decoder := ci.getDecoder()
+
+	storedResponseResult, ok1 := result.(*StoredResponse)
+
+	if err == nil {
+		if ok1 {
+			*storedResponseResult = *storedResponse
+			return nil
+		}
+		err = decoder.Decode(storedResponse.Body, result)
+		if err == nil {
+			return nil
+		}
+	}
+	var hs handlerCombine
+	if ci.HandlerFunc == nil {
+		hs = append(hs, StatusIn(http.StatusOK))
+	} else {
+		hs = append(hs, ci.HandlerFunc)
+	}
+	rd := &StoredResponse{}
+	hs = append(hs, TeeReader(rd))
+
+	if !ok1 {
+		hs = append(hs, DecodeBody(decoder, result))
+	}
+
+	err = Invoke(ctx, service, ci.Request, Combine(hs...), ci.Opts...)
+	if err != nil {
+		return err
+	}
+	_ = ci.Cache.Set(ctx, key, rd, ci.getTTL())
+	if ok1 {
+		*storedResponseResult = *rd
+	}
+	return nil
 }

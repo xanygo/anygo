@@ -113,8 +113,8 @@ func ExampleCutLastByteN() {
 		fmt.Printf("before=%q after=%q found=%v\n", before, after, found)
 	}
 
-	printCut("/home/work/go/src/", '/', 2)  // before="/home/work/go" after="src/"
-	printCut("/home/work/go/src/", '/', 10) // before="" after="/home/work/go/src/"
+	printCut("/home/work/go/src/", '/', 2)  // before="/home/work/go" after="src/" found=true
+	printCut("/home/work/go/src/", '/', 10) // before="/home/work/go/src/" after="" found=false
 
 	// Output:
 	// before="/home/work/go" after="src/" found=true
@@ -144,8 +144,8 @@ func ExampleCutLastN() {
 		before, after, found := xstr.CutLastN(s, sub, n)
 		fmt.Printf("before=%q after=%q found=%v\n", before, after, found)
 	}
-	printCut("abc-ab-ab-c", "ab", 1) // before="" after="c-ab-ab-c"
-	printCut("abc-ab-ab-c", "ab", 2) // before="abc-" after="-ab-c"
+	printCut("abc-ab-ab-c", "ab", 1) // before="abc-ab-" after="-c" found=true
+	printCut("abc-ab-ab-c", "ab", 2) // before="abc-" after="-ab-c" found=true
 
 	// Output:
 	// before="abc-ab-" after="-c" found=true

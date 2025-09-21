@@ -5,6 +5,7 @@
 package xvalidator
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -25,4 +26,20 @@ func StringIn(name, value string, values ...string) error {
 		}
 	}
 	return fmt.Errorf("%s=%q is not in %q", name, value, values)
+}
+
+func MapHasKeys[K comparable, V any](m map[K]V, keys ...K) error {
+	if len(m) == 0 {
+		return errors.New("empty map")
+	}
+	var missKeys []K
+	for _, k := range keys {
+		if _, ok := m[k]; !ok {
+			missKeys = append(missKeys, k)
+		}
+	}
+	if len(missKeys) == 0 {
+		return nil
+	}
+	return fmt.Errorf("missing keys: %v", missKeys)
 }

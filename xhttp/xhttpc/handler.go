@@ -5,10 +5,12 @@
 package xhttpc
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xio"
@@ -77,4 +79,40 @@ func DecodeBody(dc xcodec.Decoder, a any) HandlerFunc {
 
 func JSONBody(a any) HandlerFunc {
 	return DecodeBody(xcodec.JSON, a)
+}
+
+func TeeReader(sr *StoredResponse) HandlerFunc {
+	return func(ctx context.Context, resp *http.Response) error {
+		sr.StatusCode = resp.StatusCode
+		sr.Header = resp.Header.Clone()
+		if resp.Request != nil {
+			sr.URL = resp.Request.URL.String()
+		}
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		resp.Body = io.NopCloser(bytes.NewBuffer(body))
+		sr.Body = body
+		return nil
+	}
+}
+
+type StoredResponse struct {
+	StatusCode int
+	URL        string
+	Header     http.Header
+	Body       []byte
+}
+
+func (sr *StoredResponse) Write(w http.ResponseWriter) {
+	for k, vs := range sr.Header {
+		for _, v := range vs {
+			w.Header().Add(k, v)
+		}
+	}
+	w.Header().Set("Content-Length", strconv.Itoa(len(sr.Body)))
+	w.WriteHeader(sr.StatusCode)
+	w.Write(sr.Body)
 }
