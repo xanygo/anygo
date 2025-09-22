@@ -111,9 +111,9 @@ func (f *File[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration)
 	// 写 cache 文件：
 	writer := bufio.NewWriter(file)
 	_, err = xio.WriteStrings(writer,
-		// 第1行是缓存有效期，格式:etime=1590235951234907000
+		// 第1行是缓存有效期，格式:etime=1590235951
 		"etime=",
-		strconv.FormatInt(expireAt.UnixNano(), 10),
+		strconv.FormatInt(expireAt.Unix(), 10),
 		"\n",
 
 		// 第2行是创建时间：格式： ctime=1590235951
@@ -197,7 +197,7 @@ func (f *File[K, V]) readByPath(fp string, needData bool) (expire bool, data []b
 	if err != nil {
 		return true, nil, fmt.Errorf("read fist line : %w", err)
 	}
-	// 第一行为过期时间，格式为：etime=UnixNano()
+	// 第一行为过期时间，格式为：etime=Unix()
 	etime, ok := bytes.CutPrefix(first, []byte("etime="))
 	if !ok {
 		return true, nil, fmt.Errorf("not valid cache line, expect etime=\\d+, got=%q", first)
@@ -206,7 +206,7 @@ func (f *File[K, V]) readByPath(fp string, needData bool) (expire bool, data []b
 	if err != nil {
 		return true, nil, err
 	}
-	expire = expireAt < time.Now().UnixNano()
+	expire = expireAt < time.Now().Unix()
 	if !needData {
 		return expire, nil, nil
 	}

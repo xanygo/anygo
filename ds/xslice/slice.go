@@ -151,8 +151,8 @@ func Join[E any](arr []E, sep string) string {
 
 // Filter 过滤删选出满足条件的元素
 //
-// filter: 过滤函数，参数依次为 index-元素索引、item 元素、ok-已过滤满足条件的个数
-func Filter[S ~[]E, E any](arr S, filter func(index int, item E, ok int) bool) S {
+// filter: 过滤函数，参数依次为 index-元素索引、item 元素、okTotal-已过滤满足条件的个数
+func Filter[S ~[]E, E any](arr S, filter func(index int, item E, okTotal int) bool) S {
 	if len(arr) == 0 {
 		return nil
 	}

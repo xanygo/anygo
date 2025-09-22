@@ -13,6 +13,7 @@ import (
 	"github.com/xanygo/anygo/xctx"
 )
 
+// NewID 生成一个新的 SessionID
 func NewID() string {
 	tm := xbase.Base62.EncodeInt64(time.Now().Unix() - 1730000000)
 	id := xstr.RandNChar(8)

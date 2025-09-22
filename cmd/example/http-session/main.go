@@ -29,7 +29,7 @@ func main() {
 
 	router.GetFunc("/set", func(w http.ResponseWriter, r *http.Request) {
 		ss := xsession.FromContext(r.Context())
-		ss.Set("k1", "v1:"+r.URL.Query().Get("k1"))
+		ss.Set(r.Context(), "k1", "v1:"+r.URL.Query().Get("k1"))
 		err := ss.Save(r.Context())
 		_, _ = fmt.Fprintf(w, "save=%v", err)
 	})
@@ -37,7 +37,8 @@ func main() {
 	router.GetFunc("/get", func(w http.ResponseWriter, r *http.Request) {
 		ss := xsession.FromContext(r.Context())
 		_, _ = fmt.Fprintf(w, "sessionID=%q\n", xsession.IDFromContext(r.Context()))
-		_, _ = fmt.Fprintf(w, "k1=%v\n", ss.Get("k1"))
+		vs, err := ss.Get(r.Context(), "k1")
+		_, _ = fmt.Fprintf(w, "k1=%v err=%v\n", vs, err)
 	})
 
 	ser := &http.Server{
