@@ -172,6 +172,11 @@ func (f FormCodec) Decode(bf []byte, a any) error {
 }
 
 func EncodeToString(enc Encoder, obj any) (string, error) {
+	if vs, ok := obj.(string); ok {
+		return vs, nil
+	} else if vs, ok := obj.(*string); ok {
+		return *vs, nil
+	}
 	bf, err := enc.Encode(obj)
 	if err != nil {
 		return "", err
@@ -180,6 +185,10 @@ func EncodeToString(enc Encoder, obj any) (string, error) {
 }
 
 func DecodeFromString(dec Decoder, str string, obj any) error {
+	if p, ok := obj.(*string); ok {
+		*p = str
+		return nil
+	}
 	bf := unsafe.Slice(unsafe.StringData(str), len(str))
 	return dec.Decode(bf, obj)
 }

@@ -49,6 +49,9 @@ func (ts transString[V]) Get(ctx context.Context) (v V, err error) {
 	if err != nil {
 		return v, err
 	}
+	if str == "" {
+		return v, nil
+	}
 	err = xcodec.DecodeFromString(ts.codec, str, &v)
 	return v, err
 }

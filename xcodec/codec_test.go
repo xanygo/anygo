@@ -52,3 +52,14 @@ func Test_Raw(t *testing.T) {
 	fst.NoError(t, err2)
 	fst.Equal(t, "hello", string(got2))
 }
+
+func TestEncodeToString(t *testing.T) {
+	got1, err1 := EncodeToString(JSON, "hello")
+	fst.NoError(t, err1)
+	fst.Equal(t, "hello", got1)
+
+	var got2 string
+	err2 := DecodeFromString(JSON, "hello", &got2)
+	fst.NoError(t, err2)
+	fst.Equal(t, "hello", got2)
+}
