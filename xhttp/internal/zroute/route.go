@@ -5,6 +5,7 @@
 package zroute
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -131,6 +132,23 @@ type Route struct {
 
 	// 路由变量个数
 	paramNum int
+}
+
+// String 调试，打印使用
+func (sr *Route) String() string {
+	data := map[string]any{
+		"Method":     sr.Method,
+		"PathPrefix": sr.PathPrefix,
+		"PathSuffix": sr.PathSuffix,
+		"Pattern":    sr.Pattern,
+		"Meta":       sr.Meta,
+	}
+	bf, _ := json.Marshal(data)
+	return string(bf)
+}
+
+func (sr *Route) UniqKey() string {
+	return sr.Method + "|" + sr.Pattern
 }
 
 func (sr *Route) LogFields() []xlog.Attr {

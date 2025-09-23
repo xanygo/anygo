@@ -68,3 +68,47 @@ func TestGetPrefixMethod(t *testing.T) {
 		})
 	}
 }
+
+func TestStripPrefixMethod(t *testing.T) {
+	type args struct {
+		s      string
+		prefix string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "case 1",
+			args: args{
+				s:      "Get",
+				prefix: "Get",
+			},
+			want: "",
+		},
+		{
+			name: "case 2",
+			args: args{
+				s:      "PostByID",
+				prefix: "POST",
+			},
+			want: "ByID",
+		},
+		{
+			name: "case 3",
+			args: args{
+				s:      "QueryByID",
+				prefix: "POST",
+			},
+			want: "QueryByID",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := StripPrefixMethod(tt.args.s, tt.args.prefix); got != tt.want {
+				t.Errorf("StripPrefixMethod() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

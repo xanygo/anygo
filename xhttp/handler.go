@@ -42,14 +42,15 @@ type PatternHandler struct {
 	Middleware []MiddlewareFunc
 }
 
-// RegisterGroup  注册一组业务，安装规则将 GroupHandler 中的所有的 http.HandlerFunc 注册到路由中去。
+// RegisterGroup  注册一组业务，安装规则将 GroupHandler 中的所有的 http.HandlerFunc 方法注册到路由中去。
 //
 //	注册规则如下：
-//
-//	 1. {HTTPMethod} 指的是 Get、Post、Delete 等 ，不区分大小写，所以 GET、POST、DELETE 也一样。
-//	 2. 所有和 {HTTPMethod} 或者 {HTTPMethod}{Xyz} 或者 {HTTPMethod}{Xyz}{Abc} 等驼峰命名的，
-//	 注册的路由只支持此种 HTTP 请求，如 Delete 方法只支持 HTTP DELETE 请求。
-//	 3. 方法名中包含 Save 的，注册为 POST 请求。
+//	 1. 读取 GroupHandler 中的所有的 http.HandlerFunc 方法名注册到路由中去。方法名解析规则如下。
+//	 2. 若 GroupHandler() map[string]PatternHandler 有定义（key和方法名一样）则优先使用。
+//	 3. 方法名命名规则： {HTTPMethod}、{HTTPMethod}{Xyz} 、{HTTPMethod}{Xyz}{Abc} 等驼峰命名的，
+//	 4. {HTTPMethod} 指的是 Get、Post、Delete 等 ，不区分大小写，所以 GET、POST、DELETE 也一样。
+//	 5. 方法名中包含 Save 的，注册为 POST 请求。
+//	 6. 方法名中包含 HTTP Method 的，会被移除，以避免和 HTTP Method 重复。
 //
 // 假设 RegisterGroup(r,"/user/",&userHandler{}),userHandler{} 中所有实现了 func(http.ResponseWriter, *http.Request)
 // 这个函数签名的注册结果如下：
@@ -57,8 +58,8 @@ type PatternHandler struct {
 //	user.Index        --> GET      /user/ 和 /user/Index
 //	user.Delete       --> DELETE   /user/
 //	user.Post         --> POST     /user/
-//	user.GetByID      --> GET      /user/GetByID
-//	user.DeleteByID   --> DELETE   /user/DeleteByID
+//	user.GetByID      --> GET      /user/ByID
+//	user.DeleteByID   --> DELETE   /user/ByID
 //	user.UpdateStatus --> PUT      /user/UpdateStatus
 //	user.Search       --> GET      /user/Search
 //	user.Add          --> GET      /user/Add
@@ -99,11 +100,15 @@ func RegisterGroup(r *Router, prefix string, h GroupHandler, mds ...MiddlewareFu
 				continue
 			}
 		}
-
 		method := zroute.GetPrefixMethod(name)
 		if name == "Index" {
 			r.handleMethod(method, prefix+metaStr, handler, mds...)
 		}
+
+		name = zroute.StripPrefixMethod(name, method)
+
+		meta["MethodName"] = name
+		metaStr = " meta|" + xmap.Join(meta, ",")
 		r.handleMethod(method, prefix+"/"+name+metaStr, handler, mds...)
 	}
 }

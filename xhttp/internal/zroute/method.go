@@ -70,3 +70,17 @@ func GetPrefixMethod(s string) string {
 
 	return http.MethodGet
 }
+
+// StripPrefixMethod 移除前缀
+//
+//	如 ("GetByID","GET")  ---> "ByID"
+//	如 ("GETByID","GET")  ---> "ByID"
+//	如 ("ByID","GET")  ---> "ByID"
+func StripPrefixMethod(s string, prefix string) string {
+	s1 := strings.ToLower(s)
+	p1 := strings.ToLower(prefix)
+	if !strings.HasPrefix(s1, p1) {
+		return s
+	}
+	return s[len(prefix):]
+}
