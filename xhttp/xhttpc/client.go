@@ -11,8 +11,11 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"reflect"
+	"sync"
 	"time"
 
+	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xnet/xrpc"
@@ -82,6 +85,7 @@ type CacheClient struct {
 	Key     string                                // 可选，缓存的 key，默认为读取 Request.URL 作为 key
 
 	TTL         time.Duration  // 可选，缓存时间，默认 1 小时
+	PreFlush    time.Duration  // 可选，当缓存数据达到此有效期后，提前异步加载数据，默认为 0.8 * TTL
 	Decoder     xcodec.Decoder // 可选，默认为 JSON
 	HandlerFunc HandlerFunc    // 可选，默认为验证 statusCode==200
 	Service     string         // 可选，默认为 dummy
@@ -109,24 +113,70 @@ func (ci CacheClient) getDecoder() xcodec.Decoder {
 	return ci.Decoder
 }
 
+func (ci CacheClient) needPreFlush(cacheCreate time.Time) bool {
+	preFlush := ci.PreFlush
+	if preFlush < 0 {
+		return false
+	}
+	if preFlush == 0 {
+		preFlush = ci.TTL * 4 / 5
+	}
+	return time.Since(cacheCreate) > preFlush
+}
+
 func (ci CacheClient) Invoke(ctx context.Context, result any) error {
 	service := ci.getService()
 	key := service + "|" + ci.Request.Method + "|" + ci.Request.URL.String() + ci.Key
-	storedResponse, err := ci.Cache.Get(ctx, key)
+	cachedResponse, err := ci.Cache.Get(ctx, key)
 	decoder := ci.getDecoder()
 
-	storedResponseResult, ok1 := result.(*StoredResponse)
+	sr, ok1 := result.(*StoredResponse)
 
 	if err == nil {
+		npr := ci.needPreFlush(cachedResponse.CreateTime())
 		if ok1 {
-			*storedResponseResult = *storedResponse
+			*sr = *cachedResponse
+			if npr {
+				ci.doPreFlush(ctx, service, decoder, result, key)
+			}
 			return nil
 		}
-		err = decoder.Decode(storedResponse.Body, result)
+
+		err = decoder.Decode(cachedResponse.Body, result)
 		if err == nil {
+			if npr {
+				ci.doPreFlush(ctx, service, decoder, result, key)
+			}
 			return nil
 		}
 	}
+
+	return ci.direct(ctx, service, decoder, result, key)
+}
+
+var preFlushDB sync.Map
+
+func (ci CacheClient) doPreFlush(ctx context.Context, service string, decoder xcodec.Decoder, result any, cacheKey string) {
+	t := reflect.TypeOf(result)
+	if t.Kind() != reflect.Ptr {
+		return
+	}
+
+	// 只需要有一个PreFlush 的操作，避免同时发起多个相同请求
+	if _, loaded := preFlushDB.LoadOrStore(cacheKey, true); loaded {
+		return
+	}
+
+	// 创建一个新的对象（和 result 指向的类型一样）
+	newObj := reflect.New(t.Elem()).Interface()
+	ctx = context.WithoutCancel(ctx)
+	go safely.RunVoid(func() {
+		defer preFlushDB.Delete(cacheKey)
+		_ = ci.direct(ctx, service, decoder, newObj, cacheKey)
+	})
+}
+
+func (ci CacheClient) direct(ctx context.Context, service string, decoder xcodec.Decoder, result any, cacheKey string) error {
 	var hs handlerCombine
 	if ci.HandlerFunc == nil {
 		hs = append(hs, StatusIn(http.StatusOK))
@@ -136,17 +186,18 @@ func (ci CacheClient) Invoke(ctx context.Context, result any) error {
 	rd := &StoredResponse{}
 	hs = append(hs, TeeReader(rd))
 
+	sr, ok1 := result.(*StoredResponse)
 	if !ok1 {
 		hs = append(hs, DecodeBody(decoder, result))
 	}
 
-	err = Invoke(ctx, service, ci.Request, Combine(hs...), ci.Opts...)
+	err := Invoke(ctx, service, ci.Request, Combine(hs...), ci.Opts...)
 	if err != nil {
 		return err
 	}
-	_ = ci.Cache.Set(ctx, key, rd, ci.getTTL())
+	_ = ci.Cache.Set(ctx, cacheKey, rd, ci.getTTL())
 	if ok1 {
-		*storedResponseResult = *rd
+		*sr = *rd
 	}
 	return nil
 }

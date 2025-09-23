@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/internal/cmd/monitor"
-	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xnet"
 )
 
@@ -53,9 +52,11 @@ func onConnect(conn net.Conn) {
 	start := time.Now()
 	id := cid.Add(1)
 	lg := log.New(os.Stderr, fmt.Sprintf("[%d] ", id), log.Ltime)
+	lg.Println("onConnect", conn.LocalAddr().String())
+
 	defer conn.Close()
 
-	remote, err := net.Dial("tcp", *remoteAddress)
+	remote, err := net.DialTimeout("tcp", *remoteAddress, 3*time.Second)
 	if err != nil {
 		lg.Println("connect remote fail", err.Error())
 		return
@@ -72,17 +73,18 @@ func onConnect(conn net.Conn) {
 		Time:      time.Now(),
 	}
 	remote = xnet.NewConn(remote, mit.Interceptor())
-
-	wg := &safely.WaitGo{}
-	wg.Go1(func() error {
+	done := make(chan error, 2)
+	go func() {
 		_, err1 := io.Copy(remote, conn)
-		return err1
-	})
-	wg.Go1(func() error {
+		done <- err1
+		lg.Println("io.Copy1", err1)
+	}()
+	go func() {
 		_, err2 := io.Copy(conn, remote)
-		return err2
-	})
-	err3 := wg.Wait()
+		done <- err2
+		lg.Println("io.Copy2", err2)
+	}()
+	<-done
 	cost := time.Since(start)
-	lg.Println("closed", remote.RemoteAddr().String(), err3, "cost=", cost.String())
+	lg.Println("closed", remote.RemoteAddr().String(), "cost=", cost.String())
 }

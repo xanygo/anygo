@@ -19,13 +19,13 @@ func IsHTTPURL(str string) error {
 	return nil
 }
 
-func StringIn(name, value string, values ...string) error {
+func StringIn(value string, values ...string) error {
 	for _, v := range values {
 		if value == v {
 			return nil
 		}
 	}
-	return fmt.Errorf("%s=%q is not in %q", name, value, values)
+	return fmt.Errorf("%q is not in %q", value, values)
 }
 
 func MapHasKeys[K comparable, V any](m map[K]V, keys ...K) error {

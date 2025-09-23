@@ -25,8 +25,10 @@ func SetDefault(l Logger) {
 	defaultLogger.Store(l)
 }
 
+var stderrLogger = NewSimple(os.Stderr)
+
 func init() {
-	SetDefault(NewSimple(os.Stderr))
+	SetDefault(stderrLogger)
 }
 
 // Info 使用 Default() Logger 打印 Info 日志
@@ -67,8 +69,8 @@ func DefaultLoggerOpt() FileLoggerOpt {
 
 // InitAllDefaultLogger 使用所有的 XXXLoggerOpt 初始化并赋值给对应的默认 Logger
 func InitAllDefaultLogger() {
-	SetDefault(DefaultLoggerOpt().MustNewLogger())
-	SetPanicLogger(PanicLoggerOpt().MustNewLogger())
+	SetDefault(MultiLogger(stderrLogger, DefaultLoggerOpt().MustNewLogger()))
+	SetPanicLogger(MultiLogger(stderrLogger, PanicLoggerOpt().MustNewLogger()))
 	SetAccessLogger(AccessLoggerOpt().MustNewLogger())
 	SetClientLogger(ClientLoggerOpt().MustNewLogger())
 }

@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xio"
@@ -100,10 +101,11 @@ func TeeReader(sr *StoredResponse) HandlerFunc {
 }
 
 type StoredResponse struct {
-	StatusCode int
-	URL        string
-	Header     http.Header
-	Body       []byte
+	CreateAt   int64       `json:"c"` // 创建时间，unix 时间戳
+	StatusCode int         `json:"s"`
+	URL        string      `json:"u,omitempty"`
+	Header     http.Header `json:"h,omitempty"`
+	Body       []byte      `json:"b,omitempty"`
 }
 
 func (sr *StoredResponse) Write(w http.ResponseWriter) {
@@ -115,4 +117,8 @@ func (sr *StoredResponse) Write(w http.ResponseWriter) {
 	w.Header().Set("Content-Length", strconv.Itoa(len(sr.Body)))
 	w.WriteHeader(sr.StatusCode)
 	w.Write(sr.Body)
+}
+
+func (sr *StoredResponse) CreateTime() time.Time {
+	return time.Unix(sr.CreateAt, 0)
 }
