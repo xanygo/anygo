@@ -17,7 +17,8 @@ type String[V any] interface {
 	Set(ctx context.Context, value V) error
 
 	// Get 获取字符串的值（类似 Redis 的 GET 命令）
-	Get(ctx context.Context) (V, error)
+	// 返回：值，是否存在，错误
+	Get(ctx context.Context) (V, bool, error)
 
 	// Incr 将字符串中的数字自增 1（类似 Redis 的 INCR 命令）
 	Incr(ctx context.Context) (int64, error)
@@ -52,6 +53,7 @@ type Hash[V any] interface {
 	HSet(ctx context.Context, field string, value V) error
 
 	// HGet 获取哈希表字段的值（类似 Redis 的 HGET 命令）
+	// 返回：值，是否存在，错误
 	HGet(ctx context.Context, field string) (V, bool, error)
 
 	// HDel 删除哈希表中的某个字段（类似 Redis 的 HDEL 命令）
@@ -85,6 +87,7 @@ type ZSet[V any] interface {
 	ZAdd(ctx context.Context, score float64, member V) error
 
 	// ZScore 读取分数
+	// 返回：值，是否存在，错误
 	ZScore(ctx context.Context, member V) (float64, bool, error)
 
 	// ZRange 按分数升序返回所有元素（类似 Redis 的 ZRANGE 命令）

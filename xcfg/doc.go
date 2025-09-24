@@ -103,7 +103,7 @@
 // 如可以使用 github.com/go-playground/validator/v10 来初始化 DefaultValidator。
 //
 //	type Info struct {
-//		A string `validator:"required"` // A 字段必填，不能为空
+//		A string `validate:"required"` // A 字段必填，不能为空
 //	}
 //
 // 具体顺序为：

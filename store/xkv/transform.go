@@ -44,16 +44,19 @@ func (ts transString[V]) Set(ctx context.Context, value V) error {
 	return ts.ss.Set(ctx, str)
 }
 
-func (ts transString[V]) Get(ctx context.Context) (v V, err error) {
-	str, err := ts.ss.Get(ctx)
+func (ts transString[V]) Get(ctx context.Context) (v V, found bool, err error) {
+	str, found, err := ts.ss.Get(ctx)
 	if err != nil {
-		return v, err
+		return v, false, err
 	}
-	if str == "" {
-		return v, nil
+	if !found {
+		return v, false, nil
 	}
 	err = xcodec.DecodeFromString(ts.codec, str, &v)
-	return v, err
+	if err != nil {
+		return v, false, err
+	}
+	return v, true, err
 }
 
 func (ts transString[V]) Incr(ctx context.Context) (int64, error) {

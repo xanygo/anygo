@@ -19,11 +19,26 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/store/xkv/internal"
+	"github.com/xanygo/anygo/xcodec"
 )
 
 var _ StringStorage = (*FileStorage)(nil)
 
-// FileStorage 基于本地文件系统的 KV 存储实现
+func NewFileStorage(dataDir string) *FileStorage {
+	return &FileStorage{
+		DataDir: dataDir,
+	}
+}
+
+// NewFileStorageAny 创建一个值类型支持泛型类型的，使用文件系统存储的 KV 存储对象
+func NewFileStorageAny[V any](dataDir string, coder xcodec.Codec) *Transformer[V] {
+	return &Transformer[V]{
+		Codec:   coder,
+		Storage: NewFileStorage(dataDir),
+	}
+}
+
+// FileStorage 基于本地文件系统的 KV 存储实现,值类型为 string
 type FileStorage struct {
 	// DataDir 数据存储目录，必填
 	DataDir string
@@ -103,13 +118,12 @@ func (f *fileString) Set(ctx context.Context, value string) error {
 	return f.WriteKVDataFile("value", value)
 }
 
-func (f *fileString) Get(ctx context.Context) (string, error) {
-	content, _, err := f.CheckReadKVDataFile("value", internal.DataTypeString, false)
-	return content, err
+func (f *fileString) Get(ctx context.Context) (string, bool, error) {
+	return f.CheckReadKVDataFile("value", internal.DataTypeString, false)
 }
 
 func (f *fileString) Incr(ctx context.Context) (int64, error) {
-	value, err := f.Get(ctx)
+	value, _, err := f.Get(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -123,7 +137,7 @@ func (f *fileString) Incr(ctx context.Context) (int64, error) {
 }
 
 func (f *fileString) Decr(ctx context.Context) (int64, error) {
-	value, err := f.Get(ctx)
+	value, _, err := f.Get(ctx)
 	if err != nil {
 		return 0, err
 	}

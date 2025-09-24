@@ -23,8 +23,8 @@ func (n nopString[V]) Set(ctx context.Context, value V) error {
 	return nil
 }
 
-func (n nopString[V]) Get(ctx context.Context) (v V, err error) {
-	return v, nil
+func (n nopString[V]) Get(ctx context.Context) (v V, found bool, err error) {
+	return v, false, nil
 }
 
 func (n nopString[V]) Incr(ctx context.Context) (int64, error) {

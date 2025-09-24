@@ -1,12 +1,11 @@
 //  Copyright(C) 2025 github.com/hidu  All Rights Reserved.
 //  Author: hidu <duv123+git@gmail.com>
-//  Date: 2025-09-20
+//  Date: 2025-09-24
 
 package xkv_test
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
 	"github.com/fsgo/fst"
@@ -14,22 +13,16 @@ import (
 	"github.com/xanygo/anygo/store/xkv"
 )
 
-func TestFileStorage(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "xkv_file")
-	ff := &xkv.FileStorage{
-		DataDir: dir,
-	}
-	testStorage(t, ff)
-}
-
 func testStorage(t *testing.T, ff xkv.StringStorage) {
 	t.Run("string", func(t *testing.T) {
 		ss1 := ff.String("hello")
-		got1, err1 := ss1.Get(context.Background())
+		got1, found1, err1 := ss1.Get(context.Background())
 		fst.NoError(t, err1)
+		fst.False(t, found1)
 		fst.Equal(t, "", got1)
 		fst.NoError(t, ss1.Set(context.Background(), "world"))
-		got2, err2 := ss1.Get(context.Background())
+		got2, found2, err2 := ss1.Get(context.Background())
+		fst.True(t, found2)
 		fst.NoError(t, err2)
 		fst.Equal(t, "world", got2)
 		fst.NoError(t, ff.Delete(context.Background(), "hello"))
@@ -130,5 +123,38 @@ func testStorage(t *testing.T, ff xkv.StringStorage) {
 		fst.NoError(t, err2)
 		fst.False(t, found2)
 		fst.Equal(t, 0, got2)
+	})
+}
+
+func benchStorage(b *testing.B, st xkv.StringStorage) {
+	b.Run("string", func(b *testing.B) {
+		s1 := st.String("str1")
+		b.Run("set", func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				_ = s1.Set(context.Background(), "v1")
+			}
+		})
+		b.Run("get", func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				s1.Get(context.Background())
+			}
+		})
+	})
+
+	b.Run("list", func(b *testing.B) {
+		l1 := st.List("list1")
+		for i := 0; i < b.N; i++ {
+			err1 := l1.LPush(context.Background(), "v1")
+			if err1 != nil {
+				b.Fatal(err1.Error())
+			}
+			got, found, err2 := l1.LPop(context.Background())
+			if err2 != nil {
+				b.Fatal(err2.Error())
+			}
+			if !found || got != "v1" {
+				b.Fatalf("not found or value is wrong %v %v", found, got)
+			}
+		}
 	})
 }
