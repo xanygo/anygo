@@ -124,20 +124,29 @@ func (ci CacheClient) needPreFlush(cacheCreate time.Time) bool {
 	return time.Since(cacheCreate) > preFlush
 }
 
+func (ci CacheClient) getCacheKey() string {
+	return ci.getService() + "|" + ci.Request.Method + "|" + ci.Request.URL.String() + ci.Key
+}
+
+// DeleteCache 删除此请求对应的缓存
+func (ci CacheClient) DeleteCache(ctx context.Context) error {
+	return ci.Cache.Delete(ctx, ci.getCacheKey())
+}
+
 func (ci CacheClient) Invoke(ctx context.Context, result any) error {
-	service := ci.getService()
-	key := service + "|" + ci.Request.Method + "|" + ci.Request.URL.String() + ci.Key
+	key := ci.getCacheKey()
 	cachedResponse, err := ci.Cache.Get(ctx, key)
 	decoder := ci.getDecoder()
 
 	sr, ok1 := result.(*StoredResponse)
 
 	if err == nil {
+		cachedResponse.FromCache = true
 		npr := ci.needPreFlush(cachedResponse.CreateTime())
 		if ok1 {
 			*sr = *cachedResponse
 			if npr {
-				ci.doPreFlush(ctx, service, decoder, result, key)
+				ci.doPreFlush(ctx, decoder, result, key)
 			}
 			return nil
 		}
@@ -145,18 +154,18 @@ func (ci CacheClient) Invoke(ctx context.Context, result any) error {
 		err = decoder.Decode(cachedResponse.Body, result)
 		if err == nil {
 			if npr {
-				ci.doPreFlush(ctx, service, decoder, result, key)
+				ci.doPreFlush(ctx, decoder, result, key)
 			}
 			return nil
 		}
 	}
 
-	return ci.direct(ctx, service, decoder, result, key)
+	return ci.direct(ctx, decoder, result, key)
 }
 
 var preFlushDB sync.Map
 
-func (ci CacheClient) doPreFlush(ctx context.Context, service string, decoder xcodec.Decoder, result any, cacheKey string) {
+func (ci CacheClient) doPreFlush(ctx context.Context, decoder xcodec.Decoder, result any, cacheKey string) {
 	t := reflect.TypeOf(result)
 	if t.Kind() != reflect.Ptr {
 		return
@@ -172,11 +181,11 @@ func (ci CacheClient) doPreFlush(ctx context.Context, service string, decoder xc
 	ctx = context.WithoutCancel(ctx)
 	go safely.RunVoid(func() {
 		defer preFlushDB.Delete(cacheKey)
-		_ = ci.direct(ctx, service, decoder, newObj, cacheKey)
+		_ = ci.direct(ctx, decoder, newObj, cacheKey)
 	})
 }
 
-func (ci CacheClient) direct(ctx context.Context, service string, decoder xcodec.Decoder, result any, cacheKey string) error {
+func (ci CacheClient) direct(ctx context.Context, decoder xcodec.Decoder, result any, cacheKey string) error {
 	var hs handlerCombine
 	if ci.HandlerFunc == nil {
 		hs = append(hs, StatusIn(http.StatusOK))
@@ -190,8 +199,9 @@ func (ci CacheClient) direct(ctx context.Context, service string, decoder xcodec
 	if !ok1 {
 		hs = append(hs, DecodeBody(decoder, result))
 	}
-
-	err := Invoke(ctx, service, ci.Request, Combine(hs...), ci.Opts...)
+	start := time.Now()
+	err := Invoke(ctx, ci.getService(), ci.Request, Combine(hs...), ci.Opts...)
+	rd.Cost = time.Since(start)
 	if err != nil {
 		return err
 	}

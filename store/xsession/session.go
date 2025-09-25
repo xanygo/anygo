@@ -22,7 +22,6 @@ type Session interface {
 	MGet(ctx context.Context, keys ...string) (map[string]string, error)
 	Delete(ctx context.Context, keys ...string) error
 	Created(ctx context.Context) (time.Time, error)
-	Updated(ctx context.Context) (time.Time, error)
 	Save(ctx context.Context) error
 	Clear(ctx context.Context) error
 }

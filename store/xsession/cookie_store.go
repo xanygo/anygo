@@ -99,7 +99,6 @@ var _ Session = (*cookieSession)(nil)
 type cookieSession struct {
 	id      string
 	created int64
-	updated int64
 	values  xmap.Sync[string, string]
 	store   *CookieStore
 }
@@ -109,13 +108,11 @@ func (c *cookieSession) ID() string {
 }
 
 func (c *cookieSession) Set(ctx context.Context, key string, value string) error {
-	c.updated = time.Now().Unix()
 	c.values.Store(key, value)
 	return nil
 }
 
 func (c *cookieSession) MSet(ctx context.Context, kv map[string]string) error {
-	c.updated = time.Now().Unix()
 	for k, v := range kv {
 		c.values.Store(k, v)
 	}
@@ -139,7 +136,6 @@ func (c *cookieSession) MGet(ctx context.Context, keys ...string) (map[string]st
 }
 
 func (c *cookieSession) Delete(ctx context.Context, keys ...string) error {
-	c.updated = time.Now().Unix()
 	for _, key := range keys {
 		c.values.Delete(key)
 	}
@@ -148,10 +144,6 @@ func (c *cookieSession) Delete(ctx context.Context, keys ...string) error {
 
 func (c *cookieSession) Created(ctx context.Context) (time.Time, error) {
 	return time.Unix(c.created, 0), nil
-}
-
-func (c *cookieSession) Updated(ctx context.Context) (time.Time, error) {
-	return time.Unix(c.updated, 0), nil
 }
 
 func (c *cookieSession) Save(ctx context.Context) error {
@@ -167,7 +159,6 @@ func (c *cookieSession) bytes() []byte {
 	data := map[string]any{
 		"c": c.created,
 		"v": c.values.ToMap(),
-		"u": c.updated,
 	}
 	bf, _ := json.Marshal(data)
 	return bf
@@ -184,7 +175,6 @@ func parserCookieValue(bf []byte) *cookieSession {
 	json.Unmarshal(bf, &v)
 	val := &cookieSession{
 		created: v.Created,
-		updated: v.Updated,
 	}
 	for k, v := range v.Values {
 		val.values.Store(k, v)

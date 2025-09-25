@@ -202,3 +202,17 @@ func MapFunc[S ~[]E, E any](arr S, fn func(index int, item E) (E, bool)) S {
 	}
 	return result
 }
+
+// CountFunc 统计 slice 中满足条件的元素个数
+func CountFunc[S ~[]E, E any](arr S, fn func(index int, item E) bool) int64 {
+	if len(arr) == 0 {
+		return 0
+	}
+	var result int64
+	for i := 0; i < len(arr); i++ {
+		if fn(i, arr[i]) {
+			result++
+		}
+	}
+	return result
+}

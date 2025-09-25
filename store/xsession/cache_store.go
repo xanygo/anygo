@@ -57,7 +57,6 @@ func (c *cacheSession) ID() string {
 
 type cacheSessionMeta struct {
 	CreatedAt int64    `json:"c"`
-	UpdateAt  int64    `json:"u"`
 	Keys      []string `json:"k"`
 }
 
@@ -88,7 +87,6 @@ func (c *cacheSession) updateMeta(ctx context.Context, addKeys []string, deleteK
 	if meta.CreatedAt == 0 {
 		meta.CreatedAt = now
 	}
-	meta.UpdateAt = now
 	meta.Keys = append(meta.Keys, addKeys...)
 	meta.Keys = xslice.DeleteValue(meta.Keys, deleteKeys...)
 	meta.Keys = xslice.Unique(meta.Keys)
@@ -158,14 +156,6 @@ func (c *cacheSession) Created(ctx context.Context) (time.Time, error) {
 		return time.Time{}, err
 	}
 	return time.Unix(meta.CreatedAt, 0), nil
-}
-
-func (c *cacheSession) Updated(ctx context.Context) (time.Time, error) {
-	meta, err := c.loadMeta(ctx)
-	if err != nil {
-		return time.Time{}, err
-	}
-	return time.Unix(meta.UpdateAt, 0), nil
 }
 
 func (c *cacheSession) Save(ctx context.Context) error {

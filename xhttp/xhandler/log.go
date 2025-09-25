@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/safely"
+	"github.com/xanygo/anygo/xctx"
 	"github.com/xanygo/anygo/xhttp"
 	"github.com/xanygo/anygo/xlog"
 )
@@ -43,7 +44,7 @@ func (al *AccessLog) Next(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		ctx := xlog.NewContext(r.Context())
-		al.before(ctx, start, r)
+		ctx = al.before(ctx, start, r)
 		r = r.WithContext(ctx)
 		defer al.after(ctx, start, w, r)
 		if al.OnRequest != nil {
@@ -78,7 +79,9 @@ func (al *AccessLog) safelyRecover(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (al *AccessLog) before(ctx context.Context, start time.Time, r *http.Request) {
+var ctxLogFieldsKey = xctx.NewKey()
+
+func (al *AccessLog) before(ctx context.Context, start time.Time, r *http.Request) context.Context {
 	var cookies []xlog.Attr
 	if al.OnCookies == nil {
 		cookies = al.cookies(r.Cookies())
@@ -93,6 +96,7 @@ func (al *AccessLog) before(ctx context.Context, start time.Time, r *http.Reques
 	} else {
 		headers = al.OnHeaders(r.Header)
 	}
+
 	xlog.AddMetaAttr(ctx,
 		xlog.String("method", r.Method),
 		xlog.String("uri", r.RequestURI),
@@ -103,9 +107,14 @@ func (al *AccessLog) before(ctx context.Context, start time.Time, r *http.Reques
 		xlog.Time("start", start),
 		xlog.String("host", r.Host),
 		xlog.Int64("contentLength", r.ContentLength),
+	)
+
+	// 这两个字段在最后打印打印即可，提前保存以避免被修改
+	ctxAttrs := []xlog.Attr{
 		xlog.GroupAttrs("cookie", cookies...),
 		xlog.GroupAttrs("header", headers...),
-	)
+	}
+	return context.WithValue(ctx, ctxLogFieldsKey, ctxAttrs)
 }
 
 func (al *AccessLog) logID(r *http.Request) string {
@@ -143,6 +152,9 @@ func (al *AccessLog) headers(h http.Header) []xlog.Attr {
 func (al *AccessLog) after(ctx context.Context, start time.Time, w http.ResponseWriter, r *http.Request) {
 	fields := []xlog.Attr{
 		xlog.DurationMS("cost", time.Since(start)),
+	}
+	if vs, ok := ctx.Value(ctxLogFieldsKey).([]xlog.Attr); ok {
+		fields = append(fields, vs...)
 	}
 	if err := ctx.Err(); err != nil {
 		fields = append(fields, xlog.ErrorAttr("after.ctx.err", ctx.Err()))
