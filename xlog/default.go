@@ -74,3 +74,11 @@ func InitAllDefaultLogger() {
 	SetAccessLogger(AccessLoggerOpt().MustNewLogger())
 	SetClientLogger(ClientLoggerOpt().MustNewLogger())
 }
+
+// SetAllDefaultLogger 设置所有默认内置的Logger 为同一个
+func SetAllDefaultLogger(logger Logger) {
+	SetDefault(logger)
+	SetPanicLogger(logger)
+	SetAccessLogger(logger)
+	SetClientLogger(logger)
+}

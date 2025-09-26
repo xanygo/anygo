@@ -7,16 +7,19 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"crypto/md5"
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"io/fs"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/xanygo/anygo/ds/xstr"
 	"github.com/xanygo/anygo/ds/xzip"
@@ -25,6 +28,12 @@ import (
 
 var outfile = flag.String("o", "out.ez", "output file name")
 var token = flag.String("token", "anygo-3000", "token for encryption")
+
+var minify = flag.String("m", "", `minify files with the specified file extension.
+https://github.com/tdewolff/minify/tree/master/cmd/minify
+
+e.g.:  js,css
+`)
 
 var exeName = "[" + os.Args[0] + "] "
 
@@ -128,12 +137,11 @@ func oneFile(w *zip.Writer, name string) error {
 	if err != nil {
 		return err
 	}
-	f, err := os.Open(name)
+	content, err := readAndMinify(name)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	_, err = io.Copy(fw, f)
+	_, err = fw.Write(content)
 	return err
 }
 
@@ -141,4 +149,22 @@ func assert(err error, msg string) {
 	if err != nil {
 		log.Fatal(msg, err)
 	}
+}
+
+// https://github.com/tdewolff/minify/tree/master/cmd/minify
+// Ubuntu: sudo apt install minify
+func readAndMinify(name string) ([]byte, error) {
+	baseName := filepath.Base(name)
+	if strings.Contains(baseName, ".min.") {
+		return os.ReadFile(name)
+	}
+	ext := strings.TrimPrefix(filepath.Ext(baseName), ".")
+	ms := strings.Split(*minify, ",")
+	if !slices.Contains(ms, ext) {
+		return os.ReadFile(name)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "minify", name)
+	return cmd.Output()
 }

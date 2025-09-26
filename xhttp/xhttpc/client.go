@@ -18,6 +18,7 @@ import (
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xctx"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
 )
@@ -78,6 +79,18 @@ func PostJSON(ctx context.Context, service string, url string, body any, handler
 	return InvokeWithCodec(ctx, service, http.MethodPost, url, body, xcodec.JSON, handler, opts...)
 }
 
+var ctxKeySkipCache = xctx.NewKey()
+
+// SkipCache 在 context 里设置让 CacheClient 是否强制跳过缓存
+func SkipCache(ctx context.Context, skip bool) context.Context {
+	return context.WithValue(ctx, ctxKeySkipCache, skip)
+}
+
+func isSkipCache(ctx context.Context) bool {
+	val, _ := ctx.Value(ctxKeySkipCache).(bool)
+	return val
+}
+
 // CacheClient 带有缓存的 HTTP Client
 type CacheClient struct {
 	Cache   xcache.Cache[string, *StoredResponse] // 必填，缓存对象
@@ -134,13 +147,19 @@ func (ci CacheClient) DeleteCache(ctx context.Context) error {
 }
 
 func (ci CacheClient) Invoke(ctx context.Context, result any) error {
+	var cachedResponse *StoredResponse
+	var err error
 	key := ci.getCacheKey()
-	cachedResponse, err := ci.Cache.Get(ctx, key)
+
+	if !isSkipCache(ctx) {
+		cachedResponse, err = ci.Cache.Get(ctx, key)
+	}
+
 	decoder := ci.getDecoder()
 
 	sr, ok1 := result.(*StoredResponse)
 
-	if err == nil {
+	if cachedResponse != nil && err == nil {
 		cachedResponse.FromCache = true
 		npr := ci.needPreFlush(cachedResponse.CreateTime())
 		if ok1 {

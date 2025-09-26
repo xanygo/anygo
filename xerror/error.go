@@ -55,3 +55,10 @@ type NotExistsError interface {
 func IsInvalidParam(err error) bool {
 	return errors.Is(err, InvalidParam)
 }
+
+func String(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}
