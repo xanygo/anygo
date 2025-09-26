@@ -208,6 +208,8 @@ var FuncMap = template.FuncMap{
 	"xToTitle":   strings.ToTitle,
 	"xTrimSpace": strings.TrimSpace,
 	"xTrim":      strings.Trim,
+
+	"xnl2br": tplfn.NL2BR,
 }
 
 func Dump(w io.Writer, obj any) {

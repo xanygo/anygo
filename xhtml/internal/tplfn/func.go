@@ -222,3 +222,9 @@ func Join(value any, args ...string) string {
 	}
 	return strings.Join(ss, sep)
 }
+
+func NL2BR(s string) template.HTML {
+	escaped := template.HTMLEscapeString(s)
+	withBr := strings.ReplaceAll(escaped, "\n", "<br>")
+	return template.HTML(withBr)
+}

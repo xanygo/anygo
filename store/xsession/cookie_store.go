@@ -152,7 +152,7 @@ func (c *cookieSession) Save(ctx context.Context) error {
 
 func (c *cookieSession) Clear(ctx context.Context) error {
 	c.values.Clear()
-	return nil
+	return c.Save(ctx)
 }
 
 func (c *cookieSession) bytes() []byte {

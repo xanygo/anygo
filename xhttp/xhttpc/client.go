@@ -160,10 +160,10 @@ func (ci CacheClient) Invoke(ctx context.Context, result any) error {
 	sr, ok1 := result.(*StoredResponse)
 
 	if cachedResponse != nil && err == nil {
-		cachedResponse.FromCache = true
 		npr := ci.needPreFlush(cachedResponse.CreateTime())
 		if ok1 {
 			*sr = *cachedResponse
+			sr.FromCache = true
 			if npr {
 				ci.doPreFlush(ctx, decoder, result, key)
 			}
