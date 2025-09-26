@@ -138,7 +138,10 @@ func (ci CacheClient) needPreFlush(cacheCreate time.Time) bool {
 }
 
 func (ci CacheClient) getCacheKey() string {
-	return ci.getService() + "|" + ci.Request.Method + "|" + ci.Request.URL.String() + ci.Key
+	if ci.Key != "" {
+		return ci.getService() + "|" + ci.Request.Method + "|" + ci.Key
+	}
+	return ci.getService() + "|" + ci.Request.Method + "|" + ci.Request.URL.String()
 }
 
 // DeleteCache 删除此请求对应的缓存
