@@ -18,7 +18,14 @@ type (
 		Deleter[K]
 	}
 
+	StringCache Cache[string, string]
+
 	Getter[K comparable, V any] interface {
+		// Get 读取数据，
+		// error 返回值：
+		//  1. 若数据不存在，应返回 xerror.NotFound
+		//  2. 查询查询到数据，返回 nil
+		//  3. 其他异常，返回 error!=nil
 		Get(ctx context.Context, key K) (value V, err error)
 	}
 
