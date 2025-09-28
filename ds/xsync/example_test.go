@@ -7,7 +7,7 @@ package xsync_test
 import (
 	"fmt"
 
-	xsync2 "github.com/xanygo/anygo/ds/xsync"
+	"github.com/xanygo/anygo/ds/xsync"
 )
 
 func ExampleOnceDoValue_Do() {
@@ -16,7 +16,7 @@ func ExampleOnceDoValue_Do() {
 		num++
 		return num
 	}
-	once := &xsync2.OnceDoValue[int]{}
+	once := &xsync.OnceDoValue[int]{}
 	for i := 0; i < 3; i++ {
 		got := once.Do(fn)
 		fmt.Println(got)
@@ -35,7 +35,7 @@ func ExampleOnceDoValue2_Do() {
 		num2 += 3
 		return num1, num2
 	}
-	once := &xsync2.OnceDoValue2[int, int]{}
+	once := &xsync.OnceDoValue2[int, int]{}
 	for i := 0; i < 3; i++ {
 		v1, v2 := once.Do(fn)
 		fmt.Println(v1, v2)
@@ -56,7 +56,7 @@ func ExampleOnceDoValue3_Do() {
 		num3 += 5
 		return num1, num2, num3
 	}
-	once := &xsync2.OnceDoValue3[int, int, int]{}
+	once := &xsync.OnceDoValue3[int, int, int]{}
 	for i := 0; i < 3; i++ {
 		v1, v2, v3 := once.Do(fn)
 		fmt.Println(v1, v2, v3)
@@ -79,7 +79,7 @@ func ExampleOnceDoValue4_Do() {
 		num4 += 7
 		return num1, num2, num3, num4
 	}
-	once := &xsync2.OnceDoValue4[int, int, int, int]{}
+	once := &xsync.OnceDoValue4[int, int, int, int]{}
 	for i := 0; i < 3; i++ {
 		v1, v2, v3, v4 := once.Do(fn)
 		fmt.Println(v1, v2, v3, v4)
@@ -97,7 +97,7 @@ func ExampleOnceValue() {
 		return num1
 	}
 
-	once := xsync2.OnceValue[int](fn)
+	once := xsync.OnceValue[int](fn)
 	for i := 0; i < 3; i++ {
 		fmt.Println(once())
 	}
@@ -116,7 +116,7 @@ func ExampleOnceValue2() {
 		return num1, num2
 	}
 
-	once := xsync2.OnceValue2[int, int](fn)
+	once := xsync.OnceValue2[int, int](fn)
 	for i := 0; i < 3; i++ {
 		fmt.Println(once())
 	}
@@ -127,8 +127,8 @@ func ExampleOnceValue2() {
 }
 
 func ExampleGetBytesBuffer() {
-	bf := xsync2.GetBytesBuffer()
+	bf := xsync.GetBytesBuffer()
 	bf.WriteString("hello")
 
-	xsync2.PutBytesBuffer(bf)
+	xsync.PutBytesBuffer(bf)
 }
