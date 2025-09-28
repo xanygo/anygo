@@ -99,11 +99,11 @@ func (c *cacheSession) dataKey(key string) string {
 }
 
 func (c *cacheSession) Set(ctx context.Context, key string, value string) error {
-	err := c.cache.Set(ctx, c.dataKey(key), value, c.ttl)
+	err := c.updateMeta(ctx, []string{key}, nil)
 	if err != nil {
 		return err
 	}
-	return c.updateMeta(ctx, []string{key}, nil)
+	return c.cache.Set(ctx, c.dataKey(key), value, c.ttl)
 }
 
 func (c *cacheSession) MSet(ctx context.Context, kv map[string]string) error {

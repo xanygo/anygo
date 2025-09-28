@@ -23,9 +23,9 @@ type (
 	Getter[K comparable, V any] interface {
 		// Get 读取数据，
 		// error 返回值：
-		//  1. 若数据不存在，应返回 xerror.NotFound
-		//  2. 查询查询到数据，返回 nil
-		//  3. 其他异常，返回 error!=nil
+		//  1. 若数据不存在，返回 xerror.NotFound, 可用 IsNotExists 判断
+		//  2. 查询到数据，返回 nil
+		//  3. 其他异常，返回 error != nil
 		Get(ctx context.Context, key K) (value V, err error)
 	}
 
@@ -35,6 +35,10 @@ type (
 
 	Deleter[K comparable] interface {
 		Delete(ctx context.Context, keys ...K) error
+	}
+
+	HasTTL[K comparable, V any] interface {
+		CacheTTL(ctx context.Context, key K, value V) time.Duration
 	}
 )
 

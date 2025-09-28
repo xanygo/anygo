@@ -9,7 +9,9 @@ import (
 	"time"
 )
 
+var _ HasTTL[string, string] = (*TTLWrapper[string, string])(nil)
 var _ Cache[string, string] = (*TTLWrapper[string, string])(nil)
+var _ HasStats = (*TTLWrapper[string, string])(nil)
 
 // TTLWrapper 用于对缓存的 TTL 进行动态调整的工具类
 //
@@ -29,6 +31,13 @@ type TTLWrapper[K comparable, V any] struct {
 	Dynamic func(ctx context.Context, k K, v V, ttl time.Duration) time.Duration
 }
 
+func (tw *TTLWrapper[K, V]) CacheTTL(ctx context.Context, key K, value V) time.Duration {
+	if tw.Dynamic != nil {
+		return tw.Dynamic(ctx, key, value, tw.Fixed)
+	}
+	return tw.Fixed
+}
+
 func (tw *TTLWrapper[K, V]) Get(ctx context.Context, key K) (value V, err error) {
 	return tw.Cache.Get(ctx, key)
 }
@@ -44,4 +53,13 @@ func (tw *TTLWrapper[K, V]) Set(ctx context.Context, key K, value V, ttl time.Du
 
 func (tw *TTLWrapper[K, V]) Delete(ctx context.Context, keys ...K) error {
 	return tw.Cache.Delete(ctx, keys...)
+}
+
+func (tw *TTLWrapper[K, V]) Stats() Stats {
+	if hs, ok := tw.Cache.(HasStats); ok {
+		return hs.Stats()
+	}
+	return Stats{
+		Keys: statsKeysNoStats,
+	}
 }

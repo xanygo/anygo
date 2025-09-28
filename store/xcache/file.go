@@ -29,6 +29,7 @@ import (
 )
 
 var _ Cache[string, int] = (*File[string, int])(nil)
+var _ HasStats = (*File[string, int])(nil)
 
 // File 文件系统缓存
 type File[K comparable, V any] struct {
@@ -47,9 +48,15 @@ type File[K comparable, V any] struct {
 	gcRunning atomic.Bool
 
 	errChan xbus.EventBus[error]
+
+	getCnt    atomic.Uint64 // 调用 Get 方法的次数
+	setCnt    atomic.Uint64 // 调用 Set 方法的次数
+	deleteCnt atomic.Uint64 // 调用 Delete 方法的次数
+	hitCnt    atomic.Uint64 // 调用 Get 命中缓存的次数
 }
 
 func (f *File[K, V]) Get(ctx context.Context, key K) (value V, err error) {
+	f.getCnt.Add(1)
 	select {
 	case <-ctx.Done():
 		return value, context.Cause(ctx)
@@ -65,14 +72,17 @@ func (f *File[K, V]) Get(ctx context.Context, key K) (value V, err error) {
 		return value, err
 	}
 	if expire {
-		f.Delete(ctx, key)
 		return value, xerror.NotFound
 	}
 	err = f.Codec.Decode(data, &value)
+	if err == nil {
+		f.hitCnt.Add(1)
+	}
 	return value, err
 }
 
 func (f *File[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration) error {
+	f.setCnt.Add(1)
 	select {
 	case <-ctx.Done():
 		return context.Cause(ctx)
@@ -140,6 +150,7 @@ func (f *File[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration)
 }
 
 func (f *File[K, V]) Delete(ctx context.Context, keys ...K) error {
+	f.deleteCnt.Add(1)
 	if len(keys) == 0 {
 		return nil
 	}
@@ -270,4 +281,14 @@ func (f *File[K, V]) checkFile(fp string) error {
 		return os.Remove(fp)
 	}
 	return nil
+}
+
+func (f *File[K, V]) Stats() Stats {
+	return Stats{
+		Get:    f.getCnt.Load(),
+		Set:    f.setCnt.Load(),
+		Delete: f.deleteCnt.Load(),
+		Hit:    f.hitCnt.Load(),
+		Keys:   statsKeysUnknown,
+	}
 }

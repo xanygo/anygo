@@ -106,10 +106,10 @@ type CacheClient struct {
 }
 
 func (ci CacheClient) getTTL() time.Duration {
-	if ci.TTL == 0 {
-		return time.Hour
+	if ci.TTL > 0 {
+		return ci.TTL
 	}
-	return ci.TTL
+	return time.Hour
 }
 
 func (ci CacheClient) getService() string {
@@ -132,7 +132,7 @@ func (ci CacheClient) needPreFlush(cacheCreate time.Time) bool {
 		return false
 	}
 	if preFlush == 0 {
-		preFlush = ci.TTL * 4 / 5
+		preFlush = ci.getTTL() * 4 / 5
 	}
 	return time.Since(cacheCreate) > preFlush
 }
@@ -166,7 +166,6 @@ func (ci CacheClient) Invoke(ctx context.Context, result any) error {
 		npr := ci.needPreFlush(cachedResponse.CreateTime())
 		if ok1 {
 			*sr = *cachedResponse
-			sr.FromCache = true
 			if npr {
 				ci.doPreFlush(ctx, decoder, result, key)
 			}
@@ -198,11 +197,11 @@ func (ci CacheClient) doPreFlush(ctx context.Context, decoder xcodec.Decoder, re
 		return
 	}
 
-	// 创建一个新的对象（和 result 指向的类型一样）
-	newObj := reflect.New(t.Elem()).Interface()
-	ctx = context.WithoutCancel(ctx)
 	go safely.RunVoid(func() {
 		defer preFlushDB.Delete(cacheKey)
+		// 创建一个新的对象（和 result 指向的类型一样）
+		newObj := reflect.New(t.Elem()).Interface()
+		ctx = context.WithoutCancel(ctx)
 		_ = ci.direct(ctx, decoder, newObj, cacheKey)
 	})
 }
@@ -214,7 +213,9 @@ func (ci CacheClient) direct(ctx context.Context, decoder xcodec.Decoder, result
 	} else {
 		hs = append(hs, ci.HandlerFunc)
 	}
-	rd := &StoredResponse{}
+	rd := &StoredResponse{
+		CreateAt: time.Now().Unix(),
+	}
 	hs = append(hs, TeeReader(rd))
 
 	sr, ok1 := result.(*StoredResponse)
@@ -227,9 +228,10 @@ func (ci CacheClient) direct(ctx context.Context, decoder xcodec.Decoder, result
 	if err != nil {
 		return err
 	}
-	_ = ci.Cache.Set(ctx, cacheKey, rd, ci.getTTL())
 	if ok1 {
 		*sr = *rd
 	}
+	rd.FromCache = true
+	_ = ci.Cache.Set(ctx, cacheKey, rd, ci.getTTL())
 	return nil
 }

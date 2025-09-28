@@ -12,6 +12,7 @@ import (
 )
 
 var _ Cache[string, any] = (*Transformer[any])(nil)
+var _ HasStats = (*Transformer[any])(nil)
 
 // Transformer 使用底层存储 K-V 均为 string 类型的 cache，存储缓存数据
 type Transformer[V any] struct {
@@ -38,4 +39,13 @@ func (t *Transformer[V]) Set(ctx context.Context, key string, value V, ttl time.
 
 func (t *Transformer[V]) Delete(ctx context.Context, keys ...string) error {
 	return t.Cache.Delete(ctx, keys...)
+}
+
+func (t *Transformer[V]) Stats() Stats {
+	if hs, ok := t.Cache.(HasStats); ok {
+		return hs.Stats()
+	}
+	return Stats{
+		Keys: statsKeysNoStats,
+	}
 }

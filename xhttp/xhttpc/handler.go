@@ -107,7 +107,7 @@ type StoredResponse struct {
 	Header     http.Header   `json:"h,omitempty"`
 	Body       []byte        `json:"b,omitempty"`
 	Cost       time.Duration `json:"t,omitempty"` // 实际请求耗时
-	FromCache  bool          `json:"-"`           // 是否来自缓存
+	FromCache  bool          `json:"f,omitempty"` // 是否来自缓存
 }
 
 func (sr *StoredResponse) Write(w http.ResponseWriter) {

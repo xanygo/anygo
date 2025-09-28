@@ -9,12 +9,14 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/xanygo/anygo/xerror"
 )
 
 var _ Cache[string, string] = (*LRU[string, string])(nil)
+var _ HasStats = (*LRU[string, string])(nil)
 
 func NewLRU[K comparable, V any](capacity int) *LRU[K, V] {
 	if capacity <= 0 {
@@ -34,9 +36,16 @@ type LRU[K comparable, V any] struct {
 	data     map[K]*list.Element
 	list     *list.List
 	mux      *sync.Mutex
+
+	getCnt    atomic.Uint64 // 调用 Get 方法的次数
+	setCnt    atomic.Uint64 // 调用 Set 方法的次数
+	deleteCnt atomic.Uint64 // 调用 Delete 方法的次数
+	hitCnt    atomic.Uint64 // 调用 Get 命中缓存的次数
 }
 
 func (lru *LRU[K, V]) Get(ctx context.Context, key K) (v V, err error) {
+	lru.getCnt.Add(1)
+
 	lru.mux.Lock()
 	defer lru.mux.Unlock()
 	el, has := lru.data[key]
@@ -50,11 +59,14 @@ func (lru *LRU[K, V]) Get(ctx context.Context, key K) (v V, err error) {
 		delete(lru.data, key)
 		return v, xerror.NotFound
 	}
+	lru.hitCnt.Add(1)
 	lru.list.MoveToFront(el)
 	return val.Data, nil
 }
 
 func (lru *LRU[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration) error {
+	lru.setCnt.Add(1)
+
 	cacheVal := &lruValue[K, V]{
 		Key:      key,
 		Data:     value,
@@ -87,6 +99,8 @@ func (lru *LRU[K, V]) weedOut() {
 }
 
 func (lru *LRU[K, V]) Delete(ctx context.Context, keys ...K) error {
+	lru.deleteCnt.Add(1)
+
 	if len(keys) == 0 {
 		return nil
 	}
@@ -111,6 +125,33 @@ func (lru *LRU[K, V]) Clear(ctx context.Context) error {
 	lru.list = list.New()
 	lru.mux.Unlock()
 	return nil
+}
+
+func (lru *LRU[K, V]) Keys() []K {
+	lru.mux.Lock()
+	keys := make([]K, 0, len(lru.data))
+	for k := range lru.data {
+		keys = append(keys, k)
+	}
+	lru.mux.Unlock()
+	return keys
+}
+
+func (lru *LRU[K, V]) Count() int {
+	lru.mux.Lock()
+	c := len(lru.data)
+	lru.mux.Unlock()
+	return c
+}
+
+func (lru *LRU[K, V]) Stats() Stats {
+	return Stats{
+		Get:    lru.getCnt.Load(),
+		Set:    lru.setCnt.Load(),
+		Delete: lru.deleteCnt.Load(),
+		Hit:    lru.hitCnt.Load(),
+		Keys:   int64(lru.Count()),
+	}
 }
 
 type lruValue[K comparable, V any] struct {
