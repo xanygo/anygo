@@ -13,6 +13,8 @@ import (
 )
 
 type Logger struct {
+	// Logger 可选，日志输出的目标
+	// 当为空时，默认使用  xlog.ClientLogger()
 	Logger xlog.Logger
 }
 
@@ -26,6 +28,13 @@ func (l *Logger) Interceptor() TCPInterceptor {
 	}
 }
 
+func (l *Logger) getLogger() xlog.Logger {
+	if l.Logger == nil {
+		return xlog.ClientLogger()
+	}
+	return l.Logger
+}
+
 func (l *Logger) beforeInvoke(ctx context.Context, service string, req Request, resp Response,
 	opts ...Option) (context.Context, Request, Response, []Option) {
 	ctx = xlog.NewContext(ctx)
@@ -33,6 +42,7 @@ func (l *Logger) beforeInvoke(ctx context.Context, service string, req Request, 
 		xlog.String("Service", service),
 		xlog.String("Protocol", req.Protocol()),
 		xlog.String("API", req.APIName()),
+		xlog.String("Request", req.String()),
 	)
 	return ctx, req, resp, opts
 }
@@ -111,8 +121,9 @@ func (l *Logger) afterInvoke(ctx context.Context, _ string, _ Request, resp Resp
 		xlog.String("Cost", try.Cost().String()),
 	}
 	// callerSkip =3 : 使日志中的 "source":<"function","file"> 定位到调用 RPC 方法的业务代码位置
-	l.Logger.Output(ctx, xlog.LevelInfo, 3, errMsg, attrs...)
+	lg := l.getLogger()
+	lg.Output(ctx, xlog.LevelInfo, 3, errMsg, attrs...)
 	if err != nil {
-		l.Logger.Output(ctx, xlog.LevelError, 3, err.Error(), attrs...)
+		lg.Output(ctx, xlog.LevelError, 3, err.Error(), attrs...)
 	}
 }

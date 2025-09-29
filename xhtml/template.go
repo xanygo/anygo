@@ -11,8 +11,10 @@ import (
 	"io"
 	"math/rand/v2"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/xanygo/anygo/ds/xmap"
@@ -186,16 +188,20 @@ var FuncMap = template.FuncMap{
 	"xStrSplit":    strings.Split,
 	"xStrFields":   strings.Fields,
 
+	// 读取使用 SetConst 设置的常量值
 	"xConst": getConst,
 
+	// 检查传入的参数是否是非空值
 	"xAssert": tplfn.Assert,
 
 	"xJoin": tplfn.Join,
 
-	"xMathAdd": tplfn.MathAdd,
-	"xMathSub": tplfn.MathSub,
-	"xMathMul": tplfn.MathMul,
-	"xMathDiv": tplfn.MathDiv,
+	"xMathAdd":        tplfn.MathAdd,
+	"xMathSub":        tplfn.MathSub,
+	"xMathMul":        tplfn.MathMul,
+	"xMathDiv":        tplfn.MathDiv,
+	"xMathPercent":    tplfn.MathPercent,    // 将一个小数转换为百分比的字符串
+	"xMathComplement": tplfn.MathComplement, // (1-f)*100 %
 
 	"xCat": func(items ...string) string {
 		if len(items) == 0 {
@@ -231,6 +237,7 @@ func getConst(key string, def ...any) any {
 	return def[0]
 }
 
+// SetConst 定义/存储一个值，用于在模版中使用 xConst 方法读取到
 func SetConst(key string, val any) {
 	constVars.LoadOrStore(key, val)
 }
@@ -238,4 +245,7 @@ func SetConst(key string, val any) {
 func init() {
 	const patternUri = `pattern="^(((https|http):\/\/\S+(\.\S+)+.*)|(\/\S+))$"`
 	SetConst("pattern-uri", template.HTMLAttr(patternUri))
+	SetConst("pid", os.Getpid())
+	SetConst("ppid", os.Getppid())
+	SetConst("startTime", time.Now())
 }

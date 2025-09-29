@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xnet"
@@ -25,7 +26,7 @@ var _ xrpc.Request = (*Request)(nil)
 
 type Request struct {
 	API    string // APIName
-	Method string
+	Method string // 请求方法，可选，默认为 http.MethodGet
 	Path   string
 	HTTPS  bool
 	Query  url.Values
@@ -38,7 +39,20 @@ func (r *Request) Protocol() string {
 }
 
 func (r *Request) String() string {
-	return "Request:" + r.APIName()
+	var b strings.Builder
+	b.WriteString("Request: ")
+	b.WriteString(r.getMethod())
+	if r.HTTPS {
+		b.WriteString(" https ")
+	} else {
+		b.WriteString("http ")
+	}
+	b.WriteString(r.Path)
+	if len(r.Query) > 0 {
+		b.WriteString(" ? ")
+		b.WriteString(r.Query.Encode())
+	}
+	return b.String()
 }
 
 func (r *Request) APIName() string {
@@ -143,7 +157,7 @@ var _ xrpc.Request = (*NativeRequest)(nil)
 
 type NativeRequest struct {
 	API     string
-	Request *http.Request
+	Request *http.Request // 必填
 }
 
 func (h *NativeRequest) Protocol() string {
@@ -151,7 +165,12 @@ func (h *NativeRequest) Protocol() string {
 }
 
 func (h *NativeRequest) String() string {
-	return "HTTPRequestNative:" + h.APIName()
+	var b strings.Builder
+	b.WriteString("NativeRequest: ")
+	b.WriteString(h.Request.Method)
+	b.WriteString(" ")
+	b.WriteString(h.Request.URL.String())
+	return b.String()
 }
 
 func (h *NativeRequest) APIName() string {

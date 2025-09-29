@@ -133,3 +133,21 @@ func MathDiv(first any, items ...any) (float64, error) {
 	}
 	return result, nil
 }
+
+func MathPercent(val float64) string {
+	if val == 0 {
+		return "0%"
+	} else if val == 1 {
+		return "100%"
+	}
+	return fmt.Sprintf("%.3f%%", val*100)
+}
+
+func MathComplement(val float64) string {
+	if val == 0 {
+		return "100%"
+	} else if val == 1 {
+		return "0%"
+	}
+	return fmt.Sprintf("%.3f%%", (1-val)*100)
+}

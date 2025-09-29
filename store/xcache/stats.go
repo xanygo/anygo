@@ -26,6 +26,15 @@ func (s Stats) String() string {
 	return str
 }
 
+// HitRate 命中率
+func (s Stats) HitRate() float64 {
+	if s.Get == 0 {
+		return 0
+	}
+	hit := float64(s.Hit) / float64(s.Get)
+	return hit
+}
+
 const (
 	statsKeysUnknown = -1 //  keys 数量未知
 	statsKeysNoStats = -2 //  无有效的 Stats 信息

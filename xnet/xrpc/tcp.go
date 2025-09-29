@@ -139,6 +139,9 @@ func (c *TCP) Invoke(ctx context.Context, serviceName string, req Request, resp 
 		if result == nil {
 			return nil
 		}
+		if err1 := ctx.Err(); err1 != nil {
+			break
+		}
 	}
 
 	return result
@@ -229,22 +232,23 @@ func (td tcpClientDialer) doConnect(ctx context.Context, service string, downstr
 	connectTimeout := xoption.ConnectTimeout(downstreamOpt)
 
 	doConnect := func(ctx context.Context, index int) (*xnet.ConnNode, error) {
-		ctx, cancel := context.WithTimeout(ctx, connectTimeout)
+		ctx1, cancel := context.WithTimeout(ctx, connectTimeout)
 		defer cancel()
 
 		action := NewAction("Pick", tryTotal)
+		action.TryIndex = index
 		for _, it := range td.interceptor {
 			if it.BeforePickAddress != nil {
-				it.BeforePickAddress(ctx, service, action)
+				it.BeforePickAddress(ctx1, service, action)
 			}
 		}
 
-		node, err := downstreamAP.Pick(ctx)
+		node, err := downstreamAP.Pick(ctx1)
 		action.End = time.Now()
 
 		for _, it := range td.interceptor {
 			if it.AfterPickAddress != nil {
-				it.AfterPickAddress(ctx, service, action, node, err)
+				it.AfterPickAddress(ctx1, service, action, node, err)
 			}
 		}
 		if err != nil {
@@ -252,15 +256,17 @@ func (td tcpClientDialer) doConnect(ctx context.Context, service string, downstr
 		}
 		targetNode := node
 		if targetAP != nil && targetAP != downstreamAP {
-			ta, err := targetAP.Pick(ctx)
+			ta, err := targetAP.Pick(ctx1)
 			if err != nil {
 				return nil, err
 			}
 			targetNode = ta
 		}
 
+		var connNode *xnet.ConnNode
 		action = NewAction("Dial", tryTotal)
-		connNode, err := td.dial(ctx, *node, downstreamOpt, *targetNode, targetOpt)
+		action.TryIndex = index
+		connNode, err = td.dial(ctx1, *node, downstreamOpt, *targetNode, targetOpt)
 		action.End = time.Now()
 		if err != nil && connNode == nil {
 			connNode = &xnet.ConnNode{
@@ -269,7 +275,7 @@ func (td tcpClientDialer) doConnect(ctx context.Context, service string, downstr
 		}
 		for _, it := range td.interceptor {
 			if it.AfterDial != nil {
-				it.AfterDial(ctx, service, action, connNode, err)
+				it.AfterDial(ctx1, service, action, connNode, err)
 			}
 		}
 		return connNode, err
@@ -281,8 +287,11 @@ func (td tcpClientDialer) doConnect(ctx context.Context, service string, downstr
 		if conn, err = doConnect(ctx, i); err == nil {
 			return conn, nil
 		}
+		if err1 := ctx.Err(); err1 != nil {
+			break
+		}
 	}
-	return nil, err
+	return conn, err
 }
 
 func (td tcpClientDialer) dial(ctx context.Context, downstream xnet.AddrNode, downstreamOpt xoption.Reader, target xnet.AddrNode, targetOpt xoption.Reader) (*xnet.ConnNode, error) {
@@ -315,7 +324,6 @@ func (td tcpClientDialer) dial(ctx context.Context, downstream xnet.AddrNode, do
 	}
 
 	result, err = td.targetTLSHandshake(ctx, result, targetOpt, target)
-
 	return result, err
 }
 

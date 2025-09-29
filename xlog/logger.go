@@ -126,15 +126,15 @@ func handlerOutput(ctx context.Context, handler Handler, level Level, callerSkip
 	var pcs [1]uintptr
 	runtime.Callers(callerSkip+2, pcs[:])
 	rec := slog.NewRecord(time.Now(), level, msg, pcs[0])
-	if values := MetaAttrsFromCtx(ctx); len(values) > 0 {
-		rec.AddAttrs(values...)
-	}
-	if values := AttrsFromCtx(ctx); len(values) > 0 {
-		rec.AddAttrs(values...)
-	}
+	meta := MetaAttrsFromCtx(ctx)
+	data := AttrsFromCtx(ctx)
 	if len(attrs) > 0 {
-		rec.AddAttrs(attrs...)
+		data = append(data, attrs...)
 	}
+	rec.AddAttrs(
+		slog.GroupAttrs("meta", meta...),
+		slog.GroupAttrs("attr", data...),
+	)
 	return handler.Handle(ctx, rec)
 }
 

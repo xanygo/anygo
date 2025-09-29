@@ -195,7 +195,6 @@ func OrMap(value any) any {
 	if ok1 && ok2 {
 		return value
 	}
-	template.HTMLEscaper()
 	return map[string]any{}
 }
 
