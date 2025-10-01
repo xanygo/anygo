@@ -31,8 +31,8 @@ func (resp *Response) String() string {
 	return "HTTPResponse:" + resp.resp.Status
 }
 
-func (resp *Response) LoadFrom(ctx context.Context, r io.Reader, opt xoption.Reader) error {
-	bio := bufio.NewReader(r)
+func (resp *Response) LoadFrom(ctx context.Context, req xrpc.Request, rd io.Reader, opt xoption.Reader) error {
+	bio := bufio.NewReader(rd)
 	resp.resp, resp.readErr = http.ReadResponse(bio, nil)
 	if resp.readErr != nil {
 		return resp.readErr

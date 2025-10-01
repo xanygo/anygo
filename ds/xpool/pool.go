@@ -1,0 +1,127 @@
+//  Copyright(C) 2025 github.com/hidu  All Rights Reserved.
+//  Author: hidu <duv123+git@gmail.com>
+//  Date: 2025-09-30
+
+package xpool
+
+import (
+	"context"
+	"errors"
+	"io"
+	"time"
+)
+
+var (
+	ErrClosed   = errors.New("pool is closed")
+	ErrBadEntry = errors.New("bad pool entry")
+)
+
+type (
+	Pool[V io.Closer] interface {
+		Get(ctx context.Context) (Entry[V], error)
+		Put(e Entry[V], err error)
+		Close() error
+		Stats() Stats
+	}
+)
+
+type Entry[V io.Closer] interface {
+	ID() uint64
+	Object() V
+	Pool() Pool[V]
+	CreatedAt() time.Time  // 创建时间
+	LastUsedAt() time.Time // 上次使用时间
+	UsageCount() uint64    // 使用次数
+	Release(err error)     // 放回连接池，若 err!=nil 则标记为不可用
+	io.Closer
+}
+
+type Factory[V io.Closer] interface {
+	New(ctx context.Context) (V, error)
+}
+
+type FactoryFunc[V io.Closer] func(ctx context.Context) (V, error)
+
+func (f FactoryFunc[V]) New(ctx context.Context) (V, error) {
+	return f(ctx)
+}
+
+type Validator[V io.Closer] interface {
+	Validate(V) error
+}
+
+// Option simple 配置选项，当前所有的选项都是可选的
+type Option struct {
+	// MaxOpen 最大打开数量
+	// <= 0 为不限制
+	MaxOpen int
+
+	// MaxIdle 最大空闲数，应 <= MaxOpen
+	// <=0 为不允许存在 Idle 元素
+	MaxIdle int
+
+	// MaxLifeTime 最大使用时长，超过后将被销毁
+	// <=0 为不限制
+	MaxLifeTime time.Duration
+
+	// MaxIdleTime 最大空闲等待时间，超过后将被销毁
+	// <=0 为不限制
+	MaxIdleTime time.Duration
+
+	// MaxPoolIdleTime GroupPool 使用，当超过此时长未被使用后，关闭并清理对应的 Pool
+	// <=0 时使用默认值 10 minute
+	MaxPoolIdleTime time.Duration
+}
+
+func (opt *Option) GetMaxPoolIdleTime() time.Duration {
+	if opt != nil && opt.MaxPoolIdleTime > 0 {
+		return opt.MaxPoolIdleTime
+	}
+	return 10 * time.Minute
+}
+
+func (opt *Option) shortestIdleTime() time.Duration {
+	if opt.MaxIdleTime <= 0 {
+		return opt.MaxLifeTime
+	}
+	if opt.MaxLifeTime <= 0 {
+		return opt.MaxIdleTime
+	}
+
+	return min(opt.MaxIdleTime, opt.MaxLifeTime)
+}
+
+// Stats Pool's Stats
+type Stats struct {
+	Open bool // 连接池的状态，true-正常，false-已关闭
+
+	NumOpen int // 当前，已打开的总数
+	InUse   int // 当前，正被使用的总数
+	Idle    int // 当前，连接池里空闲的总数
+	Wait    int // 当前，当前等待的总数
+
+	// Counters
+	WaitCount int64 // 累计等待的请求数
+
+	WaitDuration      time.Duration // 累计等待的总时间
+	MaxIdleClosed     int64         // 由于超过 MaxIdle, 被关闭的总数
+	MaxIdleTimeClosed int64         // 由于超过 MaxIdleTime，被关闭的总数
+	MaxLifeTimeClosed int64         // 由于超过 MaxLifetime，被关闭的总数
+}
+
+func (s Stats) Add(b Stats) Stats {
+	return Stats{
+		Open:    s.Open || b.Open,
+		NumOpen: s.NumOpen + b.NumOpen,
+		InUse:   s.InUse + b.InUse,
+		Idle:    s.Idle + b.Idle,
+		Wait:    s.Wait + b.Wait,
+
+		WaitCount: s.WaitCount + b.WaitCount,
+
+		WaitDuration:      s.WaitDuration + b.WaitDuration,
+		MaxIdleClosed:     s.MaxIdleClosed + b.MaxIdleClosed,
+		MaxIdleTimeClosed: s.MaxIdleTimeClosed + b.MaxIdleTimeClosed,
+		MaxLifeTimeClosed: s.MaxLifeTimeClosed + b.MaxLifeTimeClosed,
+	}
+}

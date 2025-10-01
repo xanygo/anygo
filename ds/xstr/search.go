@@ -24,6 +24,7 @@ func HasAnySuffix(str string, suffix ...string) bool {
 	return false
 }
 
+// EqualAny 判断是否和任意一个字符串相等
 func EqualAny(str string, values ...string) bool {
 	for _, v := range values {
 		if str == v {

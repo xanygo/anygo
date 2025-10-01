@@ -37,13 +37,6 @@ func (c *TCP) getDialer() xnet.Dialer {
 	return xnet.DefaultDialer
 }
 
-func (c *TCP) getServiceRegistry() xservice.Registry {
-	if c.ServiceRegistry != nil {
-		return c.ServiceRegistry
-	}
-	return xservice.DefaultRegistry()
-}
-
 func (c *TCP) allITs(ctx context.Context) []TCPInterceptor {
 	its := slices.Clone(globalTCPInterceptors)
 	if len(c.Interceptor) > 0 {
@@ -55,9 +48,37 @@ func (c *TCP) allITs(ctx context.Context) []TCPInterceptor {
 	return its
 }
 
-func (c *TCP) Invoke(ctx context.Context, serviceName string, req Request, resp Response, opts ...Option) (result error) {
+func (c *TCP) getServiceName(srv any) string {
+	switch sv := srv.(type) {
+	case string:
+		return sv
+	case xservice.Service:
+		return sv.Name()
+	default:
+		return fmt.Sprintf("invalid-%v", sv)
+	}
+}
+
+func (c *TCP) Invoke(ctx context.Context, srv any, req Request, resp Response, opts ...Option) (result error) {
 	action := NewAction("Invoke", 0)
 	its := c.allITs(ctx)
+
+	cfg := &config{
+		opt: xoption.NewSimple(),
+	}
+	ctxOpts := OptionsFromContext(ctx)
+	for _, opt := range ctxOpts {
+		opt.withOption(cfg)
+	}
+
+	for _, o := range opts {
+		o.withOption(cfg)
+	}
+
+	serviceName := c.getServiceName(srv)
+
+	service, err := cfg.getService(srv, c.ServiceRegistry)
+
 	defer func() {
 		action.End = time.Now()
 		for _, it := range its {
@@ -74,25 +95,9 @@ func (c *TCP) Invoke(ctx context.Context, serviceName string, req Request, resp 
 		ctx, req, resp, opts = it.BeforeInvoke(ctx, serviceName, req, resp, opts...)
 	}
 
-	cfg := &config{
-		opt: xoption.NewSimple(),
-	}
-	ctxOpts := OptionsFromContext(ctx)
-	for _, opt := range ctxOpts {
-		opt.withOption(cfg)
-	}
-
-	for _, o := range opts {
-		o.withOption(cfg)
-	}
-
-	service := cfg.ser
-	if service == nil {
-		var ok bool
-		service, ok = c.getServiceRegistry().Find(serviceName)
-		if !ok {
-			return fmt.Errorf("service %q %w", serviceName, xerror.NotFound)
-		}
+	if err != nil {
+		result = err
+		return err
 	}
 
 	// 将临时 option 和 service 的 option 合并
@@ -108,7 +113,7 @@ func (c *TCP) Invoke(ctx context.Context, serviceName string, req Request, resp 
 
 	td := tcpClientDialer{
 		dialer:      c.getDialer(),
-		registry:    c.getServiceRegistry(),
+		registry:    cfg.getRegistry(c.ServiceRegistry),
 		interceptor: its,
 		service:     service,
 		option:      opt,
@@ -166,7 +171,7 @@ func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt x
 	}
 	maxBody := xoption.MaxResponseSize(opt)
 	rd := io.LimitReader(conn, maxBody)
-	return resp.LoadFrom(ctx, rd, opt)
+	return resp.LoadFrom(ctx, req, rd, opt)
 }
 
 type tcpClientDialer struct {

@@ -92,7 +92,7 @@ func TryStopWorker(ctx context.Context, workers ...any) error {
 	return wg.Wait()
 }
 
-// CycleWorker 会周期性执行逻辑的 Worker
+// CycleWorker 会周期性执行逻辑的 Worker,一旦启动后，后台携程会定期执行相关任务逻辑
 type CycleWorker interface {
 	Name() string
 	Start(ctx context.Context, cycle time.Duration) error
@@ -101,6 +101,7 @@ type CycleWorker interface {
 
 var _ CycleWorker = (*CycleWorkerTpl)(nil)
 
+// CycleWorkerTpl CycleWorker 的实现
 type CycleWorkerTpl struct {
 	Do         func(ctx context.Context) error
 	WorkerName string

@@ -7,6 +7,7 @@ package xrpc
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net"
 	"time"
@@ -19,7 +20,9 @@ import (
 )
 
 type Client interface {
-	Invoke(ctx context.Context, service string, req Request, resp Response, opts ...Option) error
+	// Invoke 发送请求
+	// service: 为 string 类型时，是 serviceName。还可以是 xservice.Service 类型，
+	Invoke(ctx context.Context, service any, req Request, resp Response, opts ...Option) error
 }
 
 type Request interface {
@@ -31,7 +34,7 @@ type Request interface {
 
 type Response interface {
 	String() string
-	LoadFrom(ctx context.Context, r io.Reader, opt xoption.Reader) error
+	LoadFrom(ctx context.Context, req Request, rd io.Reader, opt xoption.Reader) error
 	xerror.HasErrCode
 	xerror.HasErrMsg
 	Unwrap() any
@@ -42,9 +45,45 @@ type HasOptionReader interface {
 }
 
 type config struct {
-	opt *xoption.Simple
-	ap  xbalance.Reader
-	ser xservice.Service
+	opt      *xoption.Simple
+	ap       xbalance.Reader
+	service  xservice.Service
+	registry xservice.Registry
+}
+
+func (cfg config) getService(srv any, def xservice.Registry) (xservice.Service, error) {
+	var serviceName string
+	switch sv := srv.(type) {
+	case string:
+		serviceName = sv
+	case xservice.Service:
+		return sv, nil
+	default:
+		return nil, fmt.Errorf("invalid service name: %v", serviceName)
+	}
+
+	if cfg.service != nil {
+		return cfg.service, nil
+	}
+
+	service, ok := cfg.getRegistry(def).Find(serviceName)
+	if !ok {
+		if serviceName == xservice.Dummy {
+			return xservice.DummyService(), nil
+		}
+		return nil, fmt.Errorf("service %q %w", serviceName, xerror.NotFound)
+	}
+	return service, nil
+}
+
+func (cfg config) getRegistry(def xservice.Registry) xservice.Registry {
+	if cfg.registry != nil {
+		return cfg.registry
+	}
+	if def != nil {
+		return def
+	}
+	return xservice.DefaultRegistry()
 }
 
 type Option interface {
@@ -105,6 +144,12 @@ func OptTLSConfig(c *tls.Config) Option {
 
 func OptService(s xservice.Service) Option {
 	return optionFunc(func(o *config) {
-		o.ser = s
+		o.service = s
+	})
+}
+
+func OptServiceRegistry(s xservice.Registry) Option {
+	return optionFunc(func(o *config) {
+		o.registry = s
 	})
 }
