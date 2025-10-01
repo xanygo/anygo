@@ -42,6 +42,10 @@ func (s SimpleString) String() string {
 	return string(s)
 }
 
+func (s SimpleString) ToFloat64() (float64, error) {
+	return strconv.ParseFloat(string(s), 64)
+}
+
 var _ Element = SimpleError("")
 
 // SimpleError RESP has specific data types for errors.
@@ -83,6 +87,10 @@ func (i Integer) Int() int {
 	return int(i)
 }
 
+func (i Integer) Int64() int64 {
+	return int64(i)
+}
+
 func (i Integer) DataType() DataType {
 	return DataTypeInteger
 }
@@ -111,6 +119,10 @@ func (b BulkString) DataType() DataType {
 
 func (b BulkString) String() string {
 	return string(b)
+}
+
+func (b BulkString) ToFloat64() (float64, error) {
+	return strconv.ParseFloat(string(b), 64)
 }
 
 var _ Element = Array(nil)

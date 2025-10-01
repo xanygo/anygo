@@ -80,17 +80,6 @@ func (opt *Option) GetMaxPoolIdleTime() time.Duration {
 	return 10 * time.Minute
 }
 
-func (opt *Option) shortestIdleTime() time.Duration {
-	if opt.MaxIdleTime <= 0 {
-		return opt.MaxLifeTime
-	}
-	if opt.MaxLifeTime <= 0 {
-		return opt.MaxIdleTime
-	}
-
-	return min(opt.MaxIdleTime, opt.MaxLifeTime)
-}
-
 // Stats Pool's Stats
 type Stats struct {
 	Open bool // 连接池的状态，true-正常，false-已关闭

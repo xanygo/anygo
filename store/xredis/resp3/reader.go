@@ -20,14 +20,15 @@ func ReadByType(rd Reader, dt DataType) (Element, error) {
 	if err != nil {
 		return nil, err
 	}
-	if dt1 := DataType(tp); dt != dt1 {
+	dt1 := DataType(tp)
+	if !dt.Equal(dt1) {
 		el, ok, err1 := asErrorType(dt1, rd)
 		if ok {
 			return el, err1
 		}
 		return nil, fmt.Errorf("invalid data type %q, expect %q", tp, dt)
 	}
-	return dt.Load(rd)
+	return dt1.Load(rd)
 }
 
 func asErrorType(dt DataType, rd Reader) (Element, bool, error) {

@@ -89,11 +89,27 @@ func (dc *element[V]) Release(err error) {
 	dc.releaseConn(err)
 }
 
-func (dc *element[V]) finalClose() error {
+func (dc *element[V]) withLock(fn func()) {
 	dc.mux.Lock()
 	defer dc.mux.Unlock()
-	dc.finalClosed = true
-	return dc.obj.Close()
+	fn()
+}
+
+// finalClose 在 放回 Pool 之后，需要关闭原始对象时调用
+func (dc *element[V]) finalClose() error {
+	var err error
+	dc.withLock(func() {
+		dc.finalClosed = true
+		err = dc.obj.Close()
+		var emp V
+		dc.obj = emp
+	})
+	dc.pool.withLock(func() {
+		dc.pool.numOpen--
+		dc.pool.maybeOpenNewConnections()
+	})
+	dc.pool.numClosed.Add(1)
+	return err
 }
 
 func (dc *element[V]) releaseConn(err error) {
@@ -107,6 +123,7 @@ func (dc *element[V]) expired(timeout time.Duration) bool {
 	return dc.createdAt.Add(timeout).Before(time.Now())
 }
 
+// validateConnection 验证是否有效
 func (dc *element[V]) validateConnection() bool {
 	if dc.validator == nil {
 		return true
@@ -126,7 +143,19 @@ func (dc *element[V]) closeDBLocked() func() error {
 }
 
 func (dc *element[V]) Close() error {
-	return nil
+	dc.mux.Lock()
+	if dc.closed {
+		dc.mux.Unlock()
+		return nil
+	}
+	dc.closed = true
+	dc.mux.Unlock() // not defer; removeDep finalClose calls may need to lock
+
+	// And now updates that require holding dc.mu.Lock.
+	dc.pool.mu.Lock()
+	fn := dc.pool.removeDepLocked(dc, dc)
+	dc.pool.mu.Unlock()
+	return fn()
 }
 
 var globalID atomic.Uint64
@@ -144,10 +173,10 @@ type simple[V io.Closer] struct {
 
 	creator Factory[V]
 
-	mu           sync.Mutex    // protects following fields
-	frees        []*element[V] // free connections ordered by returnedAt oldest to newest
-	connRequests connRequestSet[V]
-	numOpen      int // number of opened and pending open connections
+	mu           sync.Mutex        // protects following fields
+	frees        []*element[V]     // free connections ordered by returnedAt oldest to newest
+	connRequests connRequestSet[V] // 排队请求
+	numOpen      int               // number of opened and pending open connections
 
 	// Used to signal the need for new connections
 	// a goroutine running connectionOpener() reads on this chan and
@@ -173,7 +202,13 @@ type simple[V io.Closer] struct {
 }
 
 func (p *simple[V]) Get(ctx context.Context) (Entry[V], error) {
-	return p.conn(ctx, cachedOrNewConn)
+	var err error
+	var el *element[V]
+	err = p.retry(func(strategy connReuseStrategy) error {
+		el, err = p.conn(ctx, strategy)
+		return err
+	})
+	return el, err
 }
 
 func (p *simple[V]) Stats() Stats {
@@ -191,6 +226,12 @@ func (p *simple[V]) Stats() Stats {
 		MaxLifeTimeClosed: p.maxLifetimeClosed,
 	}
 	return st
+}
+
+func (p *simple[V]) withLock(fn func()) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	fn()
 }
 
 // connReuseStrategy determines how (*DB).conn returns database connections.
@@ -217,6 +258,23 @@ func (p *simple[V]) newElement(obj V) *element[V] {
 		obj:        obj,
 		validator:  vat,
 	}
+}
+
+// maxBadEntryRetries is the number of maximum retries if the driver returns
+// driver.ErrBadConn to signal a broken connection before forcing a new
+// connection to be opened.
+const maxBadEntryRetries = 2
+
+func (p *simple[V]) retry(fn func(strategy connReuseStrategy) error) error {
+	for i := int64(0); i < maxBadEntryRetries; i++ {
+		err := fn(cachedOrNewConn)
+		// retry if err is ErrBadEntry
+		if err == nil || !errors.Is(err, ErrBadEntry) {
+			return err
+		}
+	}
+
+	return fn(alwaysNewConn)
 }
 
 // conn returns a newly-opened or cached *driverConn.
@@ -590,7 +648,6 @@ func (p *simple[V]) openNewConnection(ctx context.Context) {
 		return
 	}
 	dc := p.newElement(ci)
-	dc.validator, _ = p.creator.(Validator[V])
 	if p.putConnDBLocked(dc, err) {
 		p.addDepLocked(dc, dc)
 	} else {
@@ -622,12 +679,12 @@ func (p *simple[V]) maybeOpenNewConnections() {
 
 // addDep notes that x now depends on dep, and x's finalClose won't be
 // called until all of x's dependencies are removed with removeDep.
-func (p *simple[V]) addDep(x finalCloser, dep any) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.addDepLocked(x, dep)
-}
-
+//
+//	func (p *simple[V]) addDep(x finalCloser, dep any) {
+//		p.mu.Lock()
+//		defer p.mu.Unlock()
+//		p.addDepLocked(x, dep)
+//	}
 func (p *simple[V]) addDepLocked(x finalCloser, dep any) {
 	if p.dep == nil {
 		p.dep = make(map[finalCloser]depSet)

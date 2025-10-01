@@ -161,6 +161,7 @@ func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt x
 	if err = conn.SetDeadline(time.Now().Add(totalTimeout)); err != nil {
 		return err
 	}
+	start := time.Now()
 	// 暂时不将读写超时分开控制
 	err = req.WriteTo(ctx, node, opt)
 	if err != nil {
@@ -171,7 +172,11 @@ func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt x
 	}
 	maxBody := xoption.MaxResponseSize(opt)
 	rd := io.LimitReader(conn, maxBody)
-	return resp.LoadFrom(ctx, req, rd, opt)
+	err = resp.LoadFrom(ctx, req, rd, opt)
+	if err != nil {
+		return fmt.Errorf("%w, cost=%s", err, time.Since(start).String())
+	}
+	return err
 }
 
 type tcpClientDialer struct {

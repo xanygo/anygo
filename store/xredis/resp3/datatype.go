@@ -13,7 +13,7 @@ import (
 	"strconv"
 )
 
-var ErrNil = errors.New("resp3 nil")
+var ErrNil = errors.New("redis nil value")
 
 var MaxResponseSize = 512 * 1024 * 1024
 
@@ -64,6 +64,26 @@ func (dt DataType) Valid() error {
 	default:
 		return fmt.Errorf("invalid data type: %q", dt)
 	}
+}
+
+func (dt DataType) IsString() bool {
+	return dt == DataTypeSimpleString || dt == DataTypeBulkString
+}
+
+func (dt DataType) IsError() bool {
+	return dt == DataTypeSimpleError || dt == DataTypeBulkError
+}
+
+func (dt DataType) Equal(b DataType) bool {
+	if dt == b {
+		return true
+	}
+	if dt.IsString() && b.IsString() {
+		return true
+	} else if dt.IsError() && b.IsError() {
+		return true
+	}
+	return false
 }
 
 func (dt DataType) Load(rd Reader) (Element, error) {
@@ -153,6 +173,9 @@ func (dt DataType) loadBulkString(rd Reader) (BulkString, error) {
 	if err != nil {
 		return "", err
 	}
+	if bf == nil {
+		return "", ErrNil
+	}
 	return BulkString(bf), nil
 }
 
@@ -170,14 +193,7 @@ func (dt DataType) loadBulkBytes(rd Reader) ([]byte, error) {
 	}
 	if length == -1 {
 		// $-1\r\n   -> Null bulk strings
-		line3, err3 := readLine(rd)
-		if err3 != nil {
-			return nil, err3
-		}
-		if len(line3) != 0 {
-			return nil, newInvalidDataError(line3)
-		}
-		return nil, ErrNil
+		return nil, nil
 	}
 	if length > MaxResponseSize {
 		return nil, fmt.Errorf("out of MaxResponseSize: %d", length)

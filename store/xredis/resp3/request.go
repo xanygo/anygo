@@ -23,7 +23,7 @@ func NewRequest(dt DataType, args ...any) Request {
 	for i, arg := range args {
 		value := toString(arg)
 		if i == 0 {
-			value = strings.ToLower(value)
+			value = strings.ToUpper(value)
 		}
 		vs = append(vs, BulkString(value))
 	}
