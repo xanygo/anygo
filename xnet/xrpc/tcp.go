@@ -405,7 +405,7 @@ func SetDefaultTCPClient(c *TCP) {
 	defaultTCPClient.Store(c)
 }
 
-func Invoke(ctx context.Context, service string, req Request, resp Response, opts ...Option) (result error) {
+func Invoke(ctx context.Context, service any, req Request, resp Response, opts ...Option) (result error) {
 	return DefaultTCPClient().Invoke(ctx, service, req, resp, opts...)
 }
 

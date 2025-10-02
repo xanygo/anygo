@@ -45,13 +45,24 @@ func ToString(result Result, err error) (string, error) {
 	}
 }
 
+func elementAsArray(result Result) ([]Element, error) {
+	switch dv := result.(type) {
+	case Array:
+		return dv, nil
+	case Set:
+		return dv, nil
+	default:
+		return nil, fmt.Errorf("not array reply: %T", result)
+	}
+}
+
 func ToStringSlice(result Result, err error) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	arr, ok := result.(Array)
-	if !ok {
-		return nil, fmt.Errorf("unexpected response type: %T", result)
+	arr, err := elementAsArray(result)
+	if err != nil {
+		return nil, err
 	}
 	list := make([]string, 0, len(arr))
 	for _, item := range arr {
@@ -78,6 +89,21 @@ func ToOkBool(result Result, err error) (bool, error) {
 		return dv.String() == "OK", nil
 	default:
 		return false, fmt.Errorf("unexpected response type: %T", dv)
+	}
+}
+
+func ToIntBool(result Result, err error, ok int) (bool, error) {
+	num, err1 := ToInt(result, err)
+	if err1 != nil {
+		return false, err1
+	}
+	switch num {
+	case ok:
+		return true, nil
+	case 0:
+		return false, nil
+	default:
+		return false, fmt.Errorf("unexpected reply: %v", num)
 	}
 }
 

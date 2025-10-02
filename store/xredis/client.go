@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"context"
 
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/store/xredis/resp3"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xrpc"
@@ -24,14 +25,28 @@ type (
 var ErrNil = resp3.ErrNil
 
 func NewClient(service string) *Client {
-	return &Client{
+	c := &Client{
 		Service: service,
 	}
+	c.once = &xsync.OnceInit[[]xrpc.Option]{
+		New: c.geRPCOptions,
+	}
+	return c
 }
 
 type Client struct {
-	Service  string
+	Service  any
 	Registry xservice.Registry
+	once     *xsync.OnceInit[[]xrpc.Option]
+}
+
+func (c *Client) geRPCOptions() []xrpc.Option {
+	options := make([]xrpc.Option, 1, 2)
+	options[0] = xrpc.OptHandshakeHandler(xrpc.HandshakeFunc(handshake))
+	if c.Registry != nil {
+		options = append(options, xrpc.OptServiceRegistry(c.Registry))
+	}
+	return options
 }
 
 func (c *Client) do(ctx context.Context, cmd Request) *rpcResponse {
@@ -39,7 +54,7 @@ func (c *Client) do(ctx context.Context, cmd Request) *rpcResponse {
 		req: cmd,
 	}
 	resp := &rpcResponse{}
-	_ = xrpc.Invoke(ctx, c.Service, req, resp, xrpc.OptHandshakeHandler(xrpc.HandshakeFunc(handshake)))
+	_ = xrpc.Invoke(ctx, c.Service, req, resp, c.once.Load()...)
 	return resp
 }
 

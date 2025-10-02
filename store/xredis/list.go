@@ -10,7 +10,7 @@ import (
 	"github.com/xanygo/anygo/store/xredis/resp3"
 )
 
-func (c *Client) listPush(ctx context.Context, method string, key string, values ...string) (int, error) {
+func (c *Client) doKeyValuesIntResult(ctx context.Context, method string, key string, values ...string) (int, error) {
 	args := make([]any, 2, len(values)+2)
 	args[0] = method
 	args[1] = key
@@ -23,19 +23,19 @@ func (c *Client) listPush(ctx context.Context, method string, key string, values
 }
 
 func (c *Client) LPush(ctx context.Context, key string, values ...string) (int, error) {
-	return c.listPush(ctx, "LPUSH", key, values...)
+	return c.doKeyValuesIntResult(ctx, "LPUSH", key, values...)
 }
 
 func (c *Client) LPushX(ctx context.Context, key string, values ...string) (int, error) {
-	return c.listPush(ctx, "LPUSHX", key, values...)
+	return c.doKeyValuesIntResult(ctx, "LPUSHX", key, values...)
 }
 
 func (c *Client) RPush(ctx context.Context, key string, values ...string) (int, error) {
-	return c.listPush(ctx, "RPUSH", key, values...)
+	return c.doKeyValuesIntResult(ctx, "RPUSH", key, values...)
 }
 
 func (c *Client) RPushX(ctx context.Context, key string, values ...string) (int, error) {
-	return c.listPush(ctx, "RPUSHX", key, values...)
+	return c.doKeyValuesIntResult(ctx, "RPUSHX", key, values...)
 }
 
 func (c *Client) LPop(ctx context.Context, key string) (string, error) {

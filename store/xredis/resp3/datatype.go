@@ -74,6 +74,14 @@ func (dt DataType) IsError() bool {
 	return dt == DataTypeSimpleError || dt == DataTypeBulkError
 }
 
+func (dt DataType) IsArray() bool {
+	return dt == DataTypeArray || dt == DataTypeSet
+}
+
+func (dt DataType) IsMap() bool {
+	return dt == DataTypeMap || dt == DataTypeAttribute
+}
+
 func (dt DataType) Equal(b DataType) bool {
 	if dt == b {
 		return true
@@ -81,6 +89,10 @@ func (dt DataType) Equal(b DataType) bool {
 	if dt.IsString() && b.IsString() {
 		return true
 	} else if dt.IsError() && b.IsError() {
+		return true
+	} else if dt.IsArray() && b.IsArray() {
+		return true
+	} else if dt.IsMap() && b.IsMap() {
 		return true
 	}
 	return false
