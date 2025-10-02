@@ -81,6 +81,24 @@ func ToOkBool(result Result, err error) (bool, error) {
 	}
 }
 
+func ToOkError(result Result, err error) error {
+	if err != nil {
+		return err
+	}
+	switch dv := result.(type) {
+	case SimpleString:
+		if dv.String() == "OK" {
+			return nil
+		}
+	case BulkString:
+		if dv.String() == "OK" {
+			return nil
+		}
+	default:
+	}
+	return fmt.Errorf("unexpected response type: %T", result)
+}
+
 func ToInt64(result Result, err error) (int64, error) {
 	if err != nil {
 		return 0, err
@@ -90,9 +108,47 @@ func ToInt64(result Result, err error) (int64, error) {
 		return dv.Int64(), nil
 	case BigNumber:
 		return dv.BigInt().Int64(), nil
+	case SimpleString:
+		return dv.ToInt64()
+	case BulkString:
+		return dv.ToInt64()
 	default:
-		return 0, fmt.Errorf("unexpected response type: %T", dv)
+		return 0, fmt.Errorf("unexpected response value: %v(%T)", dv, dv)
 	}
+}
+
+func ToInt64Slice(result Result, err error) ([]int64, error) {
+	if err != nil {
+		return nil, err
+	}
+	arr, ok := result.(Array)
+	if !ok {
+		return nil, fmt.Errorf("unexpected response type: %T", result)
+	}
+	list := make([]int64, 0, len(arr))
+	for _, item := range arr {
+		switch dv := item.(type) {
+		case Integer:
+			list = append(list, dv.Int64())
+		case BigNumber:
+			list = append(list, dv.Int64())
+		case SimpleString:
+			num, err := dv.ToInt64()
+			if err != nil {
+				return nil, err
+			}
+			list = append(list, num)
+		case BulkString:
+			num, err := dv.ToInt64()
+			if err != nil {
+				return nil, err
+			}
+			list = append(list, num)
+		default:
+			return nil, fmt.Errorf("unexpected response type: %T", dv)
+		}
+	}
+	return list, nil
 }
 
 func ToFloat64(result Result, err error) (float64, error) {
@@ -132,4 +188,15 @@ func ToMapWithKeys(result Result, err error, keys []string) (map[string]string, 
 		}
 	}
 	return m, nil
+}
+
+func ToStringMap(result Result, err error) (map[string]string, error) {
+	if err != nil {
+		return nil, err
+	}
+	switch rv := result.(type) {
+	case Map:
+		return rv.ToStringMap()
+	}
+	return nil, nil
 }

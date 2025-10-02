@@ -25,9 +25,17 @@ func TestSimple(t *testing.T) {
 		data := map[string]any{}
 		fst.NoError(t, json.Unmarshal(logContent, &data))
 		fst.NotEmpty(t, data["source"])
-		fst.Equal(t, "v1", data["k1"])
-		fst.Equal(t, "v2", data["k2"])
-		fst.Equal(t, "v3", data["k3"])
+
+		meta, ok := data["meta"].(map[string]any)
+		fst.True(t, ok)
+		fst.Equal(t, "v1", meta["k1"])
+
+		attr, ok := data["attr"].(map[string]any)
+		fst.True(t, ok)
+
+		fst.Equal(t, "v2", attr["k2"])
+		fst.Equal(t, "v3", attr["k3"])
+
 		fst.Equal(t, "hello", data["msg"])
 		fst.Equal(t, level.String(), data["level"].(string))
 		bf.Reset()

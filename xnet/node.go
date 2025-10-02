@@ -36,9 +36,10 @@ func NewAddrNodes(addrs ...net.Addr) []AddrNode {
 }
 
 type ConnNode struct {
-	Conn    net.Conn
-	TlsConn *tls.Conn
-	Addr    AddrNode
+	Conn      net.Conn
+	TlsConn   *tls.Conn
+	Addr      AddrNode
+	Handshake any // 握手后得到的信息
 }
 
 func (c *ConnNode) Clone() *ConnNode {

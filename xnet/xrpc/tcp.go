@@ -288,6 +288,7 @@ func (td tcpClientDialer) doConnect(ctx context.Context, service string, downstr
 				it.AfterDial(ctx1, service, action, connNode, err)
 			}
 		}
+
 		return connNode, err
 	}
 
@@ -333,7 +334,24 @@ func (td tcpClientDialer) dial(ctx context.Context, downstream xnet.AddrNode, do
 		}
 	}
 
+	result.Conn.SetDeadline(time.Now().Add(xoption.HandshakeTimeout(targetOpt)))
+	defer result.Conn.SetDeadline(time.Time{})
+
+	// TLS 握手
 	result, err = td.targetTLSHandshake(ctx, result, targetOpt, target)
+	if err != nil {
+		return result, err
+	}
+
+	// 协议层面的握手，如 redis 需要发送 HELLO request
+	if td.config.handshake != nil {
+		ret, err1 := td.config.handshake.Handshake(ctx, result, targetOpt)
+		if err1 != nil {
+			_ = result.Conn.Close()
+			return result, err1
+		}
+		result.Handshake = ret
+	}
 	return result, err
 }
 

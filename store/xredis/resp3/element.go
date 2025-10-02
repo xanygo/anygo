@@ -6,6 +6,7 @@ package resp3
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 	"strconv"
 
@@ -44,6 +45,14 @@ func (s SimpleString) String() string {
 
 func (s SimpleString) ToFloat64() (float64, error) {
 	return strconv.ParseFloat(string(s), 64)
+}
+
+func (s SimpleString) ToInt64() (int64, error) {
+	return strconv.ParseInt(string(s), 10, 64)
+}
+
+func (s SimpleString) ToUint64() (uint64, error) {
+	return strconv.ParseUint(string(s), 10, 64)
 }
 
 var _ Element = SimpleError("")
@@ -123,6 +132,14 @@ func (b BulkString) String() string {
 
 func (b BulkString) ToFloat64() (float64, error) {
 	return strconv.ParseFloat(string(b), 64)
+}
+
+func (b BulkString) ToInt64() (int64, error) {
+	return strconv.ParseInt(string(b), 10, 64)
+}
+
+func (b BulkString) ToUint64() (uint64, error) {
+	return strconv.ParseUint(string(b), 10, 64)
 }
 
 var _ Element = Array(nil)
@@ -219,6 +236,10 @@ func (bn BigNumber) BigInt() *big.Int {
 	return (*big.Int)(&bn)
 }
 
+func (bn BigNumber) Int64() int64 {
+	return bn.BigInt().Int64()
+}
+
 var _ Element = BulkError("")
 
 type BulkError string
@@ -303,6 +324,27 @@ func (m Map) DataType() DataType {
 	return DataTypeMap
 }
 
+func (m Map) ToStringMap() (map[string]string, error) {
+	return mapToStringMap(m)
+}
+
+func mapToStringMap[T Map | Attribute](m T) (map[string]string, error) {
+	if len(m) == 0 {
+		return nil, nil
+	}
+	result := make(map[string]string, len(m))
+	for k, v := range m {
+		ks, ok1 := k.(fmt.Stringer)
+		vs, ok2 := v.(fmt.Stringer)
+		if !ok1 || !ok2 {
+			return nil, fmt.Errorf("map: not string k-v %#v: %#v", k, v)
+		}
+		result[ks.String()] = vs.String()
+	}
+
+	return result, nil
+}
+
 var _ Element = Attribute(nil)
 
 // Attribute The attribute type is exactly like the Map type, but instead of a % character as the first byte,
@@ -329,6 +371,10 @@ func (ab Attribute) Bytes(bf *bytes.Buffer) []byte {
 
 func (ab Attribute) DataType() DataType {
 	return DataTypeAttribute
+}
+
+func (ab Attribute) ToStringMap() (map[string]string, error) {
+	return mapToStringMap(ab)
 }
 
 var _ Element = Set(nil)

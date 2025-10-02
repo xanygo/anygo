@@ -45,10 +45,11 @@ type HasOptionReader interface {
 }
 
 type config struct {
-	opt      *xoption.Simple
-	ap       xbalance.Reader
-	service  xservice.Service
-	registry xservice.Registry
+	opt       *xoption.Simple
+	ap        xbalance.Reader
+	service   xservice.Service
+	registry  xservice.Registry
+	handshake HandshakeHandler
 }
 
 func (cfg config) getService(srv any, def xservice.Registry) (xservice.Service, error) {
@@ -151,5 +152,11 @@ func OptService(s xservice.Service) Option {
 func OptServiceRegistry(s xservice.Registry) Option {
 	return optionFunc(func(o *config) {
 		o.registry = s
+	})
+}
+
+func OptHandshakeHandler(h HandshakeHandler) Option {
+	return optionFunc(func(o *config) {
+		o.handshake = h
 	})
 }
