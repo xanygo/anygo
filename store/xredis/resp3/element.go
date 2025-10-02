@@ -214,6 +214,10 @@ func (b Double) DataType() DataType {
 	return DataTypeDouble
 }
 
+func (b Double) Float64() float64 {
+	return float64(b)
+}
+
 var _ Element = BigNumber(big.Int{})
 
 // BigNumber This type can encode integer values outside the range of signed 64-bit integers.

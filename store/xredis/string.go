@@ -110,7 +110,7 @@ func (c *Client) MGet(ctx context.Context, keys ...string) (map[string]string, e
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToMapWithKeys(resp.result, resp.err, keys)
+	return resp3.ToStringMapWithKeys(resp.result, resp.err, keys)
 }
 
 func (c *Client) MSet(ctx context.Context, kv map[string]string) error {

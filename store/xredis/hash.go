@@ -123,7 +123,7 @@ func (c *Client) HGetDel(ctx context.Context, key string, fields ...string) (map
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToMapWithKeys(resp.result, resp.err, fields)
+	return resp3.ToStringMapWithKeys(resp.result, resp.err, fields)
 }
 
 func (c *Client) HGetEx(ctx context.Context, key string, ttl time.Duration, fields ...string) (map[string]string, error) {
@@ -141,7 +141,7 @@ func (c *Client) HGetEx(ctx context.Context, key string, ttl time.Duration, fiel
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToMapWithKeys(resp.result, resp.err, fields)
+	return resp3.ToStringMapWithKeys(resp.result, resp.err, fields)
 }
 
 func (c *Client) HPersist(ctx context.Context, key string, fields ...string) (int, error) {
@@ -191,7 +191,7 @@ func (c *Client) HMGet(ctx context.Context, key string, fields ...string) (map[s
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToMapWithKeys(resp.result, resp.err, fields)
+	return resp3.ToStringMapWithKeys(resp.result, resp.err, fields)
 }
 
 func (c *Client) HMSet(ctx context.Context, key string, data map[string]string) error {

@@ -186,12 +186,34 @@ func ToFloat64(result Result, err error) (float64, error) {
 		return dv.ToFloat64()
 	case BulkString:
 		return dv.ToFloat64()
+	case Double:
+		return dv.Float64(), nil
 	default:
 		return 0, fmt.Errorf("unexpected response type: %T", dv)
 	}
 }
 
-func ToMapWithKeys(result Result, err error, keys []string) (map[string]string, error) {
+func ToFloat64Slice(result Result, err error) ([]float64, error) {
+	if err != nil {
+		return nil, err
+	}
+	arr, ok := result.(Array)
+	if !ok {
+		return nil, fmt.Errorf("unexpected response type: %T", result)
+	}
+	list := make([]float64, 0, len(arr))
+	for _, item := range arr {
+		switch dv := item.(type) {
+		case Double:
+			list = append(list, dv.Float64())
+		default:
+			return nil, fmt.Errorf("unexpected response type: %T", dv)
+		}
+	}
+	return list, nil
+}
+
+func ToStringMapWithKeys(result Result, err error, keys []string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -209,6 +231,7 @@ func ToMapWithKeys(result Result, err error, keys []string) (map[string]string, 
 		case BulkString:
 			m[key] = dv.String()
 		case Null:
+			continue
 		default:
 			return nil, fmt.Errorf("unexpected response type: %T", dv)
 		}
@@ -225,4 +248,56 @@ func ToStringMap(result Result, err error) (map[string]string, error) {
 		return rv.ToStringMap()
 	}
 	return nil, nil
+}
+
+func ToMapFloat64(result Result, err error) (map[string]float64, error) {
+	if err != nil {
+		return nil, err
+	}
+	arr, ok := result.(Array)
+	if !ok {
+		return nil, fmt.Errorf("unexpected response type: %T", result)
+	}
+	if len(arr)%2 != 0 {
+		return nil, fmt.Errorf("expected even number of keys, got %d", len(arr))
+	}
+	ret := make(map[string]float64, len(arr)/2)
+	for i := 0; i < len(arr); i += 2 {
+		member, err1 := ToString(arr[i], nil)
+		if err1 != nil {
+			return nil, err1
+		}
+		score, err2 := ToFloat64(arr[i+1], nil)
+		if err2 != nil {
+			return nil, err2
+		}
+		ret[member] = score
+	}
+	return ret, nil
+}
+
+func ToMapFloat64WithKeys(result Result, err error, keys []string) (map[string]float64, error) {
+	if err != nil {
+		return nil, err
+	}
+	arr, ok := result.(Array)
+	if !ok {
+		return nil, fmt.Errorf("unexpected response type: %T", result)
+	}
+	if len(arr) != len(keys) {
+		return nil, fmt.Errorf("length not match, reply=%d, keys=%d", len(arr), len(keys))
+	}
+	ret := make(map[string]float64, len(arr))
+	for i := 0; i < len(arr); i++ {
+		if _, ok := arr[i].(Null); ok {
+			continue
+		}
+		member := keys[i]
+		score, err2 := ToFloat64(arr[i], nil)
+		if err2 != nil {
+			return nil, err2
+		}
+		ret[member] = score
+	}
+	return ret, nil
 }
