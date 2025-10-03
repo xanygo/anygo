@@ -41,6 +41,8 @@ const (
 	DataTypeAttribute      DataType = '|'
 	DataTypeSet            DataType = '~'
 	DataTypePush           DataType = '>'
+
+	DataTypeAny DataType = ' ' // 任意类型，用于构建 Request 数据使用
 )
 
 func (dt DataType) Valid() error {
@@ -60,6 +62,8 @@ func (dt DataType) Valid() error {
 		DataTypeAttribute,
 		DataTypeSet,
 		DataTypePush:
+		return nil
+	case DataTypeAny:
 		return nil
 	default:
 		return fmt.Errorf("invalid data type: %q", dt)
@@ -83,7 +87,7 @@ func (dt DataType) IsMap() bool {
 }
 
 func (dt DataType) Equal(b DataType) bool {
-	if dt == b {
+	if dt == b || b == DataTypeAny {
 		return true
 	}
 	if dt.IsString() && b.IsString() {

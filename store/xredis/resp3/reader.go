@@ -21,7 +21,7 @@ func ReadByType(rd Reader, dt DataType) (Element, error) {
 		return nil, err
 	}
 	dt1 := DataType(tp)
-	if !dt.Equal(dt1) {
+	if !dt1.Equal(dt) {
 		el, ok, err1 := asErrorType(dt1, rd)
 		if ok {
 			return el, err1
