@@ -15,6 +15,7 @@ import (
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
+	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xservice"
 	"github.com/xanygo/anygo/xoption"
 )
@@ -49,7 +50,7 @@ type config struct {
 	ap        xbalance.Reader
 	service   xservice.Service
 	registry  xservice.Registry
-	handshake HandshakeHandler
+	handshake xdial.HandshakeHandler
 }
 
 func (cfg config) getService(srv any, def xservice.Registry) (xservice.Service, error) {
@@ -155,7 +156,7 @@ func OptServiceRegistry(s xservice.Registry) Option {
 	})
 }
 
-func OptHandshakeHandler(h HandshakeHandler) Option {
+func OptHandshakeHandler(h xdial.HandshakeHandler) Option {
 	return optionFunc(func(o *config) {
 		o.handshake = h
 	})

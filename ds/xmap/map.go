@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/xanygo/anygo/internal/zbase"
 )
 
 // Get 从 map 中读取指定 key 的值。支持 map 为 nil。
@@ -29,6 +31,17 @@ func GetDf[K comparable, V any](m map[K]V, key K, def V) V {
 		return v
 	}
 	return def
+}
+
+func GetString[K comparable, V any](m map[K]V, key K) (string, bool) {
+	if len(m) == 0 {
+		return "", false
+	}
+	v, found := m[key]
+	if !found {
+		return "", false
+	}
+	return zbase.BaseTypeToString(v)
 }
 
 // HasKey 判断 map 中是否存在特定 key。支持 map 为 nil。

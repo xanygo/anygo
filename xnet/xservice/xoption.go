@@ -4,9 +4,14 @@
 
 package xservice
 
-import "github.com/xanygo/anygo/xoption"
+import (
+	"github.com/xanygo/anygo/xoption"
+)
 
-var xOptKeyHTTP = xoption.NewKey("HTTP")
+var (
+	xOptKeyHTTP  = xoption.NewKey("HTTP")
+	xOptConnPool = xoption.NewKey("ConnPool")
+)
 
 func SetOptHTTP(opt xoption.Writer, val HTTPPart) {
 	opt.Set(xOptKeyHTTP, val)
@@ -14,4 +19,12 @@ func SetOptHTTP(opt xoption.Writer, val HTTPPart) {
 
 func OptHTTP(opt xoption.Reader) HTTPPart {
 	return xoption.GetAsDefault[HTTPPart](opt, xOptKeyHTTP, HTTPPart{})
+}
+
+func SetOptConnPool(opt xoption.Writer, val *ConnPoolPart) {
+	opt.Set(xOptConnPool, val)
+}
+
+func OptConnPool(opt xoption.Reader) *ConnPoolPart {
+	return xoption.GetAsDefault[*ConnPoolPart](opt, xOptConnPool, nil)
 }

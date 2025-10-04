@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/xbus"
 )
 
@@ -20,6 +21,10 @@ var (
 	KeyRetry            = NewKey("Retry")
 	KeyBalancer         = NewKey("Balancer") // 负载均衡策略名称
 	KeyMaxResponseSize  = NewKey("MaxResponseSize")
+	KeyUseProxy         = NewKey("UseProxy")
+	KeyProtocol         = NewKey("Protocol")
+
+	keyExtraPrefix = "Extra:"
 )
 
 func SetConnectTimeout(opt Writer, timeout time.Duration) {
@@ -107,6 +112,38 @@ func SetBalancer(opt Writer, name string) {
 
 func Balancer(opt Reader) string {
 	return String(opt, KeyBalancer, "RoundRobin")
+}
+
+func SetUseProxy(opt Writer, name string) {
+	opt.Set(KeyUseProxy, name)
+}
+
+func UseProxy(opt Reader) string {
+	return String(opt, KeyUseProxy, "")
+}
+
+func SetProtocol(opt Writer, name string) {
+	opt.Set(KeyProtocol, name)
+}
+
+func Protocol(opt Reader) string {
+	return String(opt, KeyProtocol, "")
+}
+
+var extraKeys = &xmap.Cached[string, Key]{
+	New: func(k string) Key {
+		return NewKey(keyExtraPrefix + k)
+	},
+}
+
+func SetExtra(opt Writer, key string, value any) {
+	ek := extraKeys.Get(key)
+	opt.Set(ek, value)
+}
+
+func Extra(opt Reader, key string) any {
+	val, _ := Get(opt, extraKeys.Get(key))
+	return val
 }
 
 func ConsumeRPCConfig(d Writer, msg xbus.Message) error {

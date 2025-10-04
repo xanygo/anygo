@@ -14,6 +14,7 @@ import (
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xnaming"
+	"github.com/xanygo/anygo/xoption"
 )
 
 var ErrEmptyNode = errors.New("empty node")
@@ -102,6 +103,14 @@ func (w *worker) Name() string {
 }
 
 func (w *worker) Pick(ctx context.Context) (*xnet.AddrNode, error) {
+	if ap := ReaderFromContext(ctx); ap != nil {
+		return ap.Pick(ctx)
+	}
+	if opt := xoption.ReaderFromContext(ctx); opt != nil {
+		if ap := OptReader(opt); ap != nil {
+			return ap.Pick(ctx)
+		}
+	}
 	return w.b.Pick(ctx)
 }
 

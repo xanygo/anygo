@@ -7,10 +7,13 @@ package xredis
 import (
 	"bufio"
 	"context"
+	"fmt"
 
+	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/store/xredis/resp3"
 	"github.com/xanygo/anygo/xnet"
+	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
 	"github.com/xanygo/anygo/xoption"
@@ -21,6 +24,8 @@ type (
 
 	Result = resp3.Result
 )
+
+const Protocol = "RESP3"
 
 var ErrNil = resp3.ErrNil
 
@@ -41,8 +46,7 @@ type Client struct {
 }
 
 func (c *Client) geRPCOptions() []xrpc.Option {
-	options := make([]xrpc.Option, 1, 2)
-	options[0] = xrpc.OptHandshakeHandler(xrpc.HandshakeFunc(handshake))
+	options := make([]xrpc.Option, 0, 1)
 	if c.Registry != nil {
 		options = append(options, xrpc.OptServiceRegistry(c.Registry))
 	}
@@ -64,14 +68,35 @@ func (c *Client) Do(ctx context.Context, cmd Request) Response {
 	}
 }
 
+func init() {
+	handler := xdial.HandshakeFunc(handshake)
+	xdial.RegisterHandshakeHandler(Protocol, handler)
+	xdial.RegisterHandshakeHandler("Redis", handler)
+}
+
+// 创建连接后，和 redis server 握手
 func handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (any, error) {
 	cmd := resp3.HelloRequest{}
+	cfg := xoption.Extra(opt, "Redis")
+	if cfg != nil {
+		mp, ok := cfg.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("config [Redis] part is not map[string]any, %#v", cfg)
+		}
+		if username, ok1 := xmap.GetString(mp, "Username"); ok1 {
+			cmd.Username = username
+		}
+		if password, ok1 := xmap.GetString(mp, "Password"); ok1 {
+			cmd.Password = password
+		}
+	}
+	cc := conn.NetConn()
 	bf := bp.Get()
-	_, err := conn.Conn.Write(cmd.Bytes(bf))
+	_, err := cc.Write(cmd.Bytes(bf))
 	bp.Put(bf)
 	if err != nil {
 		return nil, err
 	}
-	br := bufio.NewReader(conn.Conn)
+	br := bufio.NewReader(cc)
 	return resp3.ReadByType(br, cmd.ResponseType())
 }

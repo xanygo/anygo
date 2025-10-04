@@ -6,6 +6,7 @@ package xnet
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
 	"sync/atomic"
 	"time"
@@ -446,4 +447,37 @@ func (t *TraceConn) WriteCost() time.Duration {
 
 func (t *TraceConn) CreateTime() time.Time {
 	return t.creatTime
+}
+
+type ConnNode struct {
+	Conn      net.Conn
+	TlsConn   *tls.Conn
+	Addr      AddrNode
+	Handshake any // 握手后得到的信息
+}
+
+// NetConn 优先返回 TlsConn
+func (c *ConnNode) NetConn() net.Conn {
+	if c.TlsConn != nil {
+		return c.TlsConn
+	}
+	return c.Conn
+}
+
+func (c *ConnNode) Clone() *ConnNode {
+	if c == nil {
+		return nil
+	}
+	return &ConnNode{
+		Conn:    c.Conn,
+		TlsConn: c.TlsConn,
+		Addr:    c.Addr,
+	}
+}
+
+func (c *ConnNode) Close() error {
+	if c.Conn != nil {
+		return c.Conn.Close()
+	}
+	return nil
 }

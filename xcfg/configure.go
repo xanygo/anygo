@@ -174,7 +174,7 @@ func (c *Configure) parseBytes(confPath string, fileExt string, content []byte, 
 		return errHook
 	}
 
-	if errParser := parser.Decode(contentNew, obj); errParser != nil {
+	if errParser := xcodec.Decode(parser, contentNew, obj); errParser != nil {
 		return fmt.Errorf("%w, config content=\n%s", errParser, string(contentNew))
 	}
 

@@ -33,6 +33,9 @@ type GroupPool[K comparable, V io.Closer] interface {
 	Get(ctx context.Context, key K) (Entry[V], error)
 	Put(e Entry[V], err error)
 	Close() error
+
+	Stats() Stats
+	GroupStats() map[K]Stats
 }
 
 type GroupFactory[K comparable, V io.Closer] interface {
@@ -93,7 +96,7 @@ func (group *simpleGroup[K, V]) Get(ctx context.Context, key K) (Entry[V], error
 
 func (group *simpleGroup[K, V]) Put(e Entry[V], err error) {
 	group.solo.Execute(group.bgCtx, group.clearEmpty, 5*time.Minute, 10*time.Second)
-	e.Pool().Put(e, err)
+	e.Release(err)
 }
 
 func (group *simpleGroup[K, V]) Close() error {

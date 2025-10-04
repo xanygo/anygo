@@ -8,7 +8,10 @@ import (
 	"context"
 	"errors"
 	"io"
+	"sync/atomic"
 	"time"
+
+	"github.com/xanygo/anygo/ds/xsync"
 )
 
 var (
@@ -23,16 +26,21 @@ type (
 		Close() error
 		Stats() Stats
 	}
+
+	Putter[V io.Closer] interface {
+		Put(e Entry[V], err error)
+	}
 )
 
 type Entry[V io.Closer] interface {
 	ID() uint64
 	Object() V
-	Pool() Pool[V]
 	CreatedAt() time.Time  // 创建时间
 	LastUsedAt() time.Time // 上次使用时间
 	UsageCount() uint64    // 使用次数
 	Release(err error)     // 放回连接池，若 err!=nil 则标记为不可用
+
+	// Closer 关闭底层对象
 	io.Closer
 }
 
@@ -113,4 +121,65 @@ func (s Stats) Add(b Stats) Stats {
 		MaxIdleTimeClosed: s.MaxIdleTimeClosed + b.MaxIdleTimeClosed,
 		MaxLifeTimeClosed: s.MaxLifeTimeClosed + b.MaxLifeTimeClosed,
 	}
+}
+
+func NewOpenEntry[V io.Closer](obj V, p Putter[V]) *OpenEntry[V] {
+	entry := &OpenEntry[V]{
+		obj:       obj,
+		id:        globalID.Add(1),
+		createdAt: time.Now(),
+		pool:      p,
+	}
+	return entry
+}
+
+var _ Entry[io.Closer] = (*OpenEntry[io.Closer])(nil)
+
+type OpenEntry[V io.Closer] struct {
+	id         uint64
+	obj        V
+	createdAt  time.Time
+	usedAt     xsync.TimeStamp
+	pool       Putter[V]
+	usageCount atomic.Uint64
+	using      atomic.Bool
+}
+
+func (oe *OpenEntry[V]) UpdateUsing() {
+	oe.using.Store(true)
+	oe.usedAt.Store(time.Now())
+	oe.usageCount.Add(1)
+}
+
+func (oe *OpenEntry[V]) ID() uint64 {
+	return oe.id
+}
+
+func (oe *OpenEntry[V]) Object() V {
+	return oe.obj
+}
+
+func (oe *OpenEntry[V]) CreatedAt() time.Time {
+	return oe.createdAt
+}
+
+func (oe *OpenEntry[V]) LastUsedAt() time.Time {
+	return oe.usedAt.Load()
+}
+
+func (oe *OpenEntry[V]) UsageCount() uint64 {
+	return oe.usageCount.Load()
+}
+
+func (oe *OpenEntry[V]) Release(err error) {
+	if oe.using.CompareAndSwap(true, false) {
+		oe.pool.Put(oe, err)
+	}
+}
+
+func (oe *OpenEntry[V]) Close() error {
+	err := oe.obj.Close()
+	var emp V
+	oe.obj = emp
+	return err
 }

@@ -74,3 +74,29 @@ func IsIPAddress(host string) bool {
 	ip, _ := internal.ParseIPZone(host)
 	return ip != nil
 }
+
+type AddrNode struct {
+	HostPort string
+	Addr     net.Addr
+}
+
+func (n AddrNode) Host() string {
+	host, _, _ := net.SplitHostPort(n.HostPort)
+	return host
+}
+
+func (n AddrNode) Port() string {
+	_, port, _ := net.SplitHostPort(n.HostPort)
+	return port
+}
+
+func NewAddrNodes(addrs ...net.Addr) []AddrNode {
+	nodes := make([]AddrNode, len(addrs))
+	for i, addr := range addrs {
+		nodes[i] = AddrNode{
+			HostPort: addr.String(),
+			Addr:     addr,
+		}
+	}
+	return nodes
+}

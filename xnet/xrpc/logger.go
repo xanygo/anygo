@@ -99,7 +99,7 @@ func (l *Logger) afterWriteRead(ctx context.Context, _ string, conn *xnet.ConnNo
 		}
 	}
 
-	if rr, ok := resp.Unwrap().(*http.Response); ok {
+	if rr, ok := resp.Unwrap().(*http.Response); ok && rr != nil {
 		respInfo := map[string]any{
 			"Proto":   rr.Proto,
 			"Status":  rr.Status,

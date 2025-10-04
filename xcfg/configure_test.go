@@ -5,6 +5,7 @@
 package xcfg
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -85,4 +86,35 @@ func Test_confImpl_ParseBytes(t *testing.T) {
 			}
 		})
 	}
+}
+
+var _ xcodec.DecodeExtra = (*testExtra)(nil)
+
+type testExtra struct {
+	Name  string
+	Extra map[string]any
+}
+
+func (t testExtra) NeedDecodeExtra() string {
+	return "Extra"
+}
+
+func TestParseExtra(t *testing.T) {
+	conf := &Configure{}
+	fst.NoError(t, conf.WithDecoder(".json", xcodec.DecodeFunc(parser.JSON)))
+
+	content := []byte(`{"id":1,"version":{"day":25},"Name":"Hello"}`)
+
+	var obj testExtra
+	fst.NoError(t, conf.ParseBytes(".json", content, &obj))
+	want := testExtra{
+		Name: "Hello",
+		Extra: map[string]any{
+			"id": float64(1),
+			"version": map[string]any{
+				"day": float64(25),
+			},
+		},
+	}
+	fst.Equal(t, fmt.Sprintf("%#v", want.Extra), fmt.Sprintf("%#v", obj.Extra))
 }

@@ -14,6 +14,5 @@ import (
 func JSON(txt []byte, obj any) error {
 	bf := StripComment(txt)
 	dec := json.NewDecoder(bytes.NewReader(bf))
-	dec.UseNumber()
 	return dec.Decode(obj)
 }

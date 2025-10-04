@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"reflect"
+	"strings"
 	"unsafe"
 )
 
@@ -190,5 +192,77 @@ func DecodeFromString(dec Decoder, str string, obj any) error {
 		return nil
 	}
 	bf := unsafe.Slice(unsafe.StringData(str), len(str))
-	return dec.Decode(bf, obj)
+	return Decode(dec, bf, obj)
+}
+
+// DecodeExtra 当被解析的对象，实现了此接口的时候，并且 NeedDecodeExtra 返回了有效的字段名，
+// 则会将未在 struct 中定义的字段，全部解析到指定的字段里。
+type DecodeExtra interface {
+	// NeedDecodeExtra 存储未定义字段的字段名，返回非空为有效。
+	// 并且返回的名字必须在 struct 中存在，而且必须是 map[string]any 类型
+	NeedDecodeExtra() string
+}
+
+func Decode(decoder Decoder, content []byte, obj any) error {
+	err := decoder.Decode(content, obj)
+	if err != nil {
+		return err
+	}
+	return doDecodeExtra(decoder, content, obj)
+}
+
+// doDecodeExtra 若obj 实现了 ParseExtra，则将其为定义字段解析到 Extra（具体字段名由 ParseExtra 接口返回） 里去
+func doDecodeExtra(decoder Decoder, content []byte, obj any) error {
+	et, ok := obj.(DecodeExtra)
+	if !ok {
+		return nil
+	}
+	name := et.NeedDecodeExtra()
+	if name == "" {
+		return nil
+	}
+	rt := reflect.TypeOf(obj).Elem()
+	fieldType, ok := rt.FieldByName(name)
+	if !ok {
+		return fmt.Errorf("filed %q not exixts", name)
+	}
+	if !isMapStringAny(fieldType.Type) {
+		return fmt.Errorf("filed %q is not map[string]any", name)
+	}
+
+	rv := reflect.ValueOf(obj).Elem()
+	field := rv.FieldByName(name)
+	if !field.IsValid() || !field.CanSet() {
+		return fmt.Errorf("filed %q is not settable", name)
+	}
+
+	data := map[string]any{}
+	if err := decoder.Decode(content, &data); err != nil {
+		return err
+	}
+	names := make(map[string]bool, rt.NumField())
+	for i := 0; i < rt.NumField(); i++ {
+		// 在比较字段名时，全部转换为小写。以避免如json、yaml等解析时，tag 定义的名字和字段名不一直的情况
+		fn := strings.ToLower(rt.Field(i).Name)
+		names[fn] = true
+	}
+
+	if field.IsNil() { // 如果没初始化，先初始化
+		field.Set(reflect.MakeMap(field.Type()))
+	}
+	for k, v := range data {
+		if names[strings.ToLower(k)] {
+			continue
+		}
+		key := reflect.ValueOf(k)
+		val := reflect.ValueOf(v)
+		field.SetMapIndex(key, val)
+	}
+	return nil
+}
+
+func isMapStringAny(t reflect.Type) bool {
+	return t.Kind() == reflect.Map &&
+		t.Key().Kind() == reflect.String &&
+		t.Elem().Kind() == reflect.Interface
 }

@@ -75,7 +75,7 @@ func (r *Request) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.
 		req.Host = ""
 	}
 	setHeader(ctx, req, opt)
-	return req.Write(node.Conn)
+	return req.Write(node.NetConn())
 }
 
 func (r *Request) getURL(so xoption.Reader, address string) (string, error) {
@@ -140,15 +140,10 @@ func (r *Request) OptionReader(ctx context.Context, rd xoption.Reader) xoption.R
 	}
 	opt := xoption.NewSimple()
 	if b := r.balancer(rd, u); b != nil {
-		xbalance.OptSetDownstream(opt, b)
+		xbalance.OptSetReader(opt, b)
 	}
 	if tc := r.tlsConfig(u); tc != nil {
 		xoption.SetTLSConfig(opt, tc)
-	}
-	if proxy := xproxy.OptConfig(opt); proxy != nil {
-		if hostPort := getHostPort(u); hostPort != "" {
-			xbalance.OptSetTarget(opt, xbalance.NewStaticByAddr(xnet.NewAddr("tcp", hostPort)))
-		}
 	}
 	return opt.Value()
 }
@@ -189,17 +184,12 @@ func (h *NativeRequest) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xo
 		req.Host = node.Addr.Host()
 	}
 	setHeader(ctx, req, opt)
-	return req.Write(node.Conn)
+	return req.Write(node.NetConn())
 }
 
 func (h *NativeRequest) balancer(opt xoption.Reader) xbalance.Reader {
 	host := h.Request.URL.Hostname()
 	if host == xservice.Dummy {
-		return nil
-	}
-	proxy := xproxy.OptConfig(opt)
-	if proxy != nil {
-		// 有代理的情况下，应该连接代理
 		return nil
 	}
 	if hostPort := getHostPort(h.Request.URL); hostPort != "" {
@@ -220,22 +210,13 @@ func (h *NativeRequest) tlsConfig() *tls.Config {
 func (h *NativeRequest) OptionReader(ctx context.Context, opt xoption.Reader) xoption.Reader {
 	mp := xoption.NewSimple()
 	if ap := h.balancer(opt); ap != nil {
-		xbalance.OptSetDownstream(mp, ap)
+		xbalance.OptSetReader(mp, ap)
 	}
 
 	if tc := h.tlsConfig(); tc != nil {
 		xoption.SetTLSConfig(mp, tc)
 	}
 
-	if proxy := xproxy.OptConfig(opt); proxy != nil {
-		if hostPort := getHostPort(h.Request.URL); hostPort != "" {
-			node := xnet.AddrNode{
-				Addr:     xnet.NewAddr("tcp", hostPort),
-				HostPort: getHostPort(h.Request.URL),
-			}
-			xbalance.OptSetTarget(mp, xbalance.NewStatic(node))
-		}
-	}
 	return mp.Value()
 }
 

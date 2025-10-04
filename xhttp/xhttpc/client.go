@@ -23,7 +23,7 @@ import (
 	"github.com/xanygo/anygo/xnet/xservice"
 )
 
-func Invoke(ctx context.Context, service string, req *http.Request, handler HandlerFunc, opts ...xrpc.Option) error {
+func Invoke(ctx context.Context, service any, req *http.Request, handler HandlerFunc, opts ...xrpc.Option) error {
 	hr := &NativeRequest{
 		Request: req,
 	}
@@ -33,7 +33,7 @@ func Invoke(ctx context.Context, service string, req *http.Request, handler Hand
 	return xrpc.Invoke(ctx, service, hr, resp, opts...)
 }
 
-func Get(ctx context.Context, service string, url string, handler HandlerFunc, opts ...xrpc.Option) error {
+func Get(ctx context.Context, service any, url string, handler HandlerFunc, opts ...xrpc.Option) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
@@ -41,7 +41,7 @@ func Get(ctx context.Context, service string, url string, handler HandlerFunc, o
 	return Invoke(ctx, service, req, handler, opts...)
 }
 
-func InvokeWithCodec(ctx context.Context, service string, method string, url string, body any, ec xcodec.Encoder, handler HandlerFunc, opts ...xrpc.Option) error {
+func InvokeWithCodec(ctx context.Context, service any, method string, url string, body any, ec xcodec.Encoder, handler HandlerFunc, opts ...xrpc.Option) error {
 	var contentType string
 	if hct, ok := ec.(xcodec.HasContentType); ok {
 		contentType = hct.ContentType()
@@ -62,7 +62,7 @@ func InvokeWithCodec(ctx context.Context, service string, method string, url str
 	return Invoke(ctx, service, req, handler, opts...)
 }
 
-func Post(ctx context.Context, service string, url string, body io.Reader, ct string, handler HandlerFunc, opts ...xrpc.Option) error {
+func Post(ctx context.Context, service any, url string, body io.Reader, ct string, handler HandlerFunc, opts ...xrpc.Option) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
 	if err != nil {
 		return err
@@ -71,11 +71,11 @@ func Post(ctx context.Context, service string, url string, body io.Reader, ct st
 	return Invoke(ctx, service, req, handler, opts...)
 }
 
-func PostForm(ctx context.Context, service string, url string, body url.Values, handler HandlerFunc, opts ...xrpc.Option) error {
+func PostForm(ctx context.Context, service any, url string, body url.Values, handler HandlerFunc, opts ...xrpc.Option) error {
 	return InvokeWithCodec(ctx, service, http.MethodPost, url, body, xcodec.Form, handler, opts...)
 }
 
-func PostJSON(ctx context.Context, service string, url string, body any, handler HandlerFunc, opts ...xrpc.Option) error {
+func PostJSON(ctx context.Context, service any, url string, body any, handler HandlerFunc, opts ...xrpc.Option) error {
 	return InvokeWithCodec(ctx, service, http.MethodPost, url, body, xcodec.JSON, handler, opts...)
 }
 

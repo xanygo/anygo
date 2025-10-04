@@ -57,10 +57,6 @@ type element[V io.Closer] struct {
 	onPut      []func()  // code (with pool.mu held) run when conn is next returned
 }
 
-func (dc *element[V]) Pool() Pool[V] {
-	return dc.pool
-}
-
 func (dc *element[V]) ID() uint64 {
 	return dc.id
 }
