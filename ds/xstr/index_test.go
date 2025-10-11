@@ -22,7 +22,7 @@ func TestIndexN(t *testing.T) {
 			args: args{
 				s:      "abc/abc/abc",
 				substr: "abc",
-				n:      1,
+				n:      0,
 			},
 			want: 0,
 		},
@@ -31,7 +31,7 @@ func TestIndexN(t *testing.T) {
 			args: args{
 				s:      "abc/abc/abc",
 				substr: "abc",
-				n:      2,
+				n:      1,
 			},
 			want: 4,
 		},
@@ -40,7 +40,7 @@ func TestIndexN(t *testing.T) {
 			args: args{
 				s:      "abc/abc/abc",
 				substr: "abc",
-				n:      4,
+				n:      3,
 			},
 			want: -1,
 		},
@@ -49,7 +49,7 @@ func TestIndexN(t *testing.T) {
 			args: args{
 				s:      "abc/abc/abc",
 				substr: "#",
-				n:      1,
+				n:      0,
 			},
 			want: -1,
 		},
@@ -58,7 +58,16 @@ func TestIndexN(t *testing.T) {
 			args: args{
 				s:      "abc/abc/abc",
 				substr: "#",
-				n:      2,
+				n:      1,
+			},
+			want: -1,
+		},
+		{
+			name: "case 6",
+			args: args{
+				s:      "abc/abc/abc",
+				substr: "#",
+				n:      -1,
 			},
 			want: -1,
 		},
@@ -88,7 +97,7 @@ func TestLastIndexN(t *testing.T) {
 			args: args{
 				s:      "abc/abc/abc",
 				substr: "abc",
-				n:      1,
+				n:      0,
 			},
 			want: 8,
 		},
@@ -97,7 +106,7 @@ func TestLastIndexN(t *testing.T) {
 			args: args{
 				s:      "abc/abc/abc",
 				substr: "abc",
-				n:      2,
+				n:      1,
 			},
 			want: 4,
 		},
@@ -106,7 +115,7 @@ func TestLastIndexN(t *testing.T) {
 			args: args{
 				s:      "abc/abc/abc",
 				substr: "#",
-				n:      1,
+				n:      0,
 			},
 			want: -1,
 		},
@@ -115,7 +124,16 @@ func TestLastIndexN(t *testing.T) {
 			args: args{
 				s:      "abc/abc/abc",
 				substr: "#",
-				n:      2,
+				n:      1,
+			},
+			want: -1,
+		},
+		{
+			name: "case 5",
+			args: args{
+				s:      "abc/abc/abc",
+				substr: "#",
+				n:      -1,
 			},
 			want: -1,
 		},
@@ -145,7 +163,7 @@ func TestIndexByteN(t *testing.T) {
 			args: args{
 				s: "abc/abc/abc",
 				c: 'a',
-				n: 1,
+				n: 0,
 			},
 			want: 0,
 		},
@@ -154,7 +172,7 @@ func TestIndexByteN(t *testing.T) {
 			args: args{
 				s: "abc/abc/abc",
 				c: 'a',
-				n: 2,
+				n: 1,
 			},
 			want: 4,
 		},
@@ -163,7 +181,7 @@ func TestIndexByteN(t *testing.T) {
 			args: args{
 				s: "abc/abc/abc",
 				c: 'a',
-				n: 4,
+				n: 3,
 			},
 			want: -1,
 		},
@@ -172,7 +190,7 @@ func TestIndexByteN(t *testing.T) {
 			args: args{
 				s: "abc/abc/abc",
 				c: '#',
-				n: 1,
+				n: 0,
 			},
 			want: -1,
 		},
@@ -202,7 +220,7 @@ func TestLastIndexByteN(t *testing.T) {
 			args: args{
 				s: "abc/abc/abc",
 				c: 'a',
-				n: 1,
+				n: 0,
 			},
 			want: 8,
 		},
@@ -211,7 +229,7 @@ func TestLastIndexByteN(t *testing.T) {
 			args: args{
 				s: "abc/abc/abc",
 				c: 'a',
-				n: 2,
+				n: 1,
 			},
 			want: 4,
 		},
@@ -220,7 +238,7 @@ func TestLastIndexByteN(t *testing.T) {
 			args: args{
 				s: "abc/abc/abc",
 				c: 'a',
-				n: 4,
+				n: 3,
 			},
 			want: -1,
 		},
@@ -229,7 +247,7 @@ func TestLastIndexByteN(t *testing.T) {
 			args: args{
 				s: "abc/abc/abc",
 				c: '#',
-				n: 1,
+				n: 0,
 			},
 			want: -1,
 		},

@@ -32,12 +32,14 @@ func (o *OnceSet) SetOnce(err error) bool {
 	if err == nil {
 		return false
 	}
+	var ret bool
 	o.mux.Lock()
 	if o.err == nil {
 		o.err = err
+		ret = true
 	}
 	o.mux.Unlock()
-	return true
+	return ret
 }
 
 // Replace 强制替换值，不判断是否存储过

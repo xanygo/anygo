@@ -6,15 +6,20 @@ package xstr
 
 import "strings"
 
-// IndexN 在字符串 s 中查找第 N 个 substr 的位置，若查找不到会返回 -1
+// IndexN 在字符串 s 中查找第 n  ( n>=0 ) 个 substr 的位置，若查找不到会返回 -1
+//
+// 注意： n 从 0 开始计数，即查找到第一个 应是 n=0
 func IndexN(s string, substr string, n int) int {
+	if n < 0 {
+		return -1
+	}
 	var index int
-	for i := 0; i < n; i++ {
+	for i := 0; i <= n; i++ {
 		pos := strings.Index(s, substr)
 		if pos == -1 {
 			return -1
 		}
-		if i < n-1 {
+		if i < n {
 			z := pos + len(substr)
 			index += z
 			s = s[z:]
@@ -25,30 +30,40 @@ func IndexN(s string, substr string, n int) int {
 	return index
 }
 
-// LastIndexN 反向在字符串 s 中查找第 N 个 substr 的位置，若查找不到会返回 -1
+// LastIndexN 反向在字符串 s 中查找第 n ( n >=0 ) 个 substr 的位置，若查找不到会返回 -1
+//
+// 注意： n 从 0 开始计数，即反向查找到第一个 应是 n=0
 func LastIndexN(s string, substr string, n int) int {
+	if n < 0 {
+		return -1
+	}
 	var pos int
-	for i := 0; i < n; i++ {
+	for i := 0; i <= n; i++ {
 		pos = strings.LastIndex(s, substr)
 		if pos == -1 {
 			return -1
 		}
-		if i < n-1 {
+		if i < n {
 			s = s[:pos]
 		}
 	}
 	return pos
 }
 
-// IndexByteN 在字符串 s 中查找第 N 个 byte 的位置，若查找不到会返回 -1
+// IndexByteN 在字符串 s 中查找第 n ( n >= 0 ) 个 byte 的位置，若查找不到会返回 -1
+//
+// 注意： n 从 0 开始计数，首个是 n=0
 func IndexByteN(s string, c byte, n int) int {
+	if n < 0 {
+		return -1
+	}
 	var index int
-	for i := 0; i < n; i++ {
+	for i := 0; i <= n; i++ {
 		pos := strings.IndexByte(s, c)
 		if pos == -1 {
 			return -1
 		}
-		if i < n-1 {
+		if i < n {
 			z := pos + 1
 			index += z
 			s = s[z:]
@@ -59,15 +74,20 @@ func IndexByteN(s string, c byte, n int) int {
 	return index
 }
 
-// LastIndexByteN 反向在字符串 s 中查找第 n 个 字符(c) 的位置，若查找不到会返回 -1
+// LastIndexByteN 反向在字符串 s 中查找第 n ( n >= 0) 个 字符(c) 的位置，若查找不到会返回 -1
+//
+// 注意： n 从 0 开始计数，首个是 n=0
 func LastIndexByteN(s string, c byte, n int) int {
+	if n < 0 {
+		return -1
+	}
 	var pos int
-	for i := 0; i < n; i++ {
+	for i := 0; i <= n; i++ {
 		pos = strings.LastIndexByte(s, c)
 		if pos == -1 {
 			return -1
 		}
-		if i < n-1 {
+		if i < n {
 			s = s[:pos]
 		}
 	}
@@ -82,7 +102,7 @@ func LastIndexByteN(s string, c byte, n int) int {
 // 返回值：
 //
 //	leftIndex: 首个 left 的索引位置
-//	rightIndex: 当 ok=true 时，值为最后一个 right 的索引位置；当 ok=false 时，值为最后读取到的 right 的索引位置
+//	rightIndex: 当 ok=true 时，值为最后一个匹配的 right 的索引位置；当 ok=false 时，值为最后读取到的 right 的索引位置
 //	ok: 是否正确的匹配
 func BytePairIndex(str string, left byte, right byte) (leftIndex int, rightIndex int, ok bool) {
 	leftIndex = -1
