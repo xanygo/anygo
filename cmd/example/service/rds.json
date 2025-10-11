@@ -1,0 +1,7 @@
+{
+  "Name": "rds",
+  "Protocol": "RESP3",
+  "Downstream": {
+    "Address": ["127.0.0.1:6379"]
+  }
+}

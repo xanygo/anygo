@@ -1,0 +1,50 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Go
+
+on: ["push", "pull_request"]
+
+jobs:
+
+  build:
+    strategy:
+      matrix:
+        go: ['1.25']
+        servers: [ "ubuntu-latest","windows-latest","macos-latest","macos-13"]
+    runs-on: ${{ matrix.servers }}
+
+    name: Go ${{ matrix.go }} On ${{ matrix.servers }}
+    steps:
+    - name: Prepare git
+      run: git config --global core.autocrlf false
+
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go }}
+        check-latest: true
+
+    - name: GoVersion
+      run: go version
+
+    - name: Build
+      run: go build -v ./...
+
+    - name: Vet
+      run: go vet ./...
+
+    - name: staticCheck
+      uses: dominikh/staticcheck-action@v1
+      with:
+        version: "latest"
+        install-go: false
+        cache-key: ${{ matrix.go }}
+        working-directory: ${{ matrix.dir }}
+
+    - name: Test
+      run: go test -v -timeout=120s  -race ./...
+
+

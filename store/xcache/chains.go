@@ -1,0 +1,141 @@
+//  Copyright(C) 2025 github.com/hidu  All Rights Reserved.
+//  Author: hidu <duv123+git@gmail.com>
+//  Date: 2025-09-26
+
+package xcache
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/xanygo/anygo/xerror"
+)
+
+func NewChains[K comparable, V any](caches ...*Chain[K, V]) Cache[K, V] {
+	switch len(caches) {
+	case 0:
+		return &Nop[K, V]{}
+	case 1:
+		return caches[0].Cache
+	default:
+		return &chains[K, V]{
+			caches: caches,
+		}
+	}
+}
+
+type Chain[K comparable, V any] struct {
+	// Cache  必填
+	Cache Cache[K, V]
+
+	// DynamicTTL 必填，动态获取数据的缓存有效期,若是 Chains 里的最后一个则不需要
+	DynamicTTL func(ctx context.Context, key K, value V) time.Duration
+
+	// WriteTimeout 可选，读取后给未命中缓存的对象，填充缓存的写超时
+	WriteTimeout time.Duration
+}
+
+func (c *Chain[K, V]) set(ctx context.Context, key K, value V) {
+	ctx, cancel := context.WithTimeout(ctx, c.getTimeout())
+	defer cancel()
+	ttl := c.DynamicTTL(ctx, key, value)
+	_ = c.Cache.Set(ctx, key, value, ttl)
+}
+
+func (c *Chain[K, V]) getTimeout() time.Duration {
+	if c.WriteTimeout > 0 {
+		return c.WriteTimeout
+	}
+	return 10 * time.Second
+}
+
+func (c *Chain[K, V]) CacheTTL(ctx context.Context, key K, value V) time.Duration {
+	return c.DynamicTTL(ctx, key, value)
+}
+
+var _ StringCache = (*chains[string, string])(nil)
+var _ HasStats = (*chains[string, string])(nil)
+
+type chains[K comparable, V any] struct {
+	caches []*Chain[K, V]
+}
+
+func (c *chains[K, V]) Get(ctx context.Context, key K) (v V, err error) {
+	var errs []error
+	for idx, item := range c.caches {
+		value, err := item.Cache.Get(ctx, key)
+		if err == nil {
+			if idx > 0 {
+				go c.setBefore(ctx, idx, key, value)
+			}
+			return value, nil
+		} else if err != nil && !xerror.IsNotFound(err) {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return v, errors.Join(errs...)
+	}
+	return v, xerror.NotFound
+}
+
+func (c *chains[K, V]) setBefore(ctx context.Context, idx int, k K, v V) {
+	ctx = context.WithoutCancel(ctx)
+	for i := 0; i < idx; i++ {
+		c.caches[i].set(ctx, k, v)
+	}
+}
+
+func (c *chains[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration) error {
+	var errs []error
+	for _, item := range c.caches {
+		if err := item.Cache.Set(ctx, key, value, ttl); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return nil
+	}
+	return errors.Join(errs...)
+}
+
+func (c *chains[K, V]) Delete(ctx context.Context, keys ...K) error {
+	var errs []error
+	for _, item := range c.caches {
+		if err := item.Cache.Delete(ctx, keys...); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) == 0 {
+		return nil
+	}
+	return errors.Join(errs...)
+}
+
+func (c *chains[K, V]) Stats() Stats {
+	head := Stats{
+		Keys: statsKeysNoStats,
+	}
+	tail := Stats{
+		Keys: statsKeysNoStats,
+	}
+	for _, item := range c.caches {
+		if hs, ok := item.Cache.(HasStats); ok {
+			st := hs.Stats()
+			if st.Keys == statsKeysNoStats {
+				continue
+			}
+			if head.Keys == statsKeysNoStats {
+				head = st
+				continue
+			}
+			tail = st
+		}
+	}
+	// 将最后一个 Cache 的 key 总数作为最终结果
+	if tail.Keys >= 0 {
+		head.Keys = tail.Keys
+	}
+	return head
+}
