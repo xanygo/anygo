@@ -5,6 +5,8 @@
 package main
 
 import (
+	"context"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io"
@@ -32,6 +34,7 @@ q   : quoted character
 qn  : quoted string with extra \n retained`)
 var outDir = flag.String("o", "", "output directory")
 var noRead = flag.Bool("nr", false, "don't print read data to stdout")
+var useTLS = flag.Bool("tls", false, "use TLS")
 
 func main() {
 	flag.Parse()
@@ -73,6 +76,13 @@ func onConnect(conn net.Conn) {
 	lg.Println("connected", conn.LocalAddr().String(), "--->", remote.RemoteAddr().String())
 	defer remote.Close()
 
+	if *useTLS {
+		remote, err = withTLS(remote, *remoteAddress)
+		if err != nil {
+			log.Fatalln("tls Handshake failed:", err.Error())
+		}
+	}
+
 	mit := &monitor.ConnMonitor{
 		ID:        id,
 		Logger:    lg,
@@ -96,4 +106,22 @@ func onConnect(conn net.Conn) {
 	<-done
 	cost := time.Since(start)
 	lg.Println("closed", remote.RemoteAddr().String(), "cost=", cost.String())
+}
+
+func withTLS(conn net.Conn, addr string) (*tls.Conn, error) {
+	h, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, err
+	}
+	tlsConfig := &tls.Config{
+		ServerName: h,
+		MinVersion: tls.VersionTLS13,
+	}
+	tc := tls.Client(conn, tlsConfig)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	if err = tc.HandshakeContext(ctx); err != nil {
+		return nil, err
+	}
+	return tc, nil
 }

@@ -25,7 +25,7 @@ func ToInt(result Result, err error) (int, error) {
 	case BulkString:
 		return strconv.Atoi(dv.String())
 	default:
-		return 0, fmt.Errorf("unexpected response type: %T", dv)
+		return 0, fmt.Errorf("%w: ToInt %#v(%T)", ErrInvalidReply, dv, dv)
 	}
 }
 
@@ -41,7 +41,7 @@ func ToString(result Result, err error) (string, error) {
 	case BulkString:
 		return dv.String(), nil
 	default:
-		return "", fmt.Errorf("unexpected response type: %T", dv)
+		return "", fmt.Errorf("%w: ToString %#v(%T)", ErrInvalidReply, dv, dv)
 	}
 }
 
@@ -72,7 +72,7 @@ func ToStringSlice(result Result, err error) ([]string, error) {
 		case BulkString:
 			list = append(list, dv.String())
 		default:
-			return nil, fmt.Errorf("unexpected response type: %T", dv)
+			return nil, fmt.Errorf("%w: ToStringSlice %#v(%T)", ErrInvalidReply, dv, dv)
 		}
 	}
 	return list, nil
@@ -88,7 +88,7 @@ func ToOkBool(result Result, err error) (bool, error) {
 	case BulkString:
 		return dv.String() == "OK", nil
 	default:
-		return false, fmt.Errorf("unexpected response type: %T", dv)
+		return false, fmt.Errorf("%w: ToOkBool %#v(%T)", ErrInvalidReply, dv, dv)
 	}
 }
 
@@ -103,7 +103,7 @@ func ToIntBool(result Result, err error, ok int) (bool, error) {
 	case 0:
 		return false, nil
 	default:
-		return false, fmt.Errorf("unexpected reply: %v", num)
+		return false, fmt.Errorf("%w: ToIntBool %#v", ErrInvalidReply, result)
 	}
 }
 
@@ -122,7 +122,7 @@ func ToOkStatus(result Result, err error) error {
 		}
 	default:
 	}
-	return fmt.Errorf("unexpected response: %#v", result)
+	return fmt.Errorf("%w: ToOkStatus %#v(%T)", ErrInvalidReply, result, result)
 }
 
 func ToInt64(result Result, err error) (int64, error) {
@@ -139,7 +139,7 @@ func ToInt64(result Result, err error) (int64, error) {
 	case BulkString:
 		return dv.ToInt64()
 	default:
-		return 0, fmt.Errorf("unexpected response value: %v(%T)", dv, dv)
+		return 0, fmt.Errorf("%w: ToInt64 %#v(%T)", ErrInvalidReply, result, result)
 	}
 }
 
@@ -149,7 +149,7 @@ func ToInt64Slice(result Result, err error) ([]int64, error) {
 	}
 	arr, ok := result.(Array)
 	if !ok {
-		return nil, fmt.Errorf("unexpected response type: %T", result)
+		return nil, fmt.Errorf("%w: ToInt64Slice_0 %#v(%T)", ErrInvalidReply, result, result)
 	}
 	list := make([]int64, 0, len(arr))
 	for _, item := range arr {
@@ -171,7 +171,7 @@ func ToInt64Slice(result Result, err error) ([]int64, error) {
 			}
 			list = append(list, num)
 		default:
-			return nil, fmt.Errorf("unexpected response : %#v", item)
+			return nil, fmt.Errorf("%w: ToInt64Slice_1 %#v(%T)", ErrInvalidReply, result, result)
 		}
 	}
 	return list, nil
@@ -189,7 +189,7 @@ func ToFloat64(result Result, err error) (float64, error) {
 	case Double:
 		return dv.Float64(), nil
 	default:
-		return 0, fmt.Errorf("unexpected response : %#v", result)
+		return 0, fmt.Errorf("%w: ToFloat64 %#v(%T)", ErrInvalidReply, result, result)
 	}
 }
 
@@ -199,7 +199,7 @@ func ToFloat64Slice(result Result, err error) ([]float64, error) {
 	}
 	arr, ok := result.(Array)
 	if !ok {
-		return nil, fmt.Errorf("unexpected response type: %T", result)
+		return nil, fmt.Errorf("%w: ToFloat64Slice_0 %#v(%T)", ErrInvalidReply, result, result)
 	}
 	list := make([]float64, 0, len(arr))
 	for _, item := range arr {
@@ -207,7 +207,7 @@ func ToFloat64Slice(result Result, err error) ([]float64, error) {
 		case Double:
 			list = append(list, dv.Float64())
 		default:
-			return nil, fmt.Errorf("unexpected response type: %T", dv)
+			return nil, fmt.Errorf("%w: ToFloat64Slice_1 %#v(%T)", ErrInvalidReply, item, item)
 		}
 	}
 	return list, nil
@@ -219,7 +219,7 @@ func ToStringMapWithKeys(result Result, err error, keys []string) (map[string]st
 	}
 	arr, ok := result.(Array)
 	if !ok {
-		return nil, fmt.Errorf("unexpected response type: %T", result)
+		return nil, fmt.Errorf("%w: ToStringMapWithKeys_0 %#v(%T)", ErrInvalidReply, result, result)
 	}
 	if len(keys) != len(arr) {
 		return nil, fmt.Errorf("expected %d keys, got %d", len(keys), len(arr))
@@ -233,7 +233,7 @@ func ToStringMapWithKeys(result Result, err error, keys []string) (map[string]st
 		case Null:
 			continue
 		default:
-			return nil, fmt.Errorf("unexpected response type: %T", dv)
+			return nil, fmt.Errorf("%w: ToStringMapWithKeys_1 %#v(%T)", ErrInvalidReply, key, key)
 		}
 	}
 	return m, nil
@@ -256,7 +256,7 @@ func ToMapFloat64(result Result, err error) (map[string]float64, error) {
 	}
 	arr, ok := result.(Array)
 	if !ok {
-		return nil, fmt.Errorf("unexpected response type: %T", result)
+		return nil, fmt.Errorf("%w: ToMapFloat64 %#v(%T)", ErrInvalidReply, result, result)
 	}
 	if len(arr)%2 != 0 {
 		return nil, fmt.Errorf("expected even number of keys, got %d", len(arr))
@@ -282,7 +282,7 @@ func ToMapFloat64WithKeys(result Result, err error, keys []string) (map[string]f
 	}
 	arr, ok := result.(Array)
 	if !ok {
-		return nil, fmt.Errorf("unexpected response type: %T", result)
+		return nil, fmt.Errorf("%w: ToMapFloat64WithKeys %#v(%T)", ErrInvalidReply, result, result)
 	}
 	if len(arr) != len(keys) {
 		return nil, fmt.Errorf("length not match, reply=%d, keys=%d", len(arr), len(keys))

@@ -35,6 +35,7 @@ var defaultHooks hooks = []Hook{
 	newHook("template", (&hook.Template{}).Hook),
 	newHook("env", hook.OsEnvVars),
 	newHook("xattr", hook.XAttrVars),
+	newHook("os", hook.OSVars),
 }
 
 type hooks []Hook

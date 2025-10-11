@@ -17,17 +17,22 @@ import (
 	"github.com/xanygo/anygo/xoption"
 )
 
+type HandshakeReply interface {
+	String() string // 用于打印出完整的内容
+	Desc() string   // 简短的描述信息
+}
+
 // HandshakeHandler 用于创建连接后，tcp client 的握手
 // 如 Redis 协议发送 Hello Request
 type HandshakeHandler interface {
-	Handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (any, error)
+	Handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (HandshakeReply, error)
 }
 
 var _ HandshakeHandler = HandshakeFunc(nil)
 
-type HandshakeFunc func(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (any, error)
+type HandshakeFunc func(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (HandshakeReply, error)
 
-func (h HandshakeFunc) Handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (any, error) {
+func (h HandshakeFunc) Handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (HandshakeReply, error) {
 	return h(ctx, conn, opt)
 }
 
@@ -68,12 +73,12 @@ func FindHandshakeHandler(protocol string) (HandshakeHandler, error) {
 	return nil, fmt.Errorf("protocol %s not registered", protocol)
 }
 
-func Handshake(ctx context.Context, protocol string, conn *xnet.ConnNode, opt xoption.Reader) (ret any, err error) {
+func Handshake(ctx context.Context, protocol string, conn *xnet.ConnNode, opt xoption.Reader) (ret HandshakeReply, err error) {
 	ctx, span := xmetric.Start(ctx, "Handshake")
 	timeout := xoption.HandshakeTimeout(opt)
 	defer func() {
 		span.SetAttributes(
-			xmetric.AnyAttr("Protocol", protocols),
+			xmetric.AnyAttr("Protocol", protocol),
 			xmetric.AnyAttr("Timeout", timeout),
 		)
 		span.RecordError(err)
@@ -81,13 +86,15 @@ func Handshake(ctx context.Context, protocol string, conn *xnet.ConnNode, opt xo
 	}()
 	handler, err1 := FindHandshakeHandler(protocol)
 	if err1 != nil {
-		return conn, err1
+		return nil, err1
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	cc := conn.NetConn()
-	cc.SetDeadline(time.Now().Add(timeout))
+	conn.SetDeadline(time.Now().Add(timeout))
 	ret, err = handler.Handshake(ctx, conn, opt)
-	cc.SetDeadline(time.Time{})
+	conn.SetDeadline(time.Time{})
+	if err == nil && ret != nil {
+		span.SetAttributes(xmetric.AnyAttr("Reply", ret.Desc()))
+	}
 	return ret, err
 }

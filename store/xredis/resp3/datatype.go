@@ -13,7 +13,10 @@ import (
 	"strconv"
 )
 
-var ErrNil = errors.New("redis nil value")
+var (
+	ErrNil          = errors.New("redis nil value") // redis 中无此 key
+	ErrInvalidReply = errors.New("invalid reply")   // 错误的响应
+)
 
 var MaxResponseSize = 512 * 1024 * 1024
 
@@ -139,10 +142,8 @@ func (dt DataType) Load(rd Reader) (Element, error) {
 	}
 }
 
-var ErrInvalidData = errors.New("resp3: invalid response")
-
 func newInvalidDataError(line []byte) error {
-	return fmt.Errorf("%w: %q", ErrInvalidData, line)
+	return fmt.Errorf("%w: %q", ErrInvalidReply, line)
 }
 
 func (dt DataType) loadSimpleString(rd Reader) (SimpleString, error) {

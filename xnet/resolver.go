@@ -98,6 +98,9 @@ type ResolverImpl struct {
 
 // LookupIP Lookup IP
 func (r *ResolverImpl) LookupIP(ctx context.Context, network string, host string) (ips []net.IP, err error) {
+	if ip, _ := internal.ParseIPZone(host); ip != nil {
+		return []net.IP{ip}, nil
+	}
 	if ttl := r.getTTL(); ttl > 0 {
 		key := network + "@" + host
 		r.getVisitLRU().Set(key, time.Now())
@@ -110,9 +113,6 @@ func (r *ResolverImpl) LookupIP(ctx context.Context, network string, host string
 const resolverFlushLife = 5 * time.Minute
 
 func (r *ResolverImpl) lookupIP(ctx context.Context, network string, host string) ([]net.IP, error) {
-	if ip, _ := internal.ParseIPZone(host); ip != nil {
-		return []net.IP{ip}, nil
-	}
 	cache := r.getCacheOnce()
 	if cache == nil {
 		return r.getStdResolver().LookupIP(ctx, network, host)

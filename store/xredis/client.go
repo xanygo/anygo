@@ -83,7 +83,10 @@ func init() {
 }
 
 // 创建连接后，和 redis server 握手
-func handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (any, error) {
+//
+// xrpc 里有统一的 handshake timeout 设置
+// https://redis.io/docs/latest/commands/hello/
+func handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (xdial.HandshakeReply, error) {
 	hello := resp3.HelloRequest{}
 	cfg := xoption.Extra(opt, "Redis")
 	var dbIndex int
@@ -102,31 +105,51 @@ func handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (an
 			dbIndex = int(num)
 		}
 	}
-	cc := conn.NetConn()
 	bf := bp.Get()
-	_, err := cc.Write(hello.Bytes(bf))
+	_, err := conn.Write(hello.Bytes(bf))
 	bp.Put(bf)
 	if err != nil {
 		return nil, err
 	}
-	br := bufio.NewReader(cc)
+	br := bufio.NewReader(conn)
 	result, err := resp3.ReadByType(br, hello.ResponseType())
-	if err != nil || dbIndex == 0 {
-		return result, err
+	var mp resp3.Map
+	if err == nil {
+		var ok bool
+		mp, ok = result.(resp3.Map)
+		if !ok {
+			err = fmt.Errorf("response not map %#v", result)
+		}
+	}
+	var md map[any]any
+	if err == nil {
+		md, err = resp3.ToAnyMap(mp)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	hp := &resp3.HelloResponse{}
+	err = hp.FromMap(md)
+	if err != nil {
+		return nil, err
+	}
+	if dbIndex == 0 {
+		return hp, nil
 	}
 
 	// --------------------------------------------------------------
 	// 发送 SELECT 命令选择数据库
 	sc := hello.Select()
 	bf = bp.Get()
-	_, err = cc.Write(sc.Bytes(bf))
+	_, err = conn.Write(sc.Bytes(bf))
 	bp.Put(bf)
 	if err != nil {
-		return result, err
+		return hp, err
 	}
 	result2, err2 := resp3.ReadByType(br, sc.ResponseType())
 	err = resp3.ToOkStatus(result2, err2)
-	return result, err
+	return hp, err
 }
 
 const (

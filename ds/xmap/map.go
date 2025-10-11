@@ -55,6 +55,11 @@ func GetInt64[K comparable, V any](m map[K]V, key K) (int64, bool) {
 	return zbase.BaseTypeToInt64(v)
 }
 
+func GetInt[K comparable, V any](m map[K]V, key K) (int, bool) {
+	num, err := GetInt64(m, key)
+	return int(num), err
+}
+
 // HasKey 判断 map 中是否存在特定 key。支持 map 为 nil。
 func HasKey[K comparable, V any](m map[K]V, key K) bool {
 	if len(m) == 0 {

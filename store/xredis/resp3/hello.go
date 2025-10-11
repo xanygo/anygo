@@ -4,7 +4,15 @@
 
 package resp3
 
-import "bytes"
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+
+	"github.com/xanygo/anygo/ds/xmap"
+	"github.com/xanygo/anygo/xnet/xdial"
+)
 
 var _ Request = HelloRequest{}
 
@@ -48,6 +56,8 @@ func (ch HelloRequest) getUsername() string {
 	return ch.Username
 }
 
+var _ xdial.HandshakeReply = (*HelloResponse)(nil)
+
 type HelloResponse struct {
 	ID      int64                 `json:"id"`      // 12
 	Mode    string                `json:"mode"`    // standalone
@@ -55,7 +65,29 @@ type HelloResponse struct {
 	Role    string                `json:"role"`    //   master
 	Version string                `json:"version"` // 8.2.1
 	Server  string                `json:"server"`  // redis
-	Modules []HelloResponseModule `json:"modules"`
+	Modules []HelloResponseModule `json:"modules,omitempty"`
+}
+
+func (hr *HelloResponse) String() string {
+	bf, _ := json.Marshal(hr)
+	return string(bf)
+}
+
+func (hr *HelloResponse) Desc() string {
+	return fmt.Sprintf("id=%d,mode=%s,proto=%d,role=%s,version=%s", hr.ID, hr.Mode, hr.Proto, hr.Role, hr.Version)
+}
+
+func (hr *HelloResponse) FromMap(m map[any]any) error {
+	if len(m) == 0 {
+		return errors.New("reply data is empty")
+	}
+	hr.ID, _ = xmap.GetInt64(m, "id")
+	hr.Mode, _ = xmap.GetString(m, "mode")
+	hr.Proto, _ = xmap.GetInt(m, "proto")
+	hr.Role, _ = xmap.GetString(m, "role")
+	hr.Version, _ = xmap.GetString(m, "version")
+	hr.Server, _ = xmap.GetString(m, "server")
+	return nil
 }
 
 type HelloResponseModule struct {

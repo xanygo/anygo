@@ -14,12 +14,13 @@ import (
 var _ xkv.StringStorage = (*KVStorage)(nil)
 
 type KVStorage struct {
-	Client *Client
+	KeyPrefix string
+	Client    *Client
 }
 
 func (kv *KVStorage) String(key string) xkv.String[string] {
 	return &kvString{
-		key:    key,
+		key:    kv.KeyPrefix + key,
 		client: kv.Client,
 	}
 }
@@ -53,7 +54,7 @@ func (kvs *kvString) Decr(ctx context.Context) (int64, error) {
 
 func (kv *KVStorage) List(key string) xkv.List[string] {
 	return &kvList{
-		key:    key,
+		key:    kv.KeyPrefix + key,
 		client: kv.Client,
 	}
 }
@@ -136,7 +137,7 @@ func (kvl *kvList) RRange(ctx context.Context, fn func(val string) bool) error {
 func (kv *KVStorage) Hash(key string) xkv.Hash[string] {
 	return &kvHash{
 		client: kv.Client,
-		key:    key,
+		key:    kv.KeyPrefix + key,
 	}
 }
 
@@ -190,7 +191,7 @@ func (kvh *kvHash) HGetAll(ctx context.Context) (map[string]string, error) {
 func (kv *KVStorage) Set(key string) xkv.Set[string] {
 	return &kvSet{
 		client: kv.Client,
-		key:    key,
+		key:    kv.KeyPrefix + key,
 	}
 }
 
@@ -235,7 +236,7 @@ func (kvs *kvSet) SMembers(ctx context.Context) ([]string, error) {
 func (kv *KVStorage) ZSet(key string) xkv.ZSet[string] {
 	return &kvZSet{
 		client: kv.Client,
-		key:    key,
+		key:    kv.KeyPrefix + key,
 	}
 }
 
@@ -283,6 +284,11 @@ func (kvz *kvZSet) ZRem(ctx context.Context, members ...string) error {
 }
 
 func (kv *KVStorage) Delete(ctx context.Context, keys ...string) error {
+	if kv.KeyPrefix != "" {
+		for i := 0; i < len(keys); i++ {
+			keys[i] = kv.KeyPrefix + keys[i]
+		}
+	}
 	_, err := kv.Client.Del(ctx, keys...)
 	return err
 }

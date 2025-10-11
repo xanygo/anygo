@@ -43,7 +43,19 @@
 //	LogDir  :  应用日志文件目录地址, 如 /home/work/myapp/log
 //	RunMode :  应用运行模式,如 product
 //
-// 3. Go Template 语法
+// 3. 调用标准库的 os.XXX (部分函数)
+//
+// 在配置内容中使用 {os.方法名}，具体支持的方法名如下：
+//
+//	PID           : 获取应用的 PID（进程ID），即调用 os.Getpid()
+//	PPID          : 获取应用的 PPID（父进程ID）,即调用 os.Getppid()
+//	TempDir       ：获取系统的临时文件目录，即调用 os.TempDir()
+//	Hostname      ：获取系统的主机名，即调用 os.Hostname()
+//	UserHomeDir   ：获取当前用户的 Home 目录，即调用 os.UserHomeDir()
+//	UserCacheDir  ：获取当前用户的 Cache 目录，即调用 os.UserCacheDir()
+//	UserConfigDir ：获取当前用户的配置目录，即调用 os.UserConfigDir()
+//
+// 4. Go Template 语法
 //
 // 该功能默认未启用,需要在配置文件的头部添加如何内容以启用该功能：
 //
@@ -66,7 +78,7 @@
 //	prefix   : 即 strings.HasPrefix，如 contains "hello" "h"
 //	suffix   : 即 strings.HasSuffix，如 contains "hello" "o"
 //
-// # 4. 数据校验( Validator )
+// # 5. 数据校验( Validator )
 //
 // 使用 Parser、ParseBytes 解析配置后，得的的结果可能是非预期的，如必填字段为空或者格式错误。
 //

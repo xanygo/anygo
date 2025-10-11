@@ -148,6 +148,10 @@ func (c *Config) Parser(idc string) (Service, error) {
 		SetOptHTTP(opt, *c.HTTP)
 	}
 
+	for k, v := range c.Extra {
+		xoption.SetExtra(opt, k, v)
+	}
+
 	impl := &serviceImpl{
 		broker: xbus.NewBroker(),
 		name:   c.Name,

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/xanygo/anygo/ds/xmetric"
@@ -154,9 +155,12 @@ func (c *TCP) tryOnce(ctx context.Context, req Request, resp Response, serviceNa
 	var conn *xnet.ConnNode
 	if err == nil {
 		conn = entry.Object()
+		var once sync.Once
 		conn.OnClose = func() error {
-			conn.OnClose = nil
-			entry.Release(result)
+			once.Do(func() {
+				conn.OnClose = nil
+				entry.Release(result)
+			})
 			return nil
 		}
 	} else if conn == nil {

@@ -30,18 +30,20 @@ func (c *connector) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption
 	if err != nil {
 		return conn, err
 	}
+	inConn := conn
 
-	conn, err = c.tlsHandshake(ctx, conn, opt, addr)
+	conn, err = c.tlsHandshake(ctx, inConn, opt, addr)
 	if err != nil {
-		return conn, err
+		inConn.Close()
+		return inConn, err
 	}
 
 	protocol := xoption.Protocol(opt)
 	if protocol != "" {
 		ret, err1 := xdial.Handshake(ctx, protocol, conn, opt)
 		if err1 != nil {
-			_ = conn.NetConn().Close()
-			return conn, err
+			_ = conn.Close()
+			return conn, err1
 		}
 		conn.Handshake = ret
 	}
@@ -106,14 +108,17 @@ func (c *connector) tlsHandshake(ctx context.Context, conn *xnet.ConnNode, opt x
 	if tc.ServerName == "" {
 		tc.ServerName = target.Host()
 	}
+	if tc.MinVersion == 0 {
+		tc.MinVersion = tls.VersionTLS12
+	}
 	span.SetAttributes(
 		xmetric.AnyAttr("ServerName", tc.ServerName),
 		xmetric.AnyAttr("SkipVerify", tc.InsecureSkipVerify),
 	)
-	tlsConn := tls.Client(conn.NetConn(), tc)
+	tlsConn := tls.Client(conn.Outer(), tc)
 
 	if err = tlsConn.HandshakeContext(ctx); err != nil {
-		_ = conn.Conn.Close()
+		_ = conn.Close()
 		return conn, fmt.Errorf("%w, ServerName=%q", err, tc.ServerName)
 	}
 	conn.AddWrap(tlsConn)

@@ -12,5 +12,6 @@ import (
 
 func TestNewID(t *testing.T) {
 	got := NewID()
-	fst.Greater(t, len(got), 12)
+	fst.Greater(t, len(got), idMinLen)
+	fst.True(t, IsValidID(got))
 }

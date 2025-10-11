@@ -17,6 +17,7 @@ import (
 // 若期望接口不添加 Session，可以在注册的时候同时注册 meta 信息予以标记，具体如下:
 // router.Get("/myProxy/{url:*}  meta|session=no", &myProxy{})
 type HTTPHandler struct {
+	NewID       func(req *http.Request) string                   // 可选，生成 session ID的算法
 	CookieName  string                                           // 在 cookie 中存储 sessionID 的名字，可选，默认为 sid
 	OnSet       func(ck *http.Cookie)                            // 在 cookie 中存储 sessionID 的时候回调，可选
 	NewStorage  func(http.ResponseWriter, *http.Request) Storage // 必填，session 数据存储引擎
@@ -32,14 +33,21 @@ func (s *HTTPHandler) getCookieName() string {
 
 var defaultExpire = time.Now().AddDate(100, 0, 0)
 
-func (s *HTTPHandler) setSessionID(w http.ResponseWriter, r *http.Request) (*http.Request, string) {
+func (s *HTTPHandler) newID(req *http.Request) string {
+	if s.NewID != nil {
+		return s.NewID(req)
+	}
+	return NewID()
+}
+
+func (s *HTTPHandler) setSessionID(w http.ResponseWriter, req *http.Request) (*http.Request, string) {
 	name := s.getCookieName()
 	var id string
-	cookie, err := r.Cookie(name)
-	if err == nil && len(cookie.Value) > 5 {
+	cookie, err := req.Cookie(name)
+	if err == nil && IsValidID(cookie.Value) {
 		id = cookie.Value
 	} else {
-		id = NewID()
+		id = s.newID(req)
 		sc := &http.Cookie{
 			Name:     name,
 			Value:    id,
@@ -53,35 +61,34 @@ func (s *HTTPHandler) setSessionID(w http.ResponseWriter, r *http.Request) (*htt
 
 		http.SetCookie(w, sc)
 	}
-	if xlog.IsMetaContext(r.Context()) {
-		xlog.AddMetaAttr(r.Context(), xlog.String("sessionID", id))
+	if xlog.IsMetaContext(req.Context()) {
+		xlog.AddMetaAttr(req.Context(), xlog.String("sid", id))
 	}
-	ctx := WithID(r.Context(), id)
-	return r.WithContext(ctx), id
+	ctx := WithID(req.Context(), id)
+	return req.WithContext(ctx), id
 }
 
 func (s *HTTPHandler) Next(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.NeedSession != nil && !s.NeedSession(r) {
-			h.ServeHTTP(w, r)
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if s.NeedSession != nil && !s.NeedSession(req) {
+			h.ServeHTTP(w, req)
 			return
 		}
-		routeInfo := xhttp.ReadRouteInfo(r.Context())
+		routeInfo := xhttp.ReadRouteInfo(req.Context())
 		if value, ok := routeInfo.GetMeta("session"); ok && value == "no" {
-			h.ServeHTTP(w, r)
+			h.ServeHTTP(w, req)
 			return
 		}
 
 		var sid string
-		r, sid = s.setSessionID(w, r)
-		store := s.NewStorage(w, r)
+		req, sid = s.setSessionID(w, req)
+		store := s.NewStorage(w, req)
 
-		session := store.Get(r.Context(), sid)
-		session.Set(r.Context(), "_", "") // 触发更新
+		session := store.Get(req.Context(), sid)
 
-		ctx := WithStorage(r.Context(), store)
+		ctx := WithStorage(req.Context(), store)
 		ctx = WithSession(ctx, session)
-		r = r.WithContext(ctx)
-		h.ServeHTTP(w, r)
+		req = req.WithContext(ctx)
+		h.ServeHTTP(w, req)
 	})
 }

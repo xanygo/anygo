@@ -42,7 +42,7 @@ var bp = xsync.NewBytesBufferPool(1024)
 func (r *rpcRequest) WriteTo(ctx context.Context, w *xnet.ConnNode, opt xoption.Reader) error {
 	bf := bp.Get()
 	content := r.req.Bytes(bf)
-	_, err := w.Conn.Write(content)
+	_, err := w.Write(content)
 	bp.Put(bf)
 	return err
 }

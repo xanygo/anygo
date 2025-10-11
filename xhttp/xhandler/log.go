@@ -104,9 +104,8 @@ func (al *AccessLog) before(ctx context.Context, start time.Time, r *http.Reques
 	)
 
 	xlog.AddAttr(ctx,
-		xlog.Time("start", start),
+		xlog.Int64("start", start.UnixMilli()),
 		xlog.String("host", r.Host),
-		xlog.Int64("contentLength", r.ContentLength),
 	)
 
 	// 这两个字段在最后打印打印即可，提前保存以避免被修改
