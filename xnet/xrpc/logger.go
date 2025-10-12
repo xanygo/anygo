@@ -71,10 +71,10 @@ func (l *Logger) afterWriteRead(ctx context.Context, _ string, conn *xnet.ConnNo
 func (l *Logger) afterInvoke(ctx context.Context, _ string, _ Request, resp Response, span xmetric.Span, err error) {
 	errMsg := resp.ErrMsg()
 	spanInfo := xlog.Any("Trace", xmetric.Dump(span))
-	// callerSkip =3 : 使日志中的 "source":<"function","file"> 定位到调用 RPC 方法的业务代码位置
+	// callerSkip =4 : 使日志中的 "source":<"function","file"> 定位到调用 RPC 方法的业务代码位置
 	lg := l.getLogger()
-	lg.Output(ctx, xlog.LevelInfo, 3, errMsg, spanInfo)
+	lg.Output(ctx, xlog.LevelInfo, 4, errMsg, spanInfo)
 	if err != nil {
-		lg.Output(ctx, xlog.LevelError, 3, err.Error(), spanInfo)
+		lg.Output(ctx, xlog.LevelError, 4, err.Error(), spanInfo)
 	}
 }

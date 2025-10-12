@@ -12,17 +12,18 @@ import (
 	"github.com/xanygo/anygo/ds/xmetric"
 	"github.com/xanygo/anygo/ds/xpool"
 	"github.com/xanygo/anygo/internal/znet"
+	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
 )
 
 type (
 	ConnPool = xpool.Pool[*xnet.ConnNode]
 
-	ConnGroupPool = xpool.GroupPool[xnet.AddrNode, *xnet.ConnNode]
+	ConnGroupPool = xpool.GroupPool[xnet.AddrNode, string, *xnet.ConnNode]
 )
 
 var _ xpool.Factory[*xnet.ConnNode] = (*ConnFactory)(nil)
-var _ xpool.GroupFactory[xnet.AddrNode, *xnet.ConnNode] = (*ConnFactory)(nil)
+var _ xpool.GroupFactory[xnet.AddrNode, string, *xnet.ConnNode] = (*ConnFactory)(nil)
 var _ xpool.Validator[*xnet.ConnNode] = (*ConnFactory)(nil)
 
 type ConnFactory struct {
@@ -41,10 +42,18 @@ func (c *ConnFactory) NewWithKey(ctx context.Context, key xnet.AddrNode) (*xnet.
 	return c.Single(ctx)
 }
 
-func (c *ConnFactory) Validate(conn *xnet.ConnNode) error {
-	if err := conn.Err(); err != nil {
+// Validate 验证网络连接是否有效
+//
+// 第二个参数 err 是 rpc client 交互后返回的 error，可能是底层网络错误，也可能是业务层错误,
+func (c *ConnFactory) Validate(conn *xnet.ConnNode, err error) error {
+	if err1 := conn.Err(); err1 != nil {
+		return err1
+	}
+	// 以下，判断出是底层网络错误
+	if err != nil && xerror.IsClientNetError(err) {
 		return err
 	}
+
 	uc := xnet.UnwrapConn(conn)
 	return znet.ConnCheck(uc)
 }
@@ -72,7 +81,19 @@ func init() {
 }
 
 // NewGroupPool 使用名称创建 ConnGroupPool，name 支持：Long-长连接，Short-短连接
+//
+// 参数 xpool.Option： 连接池配置参数，可为 nil，当为 nil 时，使用默认值：
+//
+//	{
+//	   MaxOpen: 128,
+//	   MaxIdle: MaxOpen/4,
+//	   MaxLifeTime: 30min,
+//	   MaxIdleTime: 10min,
+//	   MaxPoolIdleTime: 10 min,
+//	}
 func NewGroupPool(name string, opt *xpool.Option, cc Connector) (ConnGroupPool, error) {
+	opt = opt.Normalization()
+	fixOption(opt)
 	upperName := strings.ToUpper(name)
 	fac, ok := groupPoolFactory[upperName]
 	if !ok {
@@ -81,13 +102,26 @@ func NewGroupPool(name string, opt *xpool.Option, cc Connector) (ConnGroupPool, 
 	return fac(opt, cc), nil
 }
 
+func fixOption(opt *xpool.Option) {
+	if opt.MaxOpen <= 0 {
+		// 默认最大连接数：128（中等负载服务器）
+		// 对于高并发场景，可在业务层显式调高
+		opt.MaxOpen = 128
+	}
+
+	if opt.MaxIdle <= 0 {
+		// 默认空闲数为 1/4 最大连接数，至少 4
+		opt.MaxIdle = max(4, opt.MaxOpen/4)
+	}
+}
+
 func newLong(opt *xpool.Option, cc Connector) ConnGroupPool {
 	fac := &ConnFactory{
 		Group: func(ctx context.Context, addr xnet.AddrNode) (*xnet.ConnNode, error) {
 			return Connect(ctx, cc, addr, nil)
 		},
 	}
-	return xpool.NewGroupPool[xnet.AddrNode, *xnet.ConnNode](opt, fac)
+	return xpool.NewGroupPool[xnet.AddrNode, string, *xnet.ConnNode](opt, fac)
 }
 
 func newShort(opt *xpool.Option, cc Connector) ConnGroupPool {
@@ -96,7 +130,7 @@ func newShort(opt *xpool.Option, cc Connector) ConnGroupPool {
 			return Connect(ctx, cc, addr, nil)
 		},
 	}
-	return &xpool.DirectGroup[xnet.AddrNode, *xnet.ConnNode]{
+	return &xpool.DirectGroup[xnet.AddrNode, string, *xnet.ConnNode]{
 		Factory: fac,
 	}
 }

@@ -34,7 +34,7 @@ func SetConnectTimeout(opt Writer, timeout time.Duration) {
 }
 
 func ConnectTimeout(opt Reader) time.Duration {
-	return Duration(opt, KeyConnectTimeout, 3*time.Second)
+	return Duration(opt, KeyConnectTimeout, 10*time.Second)
 }
 
 func SetConnectRetry(opt Writer, retry int) {
@@ -52,7 +52,7 @@ func SetWriteTimeout(opt Writer, timeout time.Duration) {
 }
 
 func WriteTimeout(opt Reader) time.Duration {
-	return Duration(opt, KeyWriteTimeout, 3*time.Second)
+	return Duration(opt, KeyWriteTimeout, 5*time.Second)
 }
 
 func SetReadTimeout(opt Writer, timeout time.Duration) {
@@ -62,7 +62,7 @@ func SetReadTimeout(opt Writer, timeout time.Duration) {
 }
 
 func ReadTimeout(opt Reader) time.Duration {
-	return Duration(opt, KeyReadTimeout, 3*time.Second)
+	return Duration(opt, KeyReadTimeout, 5*time.Second)
 }
 
 func SetHandshakeTimeout(opt Writer, timeout time.Duration) {
@@ -72,7 +72,7 @@ func SetHandshakeTimeout(opt Writer, timeout time.Duration) {
 }
 
 func HandshakeTimeout(opt Reader) time.Duration {
-	return Duration(opt, KeyHandshakeTimeout, 3*time.Second)
+	return Duration(opt, KeyHandshakeTimeout, 5*time.Second)
 }
 
 func SetRetry(opt Writer, retry int) {
@@ -95,7 +95,7 @@ const (
 )
 
 func MaxResponseSize(opt Reader) int64 {
-	return Int64(opt, KeyMaxResponseSize, 10*mb)
+	return Int64(opt, KeyMaxResponseSize, 64*mb)
 }
 
 func WriteReadTimeout(opt Reader) time.Duration {

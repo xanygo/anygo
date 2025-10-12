@@ -390,6 +390,9 @@ type ConnNode struct {
 var _ ConnUnwrapper = (*ConnNode)(nil)
 
 func (t *ConnNode) NetConn() net.Conn {
+	if t == nil {
+		return nil
+	}
 	return t.Conn
 }
 
@@ -398,6 +401,9 @@ func (t *ConnNode) AddWrap(w net.Conn) {
 }
 
 func (t *ConnNode) Outer() net.Conn {
+	if t == nil {
+		return nil
+	}
 	if len(t.Wraps) == 0 {
 		return t.Conn
 	}

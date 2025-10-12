@@ -7,7 +7,6 @@ package zroute
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -184,7 +183,6 @@ func (sr *Route) Match(req *http.Request) (map[string]string, bool) {
 		return ret, false
 	}
 	if rr, ok2 := sr.Handler.(routeMatcher); ok2 {
-		log.Println("rr=", rr)
 		return rr.Match(req)
 	}
 	return ret, true

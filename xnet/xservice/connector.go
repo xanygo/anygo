@@ -35,7 +35,7 @@ func (c *connector) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption
 	conn, err = c.tlsHandshake(ctx, inConn, opt, addr)
 	if err != nil {
 		inConn.Close()
-		return inConn, err
+		return nil, err
 	}
 
 	protocol := xoption.Protocol(opt)
@@ -43,7 +43,7 @@ func (c *connector) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption
 		ret, err1 := xdial.Handshake(ctx, protocol, conn, opt)
 		if err1 != nil {
 			_ = conn.Close()
-			return conn, err1
+			return nil, err1
 		}
 		conn.Handshake = ret
 	}
@@ -83,13 +83,13 @@ func (c *connector) connectProxy(ctx context.Context, proxyName string, target x
 
 	conn, err := xdial.Connect(ctx, proxyService.Connector(), *proxyAddr, proxyService.Option())
 	if err != nil {
-		return conn, err
+		return nil, err
 	}
 
 	proxyConn, err := xproxy.Proxy(ctx, proxyDriver, conn, proxyConfig, target)
 	if err != nil {
 		_ = conn.Close()
-		return conn, err
+		return nil, err
 	}
 	return proxyConn, nil
 }
@@ -119,7 +119,7 @@ func (c *connector) tlsHandshake(ctx context.Context, conn *xnet.ConnNode, opt x
 
 	if err = tlsConn.HandshakeContext(ctx); err != nil {
 		_ = conn.Close()
-		return conn, fmt.Errorf("%w, ServerName=%q", err, tc.ServerName)
+		return nil, fmt.Errorf("%w, ServerName=%q", err, tc.ServerName)
 	}
 	conn.AddWrap(tlsConn)
 	return conn, nil

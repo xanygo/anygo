@@ -32,14 +32,11 @@ func Connect(ctx context.Context, c Connector, addr xnet.AddrNode, opt xoption.R
 		if !span.IsRecording() {
 			return
 		}
-		if nc != nil {
-			conn := nc.NetConn()
-			if conn != nil {
-				span.SetAttributes(
-					xmetric.AnyAttr("Remote", conn.RemoteAddr()),
-					xmetric.AnyAttr("Local", conn.LocalAddr()),
-				)
-			}
+		if conn := nc.NetConn(); conn != nil {
+			span.SetAttributes(
+				xmetric.AnyAttr("Remote", conn.RemoteAddr()),
+				xmetric.AnyAttr("Local", conn.LocalAddr()),
+			)
 			span.SetAttributes(
 				xmetric.AnyAttr("Addr", addr),
 			)

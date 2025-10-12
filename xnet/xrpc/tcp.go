@@ -150,10 +150,10 @@ func (c *TCP) tryOnce(ctx context.Context, req Request, resp Response, serviceNa
 		return err
 	}
 
-	entry, err := xdial.GroupPoolGet(ctx, service.Pool(), *addr)
+	entry, errPool := xdial.GroupPoolGet(ctx, service.Pool(), *addr)
 
 	var conn *xnet.ConnNode
-	if err == nil {
+	if errPool == nil {
 		conn = entry.Object()
 		var once sync.Once
 		conn.OnClose = func() error {
@@ -163,19 +163,15 @@ func (c *TCP) tryOnce(ctx context.Context, req Request, resp Response, serviceNa
 			})
 			return nil
 		}
-	} else if conn == nil {
-		conn = &xnet.ConnNode{
-			Addr: *addr,
-		}
 	}
 
 	for _, it := range its {
 		if it.AfterDial != nil {
-			it.AfterDial(ctx, serviceName, conn, err)
+			it.AfterDial(ctx, serviceName, addr, conn, errPool)
 		}
 	}
-	if err != nil {
-		return err
+	if errPool != nil {
+		return errPool
 	}
 
 	wrCtx, wrSpan := xmetric.Start(ctx, "WriteRead")
@@ -228,7 +224,7 @@ type TCPInterceptor struct {
 	AfterPickAddress  func(ctx context.Context, service string, node *xnet.AddrNode, err error)
 
 	// AfterDial 拨号完成后执行，最多执行 ( retry + 1 ) * ( connectRetry +1) 次
-	AfterDial func(ctx context.Context, service string, conn *xnet.ConnNode, err error)
+	AfterDial func(ctx context.Context, service string, addr *xnet.AddrNode, conn *xnet.ConnNode, err error)
 
 	// AfterWriteRead 每 Write + Read 完成后都会执行一次，最多执行 retry+1 次
 	AfterWriteRead func(ctx context.Context, service string, conn *xnet.ConnNode, req Request, resp Response, span xmetric.Span, err error)

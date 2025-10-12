@@ -45,7 +45,11 @@ func printValue(v reflect.Value, w io.Writer, indent int) {
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
 		reflect.Float32, reflect.Float64:
-		_, _ = fmt.Fprintf(w, "\t<span style='color:red'>%v</span>\n", v.Interface())
+		if v.CanInterface() {
+			_, _ = fmt.Fprintf(w, "\t<span style='color:red'>%v</span>\n", v.Interface())
+		} else {
+			_, _ = fmt.Fprintf(w, "\t<span style='color:red'>%v</span>\n", v)
+		}
 	case reflect.String:
 		str := v.String()
 		_, _ = fmt.Fprintf(w, "\t<span style='color:gray'>(len=%d)</span><span style='color:green'>%q</span>\n", len(str), str)
@@ -91,7 +95,11 @@ func printValue(v reflect.Value, w io.Writer, indent int) {
 			printValue(v.Elem(), w, indent+4)
 		}
 	default:
-		vvr := reflect.ValueOf(v.Interface())
-		printValue(vvr, w, indent+4)
+		if v.CanInterface() {
+			vvr := reflect.ValueOf(v.Interface())
+			printValue(vvr, w, indent+4)
+		} else {
+			_, _ = fmt.Fprintf(w, "\t<span f=d>%v</span>\n", v)
+		}
 	}
 }

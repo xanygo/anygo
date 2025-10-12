@@ -45,14 +45,14 @@ func (d *DirectPool[V]) Stats() Stats {
 	}
 }
 
-var _ GroupPool[string, io.Closer] = (*DirectGroup[string, io.Closer])(nil)
+var _ GroupPool[groupKey, string, io.Closer] = (*DirectGroup[groupKey, string, io.Closer])(nil)
 
 // DirectGroup 实现 GroupPool 接口，但是每次调用都会返回一个新元素
-type DirectGroup[K comparable, V io.Closer] struct {
-	Factory GroupFactory[K, V]
+type DirectGroup[K GroupKey[T], T comparable, V io.Closer] struct {
+	Factory GroupFactory[K, T, V]
 }
 
-func (dg *DirectGroup[K, V]) Get(ctx context.Context, key K) (Entry[V], error) {
+func (dg *DirectGroup[K, T, V]) Get(ctx context.Context, key K) (Entry[V], error) {
 	v, err := dg.Factory.NewWithKey(ctx, key)
 	if err != nil {
 		return nil, err
@@ -62,18 +62,18 @@ func (dg *DirectGroup[K, V]) Get(ctx context.Context, key K) (Entry[V], error) {
 	return et, nil
 }
 
-func (dg *DirectGroup[K, V]) Put(e Entry[V], err error) {
+func (dg *DirectGroup[K, T, V]) Put(e Entry[V], err error) {
 	e.Close()
 }
 
-func (dg *DirectGroup[K, V]) Close() error {
+func (dg *DirectGroup[K, T, V]) Close() error {
 	return nil
 }
 
-func (dg *DirectGroup[K, V]) Stats() Stats {
+func (dg *DirectGroup[K, T, V]) Stats() Stats {
 	return Stats{}
 }
 
-func (dg *DirectGroup[K, V]) GroupStats() map[K]Stats {
-	return map[K]Stats{}
+func (dg *DirectGroup[K, T, V]) GroupStats() map[T]Stats {
+	return map[T]Stats{}
 }

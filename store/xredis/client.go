@@ -64,7 +64,10 @@ func (c *Client) do(ctx context.Context, cmd Request) *rpcResponse {
 		req: cmd,
 	}
 	resp := &rpcResponse{}
-	_ = xrpc.Invoke(ctx, c.Service, req, resp, c.once.Load()...)
+	err := xrpc.Invoke(ctx, c.Service, req, resp, c.once.Load()...)
+	if resp.err == nil {
+		resp.err = err
+	}
 	return resp
 }
 

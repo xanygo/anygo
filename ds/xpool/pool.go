@@ -60,8 +60,10 @@ func (f FactoryFunc[V]) New(ctx context.Context) (V, error) {
 	return f(ctx)
 }
 
+// Validator 校验对象池里的对象是否有效
 type Validator[V io.Closer] interface {
-	Validate(V) error
+	// Validate 第二个参数 error 是，最后一次使用后，业务层返回的错误，可能是 nil
+	Validate(V, error) error
 }
 
 // Option simple 配置选项，当前所有的选项都是可选的
@@ -75,11 +77,11 @@ type Option struct {
 	MaxIdle int
 
 	// MaxLifeTime 最大使用时长，超过后将被销毁
-	// <=0 为不限制
+	// <=0 时使用默认值 30 分钟
 	MaxLifeTime time.Duration
 
 	// MaxIdleTime 最大空闲等待时间，超过后将被销毁
-	// <=0 为不限制
+	// <=0 时使用默认值 10 分钟
 	MaxIdleTime time.Duration
 
 	// MaxPoolIdleTime GroupPool 使用，当超过此时长未被使用后，关闭并清理对应的 Pool
@@ -87,11 +89,35 @@ type Option struct {
 	MaxPoolIdleTime time.Duration
 }
 
-func (opt *Option) GetMaxPoolIdleTime() time.Duration {
-	if opt != nil && opt.MaxPoolIdleTime > 0 {
-		return opt.MaxPoolIdleTime
+// Normalization 返回整理后的，有效值
+func (opt *Option) Normalization() *Option {
+	if opt == nil {
+		return &Option{
+			MaxLifeTime:     30 * time.Hour,
+			MaxIdleTime:     10 * time.Minute,
+			MaxPoolIdleTime: 10 * time.Minute,
+		}
 	}
-	return 10 * time.Minute
+	nv := &Option{
+		MaxOpen:         opt.MaxOpen,
+		MaxIdle:         opt.MaxIdle,
+		MaxLifeTime:     opt.MaxLifeTime,
+		MaxIdleTime:     opt.MaxIdleTime,
+		MaxPoolIdleTime: opt.MaxPoolIdleTime,
+	}
+	if nv.MaxIdle > 0 && nv.MaxIdle > nv.MaxOpen {
+		nv.MaxIdle = nv.MaxOpen
+	}
+	if nv.MaxLifeTime <= 0 {
+		nv.MaxLifeTime = 30 * time.Hour
+	}
+	if nv.MaxIdleTime <= 0 {
+		nv.MaxIdleTime = 10 * time.Minute
+	}
+	if nv.MaxPoolIdleTime <= 0 {
+		nv.MaxPoolIdleTime = 10 * time.Minute
+	}
+	return nv
 }
 
 // Stats Pool's Stats

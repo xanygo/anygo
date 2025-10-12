@@ -18,9 +18,7 @@ import (
 )
 
 func New[V io.Closer](opt *Option, ct Factory[V]) Pool[V] {
-	if opt == nil {
-		opt = &Option{}
-	}
+	opt = opt.Normalization()
 	ctx, cancel := context.WithCancel(context.Background())
 	pool := &simple[V]{
 		maxOpen:     opt.MaxOpen,
@@ -120,11 +118,11 @@ func (dc *element[V]) expired(timeout time.Duration) bool {
 }
 
 // validateConnection 验证是否有效
-func (dc *element[V]) validateConnection() bool {
+func (dc *element[V]) validateConnection(err error) bool {
 	if dc.validator == nil {
 		return true
 	}
-	return dc.validator.Validate(dc.obj) == nil
+	return dc.validator.Validate(dc.obj, err) == nil
 }
 
 // the dc.pool's Mutex is held.
@@ -396,7 +394,7 @@ func stack() string {
 // err is optionally the last error that occurred on this connection.
 func (p *simple[V]) putConn(dc *element[V], err error) {
 	if !errors.Is(err, ErrBadEntry) {
-		if !dc.validateConnection() {
+		if !dc.validateConnection(err) {
 			err = ErrBadEntry
 		}
 	}

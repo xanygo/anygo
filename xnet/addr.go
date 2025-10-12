@@ -12,6 +12,7 @@ import (
 	"net"
 
 	"github.com/xanygo/anygo/ds/xmap"
+	"github.com/xanygo/anygo/internal/zdefine"
 	"github.com/xanygo/anygo/xnet/internal"
 )
 
@@ -91,9 +92,15 @@ func IsIPAddress(host string) bool {
 	return ip != nil
 }
 
+var _ zdefine.HasKey[string] = (*AddrNode)(nil)
+
 type AddrNode struct {
 	HostPort string
 	Addr     net.Addr
+}
+
+func (n AddrNode) Key() string {
+	return n.Addr.String()
 }
 
 func (n AddrNode) Host() string {
