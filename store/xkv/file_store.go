@@ -25,24 +25,24 @@ import (
 	"github.com/xanygo/anygo/xpp"
 )
 
-var _ StringStorage = (*FileStorage)(nil)
+var _ StringStorage = (*FileStore)(nil)
 
-func NewFileStorage(dataDir string) *FileStorage {
-	return &FileStorage{
+func NewFileStore(dataDir string) *FileStore {
+	return &FileStore{
 		DataDir: dataDir,
 	}
 }
 
-// NewFileStorageAny 创建一个值类型支持泛型类型的，使用文件系统存储的 KV 存储对象
-func NewFileStorageAny[V any](dataDir string, coder xcodec.Codec) *Transformer[V] {
+// NewFileStoreAny 创建一个值类型支持泛型类型的，使用文件系统存储的 KV 存储对象
+func NewFileStoreAny[V any](dataDir string, coder xcodec.Codec) *Transformer[V] {
 	return &Transformer[V]{
 		Codec:   coder,
-		Storage: NewFileStorage(dataDir),
+		Storage: NewFileStore(dataDir),
 	}
 }
 
-// FileStorage 基于本地文件系统的 KV 存储实现,值类型为 string
-type FileStorage struct {
+// FileStore 基于本地文件系统的 KV 存储实现,值类型为 string
+type FileStore struct {
 	// DataDir 数据存储目录，必填
 	DataDir string
 
@@ -53,11 +53,11 @@ type FileStorage struct {
 	runner xpp.CooldownRunner
 }
 
-func (f *FileStorage) autoGC() {
+func (f *FileStore) autoGC() {
 	f.runner.Run(f.GC, f.doGC)
 }
 
-func (f *FileStorage) doGC() {
+func (f *FileStore) doGC() {
 	deleted, err := xfs.RemoveEmptyDir(f.DataDir)
 	if err != nil {
 		xlog.Warn(context.Background(), "anygo_xkv_FileStorage_gc", xlog.ErrorAttr("error", err))
@@ -66,7 +66,7 @@ func (f *FileStorage) doGC() {
 	}
 }
 
-func (f *FileStorage) Delete(ctx context.Context, keys ...string) error {
+func (f *FileStore) Delete(ctx context.Context, keys ...string) error {
 	errs := make([]error, 0)
 	for _, key := range keys {
 		if err := f.deleteOne(key); err != nil {
@@ -80,7 +80,7 @@ func (f *FileStorage) Delete(ctx context.Context, keys ...string) error {
 	return errors.Join(errs...)
 }
 
-func (f *FileStorage) deleteOne(key string) error {
+func (f *FileStore) deleteOne(key string) error {
 	fp := f.getDataDir(key)
 	err := os.RemoveAll(fp)
 	if err == nil || errors.Is(err, fs.ErrNotExist) {
@@ -89,14 +89,14 @@ func (f *FileStorage) deleteOne(key string) error {
 	return err
 }
 
-func (f *FileStorage) getDataDir(key string) string {
+func (f *FileStore) getDataDir(key string) string {
 	sg := md5.Sum([]byte("anygo" + key))
 	s := hex.EncodeToString(sg[:])
 	fp := filepath.Join(f.DataDir, s[:2], s[2:4], s[4:6], s[6:])
 	return fp
 }
 
-func (f *FileStorage) String(key string) String[string] {
+func (f *FileStore) String(key string) String[string] {
 	return &fileString{
 		FileBase: internal.FileBase{
 			Key: key,
@@ -105,7 +105,7 @@ func (f *FileStorage) String(key string) String[string] {
 	}
 }
 
-func (f *FileStorage) List(key string) List[string] {
+func (f *FileStore) List(key string) List[string] {
 	return &fileList{
 		fss: f,
 		FileBase: internal.FileBase{
@@ -115,7 +115,7 @@ func (f *FileStorage) List(key string) List[string] {
 	}
 }
 
-func (f *FileStorage) Hash(key string) Hash[string] {
+func (f *FileStore) Hash(key string) Hash[string] {
 	return &fileHash{
 		fss: f,
 		FileBase: internal.FileBase{
@@ -125,7 +125,7 @@ func (f *FileStorage) Hash(key string) Hash[string] {
 	}
 }
 
-func (f *FileStorage) Set(key string) Set[string] {
+func (f *FileStore) Set(key string) Set[string] {
 	return &fileSet{
 		fss: f,
 		FileBase: internal.FileBase{
@@ -135,7 +135,7 @@ func (f *FileStorage) Set(key string) Set[string] {
 	}
 }
 
-func (f *FileStorage) ZSet(key string) ZSet[string] {
+func (f *FileStore) ZSet(key string) ZSet[string] {
 	return &fileZSet{
 		fss: f,
 		FileBase: internal.FileBase{
@@ -193,7 +193,7 @@ func (f *fileString) Decr(ctx context.Context) (int64, error) {
 var _ List[string] = (*fileList)(nil)
 
 type fileList struct {
-	fss *FileStorage
+	fss *FileStore
 	internal.FileBase
 }
 
@@ -395,7 +395,7 @@ func (f fileList) Range(ctx context.Context, fn func(val string) bool) error {
 var _ Hash[string] = (*fileHash)(nil)
 
 type fileHash struct {
-	fss *FileStorage
+	fss *FileStore
 	internal.FileBase
 }
 
@@ -498,7 +498,7 @@ func (f fileHash) HGetAll(ctx context.Context) (map[string]string, error) {
 var _ Set[string] = (*fileSet)(nil)
 
 type fileSet struct {
-	fss *FileStorage
+	fss *FileStore
 	internal.FileBase
 }
 
@@ -562,7 +562,7 @@ func (f fileSet) SMembers(ctx context.Context) ([]string, error) {
 var _ ZSet[string] = (*fileZSet)(nil)
 
 type fileZSet struct {
-	fss *FileStorage
+	fss *FileStore
 	internal.FileBase
 }
 

@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/ds/xsync"
+	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xpp"
 )
 
 const (
-	Dummy        = "dummy"
-	DummyAddress = Dummy + ":80"
+	Dummy = xnet.Dummy
 )
 
 func DummyService() Service {
@@ -40,6 +40,6 @@ var dummyServiceConfig = &Config{
 	ReadTimeout:    5000,
 	Retry:          2,
 	DownStream: DownStreamPart{
-		Address: []string{DummyAddress},
+		Address: []string{xnet.DummyAddress},
 	},
 }

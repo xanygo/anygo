@@ -13,7 +13,7 @@ import (
 
 func TestFileStorage(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "xkv_file")
-	ff := &xkv.FileStorage{
+	ff := &xkv.FileStore{
 		DataDir: dir,
 	}
 	testStorage(t, ff)

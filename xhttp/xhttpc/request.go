@@ -84,7 +84,7 @@ func (r *Request) getURL(so xoption.Reader, address string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if u.Host == xservice.DummyAddress {
+	if u.Host == xnet.DummyAddress {
 		u.Host = ""
 	}
 

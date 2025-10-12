@@ -6,6 +6,7 @@ package xkv
 
 import (
 	"context"
+	"maps"
 	"slices"
 	"sort"
 	"strconv"
@@ -319,12 +320,12 @@ func (m *memHash) withMapLocked(fn func(map[string]string) (map[string]string, b
 		}
 		result := map[string]string{}
 		if found {
-			xcodec.JSON.Decode([]byte(str), &result)
+			xcodec.DecodeFromString(xcodec.JSON, str, &result)
 		}
 		newValue, replace := fn(result)
 		if replace {
-			bf, _ := xcodec.JSON.Encode(newValue)
-			db[m.key] = string(bf)
+			bf, _ := xcodec.EncodeToString(xcodec.JSON, newValue)
+			db[m.key] = bf
 			tps[m.key] = internal.DataTypeHash
 		}
 	})
@@ -365,7 +366,7 @@ func (m *memHash) HDel(ctx context.Context, fields ...string) error {
 		for _, field := range fields {
 			delete(m, field)
 		}
-		return m, false
+		return m, true
 	})
 }
 
@@ -385,7 +386,7 @@ func (m *memHash) HRange(ctx context.Context, fn func(field string, value string
 func (m *memHash) HGetAll(ctx context.Context) (map[string]string, error) {
 	var result map[string]string
 	err := m.withMapLocked(func(m map[string]string) (map[string]string, bool) {
-		result = m
+		result = maps.Clone(m)
 		return m, false
 	})
 	return result, err

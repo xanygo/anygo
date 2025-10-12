@@ -101,6 +101,9 @@ func (r *ResolverImpl) LookupIP(ctx context.Context, network string, host string
 	if ip, _ := internal.ParseIPZone(host); ip != nil {
 		return []net.IP{ip}, nil
 	}
+	if host == "dummy" {
+		return dummyIPS, nil
+	}
 	if ttl := r.getTTL(); ttl > 0 {
 		key := network + "@" + host
 		r.getVisitLRU().Set(key, time.Now())

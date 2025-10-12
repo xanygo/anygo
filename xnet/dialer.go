@@ -113,6 +113,9 @@ func splitHostPort(hostPort string) (host string, port string, err error) {
 }
 
 func (d *DialerImpl) doDial(ctx context.Context, network string, address string) (net.Conn, error) {
+	if address == dummyIP {
+		return nil, errDialDummy
+	}
 	nt := Network(network).Resolver()
 	if nt.IsIP() {
 		host, port, err := splitHostPort(address)
