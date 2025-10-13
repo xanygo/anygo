@@ -54,6 +54,7 @@ func (l *Logger) afterWriteRead(ctx context.Context, _ string, conn *xnet.ConnNo
 		"WriteBytes": conn.WriteBytes(),
 		"ReadCost":   conn.ReadCost().String(),
 		"WriteCost":  conn.WriteCost().String(),
+		"Usage":      conn.UsageCount(),
 	}
 
 	if rr, ok := resp.Unwrap().(*http.Response); ok && rr != nil {

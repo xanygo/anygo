@@ -9,7 +9,9 @@ import (
 	"encoding"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"runtime/debug"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"unsafe"
@@ -95,7 +97,8 @@ func (p *PanicErr) TraceData() map[string]any {
 }
 
 func (p *PanicErr) Error() string {
-	return fmt.Sprintf("panic(%d): %v", p.ID, p.Panic)
+	short := filepath.Base(p.File) + ":" + strconv.Itoa(p.Line)
+	return fmt.Sprintf("%s panic(%d): %v", short, p.ID, p.Panic)
 }
 
 func (p *PanicErr) MarshalText() (text []byte, err error) {

@@ -1,12 +1,14 @@
 //  Copyright(C) 2025 github.com/hidu  All Rights Reserved.
 //  Author: hidu <duv123+git@gmail.com>
-//  Date: 2025-09-09
+//  Date: 2025-10-13
 
-package safely
+package xsync
 
 import (
 	"errors"
 	"sync"
+
+	"github.com/xanygo/anygo/safely"
 )
 
 type WaitGo struct {
@@ -17,7 +19,7 @@ type WaitGo struct {
 
 func (w *WaitGo) Go(f func()) {
 	w.wg.Go(func() {
-		err := Run(f)
+		err := safely.Run(f)
 		if err == nil {
 			return
 		}
@@ -29,7 +31,7 @@ func (w *WaitGo) Go(f func()) {
 
 func (w *WaitGo) Go1(f func() error) {
 	w.wg.Go(func() {
-		err := Run(f)
+		err := safely.Run(f)
 		if err == nil {
 			return
 		}

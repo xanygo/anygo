@@ -13,21 +13,21 @@ import (
 
 func TestSetConnectTimeout(t *testing.T) {
 	doCheck := func(t *testing.T, opt Option) {
-		fst.Equal(t, 0, Retry(opt))
-		SetRetry(opt, 1)
-		fst.Equal(t, 1, Retry(opt))
+		fst.Equal(t, DefaultRetry, Retry(opt))
+		SetRetry(opt, 2)
+		fst.Equal(t, 2, Retry(opt))
 		opt.Delete(KeyRetry)
-		fst.Equal(t, 0, Retry(opt))
+		fst.Equal(t, DefaultRetry, Retry(opt))
 
-		fst.Equal(t, 3*time.Second, ReadTimeout(opt))
+		fst.Equal(t, DefaultReadTimeout, ReadTimeout(opt))
 		SetReadTimeout(opt, time.Hour)
 		fst.Equal(t, time.Hour, ReadTimeout(opt))
 
-		fst.Equal(t, 3*time.Second, WriteTimeout(opt))
+		fst.Equal(t, DefaultWriteTimeout, WriteTimeout(opt))
 		SetWriteTimeout(opt, time.Minute)
 		fst.Equal(t, time.Minute, WriteTimeout(opt))
 
-		fst.Equal(t, 10*1024*1024, MaxResponseSize(opt))
+		fst.Equal(t, 64*mb, MaxResponseSize(opt))
 		SetMaxResponseSize(opt, 5)
 		fst.Equal(t, 5, MaxResponseSize(opt))
 

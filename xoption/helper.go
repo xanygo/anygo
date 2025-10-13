@@ -85,3 +85,8 @@ func Map(opt Reader, key Key, def map[string]any) map[string]any {
 func Bool(opt Reader, key Key, def bool) bool {
 	return GetAsDefault[bool](opt, key, def)
 }
+
+type KeyValue[K comparable, V any] struct {
+	K K
+	V V
+}

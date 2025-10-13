@@ -385,6 +385,7 @@ type ConnNode struct {
 	writeTotalBytes atomic.Int64
 	readTotalTime   xsync.TimeDuration
 	writeTotalTime  xsync.TimeDuration
+	usage           atomic.Int64 // 使用次数
 }
 
 var _ ConnUnwrapper = (*ConnNode)(nil)
@@ -489,9 +490,22 @@ func (t *ConnNode) WriteCost() time.Duration {
 	return t.writeTotalTime.Load()
 }
 
+// UsageCount 被复用的，使用次数
+func (t *ConnNode) UsageCount() int64 {
+	return t.usage.Load() + 1
+}
+
 // Err 获取其首次 error 信息
 func (t *ConnNode) Err() error {
 	return t.firstErr.Unwrap()
+}
+
+func (t *ConnNode) ResetStats() {
+	t.usage.Add(1)
+	t.readTotalBytes.Store(0)
+	t.writeTotalTime.Store(0)
+	t.readTotalTime.Store(0)
+	t.writeTotalTime.Store(0)
 }
 
 func (t *ConnNode) Clone() *ConnNode {

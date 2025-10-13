@@ -25,6 +25,18 @@ var (
 	KeyProtocol         = NewKey("Protocol")
 
 	keyExtraPrefix = "Extra:"
+
+	// KeyExtra 只用于 ConsumeRPCConfig 方法,业务层可以通过此key内传递此类消息以更新 option
+	KeyExtra = NewKey(keyExtraPrefix)
+)
+
+var (
+	DefaultConnectRetry     = 0                // 默认网络连接次数
+	DefaultConnectTimeout   = 10 * time.Second // 默认连接超时
+	DefaultWriteTimeout     = 5 * time.Second  // 默认网络写超时
+	DefaultReadTimeout      = 5 * time.Second  // 默认网络读超时
+	DefaultHandshakeTimeout = 5 * time.Second  // 默认 rpc 协议层面握手超时
+	DefaultRetry            = 1                // RPC 默认重试次数
 )
 
 func SetConnectTimeout(opt Writer, timeout time.Duration) {
@@ -34,7 +46,7 @@ func SetConnectTimeout(opt Writer, timeout time.Duration) {
 }
 
 func ConnectTimeout(opt Reader) time.Duration {
-	return Duration(opt, KeyConnectTimeout, 10*time.Second)
+	return Duration(opt, KeyConnectTimeout, DefaultConnectTimeout)
 }
 
 func SetConnectRetry(opt Writer, retry int) {
@@ -42,7 +54,7 @@ func SetConnectRetry(opt Writer, retry int) {
 }
 
 func ConnectRetry(opt Reader) int {
-	return Int(opt, KeyConnectRetry, 0)
+	return Int(opt, KeyConnectRetry, DefaultConnectRetry)
 }
 
 func SetWriteTimeout(opt Writer, timeout time.Duration) {
@@ -52,7 +64,7 @@ func SetWriteTimeout(opt Writer, timeout time.Duration) {
 }
 
 func WriteTimeout(opt Reader) time.Duration {
-	return Duration(opt, KeyWriteTimeout, 5*time.Second)
+	return Duration(opt, KeyWriteTimeout, DefaultWriteTimeout)
 }
 
 func SetReadTimeout(opt Writer, timeout time.Duration) {
@@ -62,7 +74,7 @@ func SetReadTimeout(opt Writer, timeout time.Duration) {
 }
 
 func ReadTimeout(opt Reader) time.Duration {
-	return Duration(opt, KeyReadTimeout, 5*time.Second)
+	return Duration(opt, KeyReadTimeout, DefaultReadTimeout)
 }
 
 func SetHandshakeTimeout(opt Writer, timeout time.Duration) {
@@ -72,7 +84,7 @@ func SetHandshakeTimeout(opt Writer, timeout time.Duration) {
 }
 
 func HandshakeTimeout(opt Reader) time.Duration {
-	return Duration(opt, KeyHandshakeTimeout, 5*time.Second)
+	return Duration(opt, KeyHandshakeTimeout, DefaultHandshakeTimeout)
 }
 
 func SetRetry(opt Writer, retry int) {
@@ -81,7 +93,7 @@ func SetRetry(opt Writer, retry int) {
 }
 
 func Retry(opt Reader) int {
-	return Int(opt, KeyRetry, 0)
+	return Int(opt, KeyRetry, DefaultRetry)
 }
 
 func SetMaxResponseSize(opt Writer, maxSize int64) {
@@ -136,9 +148,15 @@ var extraKeys = &xmap.Cached[string, Key]{
 	},
 }
 
+// SetExtra 设置其他额外属性，需要注意，这类属性应该是可以枚举的，是有限的
 func SetExtra(opt Writer, key string, value any) {
 	ek := extraKeys.Get(key)
 	opt.Set(ek, value)
+}
+
+func SetExtraByKV(opt Writer, kv KeyValue[string, any]) {
+	ek := extraKeys.Get(kv.K)
+	opt.Set(ek, kv.V)
 }
 
 func Extra(opt Reader, key string) any {
@@ -164,6 +182,14 @@ func ConsumeRPCConfig(d Writer, msg xbus.Message) error {
 		return convertDoSet[int](d, msg.Payload, SetRetry)
 	case KeyBalancer, KeyBalancer.Name():
 		return convertDoSet[string](d, msg.Payload, SetBalancer)
+	case KeyProtocol, KeyProtocol.Name():
+		return convertDoSet[string](d, msg.Payload, SetProtocol)
+	case KeyMaxResponseSize, KeyMaxResponseSize.Name():
+		return convertDoSet[int64](d, msg.Payload, SetMaxResponseSize)
+	case KeyHandshakeTimeout, KeyHandshakeTimeout.Name():
+		return convertDoSet[time.Duration](d, msg.Payload, SetHandshakeTimeout)
+	case KeyExtra, KeyExtra.Name():
+		return convertDoSet[KeyValue[string, any]](d, msg.Payload, SetExtraByKV)
 	}
 
 	return nil

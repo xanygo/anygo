@@ -6,11 +6,10 @@ package xsession
 
 import (
 	"context"
-	"encoding/json"
 	"reflect"
 	"time"
-	"unsafe"
 
+	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xctx"
 )
 
@@ -56,19 +55,9 @@ func FromContext(ctx context.Context) Session {
 // Set 将数据 val 使用 json 编码，并调用 Session.Set 保存
 // 注意：使用此方法写入的数据，必须使用 Load 或 Get 等来读取，不可以直接使用 Session 对象的 Load、Get 等方法
 func Set[T any](ctx context.Context, s Session, key string, val T) error {
-	var str string
-
-	switch v := any(val).(type) {
-	case string:
-		// 如果是 string，直接使用
-		str = v
-	default:
-		// 其他类型走 JSON 序列化
-		bf, err := json.Marshal(v)
-		if err != nil {
-			return err
-		}
-		str = unsafe.String(&bf[0], len(bf))
+	str, err := xcodec.EncodeToString(xcodec.JSON, val)
+	if err != nil {
+		return err
 	}
 	return s.Set(ctx, key, str)
 }
@@ -87,12 +76,7 @@ func Get[T any](ctx context.Context, s Session, key string) (result T, err error
 	if err != nil {
 		return result, err
 	}
-	switch any(result).(type) {
-	case string:
-		result = any(str).(T)
-	default:
-		err = json.Unmarshal([]byte(str), &result)
-	}
+	err = xcodec.DecodeFromString(xcodec.JSON, str, &result)
 	return result, err
 }
 

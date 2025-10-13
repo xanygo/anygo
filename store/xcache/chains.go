@@ -9,6 +9,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xerror"
 )
 
@@ -82,22 +83,25 @@ func (c *chains[K, V]) Get(ctx context.Context, key K) (v V, err error) {
 
 func (c *chains[K, V]) setBefore(ctx context.Context, idx int, k K, v V) {
 	ctx = context.WithoutCancel(ctx)
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
 	for i := 0; i < idx; i++ {
 		c.caches[i].set(ctx, k, v)
 	}
 }
 
 func (c *chains[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration) error {
-	var errs []error
-	for _, item := range c.caches {
-		if err := item.Cache.Set(ctx, key, value, ttl); err != nil {
-			errs = append(errs, err)
-		}
+	ctx1 := context.WithoutCancel(ctx)
+	// 底层的 cache 一般速度可能会更慢，所以采用异步，并且提前写
+	for _, item := range c.caches[1:] {
+		go safely.RunCtx(ctx1, func(ctx2 context.Context) {
+			ctx3, cancel := context.WithTimeout(ctx2, time.Minute)
+			defer cancel()
+			_ = item.Cache.Set(ctx3, key, value, ttl)
+		})
 	}
-	if len(errs) > 0 {
-		return nil
-	}
-	return errors.Join(errs...)
+	err := c.caches[0].Cache.Set(ctx, key, value, ttl)
+	return err
 }
 
 func (c *chains[K, V]) Delete(ctx context.Context, keys ...K) error {

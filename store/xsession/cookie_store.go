@@ -10,9 +10,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"runtime/debug"
 	"time"
 
 	"github.com/xanygo/anygo/ds/xmap"
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xcodec"
 )
 
@@ -34,20 +36,33 @@ type CookieStore struct {
 
 	// BeforeSave 可选，用于设置 cookie 的 属性
 	BeforeSave func(c *http.Cookie)
-}
 
-var defaultCipher = xcodec.Ciphers{
-	xcodec.NewCipher(xcodec.GZipCompress, xcodec.GZipDecompress),
-	&xcodec.Base64{
-		Encoder: base64.RawURLEncoding,
-	},
+	cipherGetter xsync.OnceDoValue[xcodec.Cipher]
 }
 
 func (cs *CookieStore) getCipher() xcodec.Cipher {
-	if cs.Cipher != nil {
-		return cs.Cipher
+	return cs.cipherGetter.Do(cs.initCipher)
+}
+
+func (cs *CookieStore) initCipher() xcodec.Cipher {
+	cp := cs.Cipher
+	if cp == nil {
+		var key string
+		if bi, ok := debug.ReadBuildInfo(); ok {
+			key = bi.Path
+		} else {
+			key = "7332d" + "af432078" + "b33dca1d26b" + "431ade36"
+		}
+		cp = &xcodec.AesOFB{
+			Key: key,
+		}
 	}
-	return defaultCipher
+	return xcodec.Ciphers{
+		xcodec.NewCipher(xcodec.GZipCompress, xcodec.GZipDecompress),
+		&xcodec.Base64{
+			Encoder: base64.RawURLEncoding,
+		},
+	}
 }
 
 func (cs *CookieStore) getCookieName() string {
@@ -92,6 +107,17 @@ func (cs *CookieStore) Save(ctx context.Context, session Session) error {
 	}
 	http.SetCookie(cs.Writer, cookie)
 	return nil
+}
+
+func (cs *CookieStore) Delete() {
+	cookie := &http.Cookie{
+		Name:     cs.getCookieName(),
+		Value:    "",
+		HttpOnly: true,
+		Path:     "/",
+		MaxAge:   -1,
+	}
+	http.SetCookie(cs.Writer, cookie)
 }
 
 var _ Session = (*cookieSession)(nil)
@@ -152,7 +178,8 @@ func (c *cookieSession) Save(ctx context.Context) error {
 
 func (c *cookieSession) Clear(ctx context.Context) error {
 	c.values.Clear()
-	return c.Save(ctx)
+	c.store.Delete()
+	return nil
 }
 
 func (c *cookieSession) bytes() []byte {

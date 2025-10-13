@@ -159,6 +159,7 @@ func (c *TCP) tryOnce(ctx context.Context, req Request, resp Response, serviceNa
 		conn.OnClose = func() error {
 			once.Do(func() {
 				conn.OnClose = nil
+				conn.ResetStats()
 				entry.Release(result)
 			})
 			return nil
@@ -175,7 +176,15 @@ func (c *TCP) tryOnce(ctx context.Context, req Request, resp Response, serviceNa
 	}
 
 	wrCtx, wrSpan := xmetric.Start(ctx, "WriteRead")
-	defer wrSpan.End()
+	defer func() {
+		for _, it := range its {
+			if it.AfterWriteRead != nil {
+				it.AfterWriteRead(ctx, serviceName, conn, req, resp, wrSpan, err)
+			}
+		}
+		wrSpan.End()
+		_ = conn.Close()
+	}()
 
 	err = c.doWriteRead(wrCtx, req, resp, opt, conn)
 	wrSpan.SetAttributes(
@@ -183,17 +192,10 @@ func (c *TCP) tryOnce(ctx context.Context, req Request, resp Response, serviceNa
 		xmetric.AnyAttr("resp.msg", resp.ErrMsg()),
 	)
 	wrSpan.RecordError(err)
-	for _, it := range its {
-		if it.AfterWriteRead != nil {
-			it.AfterWriteRead(ctx, serviceName, conn, req, resp, wrSpan, err)
-		}
-	}
-
 	return err
 }
 
 func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption.Reader, conn *xnet.ConnNode) (err error) {
-	defer conn.Close()
 	totalTimeout := xoption.WriteReadTimeout(opt)
 	ctx, cancel := context.WithTimeout(ctx, totalTimeout)
 	defer cancel()

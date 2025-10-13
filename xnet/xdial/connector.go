@@ -28,6 +28,7 @@ func (c ConnectorFunc) Connect(ctx context.Context, addr xnet.AddrNode, opt xopt
 
 func Connect(ctx context.Context, c Connector, addr xnet.AddrNode, opt xoption.Reader) (nc *xnet.ConnNode, err error) {
 	ctx, span := xmetric.Start(ctx, "Connect")
+
 	defer func() {
 		if !span.IsRecording() {
 			return
@@ -48,14 +49,27 @@ func Connect(ctx context.Context, c Connector, addr xnet.AddrNode, opt xoption.R
 		opt = xoption.ReaderFromContext(ctx)
 	}
 
+	total := xoption.ConnectRetry(opt) + 1
 	timeout := xoption.ConnectTimeout(opt)
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
+	span.SetAttemptCount(total)
 
-	if c == nil {
-		return DefaultConnector().Connect(ctx, addr, opt)
+	doDial := func(ctx context.Context) (nc *xnet.ConnNode, err error) {
+		ctx1, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+
+		if c == nil {
+			return DefaultConnector().Connect(ctx1, addr, opt)
+		}
+		return c.Connect(ctx1, addr, opt)
 	}
-	return c.Connect(ctx, addr, opt)
+	// 尝试多次连接，由于在 xnet.DialerImpl 里已经有 Hedging request 的逻辑，所以这里就不需要了
+	for i := 0; i < total; i++ {
+		nc, err = doDial(ctx)
+		if err == nil {
+			break
+		}
+	}
+	return nc, err
 }
 
 func DefaultConnector() Connector {

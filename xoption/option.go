@@ -65,15 +65,20 @@ var _ Option = (*Dynamic)(nil)
 func NewDynamic() *Dynamic {
 	return &Dynamic{
 		values: &sync.Map{},
+		fixed:  &sync.Map{},
 	}
 }
 
 // Dynamic 并发安全的，可动态、并发读写的 配置存储管理器
 type Dynamic struct {
 	values *sync.Map
+	fixed  *sync.Map
 }
 
 func (d *Dynamic) Get(key Key) (any, bool) {
+	if v, ok := d.fixed.Load(key); ok {
+		return v, true
+	}
 	return d.values.Load(key)
 }
 
@@ -84,6 +89,18 @@ func (d *Dynamic) Set(key Key, val any) {
 func (d *Dynamic) Delete(keys ...Key) {
 	for _, key := range keys {
 		d.values.Delete(key)
+	}
+}
+
+// SetFixed 使用此方法设置的值，不会被 Set 方法设置的值覆盖，并且使用 Get 方法读取的时候，会被优先读取
+func (d *Dynamic) SetFixed(key Key, val any) {
+	d.fixed.Store(key, val)
+}
+
+// DeleteFixed 删除使用 SetFixed 设置的值
+func (d *Dynamic) DeleteFixed(keys ...Key) {
+	for _, key := range keys {
+		d.fixed.Delete(key)
 	}
 }
 
@@ -144,6 +161,7 @@ func (e EmptyReader) Range(fn func(key Key, val any) bool) {}
 func NewSimple() *Simple {
 	return &Simple{
 		value: make(map[Key]any, 4),
+		fixed: make(map[Key]any, 4),
 	}
 }
 
@@ -152,11 +170,15 @@ var _ Option = (*Simple)(nil)
 // Simple 一个简单的，非并发安全的配置存储管理器
 type Simple struct {
 	value map[Key]any
+	fixed map[Key]any
 }
 
 func (m *Simple) Get(key Key) (any, bool) {
-	if m == nil || len(m.value) == 0 {
+	if m == nil || (len(m.value) == 0 && len(m.fixed) == 0) {
 		return nil, false
+	}
+	if v, ok := m.fixed[key]; ok {
+		return v, true
 	}
 	v, ok := m.value[key]
 	return v, ok
@@ -171,17 +193,39 @@ func (m *Simple) Range(fn func(key Key, val any) bool) {
 }
 
 func (m *Simple) Set(key Key, val any) {
+	if m.value == nil {
+		m.value = make(map[Key]any, 4)
+	}
 	m.value[key] = val
 }
 
 func (m *Simple) Delete(keys ...Key) {
+	if len(m.value) == 0 {
+		return
+	}
 	for _, key := range keys {
 		delete(m.value, key)
 	}
 }
 
+func (m *Simple) SetFixed(key Key, val any) {
+	if m.fixed == nil {
+		m.fixed = make(map[Key]any, 4)
+	}
+	m.fixed[key] = val
+}
+
+func (m *Simple) DeleteFixed(keys ...Key) {
+	if len(m.fixed) == 0 {
+		return
+	}
+	for _, key := range keys {
+		delete(m.fixed, key)
+	}
+}
+
 func (m *Simple) Empty() bool {
-	return len(m.value) == 0
+	return len(m.value) == 0 && len(m.fixed) == 0
 }
 
 func (m *Simple) Value() *Simple {

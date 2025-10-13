@@ -15,7 +15,6 @@ import (
 
 	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xsync"
-	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xattr"
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xpp"
@@ -144,7 +143,7 @@ func (l *Loader) Load(ctx context.Context, filenames ...string) error {
 		return nil
 	}
 
-	var wg safely.WaitGo
+	var wg xsync.WaitGo
 	for _, name := range filenames {
 		wg.Go1(func() error {
 			return parserOne(name)
