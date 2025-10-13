@@ -5,6 +5,7 @@
 package resp3
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 )
@@ -80,6 +81,9 @@ func ToStringSlice(result Result, err error) ([]string, error) {
 
 func ToOkBool(result Result, err error) (bool, error) {
 	if err != nil {
+		if errors.Is(err, ErrNil) {
+			return false, nil
+		}
 		return false, err
 	}
 	switch dv := result.(type) {

@@ -195,9 +195,12 @@ func NewClientByURI(name string, uri string) (xservice.Service, *Client, error) 
 			ServerName: uu.Hostname(),
 		}
 	}
-	dbIndex, err := strconv.Atoi(strings.TrimLeft(uu.Path, "/"))
-	if err != nil || dbIndex < 0 {
-		return nil, nil, fmt.Errorf("invalid db index: %s", uu.Path)
+	var dbIndex int
+	if uu.Path != "" {
+		dbIndex, err = strconv.Atoi(strings.TrimLeft(uu.Path, "/"))
+		if err != nil || dbIndex < 0 {
+			return nil, nil, fmt.Errorf("invalid db index: %s", uu.Path)
+		}
 	}
 
 	psw, _ := uu.User.Password()

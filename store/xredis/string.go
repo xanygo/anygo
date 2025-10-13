@@ -32,7 +32,13 @@ func (c *Client) Set(ctx context.Context, key string, value any, ttl time.Durati
 	return nil
 }
 
-// SetNX 当给定 key 不存在时，才设置 key 的值。设置成功返回 true，nil
+// SetNX 当给定 key 不存在时，才设置 key 的值。
+//
+// 返回值有 3 种情况：
+//
+//	1.设置成功返回 true，nil
+//	2.若 key 已存在 返回 false,nil
+//	3.其他情况，返回 false,error
 func (c *Client) SetNX(ctx context.Context, key string, value any, ttl time.Duration) (bool, error) {
 	var args []any
 	if ttl > 0 {
@@ -46,6 +52,12 @@ func (c *Client) SetNX(ctx context.Context, key string, value any, ttl time.Dura
 }
 
 // SetXX 当给定 key 存在时，才设置 key 的值。设置成功返回 true，nil
+//
+// 返回值有 3 种情况：
+//
+//	1.设置成功返回 true，nil
+//	2.若 key 不存在 返回 false, nil
+//	3.其他情况，返回 false, error
 func (c *Client) SetXX(ctx context.Context, key string, value any, ttl time.Duration) (bool, error) {
 	var args []any
 	if ttl > 0 {
@@ -173,6 +185,9 @@ func (c *Client) GetEx(ctx context.Context, key string, ttl time.Duration) (stri
 // 如果请求的范围超出字符串长度，函数会自动将结果范围限制在字符串的实际长度内。
 //
 // https://redis.io/docs/latest/commands/getrange/
+//
+// 若 key 不存在，返回 “”，nil
+// 若 end 超过字符串长度，会返回实际最大长度
 func (c *Client) GetRange(ctx context.Context, key string, start int, end int) (string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeBulkString, "GETRANGE", key, start, end)
 	resp := c.do(ctx, cmd)
