@@ -5,7 +5,6 @@
 package xcache
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -13,11 +12,10 @@ import (
 )
 
 func TestFile(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "xcache_file")
 	c1 := &File[string, int]{
-		Dir:   filepath.Join("tmp", "file"),
+		Dir:   dir,
 		Codec: xcodec.JSON,
 	}
 	testCache(t, c1)
-
-	os.RemoveAll("tmp")
 }

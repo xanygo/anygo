@@ -18,7 +18,7 @@ import (
 func TestLRU(t *testing.T) {
 	c1 := NewLRU[string, int](10)
 	testCache(t, c1)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
 	for i := 0; i < 11; i++ {

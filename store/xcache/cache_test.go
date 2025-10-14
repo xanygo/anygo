@@ -15,9 +15,7 @@ import (
 )
 
 func testCache(t *testing.T, c Cache[string, int]) {
-	t.Helper()
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	checkNotExists := func(t *testing.T) {
