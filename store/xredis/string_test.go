@@ -152,3 +152,12 @@ func TestClientString(t *testing.T) {
 		fst.Equal(t, "hello", val)
 	})
 }
+
+func testSetKeyString(t *testing.T, client *Client, key string) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	_, err := client.Del(ctx, key)
+	fst.NoError(t, err)
+	err = client.Set(ctx, key, "str", 0)
+	fst.NoError(t, err)
+}

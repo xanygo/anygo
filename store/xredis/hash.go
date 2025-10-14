@@ -6,7 +6,6 @@ package xredis
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/xanygo/anygo/store/xredis/resp3"
@@ -32,12 +31,18 @@ func (c *Client) HSetMap(ctx context.Context, key string, data map[string]string
 
 // HSetEX 将给定哈希键的一个或多个字段设置为指定值，并可选择设置它们的过期时间或存活时间（TTL）
 //
-// opt: 可选值："FNX", "FXX"，“”。
-// FNX: 仅当这些字段都不存在时才设置它们
-// FXX: 仅当这些字段都已存在时才设置它们
+// opt: 可选值："FNX", "FXX"，“”:
 //
-//	ttl: 数据有效期, >0 时有效。等于 -1 时：保留字段原有的生存时间（TTL）
-func (c *Client) HSetEX(ctx context.Context, key string, opt string, ttl time.Duration, data map[string]string) (int, error) {
+//	 FNX: 仅当这些字段都不存在时才设置它们
+//	 FXX: 仅当这些字段都已存在时才设置它们
+//
+//		ttl: 数据有效期, >0 时有效。等于 -1 时：保留字段原有的生存时间（TTL）
+//
+// 返回值：
+// 1. 没有 field 写入，返回 false,nil
+// 2. 全部 field 写入，返回 true,nil
+// 3. 发生错误，返回  false,error
+func (c *Client) HSetEX(ctx context.Context, key string, opt string, ttl time.Duration, data map[string]string) (bool, error) {
 	args := make([]any, 2, len(data)+2)
 	args[0] = "HSETEX"
 	args[1] = key
@@ -56,13 +61,23 @@ func (c *Client) HSetEX(ctx context.Context, key string, opt string, ttl time.Du
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToInt(resp.result, resp.err)
+	return resp3.ToIntBool(resp.result, resp.err, 1)
 }
 
-func (c *Client) HSetNX(ctx context.Context, key string, field string, value string) (int, error) {
+// HSetNX 将存储在指定键（key）中的哈希表里字段（field）的值设置为指定的值（value），仅当该字段尚不存在时才执行设置。
+//
+// 如果键（key）不存在，将会创建一个新的哈希表并保存该字段。
+// 如果字段（field）已经存在，则此操作不会产生任何效果。
+//
+// 返回值：
+//
+//	1.当 field 作为新值被存储，返回 true,nil
+//	2.当 field 已存在，则返回 false,nil
+//	3.当发生错误，则返回 false,error
+func (c *Client) HSetNX(ctx context.Context, key string, field string, value string) (bool, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "HSETNX", key, field, value)
 	resp := c.do(ctx, cmd)
-	return resp3.ToInt(resp.result, resp.err)
+	return resp3.ToIntBool(resp.result, resp.err, 1)
 }
 
 func (c *Client) HStrLen(ctx context.Context, key string, field string) (int64, error) {
@@ -71,7 +86,7 @@ func (c *Client) HStrLen(ctx context.Context, key string, field string) (int64, 
 	return resp3.ToInt64(resp.result, resp.err)
 }
 
-func (c *Client) HDel(ctx context.Context, key string, fields ...string) (int, error) {
+func (c *Client) HDel(ctx context.Context, key string, fields ...string) (int64, error) {
 	args := make([]any, 2, len(fields)+2)
 	args[0] = "HDEL"
 	args[1] = key
@@ -80,38 +95,37 @@ func (c *Client) HDel(ctx context.Context, key string, fields ...string) (int, e
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToInt(resp.result, resp.err)
+	return resp3.ToInt64(resp.result, resp.err)
 }
 
 func (c *Client) HExists(ctx context.Context, key string, field string) (bool, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "HEXISTS", key, field)
 	resp := c.do(ctx, cmd)
-	num, err := resp3.ToInt(resp.result, resp.err)
-	if err != nil {
-		return false, err
-	}
-	switch num {
-	case 0:
-		return false, nil
-	case 1:
-		return true, nil
-	default:
-		return false, fmt.Errorf("unexpect reply: %v", num)
-	}
+	return resp3.ToIntBool(resp.result, resp.err, 1)
 }
 
+// HGet 返回存储在指定键（key）中的哈希表里，给定字段（field）所对应的值
+//
+// 返回值：
+//  1. field 存在，返回 value，nil
+//  2. field 不存在或 key 不存在，返回 “”，ErrNil
+//  3. 其他错误，返回 "",error
 func (c *Client) HGet(ctx context.Context, key string, field string) (string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeBulkString, "HGET", key, field)
 	resp := c.do(ctx, cmd)
 	return resp3.ToString(resp.result, resp.err)
 }
 
+// HGetAll 返回存储在指定键（key）中的哈希表的所有字段（field）及其对应的值
+//
+// 若 key 不存在，会返回 nil，nil
 func (c *Client) HGetAll(ctx context.Context, key string) (map[string]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeMap, "HGETALL", key)
 	resp := c.do(ctx, cmd)
 	return resp3.ToStringMap(resp.result, resp.err)
 }
 
+// HGetDel 获取并删除指定哈希键（hash key）中的一个或多个字段（field）的值。当最后一个字段被删除时，该键（key）也会被删除。
 func (c *Client) HGetDel(ctx context.Context, key string, fields ...string) (map[string]string, error) {
 	args := make([]any, 4, len(fields)+4)
 	args[0] = "HGETDEL"
@@ -144,6 +158,7 @@ func (c *Client) HGetEx(ctx context.Context, key string, ttl time.Duration, fiel
 	return resp3.ToStringMapWithKeys(resp.result, resp.err, fields)
 }
 
+// HPersist 移除哈希键（hash key）中字段的现有过期时间，将这些字段从“可过期”（已设置过期时间）状态转换为“永久存在”（不再关联 TTL，永不过期）。
 func (c *Client) HPersist(ctx context.Context, key string, fields ...string) (int, error) {
 	args := make([]any, 4, len(fields)+4)
 	args[0] = "HPERSIST"
@@ -165,7 +180,7 @@ func (c *Client) HIncrBy(ctx context.Context, key string, field string, incremen
 }
 
 func (c *Client) HIncrFloat(ctx context.Context, key string, field string, increment float64) (float64, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeInteger, "HINCRBYFLOAT", key, field, increment)
+	cmd := resp3.NewRequest(resp3.DataTypeBulkString, "HINCRBYFLOAT", key, field, increment)
 	resp := c.do(ctx, cmd)
 	return resp3.ToFloat64(resp.result, resp.err)
 }
@@ -182,6 +197,10 @@ func (c *Client) HLen(ctx context.Context, key string) (int64, error) {
 	return resp3.ToInt64(resp.result, resp.err)
 }
 
+// HMGet 批量获取
+//
+//	若 key 不存在，会返回 nil,nil
+//	若 field 不存在，则在返回的 map 中也不存在对应的 key
 func (c *Client) HMGet(ctx context.Context, key string, fields ...string) (map[string]string, error) {
 	args := make([]any, 2, len(fields)+2)
 	args[0] = "HMGET"

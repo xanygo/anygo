@@ -7,6 +7,7 @@ package xhandler
 import (
 	"context"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/xanygo/anygo/safely"
@@ -46,11 +47,14 @@ func (al *AccessLog) Next(handler http.Handler) http.Handler {
 		ctx := xlog.NewContext(r.Context())
 		ctx = al.before(ctx, start, r)
 		r = r.WithContext(ctx)
-		defer al.after(ctx, start, w, r)
+		w1 := &captureWriter{
+			ResponseWriter: w,
+		}
+		defer al.after(ctx, start, w1, r)
 		if al.OnRequest != nil {
 			al.OnRequest(ctx, r)
 		}
-		handler.ServeHTTP(w, r)
+		handler.ServeHTTP(w1, r)
 	})
 }
 
@@ -98,20 +102,20 @@ func (al *AccessLog) before(ctx context.Context, start time.Time, r *http.Reques
 	}
 
 	xlog.AddMetaAttr(ctx,
-		xlog.String("method", r.Method),
-		xlog.String("uri", r.RequestURI),
-		xlog.String("remote", r.RemoteAddr),
+		xlog.String("Method", r.Method),
+		xlog.String("URI", r.RequestURI),
+		xlog.String("Remote", r.RemoteAddr),
 	)
 
 	xlog.AddAttr(ctx,
-		xlog.Int64("start", start.UnixMilli()),
-		xlog.String("host", r.Host),
+		xlog.Int64("Start", start.UnixMilli()),
+		xlog.String("Host", r.Host),
 	)
 
 	// 这两个字段在最后打印打印即可，提前保存以避免被修改
 	ctxAttrs := []xlog.Attr{
-		xlog.GroupAttrs("cookie", cookies...),
-		xlog.GroupAttrs("header", headers...),
+		xlog.GroupAttrs("Cookie", cookies...),
+		xlog.GroupAttrs("Header", headers...),
 	}
 	return context.WithValue(ctx, ctxLogFieldsKey, ctxAttrs)
 }
@@ -148,9 +152,13 @@ func (al *AccessLog) headers(h http.Header) []xlog.Attr {
 	return values
 }
 
-func (al *AccessLog) after(ctx context.Context, start time.Time, w http.ResponseWriter, r *http.Request) {
+func (al *AccessLog) after(ctx context.Context, start time.Time, w *captureWriter, r *http.Request) {
 	fields := []xlog.Attr{
-		xlog.DurationMS("cost", time.Since(start)),
+		xlog.DurationMS("Cost", time.Since(start)),
+		xlog.Int("Status", w.getStatusCode()),
+		xlog.Int64("Wrote", w.getWroteSize()),
+		xlog.String("Body32", string(w.body)),
+		xlog.String("CT", w.Header().Get("Content-Type")),
 	}
 	if vs, ok := ctx.Value(ctxLogFieldsKey).([]xlog.Attr); ok {
 		fields = append(fields, vs...)
@@ -159,4 +167,42 @@ func (al *AccessLog) after(ctx context.Context, start time.Time, w http.Response
 		fields = append(fields, xlog.ErrorAttr("after.ctx.err", ctx.Err()))
 	}
 	al.Logger.Info(ctx, "", fields...)
+}
+
+type captureWriter struct {
+	http.ResponseWriter
+	statusCode atomic.Int32
+	wroteSize  atomic.Int64
+	body       []byte
+}
+
+func (w *captureWriter) WriteHeader(code int) {
+	w.statusCode.Store(int32(code))
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *captureWriter) Write(b []byte) (int, error) {
+	if len(w.body) < 32 {
+		remain := 32 - len(w.body)
+		if remain > len(b) {
+			remain = len(b)
+		}
+		w.body = append(w.body, b[:remain]...)
+	}
+
+	n, err := w.ResponseWriter.Write(b)
+	w.wroteSize.Add(int64(n))
+	return n, err
+}
+
+func (w *captureWriter) getStatusCode() int {
+	code := w.statusCode.Load()
+	if code == 0 {
+		return http.StatusOK
+	}
+	return int(code)
+}
+
+func (w *captureWriter) getWroteSize() int64 {
+	return w.wroteSize.Load()
 }

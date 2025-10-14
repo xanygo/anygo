@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/xanygo/anygo/internal"
+	"github.com/xanygo/anygo/xlog"
 )
 
 var errHTMLTpl = `<!DOCTYPE html>
@@ -132,6 +133,14 @@ func notFound(w http.ResponseWriter, r *http.Request) {
 
 func Error(w http.ResponseWriter, r *http.Request, code int, title string, error string) {
 	initErrTplOnce.Do(doInitErrTpl)
+	ctx := r.Context()
+	if xlog.IsContext(ctx) {
+		xlog.AddAttr(ctx,
+			xlog.Int("ErrCode", code),
+			xlog.String("ErrTitle", title),
+			xlog.String("ErrMsg", error),
+		)
+	}
 
 	if title == "" {
 		title = http.StatusText(code)
@@ -150,4 +159,16 @@ func Error(w http.ResponseWriter, r *http.Request, code int, title string, error
 	_ = errTpl.Execute(bf, data)
 	w.WriteHeader(code)
 	_, _ = w.Write(bf.Bytes())
+}
+
+// TextError 封装标准库 http.Error，若 context 已是 logContext,则将 code 和 error都记录到日志字段里去
+func TextError(w http.ResponseWriter, r *http.Request, error string, code int) {
+	ctx := r.Context()
+	if xlog.IsContext(ctx) {
+		xlog.AddAttr(ctx,
+			xlog.Int("ErrCode", code),
+			xlog.String("ErrMsg", error),
+		)
+	}
+	http.Error(w, error, code)
 }
