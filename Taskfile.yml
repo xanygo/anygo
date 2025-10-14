@@ -1,0 +1,19 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  GREETING: Hello, World!
+
+tasks:
+  default:
+    cmds:
+      - go test -race ./...
+  trs:
+    env:
+      anygo-ut-redis: redis://127.0.0.1:6379
+    cmds:
+      - go test -race -v github.com/xanygo/anygo/store/xredis
+  trc:
+    cmds:
+      - go test -race -v github.com/xanygo/anygo/store/xredis

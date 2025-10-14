@@ -6,25 +6,23 @@ package redistest
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log"
 	"net"
+	"os"
 	"os/exec"
 	"time"
 )
 
-const serverCmd = "redis-server"
+const (
+	serverCmd   = "redis-server"
+	testURIName = "anygo-ut-redis"
+	utRdsCmd    = "anygo-redis-do"
+)
 
 func NewServer() (*Server, error) {
 	srv := &Server{}
-	if !srv.Enable() {
-		return nil, fmt.Errorf("no %s available", serverCmd)
-	}
-	err := srv.Start()
-	if err != nil {
-		return nil, err
-	}
-	return srv, nil
+	return srv, srv.Start()
 }
 
 type Server struct {
@@ -33,20 +31,55 @@ type Server struct {
 	addr    net.Addr
 }
 
-func (srv *Server) Enable() bool {
-	p, err := exec.LookPath(serverCmd)
-	return err == nil && p != ""
-}
-
 func (srv *Server) Addr() net.Addr {
 	return srv.addr
 }
 
 func (srv *Server) URI() string {
+	if oe := srv.envURI(); oe != "" {
+		return oe
+	}
 	return "redis://" + srv.addr.String()
 }
 
+func (srv *Server) envURI() string {
+	return os.Getenv(testURIName)
+}
+
 func (srv *Server) Start() error {
+	if oe := srv.envURI(); oe != "" {
+		return srv.startByURI()
+	}
+	return srv.startCmd()
+}
+
+func (srv *Server) startByURI() error {
+	uri := srv.envURI()
+	if uri == "" {
+		return errors.New("no redis server URI")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	if _, err := exec.LookPath(utRdsCmd); err != nil {
+		installCmd := exec.CommandContext(ctx, "go", "install", "github.com/xanygo/anygo/cmd/anygo-redis-do")
+		bf, err := installCmd.CombinedOutput()
+		log.Println("exec:", installCmd.String(), "\noutput:", string(bf), "\nerr:", err)
+		if err != nil {
+			return err
+		}
+	}
+	cmd := exec.CommandContext(ctx, utRdsCmd, "-uri", uri, "-c", "FLUSHALL sync;dbsize")
+	bf, err := cmd.CombinedOutput()
+	log.Println("exec:", cmd.String(), "\noutput:", string(bf), "\nerr:", err)
+	return err
+}
+
+func (srv *Server) startCmd() error {
+	_, err := exec.LookPath(serverCmd)
+	if err != nil {
+		return err
+	}
+
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return err
@@ -90,5 +123,7 @@ func (srv *Server) Start() error {
 }
 
 func (srv *Server) Stop() {
-	srv.stop()
+	if srv.stop != nil {
+		srv.stop()
+	}
 }
