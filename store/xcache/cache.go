@@ -42,6 +42,23 @@ type (
 	}
 )
 
+type (
+	MCache[K comparable, V any] interface {
+		Cache[K, V]
+		MSetter[K, V]
+		MGetter[K, V]
+	}
+
+	MSetter[K comparable, V any] interface {
+		MSet(ctx context.Context, values map[K]V, ttl time.Duration) error
+	}
+
+	MGetter[K comparable, V any] interface {
+		// MGet 批量查询，若 key 不存在，则不出现在 result 中
+		MGet(ctx context.Context, keys ...K) (result map[K]V, err error)
+	}
+)
+
 func IsNotExists(err error) bool {
 	return err != nil && xerror.IsNotFound(err)
 }

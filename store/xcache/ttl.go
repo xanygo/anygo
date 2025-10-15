@@ -11,7 +11,6 @@ import (
 
 var _ HasTTL[string, string] = (*TTLWrapper[string, string])(nil)
 var _ Cache[string, string] = (*TTLWrapper[string, string])(nil)
-var _ HasStats = (*TTLWrapper[string, string])(nil)
 
 // TTLWrapper 用于对缓存的 TTL 进行动态调整的工具类
 //
@@ -55,11 +54,20 @@ func (tw *TTLWrapper[K, V]) Delete(ctx context.Context, keys ...K) error {
 	return tw.Cache.Delete(ctx, keys...)
 }
 
+var _ HasStats = (*TTLWrapper[string, string])(nil)
+
 func (tw *TTLWrapper[K, V]) Stats() Stats {
 	if hs, ok := tw.Cache.(HasStats); ok {
 		return hs.Stats()
 	}
-	return Stats{
-		Keys: statsKeysNoStats,
+	return Stats{}
+}
+
+var _ HasAllStats = (*TTLWrapper[string, string])(nil)
+
+func (tw *TTLWrapper[K, V]) AllStats() map[string]Stats {
+	if hs, ok := tw.Cache.(HasAllStats); ok {
+		return hs.AllStats()
 	}
+	return nil
 }

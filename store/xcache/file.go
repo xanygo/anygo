@@ -32,6 +32,7 @@ import (
 )
 
 var _ Cache[string, int] = (*File[string, int])(nil)
+var _ MCache[string, int] = (*File[string, int])(nil)
 var _ HasStats = (*File[string, int])(nil)
 
 // File 文件系统缓存
@@ -56,21 +57,25 @@ type File[K comparable, V any] struct {
 
 	errChan xbus.EventBus[error]
 
-	getCnt    atomic.Uint64 // 调用 Get 方法的次数
-	setCnt    atomic.Uint64 // 调用 Set 方法的次数
-	deleteCnt atomic.Uint64 // 调用 Delete 方法的次数
-	hitCnt    atomic.Uint64 // 调用 Get 命中缓存的次数
+	readCnt   atomic.Uint64
+	writeCnt  atomic.Uint64
+	deleteCnt atomic.Uint64
+	hitCnt    atomic.Uint64
 }
 
 func (fc *File[K, V]) Get(ctx context.Context, key K) (value V, err error) {
-	fc.getCnt.Add(1)
+	fc.readCnt.Add(1)
+	defer fc.autoGC()
+
 	select {
 	case <-ctx.Done():
 		return value, context.Cause(ctx)
 	default:
 	}
-	defer fc.autoGC()
+	return fc.doGet(key)
+}
 
+func (fc *File[K, V]) doGet(key K) (value V, err error) {
 	expire, data, err := fc.readByKey(key, true)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -88,8 +93,36 @@ func (fc *File[K, V]) Get(ctx context.Context, key K) (value V, err error) {
 	return value, err
 }
 
+func (fc *File[K, V]) MGet(ctx context.Context, keys ...K) (map[K]V, error) {
+	fc.readCnt.Add(uint64(len(keys)))
+	defer fc.autoGC()
+
+	result := make(map[K]V, len(keys))
+	var errs []error
+	for _, key := range keys {
+		select {
+		case <-ctx.Done():
+			fc.hitCnt.Add(uint64(len(result)))
+			return result, context.Cause(ctx)
+		default:
+		}
+
+		value, err := fc.doGet(key)
+		if err == nil {
+			result[key] = value
+			continue
+		}
+		if IsNotExists(err) {
+			continue
+		}
+		errs = append(errs, err)
+	}
+	fc.hitCnt.Add(uint64(len(result)))
+	return result, errors.Join(errs...)
+}
+
 func (fc *File[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration) error {
-	fc.setCnt.Add(1)
+	fc.writeCnt.Add(1)
 	select {
 	case <-ctx.Done():
 		return context.Cause(ctx)
@@ -97,7 +130,10 @@ func (fc *File[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration
 	}
 
 	defer fc.autoGC()
+	return fc.doSet(key, value, ttl)
+}
 
+func (fc *File[K, V]) doSet(key K, value V, ttl time.Duration) error {
 	fp := fc.cacheFilePath(key)
 	dir := filepath.Dir(fp)
 	_, err := os.Stat(dir)
@@ -158,8 +194,29 @@ func (fc *File[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration
 	return os.Rename(file.Name(), fp)
 }
 
+func (fc *File[K, V]) MSet(ctx context.Context, values map[K]V, ttl time.Duration) error {
+	fc.writeCnt.Add(uint64(len(values)))
+	defer fc.autoGC()
+
+	var errs []error
+	for k, v := range values {
+		select {
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		default:
+		}
+		if err := fc.doSet(k, v, ttl); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) == 0 {
+		return nil
+	}
+	return errors.Join(errs...)
+}
+
 func (fc *File[K, V]) Delete(ctx context.Context, keys ...K) error {
-	fc.deleteCnt.Add(1)
+	fc.deleteCnt.Add(uint64(len(keys)))
 	if len(keys) == 0 {
 		return nil
 	}
@@ -377,10 +434,9 @@ func (fc *File[K, V]) checkExpire(fp string) (expired bool, info fs.FileInfo, er
 
 func (fc *File[K, V]) Stats() Stats {
 	return Stats{
-		Get:    fc.getCnt.Load(),
-		Set:    fc.setCnt.Load(),
+		Read:   fc.readCnt.Load(),
+		Write:  fc.writeCnt.Load(),
 		Delete: fc.deleteCnt.Load(),
 		Hit:    fc.hitCnt.Load(),
-		Keys:   statsKeysUnknown,
 	}
 }

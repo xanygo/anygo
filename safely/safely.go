@@ -6,6 +6,7 @@ package safely
 
 import (
 	"context"
+	"fmt"
 	"runtime"
 	"runtime/debug"
 )
@@ -41,6 +42,9 @@ func Run[T FnType1](fn T) (err error) {
 		val()
 	case func() error:
 		err = val()
+	default:
+		// 不应该发生
+		panic(fmt.Sprintf("unsupport func type %T", obj))
 	}
 	return err
 }
@@ -90,6 +94,9 @@ func RunCtx[T FnType2](ctx context.Context, fn T) (err error) {
 		val(ctx)
 	case func(ctx2 context.Context) error:
 		err = val(ctx)
+	default:
+		// 不应该发生
+		panic(fmt.Sprintf("unsupport func type %T", obj))
 	}
 	return err
 }

@@ -5,6 +5,7 @@
 package xsync
 
 import (
+	"context"
 	"errors"
 	"sync"
 
@@ -29,9 +30,33 @@ func (w *WaitGo) Go(f func()) {
 	})
 }
 
-func (w *WaitGo) Go1(f func() error) {
+func (w *WaitGo) GoCtx(ctx context.Context, f func(ctx context.Context)) {
+	w.wg.Go(func() {
+		err := safely.RunCtx(ctx, f)
+		if err == nil {
+			return
+		}
+		w.mu.Lock()
+		w.errs = append(w.errs, err)
+		w.mu.Unlock()
+	})
+}
+
+func (w *WaitGo) GoErr(f func() error) {
 	w.wg.Go(func() {
 		err := safely.Run(f)
+		if err == nil {
+			return
+		}
+		w.mu.Lock()
+		w.errs = append(w.errs, err)
+		w.mu.Unlock()
+	})
+}
+
+func (w *WaitGo) GoCtxErr(ctx context.Context, f func(ctx context.Context) error) {
+	w.wg.Go(func() {
+		err := safely.RunCtx(ctx, f)
 		if err == nil {
 			return
 		}

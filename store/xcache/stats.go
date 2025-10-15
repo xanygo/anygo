@@ -13,17 +13,23 @@ import (
 	"github.com/xanygo/anygo/xcodec"
 )
 
-type HasStats interface {
-	Stats() Stats
-}
+type (
+	HasStats interface {
+		Stats() Stats
+	}
+
+	// HasAllStats chains 这类包含有多个 cache 的场景使用
+	HasAllStats interface {
+		AllStats() map[string]Stats
+	}
+)
 
 // Stats 统计信息
 type Stats struct {
-	Get    uint64
-	Set    uint64
+	Read   uint64 // 读取的 key 的 总数量，包括 GET 和 MGet
+	Write  uint64
 	Delete uint64
 	Hit    uint64
-	Keys   int64 // 有多少个 key。-1: 未知,-2: 无有效的 Stats 信息
 }
 
 func (s Stats) String() string {
@@ -33,26 +39,19 @@ func (s Stats) String() string {
 
 // HitRate 命中率
 func (s Stats) HitRate() float64 {
-	if s.Get == 0 {
+	if s.Read == 0 {
 		return 0
 	}
-	hit := float64(s.Hit) / float64(s.Get)
+	hit := float64(s.Hit) / float64(s.Read)
 	return hit
 }
-
-const (
-	statsKeysUnknown = -1 //  keys 数量未知
-	statsKeysNoStats = -2 //  无有效的 Stats 信息
-)
 
 // GetStats 读取缓存对象的 统计信息
 func GetStats(cache any) Stats {
 	if hs, ok := cache.(HasStats); ok {
 		return hs.Stats()
 	}
-	return Stats{
-		Keys: statsKeysNoStats,
-	}
+	return Stats{}
 }
 
 type StatsRegistry ztypes.Registry[string, HasStats]

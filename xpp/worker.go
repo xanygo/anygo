@@ -74,7 +74,7 @@ func TryStopWorker(ctx context.Context, workers ...any) error {
 	}
 	var wg xsync.WaitGo
 	for _, worker := range workers {
-		wg.Go1(func() error {
+		wg.GoErr(func() error {
 			if w, ok := worker.(stopper1); ok {
 				err := w.Stop(ctx)
 				if err != nil {

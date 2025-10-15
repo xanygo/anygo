@@ -145,7 +145,7 @@ func (l *Loader) Load(ctx context.Context, filenames ...string) error {
 
 	var wg xsync.WaitGo
 	for _, name := range filenames {
-		wg.Go1(func() error {
+		wg.GoErr(func() error {
 			return parserOne(name)
 		})
 	}

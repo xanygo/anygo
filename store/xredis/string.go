@@ -26,10 +26,7 @@ func (c *Client) Set(ctx context.Context, key string, value any, ttl time.Durati
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeSimpleString, args...)
 	resp := c.do(ctx, cmd)
-	if resp.err != nil {
-		return resp.err
-	}
-	return nil
+	return resp3.ToOkStatus(resp.result, resp.err)
 }
 
 // SetNX 当给定 key 不存在时，才设置 key 的值。

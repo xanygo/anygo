@@ -7,6 +7,7 @@ package xcache
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/xanygo/anygo/safely"
@@ -117,29 +118,25 @@ func (c *chains[K, V]) Delete(ctx context.Context, keys ...K) error {
 	return errors.Join(errs...)
 }
 
+var _ HasStats = (*chains[string, string])(nil)
+
 func (c *chains[K, V]) Stats() Stats {
-	head := Stats{
-		Keys: statsKeysNoStats,
-	}
-	tail := Stats{
-		Keys: statsKeysNoStats,
-	}
 	for _, item := range c.caches {
 		if hs, ok := item.Cache.(HasStats); ok {
-			st := hs.Stats()
-			if st.Keys == statsKeysNoStats {
-				continue
-			}
-			if head.Keys == statsKeysNoStats {
-				head = st
-				continue
-			}
-			tail = st
+			return hs.Stats()
 		}
 	}
-	// 将最后一个 Cache 的 key 总数作为最终结果
-	if tail.Keys >= 0 {
-		head.Keys = tail.Keys
+	return Stats{}
+}
+
+var _ HasAllStats = (*chains[string, string])(nil)
+
+func (c *chains[K, V]) AllStats() map[string]Stats {
+	result := make(map[string]Stats, len(c.caches))
+	for idx, item := range c.caches {
+		if hs, ok := item.Cache.(HasStats); ok {
+			result[fmt.Sprintf("level_%d", idx)] = hs.Stats()
+		}
 	}
-	return head
+	return result
 }
