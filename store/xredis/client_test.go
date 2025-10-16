@@ -33,7 +33,7 @@ func TestNewClientByURI(t *testing.T) {
 		"https://user:password@host:8080/NotNum",
 	}
 	for i, uri := range fail {
-		t.Run(fmt.Sprintf("fail_%d", i), func(t *testing.T) {
+		t.Run(fmt.Sprintf("err_%d", i), func(t *testing.T) {
 			s2, c2, err2 := NewClientByURI("demo", uri)
 			fst.Error(t, err2)
 			fst.Empty(t, s2)

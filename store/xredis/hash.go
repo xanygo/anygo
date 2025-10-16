@@ -31,6 +31,8 @@ func (c *Client) HSetMap(ctx context.Context, key string, data map[string]string
 
 // HSetEX 将给定哈希键的一个或多个字段设置为指定值，并可选择设置它们的过期时间或存活时间（TTL）
 //
+// redis server version >= 8.0.0
+//
 // opt: 可选值："FNX", "FXX"，“”:
 //
 //	 FNX: 仅当这些字段都不存在时才设置它们
