@@ -68,11 +68,11 @@ type kvList struct {
 	key    string
 }
 
-func (kvl *kvList) LPush(ctx context.Context, values ...string) (int, error) {
+func (kvl *kvList) LPush(ctx context.Context, values ...string) (int64, error) {
 	return kvl.client.LPush(ctx, kvl.key, values...)
 }
 
-func (kvl *kvList) RPush(ctx context.Context, values ...string) (int, error) {
+func (kvl *kvList) RPush(ctx context.Context, values ...string) (int64, error) {
 	return kvl.client.RPush(ctx, kvl.key, values...)
 }
 
@@ -92,7 +92,7 @@ func (kvl *kvList) RPop(ctx context.Context) (string, bool, error) {
 	return value, err == nil, err
 }
 
-func (kvl *kvList) LRem(ctx context.Context, count int, element string) (int, error) {
+func (kvl *kvList) LRem(ctx context.Context, count int64, element string) (int64, error) {
 	return kvl.client.LRem(ctx, kvl.key, count, element)
 }
 
@@ -134,6 +134,10 @@ func (kvl *kvList) RRange(ctx context.Context, fn func(val string) bool) error {
 			}
 		}
 	}
+}
+
+func (kvl *kvList) Len(ctx context.Context) (int64, error) {
+	return kvl.client.LLen(ctx, kvl.key)
 }
 
 func (kv *RedisStorage) Hash(key string) xkv.Hash[string] {
@@ -204,7 +208,7 @@ type kvSet struct {
 	key    string
 }
 
-func (kvs *kvSet) SAdd(ctx context.Context, members ...string) (int, error) {
+func (kvs *kvSet) SAdd(ctx context.Context, members ...string) (int64, error) {
 	return kvs.client.SAdd(ctx, kvs.key, members...)
 }
 

@@ -15,7 +15,7 @@ import (
 // 对于已经存在于集合中的成员，会被忽略。
 // 如果键不存在，会先创建一个新集合，再添加指定成员。
 // 如果键对应的值不是集合类型，则返回错误。
-func (c *Client) SAdd(ctx context.Context, key string, members ...string) (int, error) {
+func (c *Client) SAdd(ctx context.Context, key string, members ...string) (int64, error) {
 	return c.doKeyValuesIntResult(ctx, "SADD", key, members...)
 }
 
@@ -41,7 +41,7 @@ func (c *Client) SDiff(ctx context.Context, key string, keys ...string) ([]strin
 
 // SDiffStore 该命令等同于 SDIFF，但不是返回结果集，而是将结果存储到指定的目标键中。
 // 如果目标键已存在，则会被覆盖
-func (c *Client) SDiffStore(ctx context.Context, destination string, key string, keys ...string) (int, error) {
+func (c *Client) SDiffStore(ctx context.Context, destination string, key string, keys ...string) (int64, error) {
 	args := make([]any, 3, 3+len(keys))
 	args[0] = "SDIFFSTORE"
 	args[1] = destination
@@ -51,7 +51,7 @@ func (c *Client) SDiffStore(ctx context.Context, destination string, key string,
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToInt(resp.result, resp.err)
+	return resp3.ToInt64(resp.result, resp.err)
 }
 
 // SInter 返回所有给定集合的交集所得到的成员

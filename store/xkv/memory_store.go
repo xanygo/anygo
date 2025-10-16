@@ -188,18 +188,24 @@ func (m *memList) withSliceLocked(fn func([]string) ([]string, bool)) error {
 	return err
 }
 
-func (m *memList) LPush(ctx context.Context, values ...string) (int, error) {
+func (m *memList) LPush(ctx context.Context, values ...string) (int64, error) {
+	var num int64
 	err := m.withSliceLocked(func(list []string) ([]string, bool) {
-		return slices.Insert(list, 0, values...), true
+		ret := slices.Insert(list, 0, values...)
+		num = int64(len(ret))
+		return ret, true
 	})
-	return len(values), err
+	return num, err
 }
 
-func (m *memList) RPush(ctx context.Context, values ...string) (int, error) {
+func (m *memList) RPush(ctx context.Context, values ...string) (int64, error) {
+	var num int64
 	err := m.withSliceLocked(func(list []string) ([]string, bool) {
-		return append(list, values...), true
+		ret := append(list, values...)
+		num = int64(len(ret))
+		return ret, true
 	})
-	return len(values), err
+	return num, err
 }
 
 func (m *memList) LPop(ctx context.Context) (string, bool, error) {
@@ -230,8 +236,8 @@ func (m *memList) RPop(ctx context.Context) (string, bool, error) {
 	return value, found, err
 }
 
-func (m *memList) LRem(ctx context.Context, count int, element string) (int, error) {
-	var deleted int
+func (m *memList) LRem(ctx context.Context, count int64, element string) (int64, error) {
+	var deleted int64
 	err := m.withSliceLocked(func(list []string) ([]string, bool) {
 		if count == 0 {
 			list = slices.DeleteFunc(list, func(s string) bool {
@@ -245,14 +251,14 @@ func (m *memList) LRem(ctx context.Context, count int, element string) (int, err
 		} else if count > 0 {
 			newList := xslice.DeleteFuncN(list, func(s string) bool {
 				return s == element
-			}, count)
-			deleted = len(list) - len(newList)
+			}, int(count))
+			deleted = int64(len(list) - len(newList))
 			return newList, deleted > 0
 		} else { // if count < 0
 			newList := xslice.RevDeleteFuncN(list, func(s string) bool {
 				return s == element
-			}, count*-1)
-			deleted = len(list) - len(newList)
+			}, int(count*-1))
+			deleted = int64(len(list) - len(newList))
 			return newList, deleted > 0
 		}
 	})
@@ -266,7 +272,7 @@ func (m *memList) Range(ctx context.Context, fn func(val string) bool) error {
 func (m *memList) LRange(ctx context.Context, fn func(val string) bool) error {
 	values, err := m.getSlice()
 	if err != nil {
-		return nil
+		return err
 	}
 	for _, val := range values {
 		if !fn(val) {
@@ -282,7 +288,7 @@ func (m *memList) LRange(ctx context.Context, fn func(val string) bool) error {
 func (m *memList) RRange(ctx context.Context, fn func(val string) bool) error {
 	values, err := m.getSlice()
 	if err != nil {
-		return nil
+		return err
 	}
 	for i := len(values) - 1; i >= 0; i-- {
 		if !fn(values[i]) {
@@ -293,6 +299,14 @@ func (m *memList) RRange(ctx context.Context, fn func(val string) bool) error {
 		}
 	}
 	return nil
+}
+
+func (m *memList) Len(ctx context.Context) (int64, error) {
+	values, err := m.getSlice()
+	if err != nil {
+		return 0, err
+	}
+	return int64(len(values)), nil
 }
 
 func (m *MemoryStore) Hash(key string) Hash[string] {
@@ -429,8 +443,8 @@ func (m *memSet) withSliceLocked(fn func([]string) ([]string, bool)) error {
 	return err
 }
 
-func (m *memSet) SAdd(ctx context.Context, members ...string) (int, error) {
-	var added int
+func (m *memSet) SAdd(ctx context.Context, members ...string) (int64, error) {
+	var added int64
 	err := m.withSliceLocked(func(list []string) ([]string, bool) {
 		for _, member := range members {
 			if slices.Contains(list, member) {

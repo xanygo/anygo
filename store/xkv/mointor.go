@@ -93,13 +93,13 @@ type monitorList[V any] struct {
 	monitor *Monitor[V]
 }
 
-func (ml *monitorList[V]) LPush(ctx context.Context, values ...V) (int, error) {
+func (ml *monitorList[V]) LPush(ctx context.Context, values ...V) (int64, error) {
 	val, err := ml.store.LPush(ctx, values...)
 	ml.monitor.doAfterWrite(ctx, ml.key, err)
 	return val, err
 }
 
-func (ml *monitorList[V]) RPush(ctx context.Context, values ...V) (int, error) {
+func (ml *monitorList[V]) RPush(ctx context.Context, values ...V) (int64, error) {
 	val, err := ml.store.RPush(ctx, values...)
 	ml.monitor.doAfterWrite(ctx, ml.key, err)
 	return val, err
@@ -119,7 +119,7 @@ func (ml *monitorList[V]) RPop(ctx context.Context) (V, bool, error) {
 	return val, ok, err
 }
 
-func (ml *monitorList[V]) LRem(ctx context.Context, count int, element string) (int, error) {
+func (ml *monitorList[V]) LRem(ctx context.Context, count int64, element string) (int64, error) {
 	val, err := ml.store.LRem(ctx, count, element)
 	ml.monitor.doAfterWrite(ctx, ml.key, err)
 	return val, err
@@ -141,6 +141,12 @@ func (ml *monitorList[V]) RRange(ctx context.Context, fn func(val V) bool) error
 	err := ml.store.RRange(ctx, fn)
 	ml.monitor.doAfterRead(ctx, ml.key, err)
 	return err
+}
+
+func (ml *monitorList[V]) Len(ctx context.Context) (int64, error) {
+	num, err := ml.store.Len(ctx)
+	ml.monitor.doAfterRead(ctx, ml.key, err)
+	return num, err
 }
 
 func (m *Monitor[V]) Hash(key string) Hash[V] {
@@ -211,7 +217,7 @@ type monitorSet[V any] struct {
 	monitor *Monitor[V]
 }
 
-func (ms *monitorSet[V]) SAdd(ctx context.Context, members ...V) (int, error) {
+func (ms *monitorSet[V]) SAdd(ctx context.Context, members ...V) (int64, error) {
 	val, err := ms.store.SAdd(ctx, members...)
 	ms.monitor.doAfterWrite(ctx, ms.key, err)
 	return val, err

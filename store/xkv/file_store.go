@@ -198,45 +198,47 @@ type fileList struct {
 }
 
 // LPush 在列表左侧插入元素（类似 Redis 的 LPUSH 命令）
-func (f fileList) LPush(ctx context.Context, values ...string) (int, error) {
+func (f fileList) LPush(ctx context.Context, values ...string) (int64, error) {
 	if err := f.SaveMeta(internal.DataTypeList); err != nil {
 		return 0, err
 	}
-	var added int
 	var errs []error
 	id := time.Now().UnixNano()
 	for _, value := range values {
 		name := strconv.FormatInt(id, 10)
-		isNew, err := f.WriteKVDataFile2("0_"+name, value)
+		_, err := f.WriteKVDataFile2("0_"+name, value)
 		id++
 		if err != nil {
 			errs = append(errs, err)
-		} else if isNew {
-			added++
 		}
 	}
-	return added, errors.Join(errs...)
+	num, err := f.Len(ctx)
+	if err != nil {
+		errs = append(errs, err)
+	}
+	return num, errors.Join(errs...)
 }
 
-func (f fileList) RPush(ctx context.Context, values ...string) (int, error) {
+func (f fileList) RPush(ctx context.Context, values ...string) (int64, error) {
 	if err := f.SaveMeta(internal.DataTypeList); err != nil {
 		return 0, err
 	}
 
-	var added int
 	var errs []error
 	id := time.Now().UnixNano()
 	for _, value := range values {
 		name := strconv.FormatInt(id, 10)
-		isNew, err := f.WriteKVDataFile2("1_"+name, value)
+		_, err := f.WriteKVDataFile2("1_"+name, value)
 		id++
 		if err != nil {
 			errs = append(errs, err)
-		} else if isNew {
-			added++
 		}
 	}
-	return added, errors.Join(errs...)
+	num, err := f.Len(ctx)
+	if err != nil {
+		errs = append(errs, err)
+	}
+	return num, errors.Join(errs...)
 }
 
 // LPop 移除并返回列表最左侧的元素（类似 Redis 的 LPOP 命令）
@@ -272,7 +274,7 @@ func (f fileList) RPop(ctx context.Context) (string, bool, error) {
 	return f.pop(ctx, false)
 }
 
-func (f fileList) LRem(ctx context.Context, count int, element string) (deleted int, err error) {
+func (f fileList) LRem(ctx context.Context, count int64, element string) (deleted int64, err error) {
 	var errs []error
 	callBack := func(path, val string) bool {
 		if val != element {
@@ -392,6 +394,15 @@ func (f fileList) Range(ctx context.Context, fn func(val string) bool) error {
 	return err
 }
 
+func (f fileList) Len(ctx context.Context) (int64, error) {
+	var num int64
+	err := f.Range(ctx, func(val string) bool {
+		num++
+		return true
+	})
+	return num, err
+}
+
 var _ Hash[string] = (*fileHash)(nil)
 
 type fileHash struct {
@@ -502,11 +513,11 @@ type fileSet struct {
 	internal.FileBase
 }
 
-func (f fileSet) SAdd(ctx context.Context, members ...string) (int, error) {
+func (f fileSet) SAdd(ctx context.Context, members ...string) (int64, error) {
 	if err := f.SaveMeta(internal.DataTypeSet); err != nil {
 		return 0, err
 	}
-	var added int
+	var added int64
 	var errs []error
 	for _, member := range members {
 		addNew, err := f.WriteKVDataFile2(f.Md5(member), member)
@@ -517,7 +528,7 @@ func (f fileSet) SAdd(ctx context.Context, members ...string) (int, error) {
 		}
 	}
 	if len(errs) == 0 {
-		return len(members), nil
+		return int64(len(members)), nil
 	}
 	return added, errors.Join(errs...)
 }

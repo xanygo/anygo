@@ -87,7 +87,7 @@ type transList[V any] struct {
 	codec xcodec.Codec
 }
 
-func (t transList[V]) LPush(ctx context.Context, values ...V) (int, error) {
+func (t transList[V]) LPush(ctx context.Context, values ...V) (int64, error) {
 	ms, errs := internal.EncodeToStrings(t.codec, values)
 	if len(errs) == len(values) {
 		return 0, errors.Join(errs...)
@@ -99,7 +99,7 @@ func (t transList[V]) LPush(ctx context.Context, values ...V) (int, error) {
 	return num, errors.Join(errs...)
 }
 
-func (t transList[V]) RPush(ctx context.Context, values ...V) (int, error) {
+func (t transList[V]) RPush(ctx context.Context, values ...V) (int64, error) {
 	ms, errs := internal.EncodeToStrings(t.codec, values)
 	if len(errs) == len(values) {
 		return 0, errors.Join(errs...)
@@ -129,7 +129,7 @@ func (t transList[V]) RPop(ctx context.Context) (v V, ok bool, err error) {
 	return v, err == nil, err
 }
 
-func (t transList[V]) LRem(ctx context.Context, count int, element string) (int, error) {
+func (t transList[V]) LRem(ctx context.Context, count int64, element string) (int64, error) {
 	return t.ss.LRem(ctx, count, element)
 }
 
@@ -179,6 +179,10 @@ func (t transList[V]) RRange(ctx context.Context, fn func(val V) bool) error {
 		return decodeErr
 	}
 	return err
+}
+
+func (t transList[V]) Len(ctx context.Context) (int64, error) {
+	return t.ss.Len(ctx)
 }
 
 func (tr Transformer[V]) Hash(key string) Hash[V] {
@@ -271,7 +275,7 @@ type transSet[V any] struct {
 	codec xcodec.Codec
 }
 
-func (t transSet[V]) SAdd(ctx context.Context, members ...V) (int, error) {
+func (t transSet[V]) SAdd(ctx context.Context, members ...V) (int64, error) {
 	ms, errs := internal.EncodeToStrings(t.codec, members)
 	if len(errs) == len(members) {
 		return 0, errors.Join(errs...)

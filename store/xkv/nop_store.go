@@ -43,12 +43,12 @@ var _ List[any] = (*nopList[any])(nil)
 
 type nopList[V any] struct{}
 
-func (n nopList[V]) LPush(ctx context.Context, values ...V) (int, error) {
-	return len(values), nil
+func (n nopList[V]) LPush(ctx context.Context, values ...V) (int64, error) {
+	return 0, nil
 }
 
-func (n nopList[V]) RPush(ctx context.Context, values ...V) (int, error) {
-	return len(values), nil
+func (n nopList[V]) RPush(ctx context.Context, values ...V) (int64, error) {
+	return 0, nil
 }
 
 func (n nopList[V]) LPop(ctx context.Context) (v V, ok bool, err error) {
@@ -59,7 +59,7 @@ func (n nopList[V]) RPop(ctx context.Context) (v V, ok bool, err error) {
 	return v, false, nil
 }
 
-func (n nopList[V]) LRem(ctx context.Context, count int, element string) (int, error) {
+func (n nopList[V]) LRem(ctx context.Context, count int64, element string) (int64, error) {
 	return 0, nil
 }
 
@@ -73,6 +73,10 @@ func (n nopList[V]) LRange(ctx context.Context, fn func(val V) bool) error {
 
 func (n nopList[V]) RRange(ctx context.Context, fn func(val V) bool) error {
 	return nil
+}
+
+func (n nopList[V]) Len(ctx context.Context) (int64, error) {
+	return 0, nil
 }
 
 func (n NopStorage[V]) Hash(key string) Hash[V] {
@@ -115,8 +119,8 @@ var _ Set[any] = (*nopSet[any])(nil)
 
 type nopSet[V any] struct{}
 
-func (n nopSet[V]) SAdd(ctx context.Context, members ...V) (int, error) {
-	return len(members), nil
+func (n nopSet[V]) SAdd(ctx context.Context, members ...V) (int64, error) {
+	return 0, nil
 }
 
 func (n nopSet[V]) SRem(ctx context.Context, members ...V) error {

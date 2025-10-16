@@ -14,13 +14,40 @@ import (
 
 type Z = resp3.Z
 
-func (c *Client) ZAdd(ctx context.Context, key string, score float64, member string) (int, error) {
+// ZAdd 将所有指定的成员及其分数添加到存储在给定键的有序集合中。可以一次指定多个「分数/成员」对。
+// 如果某个指定的成员已经存在于有序集合中，则它的分数会被更新，并且该元素会被重新插入到正确的位置以保证排序顺序正确。
+//
+// 如果给定的键不存在，则会创建一个新的有序集合，并将指定的成员作为唯一的元素加入其中，就像原本集合为空一样。
+// 如果该键已存在但其类型不是有序集合，则返回一个错误。
+//
+// 分数的值应当是双精度浮点数的字符串表示形式，+inf 和 -inf ( math.Inf(1)、 math.Inf(-1) ) 也是有效的取值。
+//
+// 返回值：bool-是否新写入的 member
+func (c *Client) ZAdd(ctx context.Context, key string, score float64, member string) (bool, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "ZADD", key, score, member)
 	resp := c.do(ctx, cmd)
-	return resp3.ToInt(resp.result, resp.err)
+	return resp3.ToIntBool(resp.result, resp.err, 1)
 }
 
-func (c *Client) ZAddOpt(ctx context.Context, key string, opt []string, score float64, member string) (int, error) {
+// ZAddOpt ZAdd 的增强版本，支持如下 Options：
+//
+//	XX：仅更新已存在的元素，不添加新元素。
+//	NX：仅添加新元素，不更新已存在的元素。
+//	LT：仅在新分数小于当前分数时更新已存在的元素。此标志不会阻止添加新元素。
+//	GT：仅在新分数大于当前分数时更新已存在的元素。此标志不会阻止添加新元素。
+//	CH：修改返回值的含义，使其从“新增元素的数量”变为“发生变化的元素总数”（CH 是 changed 的缩写）。
+//	   发生变化的元素包括新增的元素，以及分数被更新的已有元素。
+//	   对于那些分数没有变化的元素，则不会被计入。
+//	注意：通常情况下，ZADD 的返回值只计算新增元素的数量。
+//	INCR：当指定该选项时，ZADD 的行为与 ZINCRBY 相同。此模式下只能指定一个「分数-成员」对。
+//
+// 返回值：
+//
+//	1.空回复（Null reply）：如果由于与 XX / NX / LT / GT 选项中的某一个产生冲突而导致操作被中止时返回。
+//	2.整数回复（Integer reply）：当未使用 CH 选项时，返回新增成员的数量。
+//	3.整数回复（Integer reply）：当使用 CH 选项时，返回新增或被更新成员的数量。
+//	4.双精度回复（Double reply）：当使用 INCR 选项时，返回成员更新后的分数。
+func (c *Client) ZAddOpt(ctx context.Context, key string, opt []string, score float64, member string) (int64, error) {
 	args := make([]any, 2, len(opt)+3)
 	args[0] = "ZADD"
 	args[1] = key
@@ -30,10 +57,11 @@ func (c *Client) ZAddOpt(ctx context.Context, key string, opt []string, score fl
 	args = append(args, score, member)
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToInt(resp.result, resp.err)
+	return resp3.ToInt64(resp.result, resp.err)
 }
 
-func (c *Client) ZAddMap(ctx context.Context, key string, members map[string]float64) (int, error) {
+// ZAddMap 批量新增、更新有序集合
+func (c *Client) ZAddMap(ctx context.Context, key string, members map[string]float64) (int64, error) {
 	args := make([]any, 2, len(members)*2+2)
 	args[0] = "ZADD"
 	args[1] = key
@@ -42,10 +70,10 @@ func (c *Client) ZAddMap(ctx context.Context, key string, members map[string]flo
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToInt(resp.result, resp.err)
+	return resp3.ToInt64(resp.result, resp.err)
 }
 
-func (c *Client) ZAddMapOpt(ctx context.Context, key string, opt []string, members map[string]float64) (int, error) {
+func (c *Client) ZAddMapOpt(ctx context.Context, key string, opt []string, members map[string]float64) (int64, error) {
 	args := make([]any, 2, len(members)*2+2)
 	args[0] = "ZADD"
 	args[1] = key
@@ -57,14 +85,14 @@ func (c *Client) ZAddMapOpt(ctx context.Context, key string, opt []string, membe
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToInt(resp.result, resp.err)
+	return resp3.ToInt64(resp.result, resp.err)
 }
 
 // ZCard 返回键所存储有序集合的元素数量
-func (c *Client) ZCard(ctx context.Context, key string) (int, error) {
+func (c *Client) ZCard(ctx context.Context, key string) (int64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "ZCARD", key)
 	resp := c.do(ctx, cmd)
-	return resp3.ToInt(resp.result, resp.err)
+	return resp3.ToInt64(resp.result, resp.err)
 }
 
 // ZCount 返回键所存储的有序集合中，分数在 min 和 max 范围内的元素数量
@@ -159,7 +187,7 @@ func (c *Client) ZInterWithScores(ctx context.Context, key string, keys ...strin
 }
 
 // ZInterStore 计算由指定键给出的多个有序集合的交集,并将结果存储到目标键中
-func (c *Client) ZInterStore(ctx context.Context, destination string, key string, keys ...string) (int, error) {
+func (c *Client) ZInterStore(ctx context.Context, destination string, key string, keys ...string) (int64, error) {
 	args := make([]any, 4, 4+len(keys))
 	args[0] = "ZINTERSTORE"
 	args[1] = destination
@@ -170,7 +198,7 @@ func (c *Client) ZInterStore(ctx context.Context, destination string, key string
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToInt(resp.result, resp.err)
+	return resp3.ToInt64(resp.result, resp.err)
 }
 
 // ZLexCount 当有序集合中的所有元素具有相同分数时，为了强制按字典序排序，该命令返回键所存储的有序集合中，值在 min 和 max 之间的元素数量。

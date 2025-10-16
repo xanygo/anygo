@@ -29,15 +29,29 @@ type String[V any] interface {
 
 type List[V any] interface {
 	// LPush 在列表左侧插入元素（类似 Redis 的 LPUSH 命令）
-	LPush(ctx context.Context, values ...V) (int, error)
+	//
+	// 返回值：在执行推入操作后，列表的长度
+	LPush(ctx context.Context, values ...V) (int64, error)
 
 	// RPush 在列表右侧插入元素（类似 Redis 的 RPUSH 命令）
-	RPush(ctx context.Context, values ...V) (int, error)
+	//
+	// 返回值：在执行推入操作后，列表的长度
+	RPush(ctx context.Context, values ...V) (int64, error)
 
 	// LPop 移除并返回列表最左侧的元素（类似 Redis 的 LPOP 命令）
+	//
+	// 返回值：
+	//  1.若 list 不为空时，pop 成功，返回值为 ：< 值，true, nil >
+	//  2.若 list 不存在时，返回值为: <空，false, nil >
+	//  3.若有异常导致失败，返回值为：<空，false, error >
 	LPop(ctx context.Context) (V, bool, error)
 
 	// RPop 移除并返回列表最右侧的元素（类似 Redis 的 RPOP 命令）
+	//
+	// 返回值：
+	//  1.若 list 不为空时，pop 成功，返回值为 ：< 值，true, nil >
+	//  2.若 list 不存在时，返回值为: <空，false, nil >
+	//  3.若有异常导致失败，返回值为：<空，false, error >
 	RPop(ctx context.Context) (V, bool, error)
 
 	// LRem 从存储在键（key）的列表中删除等于元素（ element ）的前 count 个元素。count 参数以以下方式影响操作：
@@ -46,14 +60,19 @@ type List[V any] interface {
 	// count = 0: 移除所有等于 element 的元素。
 	// 例如，LREM list -2 "hello" 将从存储在 list 中的列表中删除 "hello" 的最后两个出现。
 	// 请注意，不存在的键被视为空列表，因此当键不存在时，命令将始终返回0
-	LRem(ctx context.Context, count int, element string) (int, error)
+	LRem(ctx context.Context, count int64, element string) (int64, error)
 
 	// Range 不保证顺序的遍历
 	Range(ctx context.Context, fn func(val V) bool) error
 
+	// LRange 从左/队列头部开始遍历
 	LRange(ctx context.Context, fn func(val V) bool) error
 
+	// RRange 从右/队列尾部开始遍历
 	RRange(ctx context.Context, fn func(val V) bool) error
+
+	// Len 返回队列的长度
+	Len(ctx context.Context) (int64, error)
 }
 
 type Hash[V any] interface {
@@ -81,7 +100,7 @@ type Set[V any] interface {
 	// SAdd 向集合中添加一个成员（类似 Redis 的 SADD 命令）
 	// 返回值：新增个数，错误
 	// 若 member 之前是存在的，则新增个数为 0
-	SAdd(ctx context.Context, member ...V) (int, error)
+	SAdd(ctx context.Context, member ...V) (int64, error)
 
 	// SRem 从集合中移除一个成员（类似 Redis 的 SREM 命令）
 	SRem(ctx context.Context, members ...V) error
