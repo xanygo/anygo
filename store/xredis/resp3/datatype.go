@@ -13,11 +13,6 @@ import (
 	"strconv"
 )
 
-var (
-	ErrNil          = errors.New("redis nil value") // redis 中无此 key
-	ErrInvalidReply = errors.New("invalid reply")   // 错误的响应
-)
-
 var MaxResponseSize = 512 * 1024 * 1024
 
 // DataType 数据类型

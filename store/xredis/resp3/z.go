@@ -11,7 +11,7 @@ type Z struct {
 	Member string
 }
 
-func ToZSlice(ret Result, err error) ([]Z, error) {
+func ToZSlice(ret Element, err error) ([]Z, error) {
 	if err != nil {
 		return nil, err
 	}

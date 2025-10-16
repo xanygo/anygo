@@ -94,7 +94,7 @@ func Handshake(ctx context.Context, protocol string, conn *xnet.ConnNode, opt xo
 	ret, err = handler.Handshake(ctx, conn, opt)
 	conn.SetDeadline(time.Time{})
 	if err == nil && ret != nil {
-		span.SetAttributes(xmetric.AnyAttr("Reply", ret.Desc()))
+		span.SetAttributes(xmetric.AnyAttr("Result", ret.Desc()))
 	}
 	return ret, err
 }

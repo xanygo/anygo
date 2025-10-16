@@ -22,7 +22,7 @@ func TestHelloResponse(t *testing.T) {
 	fst.NoError(t, err1)
 	fst.NotEmpty(t, mp)
 	fst.Equal(t, DataTypeMap, mp.DataType())
-	mv, err2 := ToAny(mp)
+	mv, err2 := ToAny(mp, nil)
 	fst.NoError(t, err2)
 	fst.NotEmpty(t, mv)
 	obj, ok1 := mv.(map[any]any)

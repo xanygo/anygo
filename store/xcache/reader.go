@@ -161,6 +161,9 @@ func (rd *MemReader1[V]) Flush(ctx context.Context) (v V, err error) {
 }
 
 func (rd *MemReader1[V]) Clear() {
+	if rd == nil {
+		return
+	}
 	var emp V
 	rd.mux.Lock()
 	rd.expire = time.Time{}

@@ -53,3 +53,7 @@ func asErrorType(dt DataType, rd Reader) (Element, bool, error) {
 		return nil, false, nil
 	}
 }
+
+func ReadOneElement(rd Reader) (Element, error) {
+	return readOne(rd)
+}

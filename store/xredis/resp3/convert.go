@@ -10,7 +10,7 @@ import (
 	"strconv"
 )
 
-func ToInt(result Result, err error) (int, error) {
+func ToInt(result Element, err error) (int, error) {
 	if err != nil {
 		return 0, err
 	}
@@ -30,7 +30,7 @@ func ToInt(result Result, err error) (int, error) {
 	}
 }
 
-func ToString(result Result, err error) (string, error) {
+func ToString(result Element, err error) (string, error) {
 	if err != nil {
 		return "", err
 	}
@@ -46,22 +46,24 @@ func ToString(result Result, err error) (string, error) {
 	}
 }
 
-func elementAsArray(result Result) ([]Element, error) {
-	switch dv := result.(type) {
+func elementAsArray(e Element) ([]Element, error) {
+	switch dv := e.(type) {
 	case Array:
 		return dv, nil
 	case Set:
 		return dv, nil
+	case Push:
+		return dv, nil
 	default:
-		return nil, fmt.Errorf("not array reply: %T", result)
+		return nil, fmt.Errorf("%w,not array reply: %T", ErrInvalidReply, e)
 	}
 }
 
-func ToStringSlice(result Result, err error) ([]string, error) {
+func ToStringSlice(e Element, err error) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	arr, err := elementAsArray(result)
+	arr, err := elementAsArray(e)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +81,7 @@ func ToStringSlice(result Result, err error) ([]string, error) {
 	return list, nil
 }
 
-func ToOkBool(result Result, err error) (bool, error) {
+func ToOkBool(result Element, err error) (bool, error) {
 	if err != nil {
 		if errors.Is(err, ErrNil) {
 			return false, nil
@@ -96,7 +98,7 @@ func ToOkBool(result Result, err error) (bool, error) {
 	}
 }
 
-func ToIntBool(result Result, err error, ok int) (bool, error) {
+func ToIntBool(result Element, err error, ok int) (bool, error) {
 	num, err1 := ToInt(result, err)
 	if err1 != nil {
 		return false, err1
@@ -111,7 +113,7 @@ func ToIntBool(result Result, err error, ok int) (bool, error) {
 	}
 }
 
-func ToOkStatus(result Result, err error) error {
+func ToOkStatus(result Element, err error) error {
 	if err != nil {
 		return err
 	}
@@ -129,7 +131,7 @@ func ToOkStatus(result Result, err error) error {
 	return fmt.Errorf("%w: ToOkStatus %#v(%T)", ErrInvalidReply, result, result)
 }
 
-func ToInt64(result Result, err error) (int64, error) {
+func ToInt64(result Element, err error) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
@@ -147,13 +149,13 @@ func ToInt64(result Result, err error) (int64, error) {
 	}
 }
 
-func ToInt64Slice(result Result, err error) ([]int64, error) {
+func ToInt64Slice(e Element, err error) ([]int64, error) {
 	if err != nil {
 		return nil, err
 	}
-	arr, ok := result.(Array)
-	if !ok {
-		return nil, fmt.Errorf("%w: ToInt64Slice_0 %#v(%T)", ErrInvalidReply, result, result)
+	arr, err := elementAsArray(e)
+	if err != nil {
+		return nil, err
 	}
 	list := make([]int64, 0, len(arr))
 	for _, item := range arr {
@@ -175,13 +177,13 @@ func ToInt64Slice(result Result, err error) ([]int64, error) {
 			}
 			list = append(list, num)
 		default:
-			return nil, fmt.Errorf("%w: ToInt64Slice_1 %#v(%T)", ErrInvalidReply, result, result)
+			return nil, fmt.Errorf("%w: ToInt64Slice_1 %#v(%T)", ErrInvalidReply, e, e)
 		}
 	}
 	return list, nil
 }
 
-func ToFloat64(result Result, err error) (float64, error) {
+func ToFloat64(result Element, err error) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
@@ -197,13 +199,13 @@ func ToFloat64(result Result, err error) (float64, error) {
 	}
 }
 
-func ToFloat64Slice(result Result, err error) ([]float64, error) {
+func ToFloat64Slice(e Element, err error) ([]float64, error) {
 	if err != nil {
 		return nil, err
 	}
-	arr, ok := result.(Array)
-	if !ok {
-		return nil, fmt.Errorf("%w: ToFloat64Slice_0 %#v(%T)", ErrInvalidReply, result, result)
+	arr, err := elementAsArray(e)
+	if err != nil {
+		return nil, fmt.Errorf("%w: ToFloat64Slice_0", err)
 	}
 	list := make([]float64, 0, len(arr))
 	for _, item := range arr {
@@ -217,13 +219,13 @@ func ToFloat64Slice(result Result, err error) ([]float64, error) {
 	return list, nil
 }
 
-func ToStringMapWithKeys(result Result, err error, keys []string) (map[string]string, error) {
+func ToStringMapWithKeys(e Element, err error, keys []string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	arr, ok := result.(Array)
-	if !ok {
-		return nil, fmt.Errorf("%w: ToStringMapWithKeys_0 %#v(%T)", ErrInvalidReply, result, result)
+	arr, err := elementAsArray(e)
+	if err != nil {
+		return nil, fmt.Errorf("%w: ToStringMapWithKeys_0", err)
 	}
 	if len(keys) != len(arr) {
 		return nil, fmt.Errorf("expected %d keys, got %d", len(keys), len(arr))
@@ -243,24 +245,44 @@ func ToStringMapWithKeys(result Result, err error, keys []string) (map[string]st
 	return m, nil
 }
 
-func ToStringMap(result Result, err error) (map[string]string, error) {
+func asMap(e Element, err error) (map[Element]Element, error) {
 	if err != nil {
 		return nil, err
 	}
-	switch rv := result.(type) {
+	switch rv := e.(type) {
 	case Map:
-		return rv.ToStringMap()
+		return rv, nil
+	case Attribute:
+		return rv, nil
+	default:
+		return nil, fmt.Errorf("%w: asMap %#v", ErrInvalidReply, e)
 	}
-	return nil, nil
 }
 
-func ToMapFloat64(result Result, err error) (map[string]float64, error) {
+func ToStringMap(e Element, err error) (map[string]string, error) {
+	mp, err := asMap(e, err)
 	if err != nil {
 		return nil, err
 	}
-	arr, ok := result.(Array)
-	if !ok {
-		return nil, fmt.Errorf("%w: ToMapFloat64 %#v(%T)", ErrInvalidReply, result, result)
+	return mapToStringMap(mp)
+}
+
+func ToStringAnyMap(e Element, err error) (map[string]any, error) {
+	mp, err := asMap(e, err)
+	if err != nil {
+		return nil, err
+	}
+
+	return mapToStringAnyMap(mp)
+}
+
+func ToMapFloat64(e Element, err error) (map[string]float64, error) {
+	if err != nil {
+		return nil, err
+	}
+	arr, err := elementAsArray(e)
+	if err != nil {
+		return nil, fmt.Errorf("%w: ToMapFloat64", err)
 	}
 	if len(arr)%2 != 0 {
 		return nil, fmt.Errorf("expected even number of keys, got %d", len(arr))
@@ -280,20 +302,20 @@ func ToMapFloat64(result Result, err error) (map[string]float64, error) {
 	return ret, nil
 }
 
-func ToMapFloat64WithKeys(result Result, err error, keys []string) (map[string]float64, error) {
+func ToMapFloat64WithKeys(e Element, err error, keys []string) (map[string]float64, error) {
 	if err != nil {
 		return nil, err
 	}
-	arr, ok := result.(Array)
-	if !ok {
-		return nil, fmt.Errorf("%w: ToMapFloat64WithKeys %#v(%T)", ErrInvalidReply, result, result)
+	arr, err := elementAsArray(e)
+	if err != nil {
+		return nil, fmt.Errorf("%w: ToMapFloat64WithKeys", err)
 	}
 	if len(arr) != len(keys) {
 		return nil, fmt.Errorf("length not match, reply=%d, keys=%d", len(arr), len(keys))
 	}
 	ret := make(map[string]float64, len(arr))
 	for i := 0; i < len(arr); i++ {
-		if _, ok := arr[i].(Null); ok {
+		if _, ok2 := arr[i].(Null); ok2 {
 			continue
 		}
 		member := keys[i]
@@ -306,7 +328,11 @@ func ToMapFloat64WithKeys(result Result, err error, keys []string) (map[string]f
 	return ret, nil
 }
 
-func mapToStringMap[T Map | Attribute](m T) (map[string]string, error) {
+type maps interface {
+	Map | Attribute | map[Element]Element
+}
+
+func mapToStringMap[T maps](m T) (map[string]string, error) {
 	if len(m) == 0 {
 		return nil, nil
 	}
@@ -323,7 +349,7 @@ func mapToStringMap[T Map | Attribute](m T) (map[string]string, error) {
 	return result, nil
 }
 
-func mapToStringAnyMap[T Map | Attribute](m T) (map[string]any, error) {
+func mapToStringAnyMap[T maps](m T) (map[string]any, error) {
 	return (stringAnyMapConverter{}).ToMap(m)
 }
 
@@ -340,7 +366,7 @@ func (sc stringAnyMapConverter) ToMap(m map[Element]Element) (map[string]any, er
 			return nil, fmt.Errorf("map: not string k-v %#v: %#v", k, v)
 		}
 		vs, err := sc.toAny(v)
-		if err != nil {
+		if err != nil && !IsRespError(err) {
 			return nil, err
 		}
 		result[ks.String()] = vs
@@ -355,15 +381,15 @@ func (sc stringAnyMapConverter) toAny(v Element) (any, error) {
 	case SimpleString:
 		return vv.String(), nil
 	case SimpleError:
-		return vv, nil // error 类型
+		return vv, vv // error 类型
 	case BulkString:
 		return vv.String(), nil
 	case BulkError:
-		return vv, nil // // error 类型
+		return vv, vv // // error 类型
 	case Double:
 		return vv.Float64(), nil
 	case Integer:
-		return vv.Int(), nil
+		return vv.Int64(), nil
 	case Boolean:
 		return vv.Bool(), nil
 	case BigNumber:
@@ -392,7 +418,7 @@ func (sc stringAnyMapConverter) toAnySlice(vv []Element) ([]any, error) {
 	vs := make([]any, 0, len(vv))
 	for _, e := range vv {
 		value, err := sc.toAny(e)
-		if err != nil {
+		if err != nil && !IsRespError(err) {
 			return nil, err
 		}
 		vs = append(vs, value)
@@ -400,18 +426,21 @@ func (sc stringAnyMapConverter) toAnySlice(vv []Element) ([]any, error) {
 	return vs, nil
 }
 
-func ToAny(v Element) (any, error) {
+func ToAny(v Element, err error) (any, error) {
+	if err != nil {
+		return nil, err
+	}
 	switch vv := v.(type) {
 	case Null:
 		return nil, nil
 	case SimpleString:
 		return vv.String(), nil
 	case SimpleError:
-		return vv, nil // error 类型
+		return vv, vv // error 类型
 	case BulkString:
 		return vv.String(), nil
 	case BulkError:
-		return vv, nil // // error 类型
+		return vv, vv // // error 类型
 	case Double:
 		return vv.Float64(), nil
 	case Integer:
@@ -425,27 +454,38 @@ func ToAny(v Element) (any, error) {
 		return vv, nil
 
 	case Array:
-		return ToAnySlice(vv)
+		return toAnySlice(vv)
 	case Set:
-		return ToAnySlice(vv)
+		return toAnySlice(vv)
 	case Push:
-		return ToAnySlice(vv)
+		return toAnySlice(vv)
 
 	case Map:
-		return ToAnyMap(vv)
+		return toAnyMay(vv)
 	case Attribute:
-		return ToAnyMap(vv)
+		return toAnyMay(vv)
 
 	default:
 		return nil, fmt.Errorf("unknown element %#v", vv)
 	}
 }
 
-func ToAnySlice(vv []Element) ([]any, error) {
+func ToAnySlice(e Element, err error) ([]any, error) {
+	if err != nil {
+		return nil, err
+	}
+	arr, err := elementAsArray(e)
+	if err != nil {
+		return nil, err
+	}
+	return toAnySlice(arr)
+}
+
+func toAnySlice(vv []Element) ([]any, error) {
 	vs := make([]any, 0, len(vv))
 	for _, e := range vv {
-		value, err := ToAny(e)
-		if err != nil {
+		value, err := ToAny(e, nil)
+		if err != nil && !IsRespError(err) {
 			return nil, err
 		}
 		vs = append(vs, value)
@@ -453,21 +493,35 @@ func ToAnySlice(vv []Element) ([]any, error) {
 	return vs, nil
 }
 
-func ToAnyMap(m map[Element]Element) (map[any]any, error) {
+func ToAnyMap(e Element, err error) (map[any]any, error) {
+	if err != nil {
+		return nil, err
+	}
+	switch m := e.(type) {
+	case Map:
+		return toAnyMay(m)
+	case Attribute:
+		return toAnyMay(m)
+	default:
+		return nil, fmt.Errorf("unknown element %#v", e)
+	}
+}
+
+func toAnyMay(m map[Element]Element) (map[any]any, error) {
 	if len(m) == 0 {
 		return nil, nil
 	}
 	result := make(map[any]any, len(m))
 	for k, v := range m {
-		ks, err1 := ToAny(k)
-		if err1 != nil {
+		key, err1 := ToAny(k, nil)
+		if err1 != nil && !IsRespError(err1) {
 			return nil, err1
 		}
-		vs, err2 := ToAny(v)
-		if err2 != nil {
+		value, err2 := ToAny(v, nil)
+		if err2 != nil && !IsRespError(err2) {
 			return nil, err2
 		}
-		result[ks] = vs
+		result[key] = value
 	}
 	return result, nil
 }

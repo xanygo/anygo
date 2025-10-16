@@ -57,32 +57,6 @@ func (s SimpleString) ToUint64() (uint64, error) {
 	return strconv.ParseUint(string(s), 10, 64)
 }
 
-var _ Element = SimpleError("")
-
-// SimpleError RESP has specific data types for errors.
-// Simple errors, or simply just errors, are similar to simple strings,
-// but their first character is the minus (-) character.
-// The difference between simple strings and errors in RESP is that clients should treat errors as exceptions,
-// whereas the string encoded in the error type is the error message itself.
-type SimpleError string
-
-func (s SimpleError) Bytes(bf *bytes.Buffer) []byte {
-	// -Error message\r\n
-	bf.Reset()
-	bf.WriteByte(DataTypeSimpleError.Byte())
-	bf.WriteString(string(s))
-	bf.Write(CRLF)
-	return bf.Bytes()
-}
-
-func (s SimpleError) Error() string {
-	return string(s)
-}
-
-func (s SimpleError) DataType() DataType {
-	return DataTypeSimpleError
-}
-
 var _ Element = Integer(0)
 
 type Integer int64
@@ -268,30 +242,6 @@ func (bn BigNumber) BigInt() *big.Int {
 
 func (bn BigNumber) Int64() int64 {
 	return bn.BigInt().Int64()
-}
-
-var _ Element = BulkError("")
-
-type BulkError string
-
-func (be BulkError) Bytes(bf *bytes.Buffer) []byte {
-	// !21\r\n
-	// SYNTAX invalid syntax\r\n
-	bf.Reset()
-	bf.WriteByte(DataTypeBulkError.Byte())
-	bf.WriteString(strconv.Itoa(len(string(be))))
-	bf.Write(CRLF)
-	bf.WriteString(string(be))
-	bf.Write(CRLF)
-	return bf.Bytes()
-}
-
-func (be BulkError) DataType() DataType {
-	return DataTypeBulkError
-}
-
-func (be BulkError) Error() string {
-	return string(be)
 }
 
 var _ Element = VerbatimString{}

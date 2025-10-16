@@ -15,7 +15,6 @@ import (
 
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/store/xredis"
-	"github.com/xanygo/anygo/store/xredis/resp3"
 	"github.com/xanygo/anygo/xerror"
 )
 
@@ -98,8 +97,8 @@ func (r *Redis) MSet(ctx context.Context, data map[string]string, ttl time.Durat
 		if err != nil {
 			return err
 		}
-		ret, err := r.Client.EvalSha(ctx, sha, keys, values...)
-		result = resp3.ToOkStatus(ret, err)
+		ret := r.Client.EvalSha(ctx, sha, keys, values...)
+		result = ret.OKStatus()
 		// 若遇到 NOSCRIPT 错误则重新执行一次
 		if result != nil && strings.Contains(result.Error(), "NOSCRIPT") {
 			r.mux.Lock()

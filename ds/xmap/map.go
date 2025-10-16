@@ -6,6 +6,7 @@ package xmap
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 
@@ -272,4 +273,31 @@ func KeysMiss[K comparable, V any](mp map[K]V, keys []K) []K {
 		}
 	}
 	return result
+}
+
+// Range 遍历任意类型的 map，返回 key、value 满足条件的个数
+func Range[K comparable, V any](m any, fn func(key K, val V) bool) int {
+	if m == nil {
+		return 0
+	}
+	v := reflect.ValueOf(m)
+	if v.Kind() != reflect.Map {
+		return 0
+	}
+	var cnt int
+	for _, key := range v.MapKeys() {
+		k, ok := key.Interface().(K)
+		if !ok {
+			continue
+		}
+		val, ok := v.MapIndex(key).Interface().(V)
+		if !ok {
+			continue
+		}
+		cnt++
+		if !fn(k, val) {
+			break
+		}
+	}
+	return cnt
 }

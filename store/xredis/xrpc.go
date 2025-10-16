@@ -22,7 +22,7 @@ import (
 var _ xrpc.Request = (*rpcRequest)(nil)
 
 type rpcRequest struct {
-	req Request
+	req resp3.Request
 }
 
 func (r *rpcRequest) String() string {
@@ -50,7 +50,7 @@ func (r *rpcRequest) WriteTo(ctx context.Context, w *xnet.ConnNode, opt xoption.
 var _ xrpc.Response = (*rpcResponse)(nil)
 
 type rpcResponse struct {
-	result resp3.Result
+	result resp3.Element
 	err    error
 }
 

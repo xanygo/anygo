@@ -25,12 +25,6 @@ import (
 	"github.com/xanygo/anygo/xpp"
 )
 
-type (
-	Request = resp3.Request
-
-	Result = resp3.Result
-)
-
 const Protocol = "RESP3"
 
 var ErrNil = resp3.ErrNil
@@ -59,24 +53,28 @@ func (c *Client) geRPCOptions() []xrpc.Option {
 	return options
 }
 
-func (c *Client) do(ctx context.Context, cmd Request) *rpcResponse {
+func (c *Client) do(ctx context.Context, cmd resp3.Request) *rpcResponse {
 	req := &rpcRequest{
 		req: cmd,
 	}
 	resp := &rpcResponse{}
-	err := xrpc.Invoke(ctx, c.Service, req, resp, c.once.Load()...)
+	err := c.invoke(ctx, req, resp)
 	if resp.err == nil {
 		resp.err = err
 	}
 	return resp
 }
 
-func (c *Client) Do(ctx context.Context, cmd Request) Response {
-	resp := c.do(ctx, cmd)
-	return Response{
-		result: resp.result,
-		err:    resp.err,
-	}
+func (c *Client) invoke(ctx context.Context, req xrpc.Request, resp xrpc.Response) error {
+	return xrpc.Invoke(ctx, c.Service, req, resp, c.once.Load()...)
+}
+
+// Do 执行任意的命令，若是调用 Client 没有的方法，可以使用此方法
+func (c *Client) Do(ctx context.Context, cmd Cmder) error {
+	req := resp3.NewRequest(resp3.DataTypeAny, cmd.Args()...)
+	resp := c.do(ctx, req)
+	cmd.SetReply(resp.result, resp.err)
+	return cmd.Err()
 }
 
 func init() {
@@ -124,10 +122,7 @@ func handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (xd
 			err = fmt.Errorf("response not map %#v", result)
 		}
 	}
-	var md map[any]any
-	if err == nil {
-		md, err = resp3.ToAnyMap(mp)
-	}
+	md, err := resp3.ToAnyMap(mp, err)
 	if err != nil {
 		return nil, err
 	}

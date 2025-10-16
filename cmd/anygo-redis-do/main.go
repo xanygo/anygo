@@ -13,7 +13,6 @@ import (
 
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xredis"
-	"github.com/xanygo/anygo/store/xredis/resp3"
 )
 
 var uri = flag.String("uri", "redis://127.0.0.1:6379", "redis URI")
@@ -35,13 +34,12 @@ func main() {
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		arr := strings.Fields(line)
+		arr := xslice.ToAnys(strings.Fields(line))
 		log.Printf("command : %q\n", arr)
-		req := resp3.NewRequest(resp3.DataTypeAny, xslice.ToAnys(arr)...)
-		resp := client.Do(ctx, req)
-		result, err := resp.Result()
+		cmd := xredis.NewAnyCmd(arr...)
+		err = client.Do(ctx, cmd)
 		if err == nil {
-			log.Printf("result  : %#v\n", result)
+			log.Printf("result  : %#v\n", cmd.Value())
 		} else {
 			log.Fatalln("err=", err)
 		}
