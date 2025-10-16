@@ -23,8 +23,6 @@ jobs:
           REDIS_MAXMEMORY: 64mb
         # 健康检查确保 Redis 启动完成后才执行测试
         options: >-
-          --save ""
-          --appendonly no
           --health-cmd "redis-cli ping"
           --health-interval 5s
           --health-timeout 5s
