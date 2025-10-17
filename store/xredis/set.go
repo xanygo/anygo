@@ -62,13 +62,17 @@ func (c *Client) SInter(ctx context.Context, key string, keys ...string) ([]stri
 	for _, k := range keys {
 		args = append(args, k)
 	}
-	cmd := resp3.NewRequest(resp3.DataTypeInteger, args...)
+	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
 	return resp3.ToStringSlice(resp.result, resp.err)
 }
 
-// SiSMember 返回给定的成员是否存在于键所存储的集合中
-func (c *Client) SiSMember(ctx context.Context, key string, member string) (bool, error) {
+// SIsMember 返回给定的成员是否存在于键所存储的集合中
+//
+//	若 key 或者 member 不存在，返回 false,nil
+//	若 key 类型错误，或者其他错误，会返回 false,error
+//	若 member 存在于 Set 中，返回 true,nil
+func (c *Client) SIsMember(ctx context.Context, key string, member string) (bool, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "SISMEMBER", key, member)
 	resp := c.do(ctx, cmd)
 	return resp3.ToIntBool(resp.result, resp.err, 1)
@@ -76,16 +80,26 @@ func (c *Client) SiSMember(ctx context.Context, key string, member string) (bool
 
 // SMembers 返回键所存储的集合中的所有成员
 func (c *Client) SMembers(ctx context.Context, key string) ([]string, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeInteger, "SMEMBERS", key)
+	cmd := resp3.NewRequest(resp3.DataTypeArray, "SMEMBERS", key)
 	resp := c.do(ctx, cmd)
 	return resp3.ToStringSlice(resp.result, resp.err)
 }
 
-// SMisMember 返回每个给定成员是否存在于键所存储的集合中。
-func (c *Client) SMisMember(ctx context.Context, key string) (bool, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeInteger, "SMEMBERS", key)
+// SMIsMember 返回给定的成员是否存在于键所存储的集合中
+//
+//	若 key 或者 member 不存在，返回 false,nil
+//	若 key 类型错误，或者其他错误，会返回 false,error
+//	若 member 存在于 Set 中，返回 true,nil
+func (c *Client) SMIsMember(ctx context.Context, key string, members ...string) ([]bool, error) {
+	args := make([]any, 2, 2+len(members))
+	args[0] = "SMISMEMBER"
+	args[1] = key
+	for _, k := range members {
+		args = append(args, k)
+	}
+	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToIntBool(resp.result, resp.err, 1)
+	return resp3.ToIntBools(resp.result, resp.err, len(members), 1)
 }
 
 // SMove 将指定成员从源集合移动到目标集合。该操作是原子的，在任意时刻，对于其他客户端而言，该元素要么属于源集合，要么属于目标集合。
@@ -99,26 +113,47 @@ func (c *Client) SMove(ctx context.Context, source string, destination string, m
 	return resp3.ToIntBool(resp.result, resp.err, 1)
 }
 
-// SPop 移除并返回键所存储集合中的一个或多个随机成员
-func (c *Client) SPop(ctx context.Context, key string, count int) ([]string, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeInteger, "SPOP", key, count)
+// SPop 移除并返回键所存储集合中的一个随机成员
+//
+//	若 key 不存在，会返回 "",false,nil
+//	若 key 存在( Set 不为空 )，会返回 "value",true,nil
+//	其他错误，返回 "",false,error
+func (c *Client) SPop(ctx context.Context, key string) (string, bool, error) {
+	ret, err := c.SPopN(ctx, key, 1)
+	if err != nil {
+		return "", false, err
+	}
+	if len(ret) == 1 {
+		return ret[0], true, nil
+	}
+	return "", false, nil
+}
+
+// SPopN 移除并返回键所存储集合中的最多 count 个随机成员
+//
+//	若 key 不存在，会返回 nil,nil
+//	若 key 存在( Set 不为空 )，会返回 []{非空},nil
+//	其他错误，返回 nil,error
+func (c *Client) SPopN(ctx context.Context, key string, count int) ([]string, error) {
+	cmd := resp3.NewRequest(resp3.DataTypeArray, "SPOP", key, count)
 	resp := c.do(ctx, cmd)
 	return resp3.ToStringSlice(resp.result, resp.err)
 }
 
-// SRandMember 随机返回该键所存储集合中的 count 个元素
+// SRandMember 随机返回该键所存储集合中的最多 count 个元素
+//
+// 若 key 不存在，返回 nil,nil
 func (c *Client) SRandMember(ctx context.Context, key string, count int) ([]string, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeInteger, "SRANDMEMBER", key, count)
+	cmd := resp3.NewRequest(resp3.DataTypeArray, "SRANDMEMBER", key, count)
 	resp := c.do(ctx, cmd)
 	return resp3.ToStringSlice(resp.result, resp.err)
 }
 
 // SRem 从键所存储的集合中移除指定成员。
 //
-// 对于不在集合中的指定成员，会被忽略。
-// 如果键不存在，则视为空集合，命令返回 0。
-// 如果键对应的值不是集合类型，则返回错误。
-func (c *Client) SRem(ctx context.Context, key string, members ...string) (int, error) {
+//	若 key 或者 member 不存在，会返回 0
+//	若对应的值不是集合类型，则返回错误
+func (c *Client) SRem(ctx context.Context, key string, members ...string) (int64, error) {
 	args := make([]any, 2, 2+len(members))
 	args[0] = "SREM"
 	args[1] = key
@@ -127,7 +162,7 @@ func (c *Client) SRem(ctx context.Context, key string, members ...string) (int, 
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToInt(resp.result, resp.err)
+	return resp3.ToInt64(resp.result, resp.err)
 }
 
 // SUnion 返回所有给定集合的并集所得到的成员

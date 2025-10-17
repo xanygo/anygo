@@ -113,6 +113,27 @@ func ToIntBool(result Element, err error, ok int) (bool, error) {
 	}
 }
 
+func ToIntBools(e Element, err error, length int, ok int) ([]bool, error) {
+	if err != nil {
+		return nil, err
+	}
+	arr, err := elementAsArray(e)
+	if err != nil {
+		return nil, err
+	}
+	if len(arr) != length {
+		return nil, fmt.Errorf("%w: ToIntBools, expect array length %d, got %d", ErrInvalidReply, length, len(arr))
+	}
+	result := make([]bool, length)
+	for i := 0; i < length; i++ {
+		result[i], err = ToIntBool(arr[i], nil, ok)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
 func ToOkStatus(result Element, err error) error {
 	if err != nil {
 		return err
