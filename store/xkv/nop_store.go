@@ -75,7 +75,7 @@ func (n nopList[V]) RRange(ctx context.Context, fn func(val V) bool) error {
 	return nil
 }
 
-func (n nopList[V]) Len(ctx context.Context) (int64, error) {
+func (n nopList[V]) LLen(ctx context.Context) (int64, error) {
 	return 0, nil
 }
 
@@ -133,6 +133,10 @@ func (n nopSet[V]) SRange(ctx context.Context, fn func(val V) bool) error {
 
 func (n nopSet[V]) SMembers(ctx context.Context) ([]V, error) {
 	return nil, nil
+}
+
+func (n nopSet[V]) SCard(ctx context.Context) (int64, error) {
+	return 0, nil
 }
 
 func (n NopStorage[V]) ZSet(key string) ZSet[V] {

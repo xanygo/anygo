@@ -136,7 +136,7 @@ func (kvl *kvList) RRange(ctx context.Context, fn func(val string) bool) error {
 	}
 }
 
-func (kvl *kvList) Len(ctx context.Context) (int64, error) {
+func (kvl *kvList) LLen(ctx context.Context) (int64, error) {
 	return kvl.client.LLen(ctx, kvl.key)
 }
 
@@ -237,6 +237,10 @@ func (kvs *kvSet) SMembers(ctx context.Context) ([]string, error) {
 		return nil, nil
 	}
 	return values, err
+}
+
+func (kvs *kvSet) SCard(ctx context.Context) (int64, error) {
+	return kvs.client.SCard(ctx, kvs.key)
 }
 
 func (kv *RedisStorage) ZSet(key string) xkv.ZSet[string] {

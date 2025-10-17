@@ -181,8 +181,8 @@ func (t transList[V]) RRange(ctx context.Context, fn func(val V) bool) error {
 	return err
 }
 
-func (t transList[V]) Len(ctx context.Context) (int64, error) {
-	return t.ss.Len(ctx)
+func (t transList[V]) LLen(ctx context.Context) (int64, error) {
+	return t.ss.LLen(ctx)
 }
 
 func (tr Transformer[V]) Hash(key string) Hash[V] {
@@ -321,6 +321,10 @@ func (t transSet[V]) SMembers(ctx context.Context) ([]V, error) {
 		return true
 	})
 	return result, err
+}
+
+func (t transSet[V]) SCard(ctx context.Context) (int64, error) {
+	return t.ss.SCard(ctx)
 }
 
 func (tr Transformer[V]) ZSet(key string) ZSet[V] {

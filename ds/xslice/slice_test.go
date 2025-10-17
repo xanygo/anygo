@@ -211,3 +211,22 @@ func TestRevDeleteFuncN(t *testing.T) {
 	want3 := []int{1, 3}
 	fst.Equal(t, want3, got3)
 }
+
+func TestRange(t *testing.T) {
+	s1 := []any{"1", 2, 3, int8(3)}
+	var list1 []int
+	num := Range[int](s1, func(item int) bool {
+		list1 = append(list1, item)
+		return true
+	})
+	fst.Equal(t, 2, num)
+	fst.Equal(t, []int{2, 3}, list1)
+
+	var list2 []int64
+	num2 := Range[int64](s1, func(item int64) bool {
+		list2 = append(list2, item)
+		return true
+	})
+	fst.Empty(t, list2)
+	fst.Equal(t, 0, num2)
+}

@@ -301,7 +301,7 @@ func (m *memList) RRange(ctx context.Context, fn func(val string) bool) error {
 	return nil
 }
 
-func (m *memList) Len(ctx context.Context) (int64, error) {
+func (m *memList) LLen(ctx context.Context) (int64, error) {
 	values, err := m.getSlice()
 	if err != nil {
 		return 0, err
@@ -490,6 +490,15 @@ func (m *memSet) SMembers(ctx context.Context) ([]string, error) {
 		return list, false
 	})
 	return list, err
+}
+
+func (m *memSet) SCard(ctx context.Context) (int64, error) {
+	var num int64
+	err := m.withSliceLocked(func(values []string) ([]string, bool) {
+		num = int64(len(values))
+		return values, false
+	})
+	return num, err
 }
 
 func (m *MemoryStore) ZSet(key string) ZSet[string] {

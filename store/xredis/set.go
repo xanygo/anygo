@@ -20,10 +20,10 @@ func (c *Client) SAdd(ctx context.Context, key string, members ...string) (int64
 }
 
 // SCard 返回存储在给定键上的集合的基数（元素数量）
-func (c *Client) SCard(ctx context.Context, key string) (int, error) {
+func (c *Client) SCard(ctx context.Context, key string) (int64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "SCARD", key)
 	resp := c.do(ctx, cmd)
-	return resp3.ToInt(resp.result, resp.err)
+	return resp3.ToInt64(resp.result, resp.err)
 }
 
 // SDiff 返回第一个集合与所有后续集合的差集所得到的成员

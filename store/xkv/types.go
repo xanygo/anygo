@@ -71,8 +71,8 @@ type List[V any] interface {
 	// RRange 从右/队列尾部开始遍历
 	RRange(ctx context.Context, fn func(val V) bool) error
 
-	// Len 返回队列的长度
-	Len(ctx context.Context) (int64, error)
+	// LLen 返回队列的长度
+	LLen(ctx context.Context) (int64, error)
 }
 
 type Hash[V any] interface {
@@ -110,6 +110,9 @@ type Set[V any] interface {
 
 	// SMembers 返回集合中的所有成员（类似 Redis 的 SMEMBERS 命令）
 	SMembers(ctx context.Context) ([]V, error)
+
+	// SCard 返回 Set 的元素个数
+	SCard(ctx context.Context) (int64, error)
 }
 
 // ZSet Sorted Set

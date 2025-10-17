@@ -143,8 +143,8 @@ func (ml *monitorList[V]) RRange(ctx context.Context, fn func(val V) bool) error
 	return err
 }
 
-func (ml *monitorList[V]) Len(ctx context.Context) (int64, error) {
-	num, err := ml.store.Len(ctx)
+func (ml *monitorList[V]) LLen(ctx context.Context) (int64, error) {
+	num, err := ml.store.LLen(ctx)
 	ml.monitor.doAfterRead(ctx, ml.key, err)
 	return num, err
 }
@@ -237,6 +237,12 @@ func (ms *monitorSet[V]) SRange(ctx context.Context, fn func(member V) bool) err
 
 func (ms *monitorSet[V]) SMembers(ctx context.Context) ([]V, error) {
 	val, err := ms.store.SMembers(ctx)
+	ms.monitor.doAfterRead(ctx, ms.key, err)
+	return val, err
+}
+
+func (ms *monitorSet[V]) SCard(ctx context.Context) (int64, error) {
+	val, err := ms.store.SCard(ctx)
 	ms.monitor.doAfterRead(ctx, ms.key, err)
 	return val, err
 }

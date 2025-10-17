@@ -6,6 +6,7 @@ package xslice
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 
@@ -272,4 +273,30 @@ func CountFunc[S ~[]E, E any](arr S, fn func(index int, item E) bool) int64 {
 		}
 	}
 	return result
+}
+
+// Range 遍历任意类型的 slice 、Array，返回 value 满足条件且被 fn 接收的个数
+func Range[T any](obj any, fn func(item T) bool) int {
+	if obj == nil {
+		return 0
+	}
+	v := reflect.ValueOf(obj)
+	switch v.Kind() {
+	case reflect.Array, reflect.Slice:
+	default:
+		return 0
+	}
+	var cnt int
+	for i := 0; i < v.Len(); i++ {
+		elem := v.Index(i).Interface()
+		val, ok := elem.(T)
+		if !ok {
+			continue
+		}
+		cnt++
+		if !fn(val) {
+			break
+		}
+	}
+	return cnt
 }

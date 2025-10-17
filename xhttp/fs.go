@@ -23,6 +23,7 @@ import (
 	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/ds/xzip"
+	"github.com/xanygo/anygo/xattr"
 	"github.com/xanygo/anygo/xlog"
 )
 
@@ -297,6 +298,9 @@ func (fm *FSMerge) MergeJS(names ...string) (string, error) {
 		}
 		_ = file.Close()
 		code = fm.tryMini(name, code)
+		if xattr.RunMode() == xattr.ModeDebug {
+			bf.WriteString("// " + name + "\n")
+		}
 		bf.Write(code)
 		bf.WriteString("\n\n")
 	}

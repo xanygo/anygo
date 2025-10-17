@@ -275,7 +275,7 @@ func KeysMiss[K comparable, V any](mp map[K]V, keys []K) []K {
 	return result
 }
 
-// Range 遍历任意类型的 map，返回 key、value 满足条件的个数
+// Range 遍历任意类型的 map，返回 key、value 满足条件而且被 fn 接收的个数
 func Range[K comparable, V any](m any, fn func(key K, val V) bool) int {
 	if m == nil {
 		return 0

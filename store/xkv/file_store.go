@@ -212,7 +212,7 @@ func (f fileList) LPush(ctx context.Context, values ...string) (int64, error) {
 			errs = append(errs, err)
 		}
 	}
-	num, err := f.Len(ctx)
+	num, err := f.LLen(ctx)
 	if err != nil {
 		errs = append(errs, err)
 	}
@@ -234,7 +234,7 @@ func (f fileList) RPush(ctx context.Context, values ...string) (int64, error) {
 			errs = append(errs, err)
 		}
 	}
-	num, err := f.Len(ctx)
+	num, err := f.LLen(ctx)
 	if err != nil {
 		errs = append(errs, err)
 	}
@@ -394,7 +394,7 @@ func (f fileList) Range(ctx context.Context, fn func(val string) bool) error {
 	return err
 }
 
-func (f fileList) Len(ctx context.Context) (int64, error) {
+func (f fileList) LLen(ctx context.Context) (int64, error) {
 	var num int64
 	err := f.Range(ctx, func(val string) bool {
 		num++
@@ -566,6 +566,15 @@ func (f fileSet) SMembers(ctx context.Context) ([]string, error) {
 	err := f.SRange(ctx, func(val string) bool {
 		result = append(result, val)
 		return true
+	})
+	return result, err
+}
+
+func (f fileSet) SCard(ctx context.Context) (int64, error) {
+	var result int64
+	err := f.RangeKVFiles(ctx, internal.DataTypeSet, func(path string, d fs.DirEntry) error {
+		result++
+		return nil
 	})
 	return result, err
 }
