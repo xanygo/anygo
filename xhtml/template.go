@@ -11,7 +11,9 @@ import (
 	"io"
 	"math/rand/v2"
 	"net/http"
+	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -19,7 +21,9 @@ import (
 
 	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xstr"
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/ds/xurl"
+	"github.com/xanygo/anygo/internal/zbase"
 	"github.com/xanygo/anygo/xhtml/internal/tplfn"
 )
 
@@ -31,34 +35,82 @@ func NewTPLRequest(req *http.Request) *TPLRequest {
 
 type TPLRequest struct {
 	Request *http.Request
+	once    xsync.OnceDoValue[url.Values]
 }
 
 func (t *TPLRequest) Context() context.Context {
 	return t.Request.Context()
 }
 
+func (t *TPLRequest) getQuery() url.Values {
+	return t.once.Do(t.Request.URL.Query)
+}
+
 // Query 获取 url 的 query 参数值
-func (t *TPLRequest) Query(name string) string {
-	query := t.Request.URL.Query()
-	return query.Get(name)
+func (t *TPLRequest) Query(field string) string {
+	return t.getQuery().Get(field)
+}
+
+func (t *TPLRequest) QueryIn(field string, values []string) bool {
+	value := t.getQuery().Get(field)
+	return slices.Contains(values, value)
 }
 
 // BaseLink 基于当前 url，生成新的链接
 //
-// query：url 中的 query 参数，如 "a=1&b=2&c="，同名参数会将当前链接中的同名参数覆盖，值为空的则将其删除
-func (t *TPLRequest) BaseLink(query string) template.URL {
-	return template.URL(xurl.NewLink(t.Request.URL, query))
+// queryPair：url 中的 query 参数，必须成对出现，如 "a",1,"b","2","c",""
+// 同名参数会将当前链接中的同名参数覆盖，值为空的则将其删除
+func (t *TPLRequest) BaseLink(queryPair ...any) template.URL {
+	return template.URL(xurl.BaseLink(t.Request.URL, queryPair...))
 }
 
-func (t *TPLRequest) IfQueryEQ(name string, value string, echo any) any {
-	query := t.Request.URL.Query()
-	if query.Get(name) == value {
+// NewLink 基于当前 url 的 Path，生成新的链接
+//
+// queryPair：url 中的 query 参数，必须成对出现，如 "a",1,"b","2","c",""
+// 值为空的会忽略
+func (t *TPLRequest) NewLink(queryPair ...any) template.URL {
+	return template.URL(xurl.NewLink(t.Request.URL, queryPair...))
+}
+
+func (t *TPLRequest) EchoQueryEQ(field string, value any, echo any) any {
+	query := t.getQuery()
+	if query.Get(field) == zbase.ToString(value) {
 		return echo
 	}
 	return nil
 }
 
-func (t *TPLRequest) IfPathHas(sub string, echo any) any {
+// QueryEQ 判断 Query 参数是否相等
+// 参数 queryPair 必须是双数，依次为： 字段名，字段值，字段名，字段值
+// 字段名必须是 string 类型
+func (t *TPLRequest) QueryEQ(queryPair ...any) bool {
+	if len(queryPair)%2 != 0 {
+		return false
+	}
+	qs := t.getQuery()
+	for i := 0; i < len(queryPair); i += 2 {
+		key := queryPair[i].(string)
+		value := zbase.ToString(queryPair[i+1])
+		if qs.Get(key) != value {
+			return false
+		}
+	}
+	return true
+}
+
+func (t *TPLRequest) PathHas(sub string) bool {
+	return strings.Contains(t.Request.URL.Path, sub)
+}
+
+func (t *TPLRequest) PathHasPrefix(sub string) bool {
+	return strings.HasPrefix(t.Request.URL.Path, sub)
+}
+
+func (t *TPLRequest) PathHasSuffix(sub string) bool {
+	return strings.HasSuffix(t.Request.URL.Path, sub)
+}
+
+func (t *TPLRequest) EchoPathHas(sub string, echo any) any {
 	if strings.Contains(t.Request.URL.Path, sub) {
 		return echo
 	}

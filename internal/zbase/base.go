@@ -4,7 +4,10 @@
 
 package zbase
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+)
 
 func BaseTypeToString(va any) (string, bool) {
 	switch vv := va.(type) {
@@ -42,6 +45,14 @@ func BaseTypeToString(va any) (string, bool) {
 	default:
 		return "", false
 	}
+}
+
+func ToString(va any) string {
+	vs, ok := BaseTypeToString(va)
+	if ok {
+		return vs
+	}
+	return fmt.Sprint(va)
 }
 
 func BaseTypeToInt64(va any) (int64, bool) {
