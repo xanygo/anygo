@@ -13,12 +13,12 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/ds/xmetric"
+	xoption2 "github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xservice"
-	"github.com/xanygo/anygo/xoption"
 )
 
 var _ Client = (*TCP)(nil)
@@ -55,7 +55,7 @@ func (c *TCP) Invoke(ctx context.Context, srv any, req Request, resp Response, o
 	its := c.allITs(ctx)
 
 	cfg := &config{
-		opt: xoption.NewSimple(),
+		opt: xoption2.NewSimple(),
 	}
 	ctxOpts := OptionsFromContext(ctx)
 	for _, opt := range ctxOpts {
@@ -100,17 +100,17 @@ func (c *TCP) Invoke(ctx context.Context, srv any, req Request, resp Response, o
 	}
 
 	// 将临时 option 和 service 的 option 合并
-	opt := xoption.Readers(cfg.opt, service.Option())
+	opt := xoption2.Readers(cfg.opt, service.Option())
 
 	if hr, ok1 := req.(HasOptionReader); ok1 {
 		if opt1 := hr.OptionReader(ctx, opt); opt1 != nil {
-			opt = xoption.Readers(opt1, cfg.opt, service.Option())
+			opt = xoption2.Readers(opt1, cfg.opt, service.Option())
 		}
 	}
 
-	ctx = xoption.ContextWithReader(ctx, opt)
+	ctx = xoption2.ContextWithReader(ctx, opt)
 
-	attemptTotal := xoption.Retry(opt) + 1
+	attemptTotal := xoption2.Retry(opt) + 1
 
 	rootSpan.SetAttemptCount(attemptTotal)
 
@@ -127,7 +127,7 @@ func (c *TCP) Invoke(ctx context.Context, srv any, req Request, resp Response, o
 }
 
 func (c *TCP) tryOnce(ctx context.Context, cfg *config, req Request, resp Response, serviceName string, service xservice.Service, its []TCPInterceptor,
-	opt xoption.Reader) (result error) {
+	opt xoption2.Reader) (result error) {
 	ctx, rootSpan := xmetric.Start(ctx, "TryOnce")
 	defer func() {
 		rootSpan.RecordError(result)
@@ -200,8 +200,8 @@ func (c *TCP) tryOnce(ctx context.Context, cfg *config, req Request, resp Respon
 	return err
 }
 
-func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption.Reader, conn *xnet.ConnNode) (err error) {
-	totalTimeout := xoption.WriteReadTimeout(opt)
+func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption2.Reader, conn *xnet.ConnNode) (err error) {
+	totalTimeout := xoption2.WriteReadTimeout(opt)
 	ctx, cancel := context.WithTimeout(ctx, totalTimeout)
 	defer cancel()
 	if err = conn.SetDeadline(time.Now().Add(totalTimeout)); err != nil {
@@ -214,7 +214,7 @@ func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt x
 	if err != nil {
 		return err
 	}
-	maxBody := xoption.MaxResponseSize(opt)
+	maxBody := xoption2.MaxResponseSize(opt)
 	rd := io.LimitReader(conn, maxBody)
 	err = resp.LoadFrom(ctx, req, rd, opt)
 	if err != nil {

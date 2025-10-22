@@ -10,9 +10,9 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/xanygo/anygo/ds/xctx"
 	"github.com/xanygo/anygo/ds/xstr"
 	"github.com/xanygo/anygo/xcodec/xbase"
-	"github.com/xanygo/anygo/xctx"
 )
 
 // NewID 生成一个新的 SessionID

@@ -13,8 +13,8 @@ import (
 
 	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xmetric"
+	xoption2 "github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xnet"
-	"github.com/xanygo/anygo/xoption"
 )
 
 type HandshakeReply interface {
@@ -25,19 +25,19 @@ type HandshakeReply interface {
 // HandshakeHandler 用于创建连接后，tcp client 的握手
 // 如 Redis 协议发送 Hello Request
 type HandshakeHandler interface {
-	Handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (HandshakeReply, error)
+	Handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption2.Reader) (HandshakeReply, error)
 }
 
 var _ HandshakeHandler = HandshakeFunc(nil)
 
-type HandshakeFunc func(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (HandshakeReply, error)
+type HandshakeFunc func(ctx context.Context, conn *xnet.ConnNode, opt xoption2.Reader) (HandshakeReply, error)
 
-func (h HandshakeFunc) Handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (HandshakeReply, error) {
+func (h HandshakeFunc) Handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption2.Reader) (HandshakeReply, error) {
 	return h(ctx, conn, opt)
 }
 
-func WithHandshake(c Connector, h HandshakeHandler, opt xoption.Reader) Connector {
-	return ConnectorFunc(func(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (*xnet.ConnNode, error) {
+func WithHandshake(c Connector, h HandshakeHandler, opt xoption2.Reader) Connector {
+	return ConnectorFunc(func(ctx context.Context, addr xnet.AddrNode, opt xoption2.Reader) (*xnet.ConnNode, error) {
 		conn, err := c.Connect(ctx, addr, opt)
 		if err != nil {
 			return conn, err
@@ -73,9 +73,9 @@ func FindHandshakeHandler(protocol string) (HandshakeHandler, error) {
 	return nil, fmt.Errorf("protocol %s not registered", protocol)
 }
 
-func Handshake(ctx context.Context, protocol string, conn *xnet.ConnNode, opt xoption.Reader) (ret HandshakeReply, err error) {
+func Handshake(ctx context.Context, protocol string, conn *xnet.ConnNode, opt xoption2.Reader) (ret HandshakeReply, err error) {
 	ctx, span := xmetric.Start(ctx, "Handshake")
-	timeout := xoption.HandshakeTimeout(opt)
+	timeout := xoption2.HandshakeTimeout(opt)
 	defer func() {
 		span.SetAttributes(
 			xmetric.AnyAttr("Protocol", protocol),

@@ -8,7 +8,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/xanygo/anygo/xoption"
+	"github.com/xanygo/anygo/ds/xoption"
 )
 
 // DiscardResponse 返回一个特殊的 response，

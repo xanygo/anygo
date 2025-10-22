@@ -10,9 +10,9 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet/xrpc"
-	"github.com/xanygo/anygo/xoption"
 )
 
 var _ xrpc.Response = (*Response)(nil)

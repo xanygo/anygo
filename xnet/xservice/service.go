@@ -8,11 +8,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/xanygo/anygo/xbus"
+	"github.com/xanygo/anygo/ds/xbus"
+	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xnaming"
-	"github.com/xanygo/anygo/xoption"
 	"github.com/xanygo/anygo/xpp"
 )
 

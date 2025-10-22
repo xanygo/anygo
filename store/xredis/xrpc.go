@@ -11,12 +11,12 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/store/xredis/resp3"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xrpc"
-	"github.com/xanygo/anygo/xoption"
 )
 
 var _ xrpc.Request = (*rpcRequest)(nil)

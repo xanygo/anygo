@@ -14,9 +14,9 @@ import (
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xmap"
+	xoption2 "github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xdial"
-	"github.com/xanygo/anygo/xoption"
 )
 
 func init() {
@@ -25,13 +25,13 @@ func init() {
 }
 
 // 创建连接后，和 smtp server 握手
-func handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (xdial.HandshakeReply, error) {
+func handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption2.Reader) (xdial.HandshakeReply, error) {
 	serverName := conn.Addr.Host()
 	client, err := smtp.NewClient(conn, serverName)
 	if err != nil {
 		return nil, err
 	}
-	cfg := xoption.Extra(opt, Protocol)
+	cfg := xoption2.Extra(opt, Protocol)
 	var localName, userName, password string
 	var startTLS bool = true // 默认为 true
 	xmap.Range[string, any](cfg, func(k string, v any) bool {

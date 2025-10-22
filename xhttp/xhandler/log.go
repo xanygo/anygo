@@ -10,8 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xctx"
 	"github.com/xanygo/anygo/safely"
-	"github.com/xanygo/anygo/xctx"
 	"github.com/xanygo/anygo/xhttp"
 	"github.com/xanygo/anygo/xlog"
 )

@@ -11,10 +11,10 @@ import (
 	"slices"
 	"strconv"
 
+	xoption2 "github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
-	"github.com/xanygo/anygo/xoption"
 )
 
 type Config struct {
@@ -35,9 +35,9 @@ func (c *Config) initOption() []xrpc.Option {
 		"Password": c.Password,
 		"StartTLS": !c.NoStartTLS,
 	}
-	opt2 := xrpc.OptOptionSetter(func(o xoption.Option) {
-		xoption.SetExtra(o, Protocol, data)
-		xoption.SetProtocol(o, Protocol)
+	opt2 := xrpc.OptOptionSetter(func(o xoption2.Option) {
+		xoption2.SetExtra(o, Protocol, data)
+		xoption2.SetProtocol(o, Protocol)
 	})
 	opts := slices.Clone(c.Options)
 	opts = append(opts, opt1, opt2)

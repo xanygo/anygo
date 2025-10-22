@@ -15,10 +15,10 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xrpc"
-	"github.com/xanygo/anygo/xoption"
 )
 
 const Protocol = "SMTP"

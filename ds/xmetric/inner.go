@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xanygo/anygo/xctx"
+	"github.com/xanygo/anygo/ds/xctx"
 )
 
 var _ Provider = (*InnerProvider)(nil)

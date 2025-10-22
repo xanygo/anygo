@@ -22,9 +22,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xbus"
 	"github.com/xanygo/anygo/internal/fctime"
 	"github.com/xanygo/anygo/safely"
-	"github.com/xanygo/anygo/xbus"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xio"

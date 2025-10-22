@@ -12,15 +12,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xbus"
+	xoption2 "github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xpool"
-	"github.com/xanygo/anygo/xbus"
 	"github.com/xanygo/anygo/xcfg"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xnaming"
 	"github.com/xanygo/anygo/xnet/xproxy"
-	"github.com/xanygo/anygo/xoption"
 )
 
 type Config struct {
@@ -36,12 +36,12 @@ type Config struct {
 	UseProxy string         `json:"UseProxy" yaml:"UseProxy"`       // 将另外一个service 当做代理
 	Proxy    *xproxy.Config `json:"Proxy"             yaml:"Proxy"` // 当子服务是代理时使用
 
-	Retry           int                `json:"Retry"             yaml:"Retry"`
-	MaxResponseSize int64              `json:"MaxResponseSize"   yaml:"MaxResponseSize"`
-	HTTP            *HTTPPart          `json:"HTTP"              yaml:"HTTP"`
-	ConnPool        *ConnPoolPart      `json:"ConnPool"          yaml:"ConnPool"`
-	TLS             *xoption.TLSConfig `json:"TLS"               yaml:"TLS"`
-	DownStream      DownStreamPart     `json:"DownStream"        yaml:"DownStream" validator:"required,dive,required"`
+	Retry           int                 `json:"Retry"             yaml:"Retry"`
+	MaxResponseSize int64               `json:"MaxResponseSize"   yaml:"MaxResponseSize"`
+	HTTP            *HTTPPart           `json:"HTTP"              yaml:"HTTP"`
+	ConnPool        *ConnPoolPart       `json:"ConnPool"          yaml:"ConnPool"`
+	TLS             *xoption2.TLSConfig `json:"TLS"               yaml:"TLS"`
+	DownStream      DownStreamPart      `json:"DownStream"        yaml:"DownStream" validator:"required,dive,required"`
 
 	Extra map[string]any // 其他字段
 }
@@ -116,29 +116,29 @@ func (c *Config) Parser(idc string) (Service, error) {
 	if c.Name == "" {
 		return nil, errors.New("name is empty")
 	}
-	opt := xoption.NewDynamic()
-	xoption.SetConnectTimeout(opt, time.Duration(c.ConnectTimeout)*time.Millisecond)
-	xoption.SetConnectRetry(opt, c.ConnectRetry)
-	xoption.SetWriteTimeout(opt, time.Duration(c.WriteTimeout)*time.Millisecond)
-	xoption.SetReadTimeout(opt, time.Duration(c.ReadTimeout)*time.Millisecond)
-	xoption.SetHandshakeTimeout(opt, time.Duration(c.HandshakeTimeout)*time.Millisecond)
-	xoption.SetRetry(opt, c.Retry)
-	xoption.SetMaxResponseSize(opt, c.MaxResponseSize)
+	opt := xoption2.NewDynamic()
+	xoption2.SetConnectTimeout(opt, time.Duration(c.ConnectTimeout)*time.Millisecond)
+	xoption2.SetConnectRetry(opt, c.ConnectRetry)
+	xoption2.SetWriteTimeout(opt, time.Duration(c.WriteTimeout)*time.Millisecond)
+	xoption2.SetReadTimeout(opt, time.Duration(c.ReadTimeout)*time.Millisecond)
+	xoption2.SetHandshakeTimeout(opt, time.Duration(c.HandshakeTimeout)*time.Millisecond)
+	xoption2.SetRetry(opt, c.Retry)
+	xoption2.SetMaxResponseSize(opt, c.MaxResponseSize)
 	SetOptConnPool(opt, c.ConnPool)
-	xoption.SetProtocol(opt, c.Protocol)
+	xoption2.SetProtocol(opt, c.Protocol)
 	if c.TLS != nil {
 		tc, err := c.TLS.Parser()
 		if err != nil {
 			return nil, err
 		}
-		xoption.SetTLSConfig(opt, tc)
+		xoption2.SetTLSConfig(opt, tc)
 	}
 
 	if c.UseProxy != "" {
 		if c.UseProxy == c.Name {
 			return nil, fmt.Errorf("invalid UseProxy=%q for service %q", c.UseProxy, c.Name)
 		}
-		xoption.SetUseProxy(opt, c.UseProxy)
+		xoption2.SetUseProxy(opt, c.UseProxy)
 	}
 
 	if c.Proxy != nil {
@@ -149,7 +149,7 @@ func (c *Config) Parser(idc string) (Service, error) {
 	}
 
 	for k, v := range c.Extra {
-		xoption.SetExtra(opt, k, v)
+		xoption2.SetExtra(opt, k, v)
 	}
 
 	impl := &serviceImpl{

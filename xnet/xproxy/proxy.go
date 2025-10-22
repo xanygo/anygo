@@ -8,19 +8,19 @@ import (
 	"context"
 	"fmt"
 
+	xoption2 "github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xnet"
-	"github.com/xanygo/anygo/xoption"
 	"github.com/xanygo/anygo/xvalidator"
 )
 
-var OptKeyProxy = xoption.NewKey("Proxy") // proxy 类型，支持的值： HTTP
+var OptKeyProxy = xoption2.NewKey("Proxy") // proxy 类型，支持的值： HTTP
 
 type Config struct {
 	Protocol string `json:"Protocol" yaml:"Protocol"` // 代理类型，必填，可选值： HTTP、HTTPS、SOCKS5（未支持）
 	AuthType string `json:"AuthType" yaml:"AuthType"` // 认证类型，可选，可选值为： Basic(默认)
 	Username string `json:"Username" yaml:"Username"` // 认证账号，可选，有值时才会发送认证信息
 	Password string `json:"Password" yaml:"Password"` // 认证密码，可选
-	TLS      *xoption.TLSConfig
+	TLS      *xoption2.TLSConfig
 }
 
 var _ xvalidator.AutoChecker = (*Config)(nil)
@@ -43,12 +43,12 @@ func (pc *Config) Proxy(ctx context.Context, proxyConn *xnet.ConnNode, target st
 	return d.Proxy(ctx, proxyConn, pc, target)
 }
 
-func SetOptConfig(opt xoption.Writer, proxy *Config) {
+func SetOptConfig(opt xoption2.Writer, proxy *Config) {
 	opt.Set(OptKeyProxy, proxy)
 }
 
-func OptConfig(opt xoption.Reader) *Config {
-	return xoption.GetAsDefault[*Config](opt, OptKeyProxy, nil)
+func OptConfig(opt xoption2.Reader) *Config {
+	return xoption2.GetAsDefault[*Config](opt, OptKeyProxy, nil)
 }
 
 type Driver interface {

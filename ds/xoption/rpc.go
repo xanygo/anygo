@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xbus"
 	"github.com/xanygo/anygo/ds/xmap"
-	"github.com/xanygo/anygo/xbus"
 )
 
 var (

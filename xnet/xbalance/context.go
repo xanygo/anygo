@@ -7,7 +7,7 @@ package xbalance
 import (
 	"context"
 
-	"github.com/xanygo/anygo/xctx"
+	"github.com/xanygo/anygo/ds/xctx"
 )
 
 var ctxKeyTarget = xctx.NewKey()

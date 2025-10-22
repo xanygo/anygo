@@ -9,13 +9,13 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/xanygo/anygo/ds/xbus"
 	"github.com/xanygo/anygo/ds/xmetric"
+	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/safely"
-	"github.com/xanygo/anygo/xbus"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xnaming"
-	"github.com/xanygo/anygo/xoption"
 )
 
 var ErrEmptyNode = errors.New("empty node")

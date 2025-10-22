@@ -12,12 +12,12 @@ import (
 	"net"
 	"time"
 
+	xoption2 "github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xservice"
-	"github.com/xanygo/anygo/xoption"
 )
 
 type Client interface {
@@ -30,23 +30,23 @@ type Request interface {
 	String() string
 	Protocol() string
 	APIName() string
-	WriteTo(ctx context.Context, w *xnet.ConnNode, opt xoption.Reader) error
+	WriteTo(ctx context.Context, w *xnet.ConnNode, opt xoption2.Reader) error
 }
 
 type Response interface {
 	String() string
-	LoadFrom(ctx context.Context, req Request, rd io.Reader, opt xoption.Reader) error
+	LoadFrom(ctx context.Context, req Request, rd io.Reader, opt xoption2.Reader) error
 	xerror.HasErrCode
 	xerror.HasErrMsg
 	Unwrap() any
 }
 
 type HasOptionReader interface {
-	OptionReader(ctx context.Context, rd xoption.Reader) xoption.Reader
+	OptionReader(ctx context.Context, rd xoption2.Reader) xoption2.Reader
 }
 
 type config struct {
-	opt       *xoption.Simple
+	opt       *xoption2.Simple
 	ap        xbalance.Reader
 	service   xservice.Service
 	registry  xservice.Registry
@@ -100,31 +100,31 @@ func (f optionFunc) withOption(o *config) {
 
 func OptConnectTimeout(t time.Duration) Option {
 	return optionFunc(func(o *config) {
-		xoption.SetConnectTimeout(o.opt, t)
+		xoption2.SetConnectTimeout(o.opt, t)
 	})
 }
 
 func OptConnectRetry(n int) Option {
 	return optionFunc(func(o *config) {
-		xoption.SetConnectRetry(o.opt, n)
+		xoption2.SetConnectRetry(o.opt, n)
 	})
 }
 
 func OptWriteTimeout(t time.Duration) Option {
 	return optionFunc(func(o *config) {
-		xoption.SetWriteTimeout(o.opt, t)
+		xoption2.SetWriteTimeout(o.opt, t)
 	})
 }
 
 func OptReadTimeout(t time.Duration) Option {
 	return optionFunc(func(o *config) {
-		xoption.SetReadTimeout(o.opt, t)
+		xoption2.SetReadTimeout(o.opt, t)
 	})
 }
 
 func OptRetry(n int) Option {
 	return optionFunc(func(o *config) {
-		xoption.SetRetry(o.opt, n)
+		xoption2.SetRetry(o.opt, n)
 	})
 }
 
@@ -140,7 +140,7 @@ func OptHostPort(hostPort string) Option {
 
 func OptTLSConfig(c *tls.Config) Option {
 	return optionFunc(func(o *config) {
-		xoption.SetTLSConfig(o.opt, c)
+		xoption2.SetTLSConfig(o.opt, c)
 	})
 }
 
@@ -162,7 +162,7 @@ func OptHandshakeHandler(h xdial.HandshakeHandler) Option {
 	})
 }
 
-func OptOptionSetter(fn func(o xoption.Option)) Option {
+func OptOptionSetter(fn func(o xoption2.Option)) Option {
 	return optionFunc(func(o *config) {
 		fn(o.opt)
 	})

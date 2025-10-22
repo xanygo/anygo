@@ -9,24 +9,24 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/ds/xmetric"
+	xoption2 "github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xnet"
-	"github.com/xanygo/anygo/xoption"
 )
 
 // Connector 网络连接器
 type Connector interface {
-	Connect(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (*xnet.ConnNode, error)
+	Connect(ctx context.Context, addr xnet.AddrNode, opt xoption2.Reader) (*xnet.ConnNode, error)
 }
 
 var _ Connector = ConnectorFunc(nil)
 
-type ConnectorFunc func(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (*xnet.ConnNode, error)
+type ConnectorFunc func(ctx context.Context, addr xnet.AddrNode, opt xoption2.Reader) (*xnet.ConnNode, error)
 
-func (c ConnectorFunc) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (*xnet.ConnNode, error) {
+func (c ConnectorFunc) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption2.Reader) (*xnet.ConnNode, error) {
 	return c(ctx, addr, opt)
 }
 
-func Connect(ctx context.Context, c Connector, addr xnet.AddrNode, opt xoption.Reader) (nc *xnet.ConnNode, err error) {
+func Connect(ctx context.Context, c Connector, addr xnet.AddrNode, opt xoption2.Reader) (nc *xnet.ConnNode, err error) {
 	ctx, span := xmetric.Start(ctx, "Connect")
 
 	defer func() {
@@ -46,11 +46,11 @@ func Connect(ctx context.Context, c Connector, addr xnet.AddrNode, opt xoption.R
 		span.End()
 	}()
 	if opt == nil {
-		opt = xoption.ReaderFromContext(ctx)
+		opt = xoption2.ReaderFromContext(ctx)
 	}
 
-	total := xoption.ConnectRetry(opt) + 1
-	timeout := xoption.ConnectTimeout(opt)
+	total := xoption2.ConnectRetry(opt) + 1
+	timeout := xoption2.ConnectTimeout(opt)
 	span.SetAttemptCount(total)
 
 	doDial := func(ctx context.Context) (nc *xnet.ConnNode, err error) {
@@ -76,7 +76,7 @@ func DefaultConnector() Connector {
 	return ConnectorFunc(defaultConnect)
 }
 
-func defaultConnect(ctx context.Context, addrNode xnet.AddrNode, opt xoption.Reader) (*xnet.ConnNode, error) {
+func defaultConnect(ctx context.Context, addrNode xnet.AddrNode, opt xoption2.Reader) (*xnet.ConnNode, error) {
 	addr := addrNode.Addr
 	conn, err := xnet.DialContext(ctx, addr.Network(), addr.String())
 	node := &xnet.ConnNode{

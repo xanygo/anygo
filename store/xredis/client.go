@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/ds/xmap"
+	xoption2 "github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/store/xredis/resp3"
 	"github.com/xanygo/anygo/xattr"
@@ -21,7 +22,6 @@ import (
 	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
-	"github.com/xanygo/anygo/xoption"
 	"github.com/xanygo/anygo/xpp"
 )
 
@@ -87,9 +87,9 @@ func init() {
 //
 // xrpc 里有统一的 handshake timeout 设置
 // https://redis.io/docs/latest/commands/hello/
-func handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (xdial.HandshakeReply, error) {
+func handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption2.Reader) (xdial.HandshakeReply, error) {
 	hello := resp3.HelloRequest{}
-	cfg := xoption.Extra(opt, "Redis")
+	cfg := xoption2.Extra(opt, "Redis")
 	var dbIndex int
 	if cfg != nil {
 		mp, ok := cfg.(map[string]any)
@@ -186,7 +186,7 @@ func NewClientByURI(name string, uri string) (xservice.Service, *Client, error) 
 		},
 	}
 	if uu.Scheme == "rediss" {
-		cfg.TLS = &xoption.TLSConfig{
+		cfg.TLS = &xoption2.TLSConfig{
 			ServerName: uu.Hostname(),
 		}
 	}

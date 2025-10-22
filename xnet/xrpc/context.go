@@ -7,20 +7,20 @@ package xrpc
 import (
 	"context"
 
-	"github.com/xanygo/anygo/xctx"
+	xctx2 "github.com/xanygo/anygo/ds/xctx"
 )
 
 var (
-	ctxTCPITKey  = xctx.NewKey()
-	ctxOptionKey = xctx.NewKey()
+	ctxTCPITKey  = xctx2.NewKey()
+	ctxOptionKey = xctx2.NewKey()
 )
 
 func ContextWithTCPIT(ctx context.Context, its ...TCPInterceptor) context.Context {
-	return xctx.WithValues(ctx, ctxTCPITKey, its...)
+	return xctx2.WithValues(ctx, ctxTCPITKey, its...)
 }
 
 func TCPITFromContext(ctx context.Context) []TCPInterceptor {
-	return xctx.Values[*xctx.Key, TCPInterceptor](ctx, ctxTCPITKey, true)
+	return xctx2.Values[*xctx2.Key, TCPInterceptor](ctx, ctxTCPITKey, true)
 }
 
 // ContextWithOption 将 Options 临时存储到 context 中去。
@@ -36,11 +36,11 @@ func ContextWithOption(ctx context.Context, opts ...Option) context.Context {
 	if len(opts) == 0 {
 		return ctx
 	}
-	return xctx.WithValues(ctx, ctxOptionKey, opts...)
+	return xctx2.WithValues(ctx, ctxOptionKey, opts...)
 }
 
 // OptionsFromContext 读取 ContextWithOption 设置携带在 ctx 中的 Option。
 // Client.Invoke 方法的实现默认已调用
 func OptionsFromContext(ctx context.Context) []Option {
-	return xctx.Values[*xctx.Key, Option](ctx, ctxOptionKey, true)
+	return xctx2.Values[*xctx2.Key, Option](ctx, ctxOptionKey, true)
 }

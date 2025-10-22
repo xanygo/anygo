@@ -10,8 +10,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/xanygo/anygo/xbus"
-	"github.com/xanygo/anygo/xctx"
+	"github.com/xanygo/anygo/ds/xbus"
+	"github.com/xanygo/anygo/ds/xctx"
 )
 
 var Topic = xbus.NewTopic("option")

@@ -8,7 +8,7 @@ import (
 	"context"
 	"net"
 
-	"github.com/xanygo/anygo/xctx"
+	"github.com/xanygo/anygo/ds/xctx"
 )
 
 var ctxKeyConn = xctx.NewKey()

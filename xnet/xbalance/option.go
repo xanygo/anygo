@@ -4,17 +4,19 @@
 
 package xbalance
 
-import "github.com/xanygo/anygo/xoption"
+import (
+	xoption2 "github.com/xanygo/anygo/ds/xoption"
+)
 
 var (
 	// OptKeyDownstream 用于当前直接连接的下游地址
-	OptKeyDownstream = xoption.NewKey("opt.balancer")
+	OptKeyDownstream = xoption2.NewKey("opt.balancer")
 )
 
-func OptSetReader(opt xoption.Writer, b Reader) {
+func OptSetReader(opt xoption2.Writer, b Reader) {
 	opt.Set(OptKeyDownstream, b)
 }
 
-func OptReader(opt xoption.Reader) Reader {
-	return xoption.GetAsDefault[Reader](opt, OptKeyDownstream, nil)
+func OptReader(opt xoption2.Reader) Reader {
+	return xoption2.GetAsDefault[Reader](opt, OptKeyDownstream, nil)
 }

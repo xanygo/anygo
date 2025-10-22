@@ -9,8 +9,8 @@ import (
 	"encoding/hex"
 	"sort"
 
+	"github.com/xanygo/anygo/ds/xbus"
 	"github.com/xanygo/anygo/ds/xsync"
-	"github.com/xanygo/anygo/xbus"
 	"github.com/xanygo/anygo/xnet"
 )
 

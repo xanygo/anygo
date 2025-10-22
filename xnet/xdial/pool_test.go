@@ -14,10 +14,10 @@ import (
 	"testing"
 	"testing/iotest"
 
+	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xpool"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xdial"
-	"github.com/xanygo/anygo/xoption"
 	"github.com/xanygo/anygo/xt"
 )
 

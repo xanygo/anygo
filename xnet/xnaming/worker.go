@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xanygo/anygo/xbus"
+	"github.com/xanygo/anygo/ds/xbus"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xpp"
 )
