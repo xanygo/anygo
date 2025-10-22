@@ -20,14 +20,16 @@ import (
 	"github.com/xanygo/anygo/xnet/xsmtp"
 )
 
+var to = flag.String("to", "work@localhost", "send to address")
+var from = flag.String("from", "work@localhost", "send from address")
+var subject = flag.String("subject", "Hello 你好，世界", "subject")
+var files = flag.String("files", "", "attachment files")
+var inline = flag.Bool("inline", false, "use inline image")
+var hardCoded = flag.Bool("hc", false, "hard-coded smtp server info")
+
 // 查看邮件：https://www.emlreader.com/
 
 func main() {
-	var to = flag.String("to", "work@localhost", "send to address")
-	var from = flag.String("from", "work@localhost", "send from address")
-	var subject = flag.String("subject", "Hello 你好，世界", "subject")
-	var files = flag.String("files", "", "attachment files")
-	var inline = flag.Bool("inline", false, "use inline image")
 	flag.Parse()
 
 	internal.ServiceInit()
@@ -52,6 +54,23 @@ func main() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	err := xsmtp.Send(ctx, "postfix", req)
+	var err error
+
+	// 两种使用方式
+	if *hardCoded {
+		// 第一种，使用代码配置 smtp 服务器的信息
+		cfg := &xsmtp.Config{
+			Host:       "127.0.0.1",
+			Port:       25,
+			NoStartTLS: true,
+			Username:   *from,
+		}
+		err = cfg.Send(ctx, req)
+	} else {
+		// 第二种，使用配置文件配置 smtp 服务器的信息
+		// 配置在 ../service/postfix.json
+		err = xsmtp.Send(ctx, "postfix", req)
+	}
+
 	log.Println("err=", err)
 }
