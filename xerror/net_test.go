@@ -9,18 +9,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestIsNetError(t *testing.T) {
 	l, err1 := net.Listen("tcp", "127.0.0.1:0")
-	fst.NoError(t, err1)
+	xt.NoError(t, err1)
 	defer l.Close()
 	conn1, err2 := net.DialTimeout("tcp", l.Addr().String(), time.Second)
-	fst.NoError(t, err2)
+	xt.NoError(t, err2)
 	_ = conn1.Close()
 
 	_, err3 := conn1.Write([]byte("hello"))
-	fst.Error(t, err3)
-	fst.True(t, IsClientNetError(err3))
+	xt.Error(t, err3)
+	xt.True(t, IsClientNetError(err3))
 }

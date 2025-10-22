@@ -9,19 +9,19 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestSlidingDual_IncrN(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		wd := NewSlidingDual(time.Hour, time.Second)
 		wd.IncrN(1, 2)
-		fst.Equal(t, 3, wd.Total())
-		fst.Equal(t, 1, wd.TotalSuccess())
-		fst.Equal(t, 2, wd.TotalFailure())
+		xt.Equal(t, 3, wd.Total())
+		xt.Equal(t, 1, wd.TotalSuccess())
+		xt.Equal(t, 2, wd.TotalFailure())
 		time.Sleep(time.Hour)
-		fst.Equal(t, 0, wd.Total())
-		fst.Equal(t, 0, wd.TotalSuccess())
-		fst.Equal(t, 0, wd.TotalFailure())
+		xt.Equal(t, 0, wd.Total())
+		xt.Equal(t, 0, wd.TotalSuccess())
+		xt.Equal(t, 0, wd.TotalFailure())
 	})
 }

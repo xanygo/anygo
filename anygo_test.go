@@ -7,16 +7,16 @@ package anygo
 import (
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestTernary(t *testing.T) {
-	fst.Equal(t, 1, Ternary(true, 1, 2))
-	fst.Equal(t, 2, Ternary(false, 1, 2))
+	xt.Equal(t, 1, Ternary(true, 1, 2))
+	xt.Equal(t, 2, Ternary(false, 1, 2))
 }
 
 func TestMust(t *testing.T) {
-	fst.Panic(t, func() {
+	xt.Panic(t, func() {
 		fn := func() (int, error) {
 			panic("hello")
 		}
@@ -25,7 +25,7 @@ func TestMust(t *testing.T) {
 }
 
 func TestMust1(t *testing.T) {
-	fst.Panic(t, func() {
+	xt.Panic(t, func() {
 		Must1[int]((func() (int, error) {
 			panic("hello")
 		})())
@@ -34,11 +34,11 @@ func TestMust1(t *testing.T) {
 	fn1 := func() (int, error) {
 		return 1, nil
 	}
-	fst.Equal(t, 1, Must1[int](fn1()))
+	xt.Equal(t, 1, Must1[int](fn1()))
 }
 
 func TestMust2(t *testing.T) {
-	fst.Panic(t, func() {
+	xt.Panic(t, func() {
 		fn := func() (int, int, error) {
 			panic("hello")
 		}
@@ -48,12 +48,12 @@ func TestMust2(t *testing.T) {
 		return 1, 2, nil
 	}
 	v1, v2 := Must2[int, int](fn1())
-	fst.Equal(t, 1, v1)
-	fst.Equal(t, 2, v2)
+	xt.Equal(t, 1, v1)
+	xt.Equal(t, 2, v2)
 }
 
 func TestMust3(t *testing.T) {
-	fst.Panic(t, func() {
+	xt.Panic(t, func() {
 		fn := func() (int, int, int, error) {
 			panic("hello")
 		}
@@ -63,7 +63,7 @@ func TestMust3(t *testing.T) {
 		return 1, 2, 3, nil
 	}
 	v1, v2, v3 := Must3[int, int, int](fn1())
-	fst.Equal(t, 1, v1)
-	fst.Equal(t, 2, v2)
-	fst.Equal(t, 3, v3)
+	xt.Equal(t, 1, v1)
+	xt.Equal(t, 2, v2)
+	xt.Equal(t, 3, v3)
 }

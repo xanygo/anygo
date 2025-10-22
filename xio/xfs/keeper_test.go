@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestKeepFile(t *testing.T) {
@@ -30,30 +30,30 @@ func TestKeepFile(t *testing.T) {
 		atomic.AddInt32(&changeNum, 1)
 	})
 
-	fst.NoError(t, kp.Start())
+	xt.NoError(t, kp.Start())
 
 	t.Run("after start", func(t *testing.T) {
-		fst.Equal(t, int32(1), atomic.LoadInt32(&changeNum))
-		fst.NotNil(t, kp.File())
+		xt.Equal(t, int32(1), atomic.LoadInt32(&changeNum))
+		xt.NotNil(t, kp.File())
 	})
 
 	defer kp.Stop()
 
 	checkExists := func(t *testing.T) {
 		info, err := os.Stat(fp)
-		fst.NoError(t, err)
-		fst.NotEmpty(t, info.Name())
+		xt.NoError(t, err)
+		xt.NotEmpty(t, info.Name())
 	}
 
 	t.Run("same file not change", func(t *testing.T) {
 		stat1, err := kp.File().Stat()
-		fst.NoError(t, err)
+		xt.NoError(t, err)
 		time.Sleep(ci * 2)
 
 		stat2, err := kp.File().Stat()
-		fst.NoError(t, err)
+		xt.NoError(t, err)
 
-		fst.True(t, os.SameFile(stat1, stat2))
+		xt.True(t, os.SameFile(stat1, stat2))
 	})
 
 	t.Run("rm and create it auto", func(t *testing.T) {
@@ -63,19 +63,19 @@ func TestKeepFile(t *testing.T) {
 			t.SkipNow()
 		}
 		checkExists(t)
-		fst.NoError(t, os.Remove(fp))
+		xt.NoError(t, os.Remove(fp))
 		time.Sleep(ci * 2)
 		checkExists(t)
-		fst.Equal(t, int32(2), atomic.LoadInt32(&changeNum))
+		xt.Equal(t, int32(2), atomic.LoadInt32(&changeNum))
 	})
 
 	t.Run("stopped", func(t *testing.T) {
 		kp.Stop()
 		time.Sleep(ci * 2)
-		fst.NoError(t, os.Remove(fp))
+		xt.NoError(t, os.Remove(fp))
 
 		// check not exists
 		_, err := os.Stat(fp)
-		fst.Error(t, err)
+		xt.Error(t, err)
 	})
 }

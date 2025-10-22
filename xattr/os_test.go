@@ -8,15 +8,15 @@ import (
 	"os"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func Test_osEnvDefault(t *testing.T) {
 	key := "fsenv_k1"
-	fst.NoError(t, os.Unsetenv(key))
-	defer fst.NoError(t, os.Unsetenv(key))
+	xt.NoError(t, os.Unsetenv(key))
+	defer xt.NoError(t, os.Unsetenv(key))
 
-	fst.Equal(t, "v1", osEnvDefault(key, "v1"))
-	fst.NoError(t, os.Setenv(key, "v2"))
-	fst.Equal(t, "v2", osEnvDefault(key, "v1"))
+	xt.Equal(t, "v1", osEnvDefault(key, "v1"))
+	xt.NoError(t, os.Setenv(key, "v2"))
+	xt.Equal(t, "v2", osEnvDefault(key, "v1"))
 }

@@ -10,7 +10,7 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestCooldownRunner_Run(t *testing.T) {
@@ -24,7 +24,7 @@ func TestCooldownRunner_Run(t *testing.T) {
 			time.Sleep(100 * time.Millisecond)
 		}
 		synctest.Wait()
-		fst.Greater(t, num.Load(), 90)
-		fst.Less(t, num.Load(), 100)
+		xt.Greater(t, num.Load(), 90)
+		xt.Less(t, num.Load(), 100)
 	})
 }

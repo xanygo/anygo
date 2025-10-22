@@ -10,9 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsgo/fst"
-
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestLRU(t *testing.T) {
@@ -22,13 +21,13 @@ func TestLRU(t *testing.T) {
 	defer cancel()
 
 	for i := 0; i < 11; i++ {
-		fst.NoError(t, c1.Set(ctx, fmt.Sprintf("k_%d", i), i, 10*time.Second))
+		xt.NoError(t, c1.Set(ctx, fmt.Sprintf("k_%d", i), i, 10*time.Second))
 	}
 
 	_, err1 := c1.Get(ctx, "k_0")
-	fst.ErrorIs(t, err1, xerror.NotFound)
+	xt.ErrorIs(t, err1, xerror.NotFound)
 
 	got2, err2 := c1.Get(ctx, "k_1")
-	fst.NoError(t, err2)
-	fst.Equal(t, 1, got2)
+	xt.NoError(t, err2)
+	xt.Equal(t, 1, got2)
 }

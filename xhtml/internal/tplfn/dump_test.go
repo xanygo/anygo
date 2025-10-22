@@ -7,7 +7,7 @@ package tplfn
 import (
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestDump(t *testing.T) {
@@ -35,5 +35,5 @@ func TestDump(t *testing.T) {
 	}
 	code := Dump(data1)
 	t.Logf("dump code:%s\n", code)
-	fst.NotEmpty(t, code)
+	xt.NotEmpty(t, code)
 }

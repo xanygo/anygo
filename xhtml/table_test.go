@@ -7,9 +7,8 @@ package xhtml_test
 import (
 	"testing"
 
-	"github.com/fsgo/fst"
-
 	"github.com/xanygo/anygo/xhtml"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestTable1(t *testing.T) {
@@ -23,7 +22,7 @@ func TestTable1(t *testing.T) {
 		xhtml.SetID(tb, "#abc")
 
 		got, err := tb.HTML()
-		fst.NoError(t, err)
+		xt.NoError(t, err)
 		want := `<table id="#abc">` + "\n" +
 			"<thead>\n<tr><th>name</th><th>age</th></tr>\n</thead>\n" +
 			"<tbody>\n" +
@@ -32,6 +31,6 @@ func TestTable1(t *testing.T) {
 			"</tbody>\n" +
 			"<tfoot>\n<tr><td>f1</td><td>f2</td></tr>\n</tfoot>\n" +
 			"</table>\n"
-		fst.Equal(t, want, string(got))
+		xt.Equal(t, want, string(got))
 	})
 }

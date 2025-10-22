@@ -7,10 +7,10 @@ package xservice
 import (
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestDummyService(t *testing.T) {
 	ser := DummyService()
-	fst.NotEmpty(t, ser)
+	xt.NotEmpty(t, ser)
 }

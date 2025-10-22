@@ -9,24 +9,23 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/fsgo/fst"
-
 	"github.com/xanygo/anygo/xcodec/xbase"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestHelloResponse(t *testing.T) {
 	content, err := xbase.ReadBase64File("testdata/hello_resp3.b64")
-	fst.NoError(t, err)
+	xt.NoError(t, err)
 
 	mp, err1 := ReadByType(bufio.NewReader(bytes.NewBuffer(content)), DataTypeMap)
-	fst.NoError(t, err1)
-	fst.NotEmpty(t, mp)
-	fst.Equal(t, DataTypeMap, mp.DataType())
+	xt.NoError(t, err1)
+	xt.NotEmpty(t, mp)
+	xt.Equal(t, DataTypeMap, mp.DataType())
 	mv, err2 := ToAny(mp, nil)
-	fst.NoError(t, err2)
-	fst.NotEmpty(t, mv)
+	xt.NoError(t, err2)
+	xt.NotEmpty(t, mv)
 	obj, ok1 := mv.(map[any]any)
-	fst.True(t, ok1)
+	xt.True(t, ok1)
 
 	want := map[any]any{
 		"server":  "redis",
@@ -68,5 +67,5 @@ func TestHelloResponse(t *testing.T) {
 			},
 		},
 	}
-	fst.Equal(t, want, obj)
+	xt.Equal(t, want, obj)
 }

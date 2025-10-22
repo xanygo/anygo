@@ -9,11 +9,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/fsgo/fst"
-
 	"github.com/xanygo/anygo/xcfg/internal/hook"
 	"github.com/xanygo/anygo/xcfg/internal/parser"
 	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestExists(t *testing.T) {
@@ -138,7 +137,7 @@ func TestParse(t *testing.T) {
 				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !tt.wantErr {
-				fst.Equal(t, tt.want, tt.args.obj)
+				xt.Equal(t, tt.want, tt.args.obj)
 			}
 		})
 	}

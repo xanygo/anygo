@@ -11,9 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/fsgo/fst"
-
 	"github.com/xanygo/anygo/ds/xpool"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestSimple(t *testing.T) {
@@ -26,9 +25,9 @@ func TestSimple(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		t.Run(fmt.Sprintf("1_loop_%d", i), func(t *testing.T) {
 			v1, err1 := p1.Get(context.Background())
-			fst.NoError(t, err1)
-			fst.NotEmpty(t, v1)
-			fst.Equal(t, 1, v1.Object().id)
+			xt.NoError(t, err1)
+			xt.NotEmpty(t, v1)
+			xt.Equal(t, 1, v1.Object().id)
 			v1.Release(nil)
 		})
 	}
@@ -37,9 +36,9 @@ func TestSimple(t *testing.T) {
 		t.Run(fmt.Sprintf("2_loop_%d", i), func(t *testing.T) {
 			v1, err1 := p1.Get(context.Background())
 			t.Log("eid=", v1.ID())
-			fst.NoError(t, err1)
-			fst.NotEmpty(t, v1)
-			fst.Equal(t, int64(i+1), v1.Object().id)
+			xt.NoError(t, err1)
+			xt.NotEmpty(t, v1)
+			xt.Equal(t, int64(i+1), v1.Object().id)
 			v1.Release(xpool.ErrBadEntry) // 放回去的时候标记错误
 		})
 	}

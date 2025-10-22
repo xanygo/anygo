@@ -8,39 +8,39 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestSetConnectTimeout(t *testing.T) {
 	doCheck := func(t *testing.T, opt Option) {
-		fst.Equal(t, DefaultRetry, Retry(opt))
+		xt.Equal(t, DefaultRetry, Retry(opt))
 		SetRetry(opt, 2)
-		fst.Equal(t, 2, Retry(opt))
+		xt.Equal(t, 2, Retry(opt))
 		opt.Delete(KeyRetry)
-		fst.Equal(t, DefaultRetry, Retry(opt))
+		xt.Equal(t, DefaultRetry, Retry(opt))
 
-		fst.Equal(t, DefaultReadTimeout, ReadTimeout(opt))
+		xt.Equal(t, DefaultReadTimeout, ReadTimeout(opt))
 		SetReadTimeout(opt, time.Hour)
-		fst.Equal(t, time.Hour, ReadTimeout(opt))
+		xt.Equal(t, time.Hour, ReadTimeout(opt))
 
-		fst.Equal(t, DefaultWriteTimeout, WriteTimeout(opt))
+		xt.Equal(t, DefaultWriteTimeout, WriteTimeout(opt))
 		SetWriteTimeout(opt, time.Minute)
-		fst.Equal(t, time.Minute, WriteTimeout(opt))
+		xt.Equal(t, time.Minute, WriteTimeout(opt))
 
-		fst.Equal(t, 64*mb, MaxResponseSize(opt))
+		xt.Equal(t, 64*mb, MaxResponseSize(opt))
 		SetMaxResponseSize(opt, 5)
-		fst.Equal(t, 5, MaxResponseSize(opt))
+		xt.Equal(t, 5, MaxResponseSize(opt))
 
-		fst.Equal(t, "RoundRobin", Balancer(opt))
+		xt.Equal(t, "RoundRobin", Balancer(opt))
 		SetBalancer(opt, "demo")
-		fst.Equal(t, "demo", Balancer(opt))
+		xt.Equal(t, "demo", Balancer(opt))
 
 		var total int
 		opt.Range(func(key Key, val any) bool {
 			total++
 			return true
 		})
-		fst.Equal(t, 4, total)
+		xt.Equal(t, 4, total)
 	}
 
 	opt1 := NewSimple()

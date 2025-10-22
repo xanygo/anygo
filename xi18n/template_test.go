@@ -10,7 +10,7 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestTemplate(t *testing.T) {
@@ -114,24 +114,24 @@ func TestTemplate(t *testing.T) {
 
 	b := &Bundle{}
 	e0 := b.MustLocalize(LangZh).Add("index", &Message{Key: "k1", Other: "你好"})
-	fst.NoError(t, e0)
+	xt.NoError(t, e0)
 
 	e1 := b.MustLocalize(LangEn).Add("index", &Message{Key: "k1", Other: "hello"})
-	fst.NoError(t, e1)
+	xt.NoError(t, e1)
 
 	e2 := b.MustLocalize(LangZh).Add("index", &Message{Key: "k2", Other: "你好 {0}"})
-	fst.NoError(t, e2)
+	xt.NoError(t, e2)
 
 	e3 := b.MustLocalize(LangEn).Add("index", &Message{Key: "k2", Other: "hello {0}"})
-	fst.NoError(t, e3)
+	xt.NoError(t, e3)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tpl, err := template.New("test").Funcs(FuncMap(b, tt.args.langs, tt.args.ns)).Parse(tt.tpl)
-			fst.NoError(t, err)
+			xt.NoError(t, err)
 			bf := &bytes.Buffer{}
-			fst.NoError(t, tpl.Execute(bf, nil))
-			fst.Equal(t, tt.want, bf.String())
+			xt.NoError(t, tpl.Execute(bf, nil))
+			xt.Equal(t, tt.want, bf.String())
 		})
 	}
 }
@@ -144,17 +144,17 @@ func TestXI(t *testing.T) {
 	b.MustLocalize(LangZh).MustAdd("index", &Message{Key: "k2", Other: "你好 {0}"})
 	b.MustLocalize(LangEn).MustAdd("index", &Message{Key: "k2", Other: "hello {0}"})
 
-	fst.Panic(t, func() {
+	xt.Panic(t, func() {
 		_ = XI(context.Background(), "index@k1")
 	})
 
 	ctx1 := ContextWithBundle(context.Background(), b, "")
-	fst.Equal(t, "你好", XI(ctx1, "index@k1"))
-	fst.Equal(t, "你好 demo", XI(ctx1, "index@k2", "demo"))
+	xt.Equal(t, "你好", XI(ctx1, "index@k1"))
+	xt.Equal(t, "你好 demo", XI(ctx1, "index@k2", "demo"))
 
-	fst.Equal(t, "abc", XIT(ctx1, "abc", "index@k1"))
-	fst.Equal(t, "abc demo", XIT(ctx1, "abc {0}", "index@k1", "demo"))
+	xt.Equal(t, "abc", XIT(ctx1, "abc", "index@k1"))
+	xt.Equal(t, "abc demo", XIT(ctx1, "abc {0}", "index@k1", "demo"))
 
 	ctx2 := ContextWithLanguages(ctx1, []Language{LangEn})
-	fst.Equal(t, "hello", XI(ctx2, "index@k1"))
+	xt.Equal(t, "hello", XI(ctx2, "index@k1"))
 }

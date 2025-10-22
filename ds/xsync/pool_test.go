@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestPool(t *testing.T) {
@@ -16,7 +16,7 @@ func TestPool(t *testing.T) {
 		return &bytes.Buffer{}
 	})
 	g1 := p.Get()
-	fst.NotNil(t, g1)
+	xt.NotNil(t, g1)
 	p.Put(g1)
 }
 

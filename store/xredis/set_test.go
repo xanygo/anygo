@@ -9,9 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsgo/fst"
-
 	"github.com/xanygo/anygo/internal/redistest"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestClient_Set(t *testing.T) {
@@ -24,124 +23,124 @@ func TestClient_Set(t *testing.T) {
 	t.Logf("uri= %q", ts.URI())
 
 	_, client, errClient := NewClientByURI("demo", ts.URI())
-	fst.NoError(t, errClient)
+	xt.NoError(t, errClient)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	t.Run("SAdd", func(t *testing.T) {
 		num, err := client.SAdd(ctx, "s1", "v1")
-		fst.NoError(t, err)
-		fst.Equal(t, 1, num)
+		xt.NoError(t, err)
+		xt.Equal(t, 1, num)
 
 		num, err = client.SCard(ctx, "s1")
-		fst.NoError(t, err)
-		fst.Equal(t, 1, num)
+		xt.NoError(t, err)
+		xt.Equal(t, 1, num)
 
 		members, err := client.SMembers(ctx, "s1")
-		fst.NoError(t, err)
-		fst.Equal(t, []string{"v1"}, members)
+		xt.NoError(t, err)
+		xt.Equal(t, []string{"v1"}, members)
 
 		num, err = client.SAdd(ctx, "s2", "v1", "v2")
-		fst.NoError(t, err)
-		fst.Equal(t, 2, num)
+		xt.NoError(t, err)
+		xt.Equal(t, 2, num)
 
 		num, err = client.SCard(ctx, "s2")
-		fst.NoError(t, err)
-		fst.Equal(t, 2, num)
+		xt.NoError(t, err)
+		xt.Equal(t, 2, num)
 
 		members, err = client.SMembers(ctx, "s2")
-		fst.NoError(t, err)
-		fst.Equal(t, []string{"v1", "v2"}, members)
+		xt.NoError(t, err)
+		xt.Equal(t, []string{"v1", "v2"}, members)
 
 		ok, err := client.SIsMember(ctx, "s2", "v1")
-		fst.NoError(t, err)
-		fst.True(t, ok)
+		xt.NoError(t, err)
+		xt.True(t, ok)
 	})
 
 	t.Run("SCard", func(t *testing.T) {
 		num, err := client.SCard(ctx, "s3-not-found")
-		fst.NoError(t, err)
-		fst.Equal(t, 0, num)
+		xt.NoError(t, err)
+		xt.Equal(t, 0, num)
 
 		members, err := client.SMembers(ctx, "s3-not-found")
-		fst.NoError(t, err)
-		fst.Empty(t, members)
+		xt.NoError(t, err)
+		xt.Empty(t, members)
 	})
 
 	t.Run("SIsMember", func(t *testing.T) {
 		num, err := client.SAdd(ctx, "s4", "v1")
-		fst.NoError(t, err)
-		fst.Equal(t, 1, num)
+		xt.NoError(t, err)
+		xt.Equal(t, 1, num)
 
 		ok, err := client.SIsMember(ctx, "s4", "v1")
-		fst.NoError(t, err)
-		fst.True(t, ok)
+		xt.NoError(t, err)
+		xt.True(t, ok)
 
 		val, err := client.SMIsMember(ctx, "s4", "v1", "v100")
-		fst.NoError(t, err)
-		fst.Equal(t, 2, len(val))
-		fst.Equal(t, []bool{true, false}, val)
+		xt.NoError(t, err)
+		xt.Equal(t, 2, len(val))
+		xt.Equal(t, []bool{true, false}, val)
 
 		ok, err = client.SIsMember(ctx, "s4", "v100")
-		fst.NoError(t, err)
-		fst.False(t, ok)
+		xt.NoError(t, err)
+		xt.False(t, ok)
 
 		ok, err = client.SIsMember(ctx, "s4-not-found", "v100")
-		fst.NoError(t, err)
-		fst.False(t, ok)
+		xt.NoError(t, err)
+		xt.False(t, ok)
 
 		val, err = client.SMIsMember(ctx, "s4-not-found", "v1", "v100")
-		fst.NoError(t, err)
-		fst.Equal(t, 2, len(val))
-		fst.Equal(t, []bool{false, false}, val)
+		xt.NoError(t, err)
+		xt.Equal(t, 2, len(val))
+		xt.Equal(t, []bool{false, false}, val)
 
 		testSetKeyString(t, client, "s5")
 		ok, err = client.SIsMember(ctx, "s5", "v100")
-		fst.ErrorContains(t, err, "WRONGTYPE")
-		fst.False(t, ok)
+		xt.ErrorContains(t, err, "WRONGTYPE")
+		xt.False(t, ok)
 	})
 
 	t.Run("SPop", func(t *testing.T) {
 		num, err := client.SAdd(ctx, "s6", "v1")
-		fst.NoError(t, err)
-		fst.Equal(t, 1, num)
+		xt.NoError(t, err)
+		xt.Equal(t, 1, num)
 
 		val, ok, err := client.SPop(ctx, "s6")
-		fst.NoError(t, err)
-		fst.Equal(t, "v1", val)
-		fst.True(t, ok)
+		xt.NoError(t, err)
+		xt.Equal(t, "v1", val)
+		xt.True(t, ok)
 
 		val, ok, err = client.SPop(ctx, "s6") // empty set
-		fst.NoError(t, err)
-		fst.Equal(t, "", val)
-		fst.False(t, ok)
+		xt.NoError(t, err)
+		xt.Equal(t, "", val)
+		xt.False(t, ok)
 	})
 
 	t.Run("SRandMember", func(t *testing.T) {
 		num, err := client.SAdd(ctx, "s7", "v1")
-		fst.NoError(t, err)
-		fst.Equal(t, 1, num)
+		xt.NoError(t, err)
+		xt.Equal(t, 1, num)
 
 		vals, err := client.SRandMember(ctx, "s7", 2)
-		fst.NoError(t, err)
-		fst.Equal(t, []string{"v1"}, vals)
+		xt.NoError(t, err)
+		xt.Equal(t, []string{"v1"}, vals)
 
 		vals, err = client.SRandMember(ctx, "s7-not-found", 2)
-		fst.NoError(t, err)
-		fst.Empty(t, vals)
+		xt.NoError(t, err)
+		xt.Empty(t, vals)
 	})
 
 	t.Run("SRem", func(t *testing.T) {
 		num, err := client.SAdd(ctx, "s8", "v1")
-		fst.NoError(t, err)
-		fst.Equal(t, 1, num)
+		xt.NoError(t, err)
+		xt.Equal(t, 1, num)
 
 		num, err = client.SRem(ctx, "s8", "v1")
-		fst.NoError(t, err)
-		fst.Equal(t, 1, num)
+		xt.NoError(t, err)
+		xt.Equal(t, 1, num)
 
 		num, err = client.SRem(ctx, "s8", "v1", "v2") // empty
-		fst.NoError(t, err)
-		fst.Equal(t, 0, num)
+		xt.NoError(t, err)
+		xt.Equal(t, 0, num)
 	})
 }

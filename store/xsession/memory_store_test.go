@@ -9,22 +9,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestNewMemoryStore(t *testing.T) {
 	ms := NewMemoryStore(100, time.Minute)
 	session := ms.Get(context.Background(), "123")
-	fst.NotNil(t, session)
+	xt.NotNil(t, session)
 
 	session.Set(context.Background(), "k1", "v1")
 	got1, err1 := session.Get(context.Background(), "k1")
-	fst.NoError(t, err1)
-	fst.Equal(t, "v1", got1)
+	xt.NoError(t, err1)
+	xt.Equal(t, "v1", got1)
 	session.Delete(context.Background(), "k1")
 
 	got2, err2 := session.Get(context.Background(), "k1")
-	fst.NoError(t, err2)
-	fst.Empty(t, got2)
-	fst.NoError(t, session.Save(context.Background()))
+	xt.NoError(t, err2)
+	xt.Empty(t, got2)
+	xt.NoError(t, session.Save(context.Background()))
 }

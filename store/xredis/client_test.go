@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestNewClientByURI(t *testing.T) {
@@ -21,9 +21,9 @@ func TestNewClientByURI(t *testing.T) {
 	for i, uri := range success {
 		t.Run(fmt.Sprintf("succ_%d", i), func(t *testing.T) {
 			s2, c2, err2 := NewClientByURI("demo", uri)
-			fst.NoError(t, err2)
-			fst.NotEmpty(t, s2)
-			fst.NotEmpty(t, c2)
+			xt.NoError(t, err2)
+			xt.NotEmpty(t, s2)
+			xt.NotEmpty(t, c2)
 		})
 	}
 
@@ -35,9 +35,9 @@ func TestNewClientByURI(t *testing.T) {
 	for i, uri := range fail {
 		t.Run(fmt.Sprintf("err_%d", i), func(t *testing.T) {
 			s2, c2, err2 := NewClientByURI("demo", uri)
-			fst.Error(t, err2)
-			fst.Empty(t, s2)
-			fst.Empty(t, c2)
+			xt.Error(t, err2)
+			xt.Empty(t, s2)
+			xt.Empty(t, c2)
 		})
 	}
 }

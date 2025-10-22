@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestInt64Cipher_Encode(t *testing.T) {
@@ -22,10 +22,10 @@ func TestInt64Cipher_Encode(t *testing.T) {
 		t.Run(fmt.Sprintf("n_%d", num), func(t *testing.T) {
 			str, err := ec.Encode(num)
 			t.Logf("Encode(%d) = %q %v", num, str, err)
-			fst.NoError(t, err)
+			xt.NoError(t, err)
 			n, err := ec.Decode(str)
-			fst.NoError(t, err)
-			fst.Equal(t, num, n)
+			xt.NoError(t, err)
+			xt.Equal(t, num, n)
 		})
 	}
 }

@@ -12,10 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsgo/fst"
-
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/safely"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestOnceGroup_Do(t *testing.T) {
@@ -26,7 +25,7 @@ func TestOnceGroup_Do(t *testing.T) {
 	if got, want := fmt.Sprintf("%v (%T)", v, v), "bar (string)"; got != want {
 		t.Errorf("Do = %v; want %v", got, want)
 	}
-	fst.NoError(t, err)
+	xt.NoError(t, err)
 }
 
 func TestOnceGroup_DoErr(t *testing.T) {
@@ -35,8 +34,8 @@ func TestOnceGroup_DoErr(t *testing.T) {
 	v, err, _ := g.Do("key", func() (any, error) {
 		return nil, someErr
 	})
-	fst.SamePtr(t, someErr, err)
-	fst.Empty(t, v)
+	xt.SamePtr(t, someErr, err)
+	xt.Empty(t, v)
 }
 
 func TestOnceGroup_Panic(t *testing.T) {
@@ -44,12 +43,12 @@ func TestOnceGroup_Panic(t *testing.T) {
 	v, err, _ := g.Do("key", func() (any, error) {
 		panic("hello")
 	})
-	fst.Empty(t, v)
-	fst.Error(t, err)
+	xt.Empty(t, v)
+	xt.Error(t, err)
 	t.Logf("err= %s\n", err.Error())
 	var te *safely.PanicErr
 	ok := errors.As(err, &te)
-	fst.True(t, ok)
+	xt.True(t, ok)
 	t.Logf("te: %#v", te.TraceData())
 }
 

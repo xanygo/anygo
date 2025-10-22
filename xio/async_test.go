@@ -9,7 +9,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestAsyncWriter(t *testing.T) {
@@ -23,15 +23,15 @@ func TestAsyncWriter(t *testing.T) {
 
 		for i := 0; i < 1000; i++ {
 			_, err := aw.Write([]byte("H"))
-			fst.NoError(t, err)
+			xt.NoError(t, err)
 		}
-		fst.NoError(t, aw.Close())
+		xt.NoError(t, aw.Close())
 		want := WriteStatus{
 			Wrote: 1,
 		}
 		got := <-aw.WriteStatus()
-		fst.Equal(t, want, got)
-		fst.Equal(t, 1000, mw.Len())
+		xt.Equal(t, want, got)
+		xt.Equal(t, 1000, mw.Len())
 	})
 
 	t.Run("no write", func(t *testing.T) {
@@ -41,9 +41,9 @@ func TestAsyncWriter(t *testing.T) {
 			ChanSize:   100,
 			NeedStatus: true,
 		}
-		fst.NoError(t, aw.Close())
+		xt.NoError(t, aw.Close())
 		_, ok := <-aw.WriteStatus()
-		fst.False(t, ok)
+		xt.False(t, ok)
 	})
 
 	t.Run("with gor", func(t *testing.T) {

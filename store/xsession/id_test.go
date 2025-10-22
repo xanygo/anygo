@@ -7,11 +7,11 @@ package xsession
 import (
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestNewID(t *testing.T) {
 	got := NewID()
-	fst.Greater(t, len(got), idMinLen)
-	fst.True(t, IsValidID(got))
+	xt.Greater(t, len(got), idMinLen)
+	xt.True(t, IsValidID(got))
 }

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestConcurrency(t *testing.T) {
@@ -29,8 +29,8 @@ func TestConcurrency(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
 			defer cancel()
 			fn, err := c.WaitContext(ctx)
-			fst.Error(t, err)
-			fst.Nil(t, fn)
+			xt.Error(t, err)
+			xt.Nil(t, fn)
 		}
 
 		time.Sleep(3 * time.Millisecond)
@@ -39,8 +39,8 @@ func TestConcurrency(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
 			defer cancel()
 			fn, err := c.WaitContext(ctx)
-			fst.NoError(t, err)
-			fst.NotNil(t, fn)
+			xt.NoError(t, err)
+			xt.NotNil(t, fn)
 			fn()
 		}
 	})
@@ -61,6 +61,6 @@ func TestConcurrency(t *testing.T) {
 		}
 		wg.Wait()
 		cost := time.Since(start)
-		fst.GreaterOrEqual(t, int(cost/time.Millisecond), 10)
+		xt.GreaterOrEqual(t, int(cost/time.Millisecond), 10)
 	})
 }

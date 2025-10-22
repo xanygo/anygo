@@ -8,7 +8,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestOnceDoErr(t *testing.T) {
@@ -19,9 +19,9 @@ func TestOnceDoErr(t *testing.T) {
 			num++
 			return errors.New("hello")
 		})
-		fst.Error(t, got)
-		fst.Equal(t, "hello", got.Error())
-		fst.Equal(t, 1, num)
+		xt.Error(t, got)
+		xt.Equal(t, "hello", got.Error())
+		xt.Equal(t, 1, num)
 	}
 }
 
@@ -33,10 +33,10 @@ func TestOnceValueErr(t *testing.T) {
 			num++
 			return "ok", errors.New("hello")
 		})
-		fst.Error(t, got2)
-		fst.Equal(t, "hello", got2.Error())
-		fst.Equal(t, "ok", got1)
-		fst.Equal(t, 1, num)
+		xt.Error(t, got2)
+		xt.Equal(t, "hello", got2.Error())
+		xt.Equal(t, "ok", got1)
+		xt.Equal(t, 1, num)
 	}
 }
 
@@ -47,7 +47,7 @@ func TestOnceValue(t *testing.T) {
 		return num
 	})
 	for i := 0; i < 3; i++ {
-		fst.Equal(t, 1, one())
+		xt.Equal(t, 1, one())
 	}
 }
 
@@ -61,8 +61,8 @@ func TestOnceValue2(t *testing.T) {
 	})
 	for i := 0; i < 3; i++ {
 		v1, v2 := once()
-		fst.Equal(t, 1, v1)
-		fst.Equal(t, 2, v2)
+		xt.Equal(t, 1, v1)
+		xt.Equal(t, 2, v2)
 	}
 }
 
@@ -78,9 +78,9 @@ func TestOnceValue3(t *testing.T) {
 	})
 	for i := 0; i < 3; i++ {
 		v1, v2, v3 := once()
-		fst.Equal(t, 1, v1)
-		fst.Equal(t, 2, v2)
-		fst.Equal(t, 5, v3)
+		xt.Equal(t, 1, v1)
+		xt.Equal(t, 2, v2)
+		xt.Equal(t, 5, v3)
 	}
 }
 
@@ -98,9 +98,9 @@ func TestOnceValue4(t *testing.T) {
 	})
 	for i := 0; i < 3; i++ {
 		v1, v2, v3, v4 := once()
-		fst.Equal(t, 1, v1)
-		fst.Equal(t, 2, v2)
-		fst.Equal(t, 5, v3)
-		fst.Equal(t, 7, v4)
+		xt.Equal(t, 1, v1)
+		xt.Equal(t, 2, v2)
+		xt.Equal(t, 5, v3)
+		xt.Equal(t, 7, v4)
 	}
 }

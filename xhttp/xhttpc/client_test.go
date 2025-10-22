@@ -15,12 +15,11 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/fsgo/fst"
-
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xhttp/xhttpc"
 	"github.com/xanygo/anygo/xnet/xservice"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestCacheClient(t *testing.T) {
@@ -44,17 +43,17 @@ func TestCacheClient(t *testing.T) {
 		t.Run(fmt.Sprintf("i_%d", i), func(t *testing.T) {
 			resp := &xhttpc.StoredResponse{}
 			err := hc.Invoke(context.Background(), resp)
-			fst.NoError(t, err)
-			fst.Equal(t, "1", string(resp.Body))
-			fst.Equal(t, "Ok", resp.Header.Get("X-Ok"))
-			fst.Greater(t, resp.CreateAt, 1)
-			fst.Equal(t, 200, resp.StatusCode)
+			xt.NoError(t, err)
+			xt.Equal(t, "1", string(resp.Body))
+			xt.Equal(t, "Ok", resp.Header.Get("X-Ok"))
+			xt.Greater(t, resp.CreateAt, 1)
+			xt.Equal(t, 200, resp.StatusCode)
 			if i == 0 {
-				fst.False(t, resp.FromCache)
+				xt.False(t, resp.FromCache)
 			} else {
-				fst.True(t, resp.FromCache)
+				xt.True(t, resp.FromCache)
 			}
-			fst.Equal(t, 1, id.Load())
+			xt.Equal(t, 1, id.Load())
 		})
 	}
 
@@ -65,11 +64,11 @@ func TestCacheClient(t *testing.T) {
 
 		resp1 := &xhttpc.StoredResponse{}
 		err1 := hc.Invoke(context.Background(), resp1)
-		fst.NoError(t, err1)
-		fst.Equal(t, "1", string(resp1.Body))
-		fst.Equal(t, "Ok", resp1.Header.Get("X-Ok"))
-		fst.Greater(t, resp1.CreateAt, 1)
-		fst.Equal(t, 200, resp1.StatusCode)
-		fst.True(t, resp1.FromCache)
+		xt.NoError(t, err1)
+		xt.Equal(t, "1", string(resp1.Body))
+		xt.Equal(t, "Ok", resp1.Header.Get("X-Ok"))
+		xt.Greater(t, resp1.CreateAt, 1)
+		xt.Equal(t, 200, resp1.StatusCode)
+		xt.True(t, resp1.FromCache)
 	})
 }

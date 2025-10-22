@@ -9,22 +9,22 @@ import (
 	"io"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestOnceErr(t *testing.T) {
 	t.Run("case 1", func(t *testing.T) {
 		var oe *OnceSet
-		fst.Equal(t, "<nil>", oe.Error())
-		fst.Nil(t, oe.Unwrap())
+		xt.Equal(t, "<nil>", oe.Error())
+		xt.Nil(t, oe.Unwrap())
 	})
 	t.Run("case 2", func(t *testing.T) {
 		var oe OnceSet
-		fst.Equal(t, "<nil>", oe.Error())
-		fst.Nil(t, oe.Unwrap())
+		xt.Equal(t, "<nil>", oe.Error())
+		xt.Nil(t, oe.Unwrap())
 		err1 := errors.New("hello")
-		fst.True(t, oe.SetOnce(err1))
-		fst.False(t, oe.SetOnce(io.EOF))
-		fst.ErrorIs(t, &oe, err1)
+		xt.True(t, oe.SetOnce(err1))
+		xt.False(t, oe.SetOnce(io.EOF))
+		xt.ErrorIs(t, &oe, err1)
 	})
 }

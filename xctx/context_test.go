@@ -7,11 +7,11 @@ package xctx
 import (
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestNewKey(t *testing.T) {
 	key1 := NewKey()
 	key2 := NewKey()
-	fst.False(t, key1 == key2)
+	xt.False(t, key1 == key2)
 }

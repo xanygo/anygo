@@ -9,12 +9,12 @@ import (
 	"html/template"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestFuncMap(t *testing.T) {
 	tpl := template.Must(template.New("demo").Funcs(FuncMap).Parse(`hello`))
 	bf := &bytes.Buffer{}
-	fst.NoError(t, tpl.Execute(bf, nil))
-	fst.NotEmpty(t, bf.String())
+	xt.NoError(t, tpl.Execute(bf, nil))
+	xt.NotEmpty(t, bf.String())
 }

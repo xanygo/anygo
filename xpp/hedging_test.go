@@ -10,9 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsgo/fst"
-
 	"github.com/xanygo/anygo/xpp"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestHedging_Run(t *testing.T) {
@@ -23,8 +22,8 @@ func TestHedging_Run(t *testing.T) {
 			},
 		}
 		got, err := h1.Run(context.Background())
-		fst.NoError(t, err)
-		fst.Equal(t, 1, got)
+		xt.NoError(t, err)
+		xt.Equal(t, 1, got)
 	})
 	t.Run("no fn 2", func(t *testing.T) {
 		h1 := &xpp.Hedging[int]{
@@ -33,8 +32,8 @@ func TestHedging_Run(t *testing.T) {
 			},
 		}
 		got, err := h1.Run(context.Background())
-		fst.Error(t, err)
-		fst.Equal(t, 0, got)
+		xt.Error(t, err)
+		xt.Equal(t, 0, got)
 	})
 	t.Run("fn 1", func(t *testing.T) {
 		h1 := &xpp.Hedging[int]{
@@ -52,8 +51,8 @@ func TestHedging_Run(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		got, err := h1.Run(ctx)
-		fst.NoError(t, err)
-		fst.Equal(t, 2, got)
+		xt.NoError(t, err)
+		xt.Equal(t, 2, got)
 	})
 
 	t.Run("fn 2", func(t *testing.T) {
@@ -79,8 +78,8 @@ func TestHedging_Run(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		got, err := h1.Run(ctx)
-		fst.NoError(t, err)
-		fst.Equal(t, 3, got)
+		xt.NoError(t, err)
+		xt.Equal(t, 3, got)
 	})
 
 	t.Run("fn 2 CallNext", func(t *testing.T) {
@@ -105,8 +104,8 @@ func TestHedging_Run(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		got, err := h1.Run(ctx)
-		fst.NoError(t, err)
-		fst.Equal(t, 3, got)
+		xt.NoError(t, err)
+		xt.Equal(t, 3, got)
 	})
 	t.Run("fn panic", func(t *testing.T) {
 		h1 := &xpp.Hedging[int]{
@@ -130,7 +129,7 @@ func TestHedging_Run(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		got, err := h1.Run(ctx)
-		fst.NoError(t, err)
-		fst.Equal(t, 3, got)
+		xt.NoError(t, err)
+		xt.Equal(t, 3, got)
 	})
 }

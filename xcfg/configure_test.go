@@ -9,21 +9,20 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/fsgo/fst"
-
 	"github.com/xanygo/anygo/xcfg/internal/hook"
 	"github.com/xanygo/anygo/xcfg/internal/parser"
 	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xt"
 )
 
 func Test_confImpl(t *testing.T) {
 	conf := &Configure{}
 	testReset()
 	var a any
-	fst.Error(t, conf.Parse("abc.json", &a))
-	fst.NoError(t, conf.WithDecoder(".json", xcodec.DecodeFunc(parser.JSON)))
-	fst.Error(t, conf.Parse("abc.xyz", &a))
-	fst.NoError(t, conf.Parse("testdata/db10.json", &a))
+	xt.Error(t, conf.Parse("abc.json", &a))
+	xt.NoError(t, conf.WithDecoder(".json", xcodec.DecodeFunc(parser.JSON)))
+	xt.Error(t, conf.Parse("abc.xyz", &a))
+	xt.NoError(t, conf.Parse("testdata/db10.json", &a))
 }
 
 func TestNewDefault1(t *testing.T) {
@@ -101,12 +100,12 @@ func (t testExtra) NeedDecodeExtra() string {
 
 func TestParseExtra(t *testing.T) {
 	conf := &Configure{}
-	fst.NoError(t, conf.WithDecoder(".json", xcodec.DecodeFunc(parser.JSON)))
+	xt.NoError(t, conf.WithDecoder(".json", xcodec.DecodeFunc(parser.JSON)))
 
 	content := []byte(`{"id":1,"version":{"day":25},"Name":"Hello"}`)
 
 	var obj testExtra
-	fst.NoError(t, conf.ParseBytes(".json", content, &obj))
+	xt.NoError(t, conf.ParseBytes(".json", content, &obj))
 	want := testExtra{
 		Name: "Hello",
 		Extra: map[string]any{
@@ -116,5 +115,5 @@ func TestParseExtra(t *testing.T) {
 			},
 		},
 	}
-	fst.Equal(t, fmt.Sprintf("%#v", want.Extra), fmt.Sprintf("%#v", obj.Extra))
+	xt.Equal(t, fmt.Sprintf("%#v", want.Extra), fmt.Sprintf("%#v", obj.Extra))
 }

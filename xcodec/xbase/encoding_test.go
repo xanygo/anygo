@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestEncodeInt64(t *testing.T) {
@@ -22,8 +22,8 @@ func TestEncodeInt64(t *testing.T) {
 					str := ec.EncodeInt64(num)
 					t.Logf("num=%d b62=%q", num, str)
 					got, err := ec.DecodeInt64String(str)
-					fst.NoError(t, err)
-					fst.Equal(t, num, got)
+					xt.NoError(t, err)
+					xt.Equal(t, num, got)
 				})
 			}
 		})
@@ -31,19 +31,19 @@ func TestEncodeInt64(t *testing.T) {
 	check(t, "Base62", Base62)
 	check(t, "Base36", Base36)
 
-	fst.Equal(t, "7m85Y0n8LzA", Base62.EncodeInt64(math.MaxInt64))
+	xt.Equal(t, "7m85Y0n8LzA", Base62.EncodeInt64(math.MaxInt64))
 }
 
 func TestEncodeToString(t *testing.T) {
 	checkEncodeDecode := func(t *testing.T, str string) {
 		got1 := Base62.EncodeToString([]byte(str))
 		got2, err2 := Base62.DecodeString(got1)
-		fst.NoError(t, err2)
-		fst.Equal(t, str, string(got2))
+		xt.NoError(t, err2)
+		xt.Equal(t, str, string(got2))
 
 		got2, err2 = Base62.Decode([]byte(got1))
-		fst.NoError(t, err2)
-		fst.Equal(t, str, string(got2))
+		xt.NoError(t, err2)
+		xt.Equal(t, str, string(got2))
 	}
 	checkEncodeDecode(t, "hello 你好")
 	checkEncodeDecode(t, "")

@@ -11,9 +11,8 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/fsgo/fst"
-
 	"github.com/xanygo/anygo/xpp"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestInterval(t *testing.T) {
@@ -50,9 +49,9 @@ func TestInterval(t *testing.T) {
 		wg2.Wait()
 
 		it.Reset(time.Millisecond)
-		fst.Equal(t, int32(1), atomic.LoadInt32(&num))
-		fst.Equal(t, int32(1), atomic.LoadInt32(&f1))
-		fst.Equal(t, int32(2), atomic.LoadInt32(&f2))
+		xt.Equal(t, int32(1), atomic.LoadInt32(&num))
+		xt.Equal(t, int32(1), atomic.LoadInt32(&f1))
+		xt.Equal(t, int32(2), atomic.LoadInt32(&f2))
 	})
 }
 
@@ -73,6 +72,6 @@ func TestInterval2(t *testing.T) {
 		time.Sleep(time.Millisecond / 2)
 		it.Stop()
 		time.Sleep(time.Millisecond / 2)
-		fst.Equal(t, int64(9), num.Load())
+		xt.Equal(t, int64(9), num.Load())
 	})
 }

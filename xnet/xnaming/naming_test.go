@@ -8,11 +8,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestLookup(t *testing.T) {
 	nodes1, err1 := Lookup(context.Background(), "", "bj", "example.com:80", nil)
-	fst.NoError(t, err1)
+	xt.NoError(t, err1)
 	testNodesEqual(t, nodes1, []string{"example.com:80"})
 }

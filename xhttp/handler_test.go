@@ -9,13 +9,13 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestRegisterGroup(t *testing.T) {
 	router := NewRouter()
 	RegisterGroup(router, "/user", &testUserHandler{})
-	fst.Len(t, router.subRoute, 11)
+	xt.Len(t, router.subRoute, 11)
 
 	wantKeys := []string{
 		"GET|/user",
@@ -39,7 +39,7 @@ func TestRegisterGroup(t *testing.T) {
 		gotKeys = append(gotKeys, sr.UniqKey())
 	}
 	slices.Sort(gotKeys)
-	fst.Equal(t, wantKeys, gotKeys)
+	xt.Equal(t, wantKeys, gotKeys)
 }
 
 var _ GroupHandler = (*testUserHandler)(nil)

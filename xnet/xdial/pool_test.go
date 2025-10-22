@@ -14,12 +14,11 @@ import (
 	"testing"
 	"testing/iotest"
 
-	"github.com/fsgo/fst"
-
 	"github.com/xanygo/anygo/ds/xpool"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xoption"
+	"github.com/xanygo/anygo/xt"
 )
 
 func Test_ConnPool1(t *testing.T) {
@@ -34,8 +33,8 @@ func Test_ConnPool1(t *testing.T) {
 		return xdial.Connect(ctx, nil, a, opt)
 	})
 	pool, err1 := xdial.NewGroupPool("long", &xpool.Option{}, cc)
-	fst.NoError(t, err1)
-	fst.NotEmpty(t, pool)
+	xt.NoError(t, err1)
+	xt.NotEmpty(t, pool)
 	defer pool.Close()
 
 	hc := &http.Client{
@@ -59,18 +58,18 @@ func Test_ConnPool1(t *testing.T) {
 		},
 	}
 	resp2, err2 := hc.Get(ts.URL)
-	fst.NoError(t, err2)
+	xt.NoError(t, err2)
 	content3, err3 := io.ReadAll(resp2.Body)
-	fst.NoError(t, resp2.Body.Close())
-	fst.NoError(t, err3)
+	xt.NoError(t, resp2.Body.Close())
+	xt.NoError(t, err3)
 
 	for i := 0; i < 100; i++ {
 		t.Run(fmt.Sprintf("loop_%d", i), func(t *testing.T) {
 			resp4, err4 := hc.Get(ts.URL)
-			fst.NoError(t, err4)
+			xt.NoError(t, err4)
 			// 验证client使用的是同一个连接
-			fst.NoError(t, iotest.TestReader(resp4.Body, content3))
-			fst.NoError(t, resp2.Body.Close())
+			xt.NoError(t, iotest.TestReader(resp4.Body, content3))
+			xt.NoError(t, resp2.Body.Close())
 		})
 	}
 }

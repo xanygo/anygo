@@ -9,15 +9,15 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestCtime(t *testing.T) {
 	info, err := os.Stat("c_test.go")
-	fst.NoError(t, err)
-	fst.NotEmpty(t, info.Name())
+	xt.NoError(t, err)
+	xt.NotEmpty(t, info.Name())
 	ctime := Ctime(info)
 	t.Log(runtime.GOOS, runtime.GOARCH)
 	t.Logf("%q ctime: %v", info.Name(), ctime)
-	fst.NotEmpty(t, ctime)
+	xt.NotEmpty(t, ctime)
 }

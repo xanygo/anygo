@@ -8,7 +8,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestRunVoid(t *testing.T) {
@@ -25,28 +25,28 @@ func TestRunVoid(t *testing.T) {
 		num++
 		panic("hello")
 	})
-	fst.Equal(t, 2, num)
-	fst.Equal(t, 1, reNum)
+	xt.Equal(t, 2, num)
+	xt.Equal(t, 1, reNum)
 }
 
 func TestRun(t *testing.T) {
 	var num int
-	fst.NoError(t, Run(func() { num++ }))
-	fst.NoError(t, Run(func() error {
+	xt.NoError(t, Run(func() { num++ }))
+	xt.NoError(t, Run(func() error {
 		num++
 		return nil
 	}))
-	fst.Equal(t, 2, num)
+	xt.Equal(t, 2, num)
 
-	fst.Error(t, Run(func() {
+	xt.Error(t, Run(func() {
 		num++
 		panic("hello")
 	}))
-	fst.Error(t, Run(func() error {
+	xt.Error(t, Run(func() error {
 		num++
 		panic("hello")
 	}))
-	fst.Equal(t, 4, num)
+	xt.Equal(t, 4, num)
 }
 
 func TestRunCtxVoid(t *testing.T) {
@@ -59,25 +59,25 @@ func TestRunCtxVoid(t *testing.T) {
 		num++
 		panic("hello")
 	})
-	fst.Equal(t, 2, num)
+	xt.Equal(t, 2, num)
 }
 
 func TestRunCtx(t *testing.T) {
 	var num int
-	fst.NoError(t, RunCtx(context.Background(), func(ctx context.Context) { num++ }))
-	fst.NoError(t, RunCtx(context.Background(), func(ctx context.Context) error {
+	xt.NoError(t, RunCtx(context.Background(), func(ctx context.Context) { num++ }))
+	xt.NoError(t, RunCtx(context.Background(), func(ctx context.Context) error {
 		num++
 		return nil
 	}))
-	fst.Equal(t, 2, num)
+	xt.Equal(t, 2, num)
 
-	fst.Error(t, RunCtx(context.Background(), func(ctx context.Context) {
+	xt.Error(t, RunCtx(context.Background(), func(ctx context.Context) {
 		num++
 		panic("hello")
 	}))
-	fst.Error(t, RunCtx(context.Background(), func(ctx context.Context) error {
+	xt.Error(t, RunCtx(context.Background(), func(ctx context.Context) error {
 		num++
 		panic("hello")
 	}))
-	fst.Equal(t, 4, num)
+	xt.Equal(t, 4, num)
 }

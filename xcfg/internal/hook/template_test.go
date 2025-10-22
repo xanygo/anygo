@@ -9,7 +9,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func mustRead(name string) []byte {
@@ -89,7 +89,7 @@ Z="z"
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			fst.Equal(t, string(tt.wantOutput), string(gotOutput))
+			xt.Equal(t, string(tt.wantOutput), string(gotOutput))
 		})
 	}
 }

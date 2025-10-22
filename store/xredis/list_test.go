@@ -9,9 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsgo/fst"
-
 	"github.com/xanygo/anygo/internal/redistest"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestClientList(t *testing.T) {
@@ -24,56 +23,56 @@ func TestClientList(t *testing.T) {
 	t.Logf("uri= %q", ts.URI())
 
 	_, client, errClient := NewClientByURI("demo", ts.URI())
-	fst.NoError(t, errClient)
+	xt.NoError(t, errClient)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	t.Run("LRange", func(t *testing.T) {
 		values, err := client.LRange(ctx, "l1", 0, -1)
-		fst.NoError(t, err)
-		fst.Empty(t, values)
+		xt.NoError(t, err)
+		xt.Empty(t, values)
 
 		num, err := client.LPush(ctx, "l1", "v1")
-		fst.NoError(t, err)
-		fst.Equal(t, 1, num)
+		xt.NoError(t, err)
+		xt.Equal(t, 1, num)
 
 		values, err = client.LRange(ctx, "l1", 0, -1)
-		fst.NoError(t, err)
-		fst.Equal(t, []string{"v1"}, values)
+		xt.NoError(t, err)
+		xt.Equal(t, []string{"v1"}, values)
 	})
 
 	t.Run("LPop", func(t *testing.T) {
 		num, err := client.RPush(ctx, "k2", "v2")
-		fst.NoError(t, err)
-		fst.Equal(t, 1, num)
+		xt.NoError(t, err)
+		xt.Equal(t, 1, num)
 
 		value, err := client.LPop(ctx, "k2")
-		fst.NoError(t, err)
-		fst.Equal(t, "v2", value)
+		xt.NoError(t, err)
+		xt.Equal(t, "v2", value)
 
 		value, err = client.LPop(ctx, "k2")
-		fst.ErrorIs(t, err, ErrNil)
-		fst.Equal(t, "", value)
+		xt.ErrorIs(t, err, ErrNil)
+		xt.Equal(t, "", value)
 
 		num, err = client.RPush(ctx, "k2", "v2", "v3", "v4")
-		fst.NoError(t, err)
-		fst.Equal(t, 3, num)
+		xt.NoError(t, err)
+		xt.Equal(t, 3, num)
 	})
 
 	t.Run("LPopN", func(t *testing.T) {
 		num, err := client.RPush(ctx, "k3", "v2", "v3", "v4")
-		fst.NoError(t, err)
-		fst.Equal(t, 3, num)
+		xt.NoError(t, err)
+		xt.Equal(t, 3, num)
 		values, err := client.LPopN(ctx, "k3", 2)
-		fst.NoError(t, err)
-		fst.Equal(t, []string{"v2", "v3"}, values)
+		xt.NoError(t, err)
+		xt.Equal(t, []string{"v2", "v3"}, values)
 
 		num, err = client.RPushX(ctx, "k3", "v5", "v6")
-		fst.NoError(t, err)
-		fst.Equal(t, 3, num)
+		xt.NoError(t, err)
+		xt.Equal(t, 3, num)
 
 		values, err = client.RPopN(ctx, "k3", 2)
-		fst.NoError(t, err)
-		fst.Equal(t, []string{"v6", "v5"}, values)
+		xt.NoError(t, err)
+		xt.Equal(t, []string{"v6", "v5"}, values)
 	})
 }

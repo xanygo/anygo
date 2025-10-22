@@ -7,9 +7,8 @@ package xhtml_test
 import (
 	"testing"
 
-	"github.com/fsgo/fst"
-
 	"github.com/xanygo/anygo/xhtml"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestAttributes(t *testing.T) {
@@ -28,11 +27,11 @@ func TestAttributes(t *testing.T) {
 
 		attrs := attr.FindAttrs()
 		bf, err := attrs.HTML()
-		fst.NoError(t, err)
+		xt.NoError(t, err)
 		want := `id="#abc" name="hello" class="c3 c5" value="\"你好<>\""`
-		fst.Equal(t, want, string(bf))
+		xt.Equal(t, want, string(bf))
 
 		wantKeys := []string{"id", "name", "class", "value"}
-		fst.Equal(t, wantKeys, attrs.Keys())
+		xt.Equal(t, wantKeys, attrs.Keys())
 	})
 }

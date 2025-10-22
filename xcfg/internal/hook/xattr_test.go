@@ -10,9 +10,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/fsgo/fst"
-
 	"github.com/xanygo/anygo/xattr"
+	"github.com/xanygo/anygo/xt"
 )
 
 func Test_getAttrValue(t *testing.T) {
@@ -85,7 +84,7 @@ func Test_getAttrValue(t *testing.T) {
 				return
 			}
 			if !tt.wantErr {
-				fst.Equal(t, tt.want, got)
+				xt.Equal(t, tt.want, got)
 			}
 		})
 	}
@@ -124,7 +123,7 @@ func TestXAttrVars(t *testing.T) {
 				return
 			}
 			if !tt.wantErr {
-				fst.Equal(t, string(tt.wantOutput), string(gotOutput))
+				xt.Equal(t, string(tt.wantOutput), string(gotOutput))
 			}
 		})
 	}

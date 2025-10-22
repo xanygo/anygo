@@ -9,7 +9,7 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestSliding_Incr(t *testing.T) {
@@ -18,19 +18,19 @@ func TestSliding_Incr(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			ct.Incr()
 		}
-		fst.Equal(t, 10, ct.Count(time.Second))
-		fst.Equal(t, 10, ct.Count(10*time.Second))
-		fst.Equal(t, 10, ct.Total())
+		xt.Equal(t, 10, ct.Count(time.Second))
+		xt.Equal(t, 10, ct.Count(10*time.Second))
+		xt.Equal(t, 10, ct.Total())
 
 		time.Sleep(2 * time.Second)
-		fst.Equal(t, 0, ct.Count(time.Second))
-		fst.Equal(t, 10, ct.Total())
+		xt.Equal(t, 0, ct.Count(time.Second))
+		xt.Equal(t, 10, ct.Total())
 		time.Sleep(time.Hour)
-		fst.Equal(t, 0, ct.CountWindow())
-		fst.Equal(t, 0, ct.Total())
+		xt.Equal(t, 0, ct.CountWindow())
+		xt.Equal(t, 0, ct.Total())
 
 		ct.Incr()
-		fst.Equal(t, 1, ct.Count(time.Second))
-		fst.Equal(t, 1, ct.Total())
+		xt.Equal(t, 1, ct.Count(time.Second))
+		xt.Equal(t, 1, ct.Total())
 	})
 }

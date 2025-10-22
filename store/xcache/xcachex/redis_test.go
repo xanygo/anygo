@@ -9,12 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsgo/fst"
-
 	"github.com/xanygo/anygo/internal/redistest"
 	"github.com/xanygo/anygo/store/xcache/xcachex"
 	"github.com/xanygo/anygo/store/xredis"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestRedis(t *testing.T) {
@@ -27,34 +26,34 @@ func TestRedis(t *testing.T) {
 	t.Logf("uri= %q", ts.URI())
 
 	_, client, errClient := xredis.NewClientByURI("demo", ts.URI())
-	fst.NoError(t, errClient)
+	xt.NoError(t, errClient)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	rc := &xcachex.Redis{
 		Client: client,
 	}
 	err := rc.Set(ctx, "k1", "v1", time.Minute)
-	fst.NoError(t, err)
+	xt.NoError(t, err)
 
 	val, err := rc.Get(ctx, "k1")
-	fst.NoError(t, err)
-	fst.Equal(t, "v1", val)
+	xt.NoError(t, err)
+	xt.Equal(t, "v1", val)
 
 	err = rc.Delete(ctx, "k1")
-	fst.NoError(t, err)
+	xt.NoError(t, err)
 
 	val, err = rc.Get(ctx, "k1")
-	fst.ErrorIs(t, err, xerror.NotFound)
-	fst.Equal(t, "", val)
+	xt.ErrorIs(t, err, xerror.NotFound)
+	xt.Equal(t, "", val)
 
 	vs := map[string]string{
 		"k2": "v2",
 		"k3": "v3",
 	}
 	err = rc.MSet(ctx, vs, time.Minute)
-	fst.NoError(t, err)
+	xt.NoError(t, err)
 
 	values, err := rc.MGet(ctx, "k1", "k2", "k3")
-	fst.NoError(t, err)
-	fst.Equal(t, vs, values)
+	xt.NoError(t, err)
+	xt.Equal(t, vs, values)
 }

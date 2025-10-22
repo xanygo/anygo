@@ -9,9 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsgo/fst"
-
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xt"
 )
 
 func testCache(t *testing.T, c Cache[string, int]) {
@@ -20,16 +19,16 @@ func testCache(t *testing.T, c Cache[string, int]) {
 
 	checkNotExists := func(t *testing.T) {
 		got1, err1 := c.Get(ctx, "k1")
-		fst.Equal(t, 0, got1)
-		fst.ErrorIs(t, err1, xerror.NotFound)
+		xt.Equal(t, 0, got1)
+		xt.ErrorIs(t, err1, xerror.NotFound)
 	}
 	checkNotExists(t)
 
-	fst.NoError(t, c.Set(ctx, "k1", 1, 10*time.Second))
+	xt.NoError(t, c.Set(ctx, "k1", 1, 10*time.Second))
 	got2, err2 := c.Get(ctx, "k1")
-	fst.NoError(t, err2)
-	fst.Equal(t, 1, got2)
+	xt.NoError(t, err2)
+	xt.Equal(t, 1, got2)
 
-	fst.NoError(t, c.Delete(ctx, "k1"))
+	xt.NoError(t, c.Delete(ctx, "k1"))
 	checkNotExists(t)
 }

@@ -13,15 +13,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsgo/fst"
-
 	"github.com/xanygo/anygo/xnet/xrps"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestAnyServer(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
-	fst.NoError(t, err)
-	fst.NotNil(t, l)
+	xt.NoError(t, err)
+	xt.NotNil(t, l)
 	defer l.Close()
 
 	ser := &xrps.AnyServer{
@@ -34,22 +33,22 @@ func TestAnyServer(t *testing.T) {
 		_ = ser.Serve(l)
 	}()
 	conn, err := net.DialTimeout("tcp", l.Addr().String(), 100*time.Millisecond)
-	fst.NoError(t, err)
+	xt.NoError(t, err)
 	rd := bufio.NewReader(conn)
 	for i := 0; i < 10; i++ {
 		t.Run(fmt.Sprintf("loop=%d", i), func(t *testing.T) {
 			_, err = conn.Write([]byte("hello\n"))
-			fst.NoError(t, err)
+			xt.NoError(t, err)
 			line, _, err := rd.ReadLine()
-			fst.NoError(t, err)
-			fst.Equal(t, `resp:"hello"`, string(line))
+			xt.NoError(t, err)
+			xt.Equal(t, `resp:"hello"`, string(line))
 		})
 	}
-	fst.NoError(t, conn.Close())
+	xt.NoError(t, conn.Close())
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
-	fst.NoError(t, ser.Shutdown(ctx))
-	fst.NoError(t, l.Close())
+	xt.NoError(t, ser.Shutdown(ctx))
+	xt.NoError(t, l.Close())
 	wg.Wait()
 }
 

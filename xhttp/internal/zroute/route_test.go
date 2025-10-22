@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func Test_splitPattern(t *testing.T) {
@@ -292,7 +292,7 @@ func Test_parserRegexpPattern(t *testing.T) {
 				t.Errorf("parserRegexpPattern() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			fst.Equal(t, tt.want, got)
+			xt.Equal(t, tt.want, got)
 		})
 	}
 }

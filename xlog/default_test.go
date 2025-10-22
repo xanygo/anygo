@@ -8,7 +8,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestDefault(t *testing.T) {
@@ -18,7 +18,7 @@ func TestDefault(t *testing.T) {
 		Debug(context.Background(), "hello")
 		Warn(context.Background(), "hello")
 	}
-	fst.NotNil(t, Default())
+	xt.NotNil(t, Default())
 	check(t)
 
 	SetDefault(&NopLogger{})

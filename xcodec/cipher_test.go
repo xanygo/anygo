@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestAesCBC_Encrypt(t *testing.T) {
@@ -21,13 +21,13 @@ func TestAesCBC_Encrypt(t *testing.T) {
 			txt := []byte(strings.Repeat("hello", i))
 			t.Logf("txt= %q, len=%d", txt, len(txt))
 			got1, err1 := ac.Encrypt(txt)
-			fst.NoError(t, err1)
+			xt.NoError(t, err1)
 			t.Logf("got1= %q, len=%d", got1, len(got1))
 
 			got2, err2 := ac.Decrypt(got1)
-			fst.NoError(t, err2)
+			xt.NoError(t, err2)
 			t.Logf("got2= %q , len=%d", got2, len(got2))
-			fst.Equal(t, string(txt), string(got2))
+			xt.Equal(t, string(txt), string(got2))
 		})
 	}
 }
@@ -41,13 +41,13 @@ func TestAesOFB_Encrypt(t *testing.T) {
 			txt := []byte(strings.Repeat("hello", i))
 			t.Logf("txt= %q, len=%d", txt, len(txt))
 			got1, err1 := ac.Encrypt(txt)
-			fst.NoError(t, err1)
+			xt.NoError(t, err1)
 			t.Logf("got1= %q, len=%d", got1, len(got1))
 
 			got2, err2 := ac.Decrypt(got1)
-			fst.NoError(t, err2)
+			xt.NoError(t, err2)
 			t.Logf("got2= %q , len=%d", got2, len(got2))
-			fst.Equal(t, string(txt), string(got2))
+			xt.Equal(t, string(txt), string(got2))
 		})
 	}
 }
@@ -78,7 +78,7 @@ func BenchmarkAES(b *testing.B) {
 			Key: "hello",
 		}
 		data0, err0 := ac0.Encrypt([]byte("hello"))
-		fst.NoError(b, err0)
+		xt.NoError(b, err0)
 		b.Run("AesBlock", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, _ = ac0.Decrypt(data0)
@@ -89,7 +89,7 @@ func BenchmarkAES(b *testing.B) {
 			Key: "hello",
 		}
 		data1, err1 := ac0.Encrypt([]byte("hello"))
-		fst.NoError(b, err1)
+		xt.NoError(b, err1)
 		b.Run("AesOFB", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, _ = ac1.Decrypt(data1)
@@ -110,8 +110,8 @@ func TestCiphers(t *testing.T) {
 	}
 	txt := []byte("hello")
 	got1, err1 := cs.Encrypt(txt)
-	fst.NoError(t, err1)
+	xt.NoError(t, err1)
 	got2, err2 := cs.Decrypt(got1)
-	fst.NoError(t, err2)
-	fst.Equal(t, string(txt), string(got2))
+	xt.NoError(t, err2)
+	xt.Equal(t, string(txt), string(got2))
 }

@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestSimple(t *testing.T) {
@@ -23,21 +23,21 @@ func TestSimple(t *testing.T) {
 	checkLog := func(t *testing.T, level Level) {
 		logContent := bf.Bytes()
 		data := map[string]any{}
-		fst.NoError(t, json.Unmarshal(logContent, &data))
-		fst.NotEmpty(t, data["source"])
+		xt.NoError(t, json.Unmarshal(logContent, &data))
+		xt.NotEmpty(t, data["source"])
 
 		meta, ok := data["meta"].(map[string]any)
-		fst.True(t, ok)
-		fst.Equal(t, "v1", meta["k1"])
+		xt.True(t, ok)
+		xt.Equal(t, "v1", meta["k1"])
 
 		attr, ok := data["attr"].(map[string]any)
-		fst.True(t, ok)
+		xt.True(t, ok)
 
-		fst.Equal(t, "v2", attr["k2"])
-		fst.Equal(t, "v3", attr["k3"])
+		xt.Equal(t, "v2", attr["k2"])
+		xt.Equal(t, "v3", attr["k3"])
 
-		fst.Equal(t, "hello", data["msg"])
-		fst.Equal(t, level.String(), data["level"].(string))
+		xt.Equal(t, "hello", data["msg"])
+		xt.Equal(t, level.String(), data["level"].(string))
 		bf.Reset()
 	}
 	t.Run("info", func(t *testing.T) {

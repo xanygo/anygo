@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestAntiTheft_check(t *testing.T) {
@@ -71,7 +71,7 @@ func TestAntiTheft_check(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, tt.url, nil)
 			req.Header.Set("referer", tt.refer)
-			fst.Equal(t, tt.want, tt.at.check(req))
+			xt.Equal(t, tt.want, tt.at.check(req))
 		})
 	}
 }

@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/fsgo/fst"
+	"github.com/xanygo/anygo/xt"
 )
 
 func TestHostPort(t *testing.T) {
@@ -108,7 +108,7 @@ func TestHostPort(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			u, err := url.Parse(tt.args.u)
-			fst.NoError(t, err)
+			xt.NoError(t, err)
 			gotHost, gotPort, err := HostPort(u)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("HostPort() error = %v, wantErr %v", err, tt.wantErr)
