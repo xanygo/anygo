@@ -161,3 +161,9 @@ func OptHandshakeHandler(h xdial.HandshakeHandler) Option {
 		o.handshake = h
 	})
 }
+
+func OptOptionSetter(fn func(o xoption.Option)) Option {
+	return optionFunc(func(o *config) {
+		fn(o.opt)
+	})
+}

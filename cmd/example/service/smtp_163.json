@@ -1,0 +1,11 @@
+{
+  "Name": "smtp_163",
+  "Protocol": "SMTP",
+  "Downstream": {
+    "Address": ["smtp.163.com:25"]
+  },
+  "SMTP": {
+    "Username": "{env.XSmtpUsername}",
+    "Password": "{env.XSmtpPassword}"
+  }
+}

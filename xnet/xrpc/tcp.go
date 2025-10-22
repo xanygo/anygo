@@ -115,7 +115,7 @@ func (c *TCP) Invoke(ctx context.Context, srv any, req Request, resp Response, o
 	rootSpan.SetAttemptCount(attemptTotal)
 
 	for attemptNo := 0; attemptNo < attemptTotal; attemptNo++ {
-		result = c.tryOnce(ctx, req, resp, serviceName, service, its, opt)
+		result = c.tryOnce(ctx, cfg, req, resp, serviceName, service, its, opt)
 		if result == nil {
 			break
 		}
@@ -126,7 +126,7 @@ func (c *TCP) Invoke(ctx context.Context, srv any, req Request, resp Response, o
 	return result
 }
 
-func (c *TCP) tryOnce(ctx context.Context, req Request, resp Response, serviceName string, service xservice.Service, its []TCPInterceptor,
+func (c *TCP) tryOnce(ctx context.Context, cfg *config, req Request, resp Response, serviceName string, service xservice.Service, its []TCPInterceptor,
 	opt xoption.Reader) (result error) {
 	ctx, rootSpan := xmetric.Start(ctx, "TryOnce")
 	defer func() {
@@ -139,7 +139,12 @@ func (c *TCP) tryOnce(ctx context.Context, req Request, resp Response, serviceNa
 			it.BeforePickAddress(ctx, serviceName)
 		}
 	}
-	addr, err := xbalance.Pick(ctx, service.Balancer())
+
+	ap := cfg.ap
+	if ap == nil {
+		ap = service.Balancer()
+	}
+	addr, err := xbalance.Pick(ctx, ap)
 	for _, it := range its {
 		if it.AfterPickAddress != nil {
 			it.AfterPickAddress(ctx, serviceName, addr, err)

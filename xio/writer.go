@@ -129,3 +129,38 @@ func FullWrite(w io.Writer, buf []byte) (int, error) {
 	}
 	return total, nil
 }
+
+// LineLengthWriter 限制每行最大长度，并在行尾自动换行 CRLF
+type LineLengthWriter struct {
+	W      io.Writer
+	MaxLen int
+	Sep    []byte
+
+	lineLen int
+}
+
+func (l *LineLengthWriter) Write(p []byte) (n int, err error) {
+	for len(p) > 0 {
+		space := l.MaxLen - l.lineLen
+		if space > len(p) {
+			space = len(p)
+		}
+
+		nn, err := l.W.Write(p[:space])
+		if err != nil {
+			return n + nn, err
+		}
+
+		l.lineLen += nn
+		n += nn
+		p = p[space:]
+
+		if l.lineLen == l.MaxLen {
+			if _, err := l.W.Write(l.Sep); err != nil {
+				return n, err
+			}
+			l.lineLen = 0
+		}
+	}
+	return n, nil
+}
