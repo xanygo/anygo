@@ -54,7 +54,7 @@ func TestRange(t *testing.T) {
 		keys = append(keys, key)
 		return true
 	})
-	fst.Equal(t, []string{"k1", "k2"}, keys)
+	fst.SliceSortEqual(t, []string{"k1", "k2"}, keys)
 	fst.Equal(t, 2, num)
 
 	num = Range[string, any](nil, func(key string, val any) bool {
