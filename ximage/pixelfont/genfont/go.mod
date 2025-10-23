@@ -1,7 +1,7 @@
 module genfont
 
-go 1.23.2
+go 1.24.0
 
-require golang.org/x/image v0.21.0
+require golang.org/x/image v0.32.0
 
-require golang.org/x/text v0.19.0 // indirect
+require golang.org/x/text v0.30.0 // indirect

@@ -12,6 +12,7 @@ import (
 	"image"
 	"log"
 
+	"github.com/xanygo/anygo/ds/xslice"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/gofont/gomono"
 	"golang.org/x/image/font/opentype"
@@ -36,6 +37,7 @@ var asciiFonts=map[byte]Byte{
 `
 
 var chars = flag.String("c", "", "text chars")
+var printPixel = flag.Bool("pp", false, "print pixel chars")
 
 func main() {
 	flag.Parse()
@@ -125,6 +127,9 @@ func getPixel(c byte) *Byte {
 	}
 
 	buf := make([]byte, 0, height*(width+1)*3)
+	var rlsList []int
+	lastByte := byte('0')
+	var lastCount int
 	for y := 0; y < height; y++ {
 		buf = append(buf, '\t', '\t')
 		// for x := 0; x < width; x++ {
@@ -132,24 +137,57 @@ func getPixel(c byte) *Byte {
 			z := dst.GrayAt(x, y).Y >> 6
 			if z > 0 {
 				buf = append(buf, '1')
+				if lastByte == '1' {
+					lastCount++
+				} else {
+					rlsList = append(rlsList, -1*lastCount)
+					lastByte = '1'
+					lastCount = 1
+				}
 			} else {
 				buf = append(buf, '0')
+				if lastByte == '0' {
+					lastCount++
+				} else {
+					rlsList = append(rlsList, lastCount)
+					lastByte = '0'
+					lastCount = 1
+				}
 			}
 			buf = append(buf, ',')
 		}
 		buf = append(buf, '\n')
 	}
+	if lastCount > 0 {
+		if lastByte == '1' {
+			rlsList = append(rlsList, lastCount)
+		} else {
+			rlsList = append(rlsList, -1*lastCount)
+		}
+	}
 	return &Byte{
 		Width:  xEnd - xStart,
 		Height: height,
 		Pixel:  buf,
+		rle:    rlsList,
 	}
 }
 
 type Byte struct {
 	Width  int
 	Height int
+	rle    []int
 	Pixel  []byte
+}
+
+func (b *Byte) rleString() string {
+	cks := xslice.Chunk(b.rle, 16)
+	var buf bytes.Buffer
+	for _, ck := range cks {
+		buf.WriteString(xslice.Join(ck, ","))
+		buf.WriteString(",\n")
+	}
+	return buf.String()
 }
 
 func (b *Byte) Bytes() []byte {
@@ -157,9 +195,14 @@ func (b *Byte) Bytes() []byte {
 	buf.WriteString("{\n")
 	buf.WriteString(fmt.Sprintf("\tWidth : %d,\n", b.Width))
 	buf.WriteString(fmt.Sprintf("\tHeight : %d,\n", b.Height))
-	buf.WriteString(fmt.Sprintf("\tPixel : []byte{\n"))
-	buf.Write(b.Pixel)
-	buf.WriteString("\t\t},\n")
+	buf.WriteString("\trle : []int{\n")
+	buf.WriteString(b.rleString())
+	buf.WriteString("},\n")
+	if *printPixel {
+		buf.WriteString(fmt.Sprintf("\tPixel : []byte{\n"))
+		buf.Write(b.Pixel)
+		buf.WriteString("\t\t},\n")
+	}
 	buf.WriteString("\t}")
 	return buf.Bytes()
 }

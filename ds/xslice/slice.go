@@ -300,3 +300,16 @@ func Range[T any](obj any, fn func(item T) bool) int {
 	}
 	return cnt
 }
+
+// Chunk 将 slice 拆分为同等大小 size 的多个子 slice
+func Chunk[S ~[]E, E any](s S, size int) []S {
+	if size <= 0 {
+		return nil
+	}
+	chunks := make([]S, 0, len(s)/size+1)
+	for i := 0; i < len(s); i += size {
+		end := min(size, len(s[i:]))
+		chunks = append(chunks, s[i:i+end:i+end])
+	}
+	return chunks
+}

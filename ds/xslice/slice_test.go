@@ -230,3 +230,14 @@ func TestRange(t *testing.T) {
 	xt.Empty(t, list2)
 	xt.Equal(t, 0, num2)
 }
+
+func TestChunk(t *testing.T) {
+	l1 := []int{1, 2, 3, 4, 5}
+	got := Chunk(l1, 2)
+	want := [][]int{
+		{1, 2},
+		{3, 4},
+		{5},
+	}
+	xt.Equal(t, want, got)
+}
