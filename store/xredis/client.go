@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xcast"
 	"github.com/xanygo/anygo/ds/xmap"
 	xoption2 "github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xsync"
@@ -89,25 +90,33 @@ func init() {
 // https://redis.io/docs/latest/commands/hello/
 func handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption2.Reader) (xdial.HandshakeReply, error) {
 	hello := resp3.HelloRequest{}
-	cfg := xoption2.Extra(opt, "Redis")
+	const redisKey = "Redis"
+	cfg := xoption2.Extra(opt, redisKey)
 	var dbIndex int
-	if cfg != nil {
-		mp, ok := cfg.(map[string]any)
+	var err error
+	xmap.Range[string, any](cfg, func(key string, val any) bool {
+		var ok bool
+		switch key {
+		case fieldUsername:
+			hello.Username, ok = xcast.String(val)
+		case fieldPassword:
+			hello.Password, ok = xcast.String(val)
+		case fieldDBIndex:
+			dbIndex, ok = xcast.Integer[int](val)
+		default:
+			ok = true
+		}
 		if !ok {
-			return nil, fmt.Errorf("config [Redis] part is not map[string]any, %#v", cfg)
+			err = fmt.Errorf("invalid filed %s.%s=%#v", redisKey, key, val)
 		}
-		if username, ok1 := xmap.GetString(mp, fieldUsername); ok1 {
-			hello.Username = username
-		}
-		if password, ok1 := xmap.GetString(mp, fieldPassword); ok1 {
-			hello.Password = password
-		}
-		if num, ok1 := xmap.GetInt64(mp, fieldDBIndex); ok1 && num > 0 {
-			dbIndex = int(num)
-		}
+		return ok
+	})
+	if err != nil {
+		return nil, err
 	}
+
 	bf := bp.Get()
-	_, err := conn.Write(hello.Bytes(bf))
+	_, err = conn.Write(hello.Bytes(bf))
 	bp.Put(bf)
 	if err != nil {
 		return nil, err

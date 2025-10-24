@@ -13,6 +13,7 @@ import (
 	"net/smtp"
 	"strings"
 
+	"github.com/xanygo/anygo/ds/xcast"
 	"github.com/xanygo/anygo/ds/xmap"
 	xoption2 "github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xnet"
@@ -35,20 +36,22 @@ func handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption2.Reader) (x
 	var localName, userName, password string
 	var startTLS bool = true // 默认为 true
 	xmap.Range[string, any](cfg, func(k string, v any) bool {
-		ok := true
+		var ok bool
 		switch k {
 		case "LocalName":
-			localName, ok = v.(string)
+			localName, ok = xcast.String(v)
 		case "Username":
-			userName, ok = v.(string)
+			userName, ok = xcast.String(v)
 		case "Password":
-			password, ok = v.(string)
+			password, ok = xcast.String(v)
 		case "StartTLS":
-			startTLS, ok = v.(bool)
+			startTLS, ok = xcast.Bool(v)
+		default:
+			ok = true
 		}
 
 		if !ok {
-			err = fmt.Errorf("field %s.%s=%#v not string type", Protocol, k, v)
+			err = fmt.Errorf("invalid field %s.%s=%#v", Protocol, k, v)
 		}
 		return ok
 	})
