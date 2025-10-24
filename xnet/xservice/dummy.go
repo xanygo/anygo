@@ -6,11 +6,10 @@ package xservice
 
 import (
 	"context"
-	"time"
 
+	"github.com/xanygo/anygo"
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xnet"
-	"github.com/xanygo/anygo/xpp"
 )
 
 const (
@@ -23,23 +22,25 @@ func DummyService() Service {
 
 var dummyService = xsync.OnceInit[Service]{
 	New: func() Service {
-		ser, err := dummyServiceConfig.Parser("bj")
-		if err != nil {
-			panic(err)
-		}
-		xpp.TryStartWorker(context.Background(), time.Hour, ser)
-		return ser
+		return NewDummyService(Dummy)
 	},
 }
 
-var dummyServiceConfig = &Config{
-	Name:           Dummy,
-	ConnectRetry:   1,
-	ConnectTimeout: 5000,
-	WriteTimeout:   5000,
-	ReadTimeout:    5000,
-	Retry:          2,
-	DownStream: DownStreamPart{
-		Address: []string{xnet.DummyAddress},
-	},
+func NewDummyService(name string) Service {
+	cfg := &Config{
+		Name:           name,
+		ConnectRetry:   1,
+		ConnectTimeout: 5000,
+		WriteTimeout:   5000,
+		ReadTimeout:    5000,
+		Retry:          2,
+		DownStream: DownStreamPart{
+			Address: []string{xnet.DummyAddress},
+		},
+	}
+	ser, err := cfg.Parser("bj")
+	anygo.Must(err)
+	err = ser.Start(context.Background())
+	anygo.Must(err)
+	return ser
 }

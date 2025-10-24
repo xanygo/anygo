@@ -46,7 +46,7 @@ func (f *FileStore) Lookup(ctx context.Context, idc string, fileName string, par
 		if line == "" {
 			continue
 		}
-		_, _, err := net.SplitHostPort(line)
+		_, _, err = net.SplitHostPort(line)
 		if err != nil {
 			return nil, err
 		}

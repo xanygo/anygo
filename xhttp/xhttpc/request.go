@@ -13,7 +13,7 @@ import (
 	"net/url"
 	"strings"
 
-	xoption2 "github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
@@ -62,7 +62,7 @@ func (r *Request) APIName() string {
 	return r.Path
 }
 
-func (r *Request) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption2.Reader) error {
+func (r *Request) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.Reader) error {
 	api, err := r.getURL(opt, node.Addr.HostPort)
 	if err != nil {
 		return err
@@ -78,7 +78,7 @@ func (r *Request) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption2
 	return req.Write(node.Outer())
 }
 
-func (r *Request) getURL(so xoption2.Reader, address string) (string, error) {
+func (r *Request) getURL(so xoption.Reader, address string) (string, error) {
 	opt := xservice.OptHTTP(so)
 	u, err := url.Parse(r.Path)
 	if err != nil {
@@ -105,7 +105,7 @@ func (r *Request) getMethod() string {
 	return r.Method
 }
 
-func (r *Request) balancer(opt xoption2.Reader, u *url.URL) xbalance.Reader {
+func (r *Request) balancer(opt xoption.Reader, u *url.URL) xbalance.Reader {
 	if u.Host == "" || u.Hostname() == xservice.Dummy {
 		return nil
 	}
@@ -133,17 +133,17 @@ func (r *Request) tlsConfig(u *url.URL) *tls.Config {
 	}
 }
 
-func (r *Request) OptionReader(ctx context.Context, rd xoption2.Reader) xoption2.Reader {
+func (r *Request) OptionReader(ctx context.Context, rd xoption.Reader) xoption.Reader {
 	u, err := url.Parse(r.Path)
 	if err != nil {
 		return nil
 	}
-	opt := xoption2.NewSimple()
+	opt := xoption.NewSimple()
 	if b := r.balancer(rd, u); b != nil {
 		xbalance.OptSetReader(opt, b)
 	}
 	if tc := r.tlsConfig(u); tc != nil {
-		xoption2.SetTLSConfig(opt, tc)
+		xoption.SetTLSConfig(opt, tc)
 	}
 	return opt.Value()
 }
@@ -175,7 +175,7 @@ func (h *NativeRequest) APIName() string {
 	return h.Request.URL.Path
 }
 
-func (h *NativeRequest) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption2.Reader) error {
+func (h *NativeRequest) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.Reader) error {
 	req := h.Request.WithContext(ctx)
 	if req.Host == xservice.Dummy {
 		req.Host = ""
@@ -187,7 +187,7 @@ func (h *NativeRequest) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xo
 	return req.Write(node.Outer())
 }
 
-func (h *NativeRequest) balancer(opt xoption2.Reader) xbalance.Reader {
+func (h *NativeRequest) balancer(opt xoption.Reader) xbalance.Reader {
 	host := h.Request.URL.Hostname()
 	if host == xservice.Dummy {
 		return nil
@@ -207,20 +207,20 @@ func (h *NativeRequest) tlsConfig() *tls.Config {
 	}
 }
 
-func (h *NativeRequest) OptionReader(ctx context.Context, opt xoption2.Reader) xoption2.Reader {
-	mp := xoption2.NewSimple()
+func (h *NativeRequest) OptionReader(ctx context.Context, opt xoption.Reader) xoption.Reader {
+	mp := xoption.NewSimple()
 	if ap := h.balancer(opt); ap != nil {
 		xbalance.OptSetReader(mp, ap)
 	}
 
 	if tc := h.tlsConfig(); tc != nil {
-		xoption2.SetTLSConfig(mp, tc)
+		xoption.SetTLSConfig(mp, tc)
 	}
 
 	return mp.Value()
 }
 
-func setHeader(ctx context.Context, req *http.Request, opt xoption2.Reader) {
+func setHeader(ctx context.Context, req *http.Request, opt xoption.Reader) {
 	hc := xservice.OptHTTP(opt)
 	if hc.Host != "" {
 		req.Host = hc.Host

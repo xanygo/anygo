@@ -10,7 +10,7 @@ import (
 	"fmt"
 
 	"github.com/xanygo/anygo/ds/xmetric"
-	xoption2 "github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xdial"
@@ -21,8 +21,8 @@ var _ xdial.Connector = (*connector)(nil)
 
 type connector struct{}
 
-func (c *connector) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption2.Reader) (conn *xnet.ConnNode, err error) {
-	if useProxy := xoption2.UseProxy(opt); useProxy != "" {
+func (c *connector) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (conn *xnet.ConnNode, err error) {
+	if useProxy := xoption.UseProxy(opt); useProxy != "" {
 		conn, err = c.connectProxy(ctx, useProxy, addr)
 	} else {
 		conn, err = xdial.Connect(ctx, nil, addr, opt)
@@ -38,7 +38,7 @@ func (c *connector) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption
 		return nil, err
 	}
 
-	protocol := xoption2.Protocol(opt)
+	protocol := xoption.Protocol(opt)
 	if protocol != "" {
 		ret, err1 := xdial.Handshake(ctx, protocol, conn, opt)
 		if err1 != nil {
@@ -94,8 +94,8 @@ func (c *connector) connectProxy(ctx context.Context, proxyName string, target x
 	return proxyConn, nil
 }
 
-func (c *connector) tlsHandshake(ctx context.Context, conn *xnet.ConnNode, opt xoption2.Reader, target xnet.AddrNode) (nc *xnet.ConnNode, err error) {
-	tc := xoption2.GetTLSConfig(opt)
+func (c *connector) tlsHandshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader, target xnet.AddrNode) (nc *xnet.ConnNode, err error) {
+	tc := xoption.GetTLSConfig(opt)
 	if tc == nil {
 		return conn, nil
 	}

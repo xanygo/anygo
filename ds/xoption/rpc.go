@@ -23,6 +23,7 @@ var (
 	KeyMaxResponseSize  = NewKey("MaxResponseSize")
 	KeyUseProxy         = NewKey("UseProxy")
 	KeyProtocol         = NewKey("Protocol")
+	KeyWorkerCycle      = NewKey("WorkerCycle")
 
 	keyExtraPrefix = "Extra:"
 
@@ -37,6 +38,7 @@ var (
 	DefaultReadTimeout      = 5 * time.Second  // 默认网络读超时
 	DefaultHandshakeTimeout = 5 * time.Second  // 默认 rpc 协议层面握手超时
 	DefaultRetry            = 1                // RPC 默认重试次数
+	DefaultWorkerCycle      = 5 * time.Second  // 默认的 worker 运行周期
 )
 
 func SetConnectTimeout(opt Writer, timeout time.Duration) {
@@ -162,6 +164,14 @@ func SetExtraByKV(opt Writer, kv KeyValue[string, any]) {
 func Extra(opt Reader, key string) any {
 	val, _ := Get(opt, extraKeys.Get(key))
 	return val
+}
+
+func SetWorkerCycle(opt Writer, c time.Duration) {
+	opt.Set(KeyWorkerCycle, c)
+}
+
+func WorkerCycle(opt Reader) time.Duration {
+	return Duration(opt, KeyWorkerCycle, DefaultWorkerCycle)
 }
 
 func ConsumeRPCConfig(d Writer, msg xbus.Message) error {

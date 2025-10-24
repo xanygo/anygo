@@ -8,11 +8,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/xanygo/anygo/ds/xsync"
+	"github.com/xanygo/anygo/safely"
 )
+
+type Worker interface {
+	Name() string
+	Start(ctx context.Context) error
+	Stop(ctx context.Context) error
+}
+
+// NeedWorker 用于该对象是否需要后台 Worker
+type NeedWorker interface {
+	NeedWorker() bool
+}
 
 type (
 	named interface {
@@ -20,7 +33,7 @@ type (
 	}
 
 	starter1 interface {
-		Start(ctx context.Context, cycle time.Duration) error
+		Start(context.Context) error
 	}
 
 	starter2 interface {
@@ -37,7 +50,7 @@ type (
 )
 
 // TryStartWorker 尝试启动 workers，若有失败，则将启动成功的也 Stop 掉
-func TryStartWorker(ctx context.Context, cycle time.Duration, workers ...any) error {
+func TryStartWorker(ctx context.Context, workers ...any) error {
 	if len(workers) == 0 {
 		return nil
 	}
@@ -45,7 +58,7 @@ func TryStartWorker(ctx context.Context, cycle time.Duration, workers ...any) er
 	var successList []any
 	for _, worker := range workers {
 		if sw, ok := worker.(starter1); ok {
-			if err := sw.Start(ctx, cycle); err != nil {
+			if err := sw.Start(ctx); err != nil {
 				if nw, ok := worker.(named); ok {
 					err = fmt.Errorf("start worker %s: %w", nw.Name(), err)
 				}
@@ -92,74 +105,91 @@ func TryStopWorker(ctx context.Context, workers ...any) error {
 	return wg.Wait()
 }
 
+var _ Worker = (*CycleWorker)(nil)
+
 // CycleWorker 会周期性执行逻辑的 Worker,一旦启动后，后台携程会定期执行相关任务逻辑
-type CycleWorker interface {
-	Name() string
-	Start(ctx context.Context, cycle time.Duration) error
-	Stop(ctx context.Context) error
+type CycleWorker struct {
+	Do         func(ctx context.Context) error // 必填，业务逻辑
+	Cycle      time.Duration                   // 可选，运行周期，默认为 5秒
+	WorkerName string                          // 必填，名称
+	FirstSync  bool                            // 调用 Start 时，是否同步运行并返回结果
+
+	running atomic.Bool
+	cnt     atomic.Int64
+
+	mux  sync.Mutex
+	stop context.CancelFunc
 }
 
-var _ CycleWorker = (*CycleWorkerTpl)(nil)
-
-// CycleWorkerTpl CycleWorker 的实现
-type CycleWorkerTpl struct {
-	Do         func(ctx context.Context) error
-	WorkerName string
-	running    atomic.Bool
-	tm         *time.Timer
-}
-
-func (c *CycleWorkerTpl) Name() string {
+func (c *CycleWorker) Name() string {
 	return c.WorkerName
 }
 
-func (c *CycleWorkerTpl) Start(ctx context.Context, cycle time.Duration) error {
+func (c *CycleWorker) Start(ctx context.Context) error {
 	if !c.running.CompareAndSwap(false, true) {
 		// 已经在运行中
 		return nil
 	}
-	if c.tm == nil {
-		c.tm = time.NewTimer(cycle)
-	} else {
-		c.tm.Reset(cycle)
+	cycle := c.Cycle
+	if cycle <= 0 {
+		cycle = 5 * time.Second
 	}
+	c.mux.Lock()
+	if c.stop != nil {
+		c.stop()
+	}
+	ctx, c.stop = context.WithCancel(ctx)
+	c.mux.Unlock()
 
-	err := c.executeDo(ctx)
-	if err != nil {
-		c.running.Store(false)
-		return err
+	if c.FirstSync {
+		err := c.executeDo(ctx)
+		if err != nil {
+			c.running.Store(false)
+			return err
+		}
 	}
 	go c.executeBG(ctx, cycle)
 	return nil
 }
 
-func (c *CycleWorkerTpl) executeDo(ctx context.Context) error {
+func (c *CycleWorker) executeDo(ctx context.Context) error {
+	defer c.cnt.Add(1)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	return c.Do(ctx)
+	return safely.RunCtx(ctx, c.Do)
 }
 
-func (c *CycleWorkerTpl) executeBG(ctx context.Context, cycle time.Duration) {
+func (c *CycleWorker) executeBG(ctx context.Context, cycle time.Duration) {
+	tm := time.NewTimer(cycle)
 	defer func() {
-		c.tm.Stop()
+		tm.Stop()
 		c.running.Store(false)
 	}()
 	for c.running.Load() {
 		select {
 		case <-ctx.Done():
 			return
-		case <-c.tm.C:
-			c.running.Store(true)
+		case <-tm.C:
 			c.executeDo(ctx)
-			c.tm.Reset(cycle)
+			tm.Reset(cycle)
 		}
 	}
 }
 
-func (c *CycleWorkerTpl) Stop(ctx context.Context) error {
+// Count 以运行的次数
+func (c *CycleWorker) Count() int64 {
+	return c.cnt.Load()
+}
+
+func (c *CycleWorker) Stop(ctx context.Context) error {
 	if !c.running.CompareAndSwap(true, false) {
 		return nil
 	}
-	c.tm.Stop()
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	if c.stop != nil {
+		c.stop()
+		c.stop = nil
+	}
 	return nil
 }

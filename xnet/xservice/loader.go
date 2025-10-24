@@ -21,15 +21,15 @@ import (
 )
 
 type Loader struct {
-	Registry    Registry      // 可选，存储管理 Service 的组件，为 nil 时，使用 efaultRegistry()
-	IDC         string        // 可选，当前机房名称，为空时从 xattr.IDC() 取值
-	FlushCycle  time.Duration // 可选，service 自身刷新数据的时间周期，如检查更新地址列表,默认为 5s
-	Logger      xlog.Logger   // 可选，打印加载日志，为空时日志会输出到黑洞
-	WatchReload time.Duration // 可选，控制定期检查 service 配置文件是否更新的周期，值 >=1s 时生效
+	Registry Registry    // 可选，存储管理 Service 的组件，为 nil 时，使用 efaultRegistry()
+	IDC      string      // 可选，当前机房名称，为空时从 xattr.IDC() 取值
+	Logger   xlog.Logger // 可选，打印加载日志，为空时日志会输出到黑洞
 
-	watchFiles  *xmap.Sync[string, fs.FileInfo]
-	once        sync.Once
-	cycleWorker xpp.CycleWorker
+	watchFiles *xmap.Sync[string, fs.FileInfo]
+	once       sync.Once
+
+	reloadWorker *xpp.CycleWorker
+	WatchReload  time.Duration // 可选，控制定期检查 service 配置文件是否更新的周期，值 >=1s 时生效
 }
 
 func (l *Loader) getIDC() string {
@@ -53,13 +53,6 @@ func (l *Loader) getRegistry() Registry {
 	return l.Registry
 }
 
-func (l *Loader) getFlushCycle() time.Duration {
-	if l.FlushCycle >= time.Second {
-		return l.FlushCycle
-	}
-	return 5 * time.Second
-}
-
 func (l *Loader) LoadDir(ctx context.Context, patterns ...string) error {
 	var files []string
 	for _, pattern := range patterns {
@@ -77,11 +70,12 @@ func (l *Loader) initOnce() {
 		return
 	}
 	l.watchFiles = &xmap.Sync[string, fs.FileInfo]{}
-	l.cycleWorker = &xpp.CycleWorkerTpl{
+	l.reloadWorker = &xpp.CycleWorker{
 		WorkerName: "CheckReloadServiceFile",
 		Do:         l.checkReload,
+		Cycle:      l.WatchReload,
 	}
-	l.cycleWorker.Start(context.Background(), l.WatchReload)
+	l.reloadWorker.Start(context.Background())
 }
 
 func (l *Loader) checkReload(ctx context.Context) error {
@@ -114,7 +108,8 @@ func (l *Loader) Load(ctx context.Context, filenames ...string) error {
 	lg := l.getLogger()
 	reg := l.getRegistry()
 
-	parserOne := func(name string) error {
+	parserOne := func(ctx context.Context, name string) error {
+		ctx = xlog.ForkContext(ctx)
 		name = filepath.Clean(name)
 		xlog.AddAttr(ctx, xlog.String("fileName", name))
 		baseName := filepath.Base(name)
@@ -137,7 +132,8 @@ func (l *Loader) Load(ctx context.Context, filenames ...string) error {
 		}
 		old := reg.Upsert(ser)
 		if old != nil {
-			xpp.TryStopWorker(ctx, old)
+			err = old.Stop(ctx)
+			xlog.AddAttr(ctx, xlog.Bool("Upsert", true), xlog.ErrorAttr("stop", err))
 		}
 		lg.Info(ctx, "loaded", xlog.String("serviceName", ser.Name()))
 		return nil
@@ -146,7 +142,7 @@ func (l *Loader) Load(ctx context.Context, filenames ...string) error {
 	var wg xsync.WaitGo
 	for _, name := range filenames {
 		wg.GoErr(func() error {
-			return parserOne(name)
+			return parserOne(ctx, name)
 		})
 	}
 	return wg.Wait()
@@ -162,13 +158,13 @@ func (l *Loader) loadOneStart(ctx context.Context, name string) (Service, error)
 		return nil, err
 	}
 
-	err = xpp.TryStartWorker(ctx, l.getFlushCycle(), ser)
+	err = ser.Start(ctx)
 	return ser, err
 }
 
 func (l *Loader) Stop(ctx context.Context) {
 	l.once.Do(l.initOnce)
-	l.cycleWorker.Stop(ctx)
+	l.reloadWorker.Stop(ctx)
 }
 
 var defaultLoader = &xsync.OnceInit[*Loader]{

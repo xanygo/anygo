@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/ds/xbus"
-	xoption2 "github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xpool"
 	"github.com/xanygo/anygo/xcfg"
 	"github.com/xanygo/anygo/xcodec"
@@ -32,16 +32,17 @@ type Config struct {
 	ReadTimeout      int64  `json:"ReadTimeout"      yaml:"ReadTimeout"`      // 读超时时间，单位毫秒
 	HandshakeTimeout int64  `json:"HandshakeTimeout" yaml:"HandshakeTimeout"` // 握手超时时间，单位毫秒
 	Protocol         string `json:"Protocol"         yaml:"Protocol"`         // 交互协议
+	WorkerCycle      string `json:"WorkerCycle"         yaml:"WorkerCycle"`   // 后台任务运行周期
 
 	UseProxy string         `json:"UseProxy" yaml:"UseProxy"`       // 将另外一个service 当做代理
 	Proxy    *xproxy.Config `json:"Proxy"             yaml:"Proxy"` // 当子服务是代理时使用
 
-	Retry           int                 `json:"Retry"             yaml:"Retry"`
-	MaxResponseSize int64               `json:"MaxResponseSize"   yaml:"MaxResponseSize"`
-	HTTP            *HTTPPart           `json:"HTTP"              yaml:"HTTP"`
-	ConnPool        *ConnPoolPart       `json:"ConnPool"          yaml:"ConnPool"`
-	TLS             *xoption2.TLSConfig `json:"TLS"               yaml:"TLS"`
-	DownStream      DownStreamPart      `json:"DownStream"        yaml:"DownStream" validator:"required,dive,required"`
+	Retry           int                `json:"Retry"             yaml:"Retry"`
+	MaxResponseSize int64              `json:"MaxResponseSize"   yaml:"MaxResponseSize"`
+	HTTP            *HTTPPart          `json:"HTTP"              yaml:"HTTP"`
+	ConnPool        *ConnPoolPart      `json:"ConnPool"          yaml:"ConnPool"`
+	TLS             *xoption.TLSConfig `json:"TLS"               yaml:"TLS"`
+	DownStream      DownStreamPart     `json:"DownStream"        yaml:"DownStream" validator:"required,dive,required"`
 
 	Extra map[string]any // 其他字段
 }
@@ -111,34 +112,45 @@ func (ho *HTTPPart) Clone() *HTTPPart {
 	}
 }
 
+// Parser 解析为 Service 类型（需要Start 后才能使用）
 func (c *Config) Parser(idc string) (Service, error) {
 	c.Name = strings.TrimSpace(c.Name)
 	if c.Name == "" {
 		return nil, errors.New("name is empty")
 	}
-	opt := xoption2.NewDynamic()
-	xoption2.SetConnectTimeout(opt, time.Duration(c.ConnectTimeout)*time.Millisecond)
-	xoption2.SetConnectRetry(opt, c.ConnectRetry)
-	xoption2.SetWriteTimeout(opt, time.Duration(c.WriteTimeout)*time.Millisecond)
-	xoption2.SetReadTimeout(opt, time.Duration(c.ReadTimeout)*time.Millisecond)
-	xoption2.SetHandshakeTimeout(opt, time.Duration(c.HandshakeTimeout)*time.Millisecond)
-	xoption2.SetRetry(opt, c.Retry)
-	xoption2.SetMaxResponseSize(opt, c.MaxResponseSize)
+	opt := xoption.NewDynamic()
+	xoption.SetConnectTimeout(opt, time.Duration(c.ConnectTimeout)*time.Millisecond)
+	xoption.SetConnectRetry(opt, c.ConnectRetry)
+	xoption.SetWriteTimeout(opt, time.Duration(c.WriteTimeout)*time.Millisecond)
+	xoption.SetReadTimeout(opt, time.Duration(c.ReadTimeout)*time.Millisecond)
+	xoption.SetHandshakeTimeout(opt, time.Duration(c.HandshakeTimeout)*time.Millisecond)
+	xoption.SetRetry(opt, c.Retry)
+	xoption.SetMaxResponseSize(opt, c.MaxResponseSize)
 	SetOptConnPool(opt, c.ConnPool)
-	xoption2.SetProtocol(opt, c.Protocol)
+	xoption.SetProtocol(opt, c.Protocol)
 	if c.TLS != nil {
 		tc, err := c.TLS.Parser()
 		if err != nil {
 			return nil, err
 		}
-		xoption2.SetTLSConfig(opt, tc)
+		xoption.SetTLSConfig(opt, tc)
 	}
 
 	if c.UseProxy != "" {
 		if c.UseProxy == c.Name {
 			return nil, fmt.Errorf("invalid UseProxy=%q for service %q", c.UseProxy, c.Name)
 		}
-		xoption2.SetUseProxy(opt, c.UseProxy)
+		xoption.SetUseProxy(opt, c.UseProxy)
+	}
+	if c.WorkerCycle != "" {
+		cycle, err := time.ParseDuration(c.WorkerCycle)
+		if err != nil {
+			return nil, fmt.Errorf("invalid WorkerCycle=%q for service %q", c.WorkerCycle, c.Name)
+		}
+		if cycle < 100*time.Millisecond {
+			return nil, fmt.Errorf("invalid WorkerCycle=%q for service %q", c.WorkerCycle, c.Name)
+		}
+		xoption.SetWorkerCycle(opt, cycle)
 	}
 
 	if c.Proxy != nil {
@@ -149,7 +161,7 @@ func (c *Config) Parser(idc string) (Service, error) {
 	}
 
 	for k, v := range c.Extra {
-		xoption2.SetExtra(opt, k, v)
+		xoption.SetExtra(opt, k, v)
 	}
 
 	impl := &serviceImpl{
@@ -181,7 +193,7 @@ func (c *Config) Parser(idc string) (Service, error) {
 	}
 	impl.pool = pool
 
-	nw, err := xnaming.NewWorker(idc, primaryAddress, fallbackAddress)
+	nw, err := xnaming.NewWorker(idc, xoption.WorkerCycle(opt), primaryAddress, fallbackAddress)
 	if err != nil {
 		return nil, err
 	}

@@ -5,26 +5,26 @@
 package xservice
 
 import (
-	xoption2 "github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/ds/xoption"
 )
 
 var (
-	xOptKeyHTTP  = xoption2.NewKey("HTTP")
-	xOptConnPool = xoption2.NewKey("ConnPool")
+	xOptKeyHTTP  = xoption.NewKey("HTTP")
+	xOptConnPool = xoption.NewKey("ConnPool")
 )
 
-func SetOptHTTP(opt xoption2.Writer, val HTTPPart) {
+func SetOptHTTP(opt xoption.Writer, val HTTPPart) {
 	opt.Set(xOptKeyHTTP, val)
 }
 
-func OptHTTP(opt xoption2.Reader) HTTPPart {
-	return xoption2.GetAsDefault[HTTPPart](opt, xOptKeyHTTP, HTTPPart{})
+func OptHTTP(opt xoption.Reader) HTTPPart {
+	return xoption.GetAsDefault[HTTPPart](opt, xOptKeyHTTP, HTTPPart{})
 }
 
-func SetOptConnPool(opt xoption2.Writer, val *ConnPoolPart) {
+func SetOptConnPool(opt xoption.Writer, val *ConnPoolPart) {
 	opt.Set(xOptConnPool, val)
 }
 
-func OptConnPool(opt xoption2.Reader) *ConnPoolPart {
-	return xoption2.GetAsDefault[*ConnPoolPart](opt, xOptConnPool, nil)
+func OptConnPool(opt xoption.Reader) *ConnPoolPart {
+	return xoption.GetAsDefault[*ConnPoolPart](opt, xOptConnPool, nil)
 }

@@ -11,11 +11,10 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/xanygo/anygo/ds/xcast"
 	"github.com/xanygo/anygo/ds/xmap"
-	xoption2 "github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/store/xredis/resp3"
 	"github.com/xanygo/anygo/xattr"
@@ -88,10 +87,10 @@ func init() {
 //
 // xrpc 里有统一的 handshake timeout 设置
 // https://redis.io/docs/latest/commands/hello/
-func handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption2.Reader) (xdial.HandshakeReply, error) {
+func handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (xdial.HandshakeReply, error) {
 	hello := resp3.HelloRequest{}
 	const redisKey = "Redis"
-	cfg := xoption2.Extra(opt, redisKey)
+	cfg := xoption.Extra(opt, redisKey)
 	var dbIndex int
 	var err error
 	xmap.Range[string, any](cfg, func(key string, val any) bool {
@@ -195,7 +194,7 @@ func NewClientByURI(name string, uri string) (xservice.Service, *Client, error) 
 		},
 	}
 	if uu.Scheme == "rediss" {
-		cfg.TLS = &xoption2.TLSConfig{
+		cfg.TLS = &xoption.TLSConfig{
 			ServerName: uu.Hostname(),
 		}
 	}
@@ -217,7 +216,7 @@ func NewClientByURI(name string, uri string) (xservice.Service, *Client, error) 
 	}
 	ser, err := cfg.Parser(xattr.IDC())
 	if err == nil {
-		err = xpp.TryStartWorker(context.Background(), 10*time.Minute, ser)
+		err = xpp.TryStartWorker(context.Background(), ser)
 	}
 	if err != nil {
 		return nil, nil, err

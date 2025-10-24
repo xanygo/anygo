@@ -6,7 +6,6 @@ package xservice
 
 import (
 	"context"
-	"time"
 
 	"github.com/xanygo/anygo/ds/xbus"
 	"github.com/xanygo/anygo/ds/xoption"
@@ -26,6 +25,8 @@ type Service interface {
 	Pool() xdial.ConnGroupPool  // 网络连接池
 
 	Option() xoption.Option
+
+	xpp.Worker
 }
 
 var _ Service = (*serviceImpl)(nil)
@@ -64,10 +65,8 @@ func (ds *serviceImpl) Pool() xdial.ConnGroupPool {
 	return ds.pool
 }
 
-var _ xpp.CycleWorker = (*serviceImpl)(nil)
-
-func (ds *serviceImpl) Start(ctx context.Context, cycle time.Duration) error {
-	err := xpp.TryStartWorker(ctx, cycle, ds.balancer, ds.nw, ds.broker)
+func (ds *serviceImpl) Start(ctx context.Context) error {
+	err := xpp.TryStartWorker(ctx, ds.balancer, ds.nw, ds.broker)
 	if err == nil {
 		err = ds.balancer.Init(ctx, ds.nw.Nodes())
 	}

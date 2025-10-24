@@ -18,25 +18,28 @@ import (
 	"github.com/xanygo/anygo/xpp"
 )
 
-func NewWorker(idc string, primary []string, fallback []string) (*Worker, error) {
+func NewWorker(idc string, cycle time.Duration, primary []string, fallback []string) (*Worker, error) {
 	if len(primary) == 0 && len(fallback) == 0 {
 		return nil, errors.New("no items")
 	}
 	return &Worker{
+		cycle:         cycle,
 		itemsPrimary:  primary,
 		itemsFallback: fallback,
 		idc:           idc,
 	}, nil
 }
 
-var _ xpp.CycleWorker = (*Worker)(nil)
+var _ xpp.Worker = (*Worker)(nil)
 var _ xbus.Producer = (*Worker)(nil)
 
+// Worker 用于承载 Naming 运行的 载体，在 xservice.Service 中使用
 type Worker struct {
 	idc           string
-	itemsPrimary  []string
-	itemsFallback []string
-	worker        *xpp.CycleWorkerTpl
+	cycle         time.Duration
+	itemsPrimary  []string // 首选地址列表，可以是主机名列表，也可以是IP 列表等
+	itemsFallback []string // 备选地址列表
+	worker        *xpp.CycleWorker
 	once          sync.Once
 	producer      *nodeProducer
 }
@@ -51,15 +54,17 @@ func (n *Worker) Nodes() []xnet.AddrNode {
 }
 
 func (n *Worker) initOnce() {
-	n.worker = &xpp.CycleWorkerTpl{
-		Do: n.do,
+	n.worker = &xpp.CycleWorker{
+		Do:        n.do,
+		Cycle:     n.cycle,
+		FirstSync: true,
 	}
 	n.producer = newNodeProducer()
 }
 
-func (n *Worker) Start(ctx context.Context, cycle time.Duration) error {
+func (n *Worker) Start(ctx context.Context) error {
 	n.once.Do(n.initOnce)
-	return n.worker.Start(ctx, cycle)
+	return n.worker.Start(ctx)
 }
 
 func (n *Worker) Messages() <-chan xbus.Message {
@@ -108,7 +113,7 @@ func (n *Worker) search(ctx context.Context, idc string, items []string) ([]xnet
 			var err error
 			param, err = url.ParseQuery(paramStr)
 			if err != nil {
-				errs = append(errs, fmt.Errorf("[%d]=%q %worker", idx, item, err))
+				errs = append(errs, fmt.Errorf("[%d]=%q %w", idx, item, err))
 				continue
 			}
 		}
