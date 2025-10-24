@@ -7,7 +7,6 @@ package xrpc
 import (
 	"context"
 	"fmt"
-	"io"
 	"slices"
 	"sync"
 	"time"
@@ -55,7 +54,8 @@ func (c *TCP) Invoke(ctx context.Context, srv any, req Request, resp Response, o
 	its := c.allITs(ctx)
 
 	cfg := &config{
-		opt: xoption.NewSimple(),
+		opt:      xoption.NewSimple(),
+		registry: c.ServiceRegistry,
 	}
 	ctxOpts := OptionsFromContext(ctx)
 	for _, opt := range ctxOpts {
@@ -76,7 +76,7 @@ func (c *TCP) Invoke(ctx context.Context, srv any, req Request, resp Response, o
 		xmetric.AnyAttr("req.Protocol", req.Protocol()),
 	)
 
-	service, err := cfg.getService(srv, c.ServiceRegistry)
+	service, err := cfg.getService(srv)
 
 	defer func() {
 		rootSpan.RecordError(result)
@@ -201,22 +201,13 @@ func (c *TCP) tryOnce(ctx context.Context, cfg *config, req Request, resp Respon
 }
 
 func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption.Reader, conn *xnet.ConnNode) (err error) {
-	totalTimeout := xoption.WriteReadTimeout(opt)
-	ctx, cancel := context.WithTimeout(ctx, totalTimeout)
-	defer cancel()
-	if err = conn.SetDeadline(time.Now().Add(totalTimeout)); err != nil {
-		return err
-	}
-
 	start := time.Now()
 	// 暂时不将读写超时分开控制
 	err = req.WriteTo(ctx, conn, opt)
 	if err != nil {
 		return err
 	}
-	maxBody := xoption.MaxResponseSize(opt)
-	rd := io.LimitReader(conn, maxBody)
-	err = resp.LoadFrom(ctx, req, rd, opt)
+	err = resp.LoadFrom(ctx, req, conn, opt)
 	if err != nil {
 		return fmt.Errorf("%w, cost=%s", err, time.Since(start).String())
 	}

@@ -8,7 +8,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io"
 	"net"
 	"time"
 
@@ -30,12 +29,12 @@ type Request interface {
 	String() string
 	Protocol() string
 	APIName() string
-	WriteTo(ctx context.Context, w *xnet.ConnNode, opt xoption.Reader) error
+	WriteTo(ctx context.Context, rw *xnet.ConnNode, opt xoption.Reader) error
 }
 
 type Response interface {
 	String() string
-	LoadFrom(ctx context.Context, req Request, rd io.Reader, opt xoption.Reader) error
+	LoadFrom(ctx context.Context, req Request, rw *xnet.ConnNode, opt xoption.Reader) error
 	xerror.HasErrCode
 	xerror.HasErrMsg
 	Unwrap() any
@@ -53,7 +52,7 @@ type config struct {
 	handshake xdial.HandshakeHandler
 }
 
-func (cfg config) getService(srv any, def xservice.Registry) (xservice.Service, error) {
+func (cfg config) getService(srv any) (xservice.Service, error) {
 	var serviceName string
 	switch sv := srv.(type) {
 	case string:
@@ -61,31 +60,16 @@ func (cfg config) getService(srv any, def xservice.Registry) (xservice.Service, 
 	case xservice.Service:
 		return sv, nil
 	default:
-		return nil, fmt.Errorf("invalid service name: %v", serviceName)
+		return nil, fmt.Errorf("invalid service name: %#v", srv)
 	}
 
 	if cfg.service != nil {
 		return cfg.service, nil
 	}
-
-	service, ok := cfg.getRegistry(def).Find(serviceName)
-	if !ok {
-		if serviceName == xservice.Dummy {
-			return xservice.DummyService(), nil
-		}
-		return nil, fmt.Errorf("service %q %w", serviceName, xerror.NotFound)
-	}
-	return service, nil
-}
-
-func (cfg config) getRegistry(def xservice.Registry) xservice.Registry {
 	if cfg.registry != nil {
-		return cfg.registry
+		return xservice.FindServiceWithRegistry(cfg.registry, serviceName)
 	}
-	if def != nil {
-		return def
-	}
-	return xservice.DefaultRegistry()
+	return xservice.FindService(serviceName)
 }
 
 type Option interface {

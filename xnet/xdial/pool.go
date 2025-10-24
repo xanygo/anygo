@@ -118,7 +118,11 @@ func fixOption(opt *xpool.Option) {
 func newLong(opt *xpool.Option, cc Connector) ConnGroupPool {
 	fac := &ConnFactory{
 		Group: func(ctx context.Context, addr xnet.AddrNode) (*xnet.ConnNode, error) {
-			return Connect(ctx, cc, addr, nil)
+			node, err := Connect(ctx, cc, addr, nil)
+			if node != nil {
+				node.LongPool = true
+			}
+			return node, err
 		},
 	}
 	return xpool.NewGroupPool[xnet.AddrNode, string, *xnet.ConnNode](opt, fac)

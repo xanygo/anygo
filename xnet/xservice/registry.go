@@ -98,20 +98,31 @@ func FindRegistry(name string) (Registry, error) {
 	return nil, fmt.Errorf("registry %q %w", name, xerror.NotFound)
 }
 
+func FindServiceWithRegistry(reg Registry, name string) (Service, error) {
+	ser, ok := reg.Find(name)
+	if ok {
+		return ser, nil
+	}
+	if name == Dummy {
+		return DummyService(), nil
+	}
+	return nil, fmt.Errorf("service %q %w", name, xerror.NotFound)
+}
+
 // FindService 查找 service
 //
 // 若 name 不包含 / ，从 DefaultRegistry()
 // 若 name 包含 /, 如 other/name, 则先使用 FindRegistry("other") 找到对应的 Registry，然后查找 name
 // 若 name == “dummy”， 则直接返回 DummyService
 func FindService(name string) (Service, error) {
-	if name == Dummy {
-		return DummyService(), nil
-	}
 	pre, after, found := strings.Cut(name, "/")
 	if !found {
 		ser, ok := DefaultRegistry().Find(name)
 		if ok {
 			return ser, nil
+		}
+		if name == Dummy {
+			return DummyService(), nil
 		}
 		return nil, fmt.Errorf("service %q %w", name, xerror.NotFound)
 	}

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/store/xredis/resp3"
@@ -206,8 +207,14 @@ func (resp *pipeResponse) String() string {
 	return "pipeResponse"
 }
 
-func (resp *pipeResponse) LoadFrom(ctx context.Context, req xrpc.Request, rd io.Reader, opt xoption.Reader) error {
-	br := bufio.NewReader(rd)
+func (resp *pipeResponse) LoadFrom(ctx context.Context, req xrpc.Request, rd *xnet.ConnNode, opt xoption.Reader) error {
+	timeout := xoption.ReadTimeout(opt)
+	if err := rd.SetDeadline(time.Now().Add(timeout)); err != nil {
+		return err
+	}
+	defer rd.SetDeadline(time.Time{})
+
+	br := bufio.NewReader(io.LimitReader(rd, xoption.MaxResponseSize(opt)))
 	if resp.tx {
 		return resp.readTx(ctx, br)
 	}

@@ -376,6 +376,7 @@ type ConnNode struct {
 	Addr      AddrNode   // 创建链接的的地址信息
 	Handshake any        // 业务握手后得到的信息
 	CreatTime time.Time  // 创建时间
+	LongPool  bool       // 是否来自长连接连接池
 
 	// OnClose 调用 Close 的时候调用
 	OnClose func() error

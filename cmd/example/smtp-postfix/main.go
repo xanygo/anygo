@@ -26,6 +26,7 @@ var subject = flag.String("subject", "Hello 你好，世界", "subject")
 var files = flag.String("files", "", "attachment files")
 var inline = flag.Bool("inline", false, "use inline image")
 var hardCoded = flag.Bool("hc", false, "hard-coded smtp server info")
+var num = flag.Int("n", 1, "")
 
 // 查看邮件：https://www.emlreader.com/
 
@@ -34,7 +35,7 @@ func main() {
 
 	internal.ServiceInit()
 
-	req := &xsmtp.Mail{
+	m := &xsmtp.Mail{
 		To:      []string{*to},
 		From:    *from,
 		Subject: *subject,
@@ -45,16 +46,24 @@ func main() {
 		if f == "" {
 			continue
 		}
-		anygo.Must(req.AddAttachFile(f))
+		anygo.Must(m.AddAttachFile(f))
 	}
 
 	if *inline {
-		req.Content = `你好 <p style='color:red'>红色</p> <img src="cid:404img"">`
-		anygo.Must(req.AddInlineFile("../asset/1.jpg", "404img"))
+		m.Content = `你好 <p style='color:red'>红色</p> <img src="cid:404img"">`
+		anygo.Must(m.AddInlineFile("../asset/1.jpg", "404img"))
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	var err error
+
+	mailIter := func(yield func(*xsmtp.Mail) bool) {
+		for i := 0; i < *num; i++ {
+			if !yield(m) {
+				return
+			}
+		}
+	}
 
 	// 两种使用方式
 	if *hardCoded {
@@ -65,11 +74,11 @@ func main() {
 			NoStartTLS: true,
 			Username:   *from,
 		}
-		err = cfg.Send(ctx, req)
+		err = cfg.SendSeq(ctx, mailIter)
 	} else {
 		// 第二种，使用配置文件配置 smtp 服务器的信息
 		// 配置在 ../service/postfix.json
-		err = xsmtp.Send(ctx, "postfix", req)
+		err = xsmtp.SendSeq(ctx, "postfix", mailIter)
 	}
 
 	log.Println("err=", err)

@@ -9,9 +9,11 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xrpc"
 )
 
@@ -31,8 +33,15 @@ func (resp *Response) String() string {
 	return "HTTPResponse:" + resp.resp.Status
 }
 
-func (resp *Response) LoadFrom(ctx context.Context, req xrpc.Request, rd io.Reader, opt xoption.Reader) error {
-	bio := bufio.NewReader(rd)
+func (resp *Response) LoadFrom(ctx context.Context, req xrpc.Request, node *xnet.ConnNode, opt xoption.Reader) error {
+	timeout := xoption.WriteTimeout(opt)
+	if err := node.SetDeadline(time.Now().Add(timeout)); err != nil {
+		return err
+	}
+	defer node.SetDeadline(time.Time{})
+
+	maxSize := xoption.MaxResponseSize(opt)
+	bio := bufio.NewReader(io.LimitReader(node, maxSize))
 	resp.resp, resp.readErr = http.ReadResponse(bio, nil)
 	if resp.readErr != nil {
 		return resp.readErr

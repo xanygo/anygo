@@ -24,7 +24,7 @@ type Service interface {
 	Connector() xdial.Connector // 拨号器，包括拨号和握手逻辑
 	Pool() xdial.ConnGroupPool  // 网络连接池
 
-	Option() xoption.Option
+	Option() xoption.Reader
 
 	xpp.Worker
 }
@@ -57,7 +57,7 @@ func (ds *serviceImpl) Connector() xdial.Connector {
 	return ds.connector
 }
 
-func (ds *serviceImpl) Option() xoption.Option {
+func (ds *serviceImpl) Option() xoption.Reader {
 	return ds.opt
 }
 

@@ -34,6 +34,7 @@ func NewDummyService(name string) Service {
 		WriteTimeout:   5000,
 		ReadTimeout:    5000,
 		Retry:          2,
+		WorkerCycle:    "24h",
 		DownStream: DownStreamPart{
 			Address: []string{xnet.DummyAddress},
 		},

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xsync"
@@ -42,6 +43,13 @@ var bp = xsync.NewBytesBufferPool(1024)
 func (r *rpcRequest) WriteTo(ctx context.Context, w *xnet.ConnNode, opt xoption.Reader) error {
 	bf := bp.Get()
 	content := r.req.Bytes(bf)
+
+	timeout := xoption.WriteTimeout(opt)
+	if err := w.SetDeadline(time.Now().Add(timeout)); err != nil {
+		return err
+	}
+	defer w.SetDeadline(time.Time{})
+
 	_, err := w.Write(content)
 	bp.Put(bf)
 	return err
@@ -61,12 +69,19 @@ func (resp *rpcResponse) String() string {
 	return resp.err.Error()
 }
 
-func (resp *rpcResponse) LoadFrom(ctx context.Context, req xrpc.Request, rd io.Reader, opt xoption.Reader) error {
+func (resp *rpcResponse) LoadFrom(ctx context.Context, req xrpc.Request, rd *xnet.ConnNode, opt xoption.Reader) error {
 	xrr, ok := req.(*rpcRequest)
 	if !ok {
 		return errors.New("not a redis rpcRequest")
 	}
-	br := bufio.NewReader(rd)
+
+	timeout := xoption.ReadTimeout(opt)
+	if err := rd.SetDeadline(time.Now().Add(timeout)); err != nil {
+		return err
+	}
+	defer rd.SetDeadline(time.Time{})
+
+	br := bufio.NewReader(io.LimitReader(rd, xoption.MaxResponseSize(opt)))
 	resp.result, resp.err = resp3.ReadByType(br, xrr.req.ResponseType())
 
 	// 不需要将此错误返回给 xrpc.Client

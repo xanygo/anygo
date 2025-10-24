@@ -5,7 +5,6 @@
 package xsmtp
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -15,15 +14,10 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xslice"
-	"github.com/xanygo/anygo/xnet"
-	"github.com/xanygo/anygo/xnet/xrpc"
 )
 
 const Protocol = "SMTP"
-
-var _ xrpc.Request = (*Mail)(nil)
 
 type Mail struct {
 	Subject     string // 邮件标题，必填
@@ -49,18 +43,6 @@ type Mail struct {
 
 	// Inline 内联的图片、视频等资源，可选
 	Inline []*InlineResource
-}
-
-func (req *Mail) String() string {
-	return "smtp request"
-}
-
-func (req *Mail) Protocol() string {
-	return Protocol
-}
-
-func (req *Mail) APIName() string {
-	return "Send"
 }
 
 func (req *Mail) check() error {
@@ -139,70 +121,6 @@ func (req *Mail) AddInlineFile(path string, cid string) error {
 	}
 	req.Inline = append(req.Inline, a)
 	return nil
-}
-
-func (req *Mail) WriteTo(ctx context.Context, w *xnet.ConnNode, opt xoption.Reader) error {
-	if err := req.check(); err != nil {
-		return err
-	}
-	cr, ok := w.Handshake.(*handshakeReply)
-	if !ok {
-		return fmt.Errorf("invalid handshake type: %T, not smtp client", w.Handshake)
-	}
-	from := req.From
-	if from == "" {
-		from = cr.username
-	}
-	if from == "" {
-		return errors.New("empty From")
-	}
-	client := cr.client
-	if err := client.Mail(from); err != nil {
-		return err
-	}
-	if err := setRcpt(client, req.To...); err != nil {
-		return err
-	}
-	if err := setRcpt(client, req.CC...); err != nil {
-		return err
-	}
-	if err := setRcpt(client, req.BCC...); err != nil {
-		return err
-	}
-	wc, err := client.Data()
-	if err != nil {
-		return err
-	}
-
-	w1 := &writer{
-		w: wc,
-	}
-	w1.to("To", req.To...)
-	w1.to("Cc", req.CC...)
-	// BCC 不需要添加了
-
-	w1.subject(req.Subject)
-	if req.MsgID != "" {
-		w1.simpleHeader("Message-Id", req.MsgID)
-	}
-	if req.Date.IsZero() {
-		w1.simpleHeader("Date", time.Now().Format(time.RFC1123Z))
-	} else {
-		w1.simpleHeader("Date", req.Date.Format(time.RFC1123Z))
-	}
-	w1.simpleHeader("MIME-Version", "1.0")
-
-	if len(req.Attachment) > 0 || len(req.Inline) > 0 {
-		w1.multipart(req.ContentType, req.Content, req.Attachment, req.Inline)
-	} else {
-		w1.content(req.ContentType, req.Content)
-	}
-
-	err = w1.err
-	if err == nil {
-		err = wc.Close()
-	}
-	return err
 }
 
 type Attachment struct {

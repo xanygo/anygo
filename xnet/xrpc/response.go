@@ -6,9 +6,9 @@ package xrpc
 
 import (
 	"context"
-	"io"
 
 	"github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/xnet"
 )
 
 // DiscardResponse 返回一个特殊的 response，
@@ -28,7 +28,7 @@ func (resp *discardResponse) String() string {
 	return "discardResponse"
 }
 
-func (resp *discardResponse) LoadFrom(ctx context.Context, req Request, rd io.Reader, opt xoption.Reader) error {
+func (resp *discardResponse) LoadFrom(ctx context.Context, req Request, node *xnet.ConnNode, opt xoption.Reader) error {
 	return nil
 }
 

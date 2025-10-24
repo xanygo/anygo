@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xlog"
@@ -67,6 +68,15 @@ func (r *Request) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.
 	if err != nil {
 		return err
 	}
+
+	timeout := xoption.WriteTimeout(opt)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	if err = node.SetDeadline(time.Now().Add(timeout)); err != nil {
+		return err
+	}
+	defer node.SetDeadline(time.Time{})
+
 	req, err := http.NewRequestWithContext(ctx, r.getMethod(), api, r.Body)
 	if err != nil {
 		return err
@@ -75,6 +85,7 @@ func (r *Request) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.
 		req.Host = ""
 	}
 	setHeader(ctx, req, opt)
+
 	return req.Write(node.Outer())
 }
 
@@ -176,6 +187,14 @@ func (h *NativeRequest) APIName() string {
 }
 
 func (h *NativeRequest) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.Reader) error {
+	timeout := xoption.WriteTimeout(opt)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	if err := node.SetDeadline(time.Now().Add(timeout)); err != nil {
+		return err
+	}
+	defer node.SetDeadline(time.Time{})
+
 	req := h.Request.WithContext(ctx)
 	if req.Host == xservice.Dummy {
 		req.Host = ""

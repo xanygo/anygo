@@ -7,6 +7,7 @@ package xsmtp
 import (
 	"context"
 	"errors"
+	"iter"
 	"net"
 	"slices"
 	"strconv"
@@ -71,6 +72,28 @@ func (c *Config) Send(ctx context.Context, m *Mail) error {
 	return Send(ctx, dummyService.Load(), m, opts...)
 }
 
+// SendSeq 使用同一个连接，发送多封邮件
+func (c *Config) SendSeq(ctx context.Context, mails iter.Seq[*Mail]) error {
+	if err := c.check(); err != nil {
+		return err
+	}
+	opts := c.once.Do(c.initOption)
+	return SendSeq(ctx, dummyService.Load(), mails, opts...)
+}
+
 func Send(ctx context.Context, service any, m *Mail, opts ...xrpc.Option) error {
-	return xrpc.Invoke(ctx, service, m, xrpc.DiscardResponse(), opts...)
+	req := request{
+		mails: func(yield func(mail *Mail) bool) {
+			yield(m)
+		},
+	}
+	return xrpc.Invoke(ctx, service, req, xrpc.DiscardResponse(), opts...)
+}
+
+// SendSeq 使用同一个连接，发送多封邮件
+func SendSeq(ctx context.Context, service any, iter iter.Seq[*Mail], opts ...xrpc.Option) error {
+	req := request{
+		mails: iter,
+	}
+	return xrpc.Invoke(ctx, service, req, xrpc.DiscardResponse(), opts...)
 }

@@ -13,7 +13,6 @@ import (
 
 	"github.com/xanygo/anygo"
 	"github.com/xanygo/anygo/cmd/example/internal"
-	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xsmtp"
 )
 
@@ -46,6 +45,6 @@ func main() {
 	// ap := xrpc.OptHostPort("127.0.0.1:25")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	err := xrpc.Invoke(ctx, "smtp_163", req, xrpc.DiscardResponse())
+	err := xsmtp.Send(ctx, "smtp_163", req)
 	log.Println("err=", err)
 }
