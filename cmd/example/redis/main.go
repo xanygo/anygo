@@ -23,8 +23,6 @@ func main() {
 
 	xservice.LoadDir(context.Background(), "../service/*")
 	rc := xredis.NewClient("rds")
-	// get := resp3.NewRequest(resp3.DataTypeBulkString, "get", "k1")
-	// resp := rc.Do(context.Background(), get)
 	sr, err := rc.ZAdd(context.Background(), "z1", 1, "f2")
 	fmt.Println("ret=", sr, "err=", err)
 }

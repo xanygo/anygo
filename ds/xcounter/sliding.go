@@ -10,29 +10,31 @@ import (
 )
 
 // NewSliding 创建一个滑动窗口计数器
-func NewSliding(window, resolution time.Duration) *Sliding {
-	if resolution <= 0 {
-		resolution = time.Second
+// window: 总时间长度
+// interval: 单个区间大小
+func NewSliding(window, interval time.Duration) *Sliding {
+	if interval <= 0 {
+		interval = time.Second
 	}
-	if window < resolution {
-		window = resolution
+	if window < interval {
+		window = interval
 	}
-	size := int(window / resolution)
+	size := int(window / interval)
 	return &Sliding{
-		resolution: resolution,
-		window:     window,
-		buckets:    make([]bucket1, size),
-		start:      time.Now(),
+		interval: interval,
+		window:   window,
+		buckets:  make([]bucket1, size),
+		start:    time.Now(),
 	}
 }
 
 // Sliding 滑动窗口计数器
 type Sliding struct {
-	mu         sync.Mutex
-	resolution time.Duration // 每个桶的时间粒度
-	window     time.Duration // 总窗口时长
-	buckets    []bucket1
-	start      time.Time
+	mu       sync.Mutex
+	interval time.Duration // 每个桶的时间粒度
+	window   time.Duration // 总窗口时长
+	buckets  []bucket1
+	start    time.Time
 }
 
 type bucket1 struct {
@@ -55,7 +57,7 @@ func (c *Sliding) IncrN(n int64) {
 
 	if !c.sameSlot(c.buckets[index].ts, now) {
 		// 重置过期的桶
-		c.buckets[index].ts = now.Truncate(c.resolution)
+		c.buckets[index].ts = now.Truncate(c.interval)
 		c.buckets[index].count = 0
 	}
 	c.buckets[index].count += n
@@ -96,10 +98,10 @@ func (c *Sliding) CountWindow() int64 {
 // indexFor 计算当前时间对应的桶索引
 func (c *Sliding) indexFor(t time.Time) int {
 	elapsed := t.Sub(c.start)
-	return int(elapsed/c.resolution) % len(c.buckets)
+	return int(elapsed/c.interval) % len(c.buckets)
 }
 
 // sameSlot 判断两个时间是否落在同一个桶内
 func (c *Sliding) sameSlot(t1, t2 time.Time) bool {
-	return t1.Truncate(c.resolution).Equal(t2.Truncate(c.resolution))
+	return t1.Truncate(c.interval).Equal(t2.Truncate(c.interval))
 }

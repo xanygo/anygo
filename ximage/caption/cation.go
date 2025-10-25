@@ -30,6 +30,10 @@ func (b *base) SetSize(width int, height int) {
 	b.height = height
 }
 
+func (b *base) SetCode(code string) {
+	b.code = code
+}
+
 func (b *base) Code() string {
 	return b.code
 }
@@ -53,7 +57,7 @@ func (b *base) SetReDraw(fn func(img image.Image)) {
 }
 
 // SetRandomLine 设置干扰线数量，若为 -1 则不绘制
-// 默认值为 0 - 自动依据 width 大小比例绘制 width / 15 条
+// 默认值为 0 - 自动依据 width 大小比例绘制 width / 12 条
 func (b *base) SetRandomLine(num int) {
 	b.randomLine = num
 }
@@ -64,7 +68,7 @@ func (b *base) drawRandomLine(img *image.RGBA) {
 	}
 	num := b.randomLine
 	if num == 0 { // auto number
-		num = img.Bounds().Dx() / 15
+		num = img.Bounds().Dx() / 12
 	}
 	for i := 0; i < num; i++ {
 		ximage.DrawRandomLine(img)

@@ -5,6 +5,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -15,7 +16,11 @@ import (
 	"github.com/xanygo/anygo/xhttp"
 )
 
+var listen = flag.String("l", "127.0.0.1:8080", "listen address")
+
 func main() {
+	flag.Parse()
+
 	router := xhttp.NewRouter()
 	sh := &xsession.HTTPHandler{
 		NewStorage: func(writer http.ResponseWriter, request *http.Request) xsession.Storage {
@@ -44,10 +49,10 @@ func main() {
 	ser := &http.Server{
 		Handler: router,
 	}
-
-	l, err := net.Listen("tcp4", ":8080")
+	log.Println("Starting server on", *listen)
+	l, err := net.Listen("tcp4", *listen)
 	anygo.Must(err)
 	log.Println("listen:", l.Addr().String())
 	err = ser.Serve(l)
-	log.Println("exit:", err)
+	log.Println("Server exit:", err)
 }

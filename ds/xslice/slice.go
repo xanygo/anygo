@@ -248,6 +248,7 @@ func FilterOne[S ~[]E, E any](arr S, filter func(index int, item E) bool) (e E, 
 	return e, false
 }
 
+// MapFunc 使用回调函数 fn 依次对 slice 的元素处理，fn 返回的第二个值为 false 则丢弃该值，否则更新
 func MapFunc[S ~[]E, E any](arr S, fn func(index int, item E) (E, bool)) S {
 	if len(arr) == 0 {
 		return nil

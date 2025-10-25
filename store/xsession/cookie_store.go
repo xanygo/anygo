@@ -101,6 +101,7 @@ func (cs *CookieStore) Save(ctx context.Context, session Session) error {
 		HttpOnly: true,
 		Path:     "/",
 		Expires:  defaultExpire,
+		SameSite: http.SameSiteLaxMode,
 	}
 	if cs.BeforeSave != nil {
 		cs.BeforeSave(cookie)

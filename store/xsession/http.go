@@ -53,6 +53,7 @@ func (s *HTTPHandler) setSessionID(w http.ResponseWriter, req *http.Request) (*h
 			Value:    id,
 			HttpOnly: true,
 			Expires:  defaultExpire,
+			SameSite: http.SameSiteLaxMode,
 			Path:     "/",
 		}
 		if s.OnSet != nil {

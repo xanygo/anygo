@@ -5,6 +5,8 @@
 package main
 
 import (
+	"flag"
+	"log"
 	"net/http"
 
 	"github.com/xanygo/anygo/ximage/caption"
@@ -16,7 +18,7 @@ func c1(w http.ResponseWriter, r *http.Request) {
 }
 
 func c2(w http.ResponseWriter, r *http.Request) {
-	cp := caption.NewRandomDigits(4)
+	cp := caption.NewRandomNumber(4)
 	cp.ServeHTTP(w, r)
 }
 
@@ -46,12 +48,17 @@ func index(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(code))
 }
 
+var listen = flag.String("l", "127.0.0.1:8080", "listen address")
+
 func main() {
+	flag.Parse()
 	http.HandleFunc("/", index)
 	http.HandleFunc("/c1", c1)
 	http.HandleFunc("/c2", c2)
 	http.HandleFunc("/c3", c3)
 	http.HandleFunc("/c4", c4)
 
-	http.ListenAndServe("127.0.0.1:8080", nil)
+	log.Println("Starting server on", *listen)
+	err := http.ListenAndServe(*listen, nil)
+	log.Println("Server exit：", err)
 }

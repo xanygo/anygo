@@ -182,7 +182,7 @@ func (w *captureWriter) WriteHeader(code int) {
 }
 
 func (w *captureWriter) Write(b []byte) (int, error) {
-	if len(w.body) < 32 {
+	if len(w.body) < 32 && len(b) > 1 && isPrintable(b[0]) && isPrintable(b[1]) {
 		remain := 32 - len(w.body)
 		if remain > len(b) {
 			remain = len(b)
@@ -193,6 +193,10 @@ func (w *captureWriter) Write(b []byte) (int, error) {
 	n, err := w.ResponseWriter.Write(b)
 	w.wroteSize.Add(int64(n))
 	return n, err
+}
+
+func isPrintable(b byte) bool {
+	return b >= 32 && b <= 126
 }
 
 func (w *captureWriter) getStatusCode() int {

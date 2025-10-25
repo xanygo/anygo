@@ -10,29 +10,29 @@ import (
 )
 
 // NewSlidingTriple 创建一个滑动窗口计数器
-func NewSlidingTriple(window, resolution time.Duration) *SlidingTriple {
-	if resolution <= 0 {
-		resolution = time.Second
+func NewSlidingTriple(window, interval time.Duration) *SlidingTriple {
+	if interval <= 0 {
+		interval = time.Second
 	}
-	if window < resolution {
-		window = resolution
+	if window < interval {
+		window = interval
 	}
-	size := int(window / resolution)
+	size := int(window / interval)
 	return &SlidingTriple{
-		resolution: resolution,
-		window:     window,
-		buckets:    make([]bucket3, size),
-		start:      time.Now(),
+		interval: interval,
+		window:   window,
+		buckets:  make([]bucket3, size),
+		start:    time.Now(),
 	}
 }
 
 // SlidingTriple 可同时记录 成功数、失败数、耗时的滑动窗口计数器
 type SlidingTriple struct {
-	mu         sync.Mutex
-	resolution time.Duration // 每个桶的时间粒度
-	window     time.Duration // 总窗口时长
-	buckets    []bucket3
-	start      time.Time
+	mu       sync.Mutex
+	interval time.Duration // 每个桶的时间粒度
+	window   time.Duration // 总窗口时长
+	buckets  []bucket3
+	start    time.Time
 }
 
 func (c *SlidingTriple) Window() time.Duration {
@@ -40,7 +40,7 @@ func (c *SlidingTriple) Window() time.Duration {
 }
 
 func (c *SlidingTriple) Resolution() time.Duration {
-	return c.resolution
+	return c.interval
 }
 
 type bucket3 struct {
@@ -70,7 +70,7 @@ func (c *SlidingTriple) IncrN(success, failure int64, cost time.Duration) {
 
 	if !c.sameSlot(c.buckets[index].ts, now) {
 		// 重置过期的桶
-		c.buckets[index].ts = now.Truncate(c.resolution)
+		c.buckets[index].ts = now.Truncate(c.interval)
 		c.buckets[index].success = 0
 		c.buckets[index].failure = 0
 		c.buckets[index].cost = 0
@@ -197,19 +197,19 @@ func (c *SlidingTriple) CountFailureWindow() int64 {
 // indexFor 计算当前时间对应的桶索引
 func (c *SlidingTriple) indexFor(t time.Time) int {
 	elapsed := t.Sub(c.start)
-	return int(elapsed/c.resolution) % len(c.buckets)
+	return int(elapsed/c.interval) % len(c.buckets)
 }
 
 // sameSlot 判断两个时间是否落在同一个桶内
 func (c *SlidingTriple) sameSlot(t1, t2 time.Time) bool {
-	return t1.Truncate(c.resolution).Equal(t2.Truncate(c.resolution))
+	return t1.Truncate(c.interval).Equal(t2.Truncate(c.interval))
 }
 
 // Export 到处统计数据
 func (c *SlidingTriple) Export(ts ...time.Duration) map[string]any {
 	result := make(map[string]any, len(ts)+3)
 	result["Window"] = c.window.String()
-	result["Resolution"] = c.resolution.String()
+	result["Resolution"] = c.interval.String()
 
 	success, fail, cost := c.TotalTriple()
 	result["All"] = map[string]any{

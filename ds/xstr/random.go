@@ -16,6 +16,9 @@ const (
 
 	// TableAlpha 所有字母的合集
 	TableAlpha Table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+	// TableNum 所有数字的集合
+	TableNum Table = "0123456789"
 )
 
 type Table string

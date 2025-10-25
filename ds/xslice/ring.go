@@ -85,7 +85,6 @@ func (r *Ring[T]) Range(fn func(v T) bool) {
 	}
 
 	// 容量满的情况下
-
 	for i := r.index; i < r.caption; i++ {
 		if !fn(r.values[i]) {
 			return

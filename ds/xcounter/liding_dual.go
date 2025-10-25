@@ -10,16 +10,16 @@ import (
 )
 
 // NewSlidingDual 创建一个滑动窗口计数器
-func NewSlidingDual(window, resolution time.Duration) *SlidingDual {
-	if resolution <= 0 {
-		resolution = time.Second
+func NewSlidingDual(window, interval time.Duration) *SlidingDual {
+	if interval <= 0 {
+		interval = time.Second
 	}
-	if window < resolution {
-		window = resolution
+	if window < interval {
+		window = interval
 	}
-	size := int(window / resolution)
+	size := int(window / interval)
 	return &SlidingDual{
-		resolution: resolution,
+		resolution: interval,
 		window:     window,
 		buckets:    make([]bucket2, size),
 		start:      time.Now(),

@@ -17,7 +17,9 @@ import (
 func Dump(value any) template.HTML {
 	var bs strings.Builder
 	bs.WriteString("<pre class='x-dump'>\n")
-	bs.WriteString("<span style='color:red'>Input Type: " + fmt.Sprintf("%T", value) + "</span>\n")
+	tp := fmt.Sprintf("%T", value)
+	tp = strings.ReplaceAll(tp, "interface {}", "any")
+	bs.WriteString("<span style='color:red'>Input Type: " + tp + "</span>\n")
 	bs.WriteString(varDump(value))
 	bs.WriteString("</pre>")
 	return template.HTML(bs.String())
