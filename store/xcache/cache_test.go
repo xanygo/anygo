@@ -14,10 +14,12 @@ import (
 )
 
 func testCache(t *testing.T, c Cache[string, int]) {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	checkNotExists := func(t *testing.T) {
+		t.Helper()
 		got1, err1 := c.Get(ctx, "k1")
 		xt.Equal(t, 0, got1)
 		xt.ErrorIs(t, err1, xerror.NotFound)

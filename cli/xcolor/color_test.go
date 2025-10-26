@@ -4,8 +4,17 @@
 
 package xcolor
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+
+	"github.com/xanygo/anygo/xt"
+)
 
 func TestBlack(t *testing.T) {
-	Red("hello")
+	str := fmt.Sprintf("hello %s", "world")
+	Red(str)
+	xt.NotEmpty(t, RedString(str))
+	HiRed(str)
+	BgHiRed(str)
 }

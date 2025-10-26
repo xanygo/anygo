@@ -32,8 +32,8 @@ func Output() io.Writer {
 	return val.(io.Writer)
 }
 
-func DisableColor() {
-	noColor = true
+func SetColorable(enable bool) {
+	noColor = !enable
 }
 
 func New(ids ...Code) *Color {
@@ -66,6 +66,9 @@ func (c *Color) Add(code ...Code) {
 
 func (c *Color) Fprintf(w io.Writer, format string, a ...any) (n int, err error) {
 	if noColor {
+		if len(a) == 0 {
+			return io.WriteString(w, format)
+		}
 		return fmt.Fprintf(w, format, a...)
 	}
 
@@ -81,6 +84,18 @@ func (c *Color) Fprintf(w io.Writer, format string, a ...any) (n int, err error)
 	bf.Write(c.end)
 
 	return w.Write(bf.Bytes())
+}
+
+func (c *Color) String(txt string) string {
+	if noColor {
+		return txt
+	}
+	bf := bp.Get()
+	defer bp.Put(bf)
+	bf.Write(c.begin)
+	bf.WriteString(txt)
+	bf.Write(c.end)
+	return bf.String()
 }
 
 var bp = xsync.NewBytesBufferPool(18 * 1024)
@@ -133,6 +148,9 @@ func (c *Color) Println(a ...any) (n int, err error) {
 }
 
 func (c *Color) Sprintf(format string, a ...any) string {
+	if len(a) == 0 {
+		return c.String(format)
+	}
 	bf := bp.Get()
 	defer bp.Put(bf)
 	c.Fprintf(bf, format, a...)
@@ -144,6 +162,39 @@ func (c *Color) Sprint(a ...any) string {
 	defer bp.Put(bf)
 	c.Fprint(bf, a...)
 	return bf.String()
+}
+
+func (c *Color) SprintFunc() func(a ...any) string {
+	return func(a ...any) string {
+		if len(a) == 0 {
+			return ""
+		}
+		return c.String(fmt.Sprint(a...))
+	}
+}
+
+func (c *Color) SprintfFunc(format string) func(a ...any) string {
+	return func(a ...any) string {
+		if len(a) == 0 {
+			return c.String(format)
+		}
+		return c.String(fmt.Sprintf(format, a...))
+	}
+}
+
+func (c *Color) FprintlnFunc(w io.Writer) func(a ...any) (n int, err error) {
+	return func(a ...any) (n int, err error) {
+		return c.Fprintln(w, a...)
+	}
+}
+
+func (c *Color) PrintfLnFunc(format string) func(a ...any) (n int, err error) {
+	return func(a ...any) (n int, err error) {
+		if len(a) == 0 {
+			return c.Println(format)
+		}
+		return c.Println(fmt.Sprintf(format, a...))
+	}
 }
 
 var cache = &sync.Map{}
@@ -159,5 +210,5 @@ func getByID(id Code) *Color {
 }
 
 func printfln(c *Color, format string, a ...any) {
-	c.Println(fmt.Sprintf(format, a...))
+	c.PrintfLnFunc(format)(a...)
 }

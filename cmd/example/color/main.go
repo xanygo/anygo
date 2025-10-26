@@ -4,7 +4,11 @@
 
 package main
 
-import "github.com/xanygo/anygo/cli/xcolor"
+import (
+	"fmt"
+
+	"github.com/xanygo/anygo/cli/xcolor"
+)
 
 func main() {
 	xcolor.BgBlack("BgBlack")
@@ -24,4 +28,8 @@ func main() {
 	xcolor.Magenta("Magenta")
 	xcolor.Cyan("Cyan")
 	xcolor.White("White")
+
+	fmt.Println(xcolor.BgGreenString("hello %q", "world"))
+	c := xcolor.New(xcolor.CodeBgHiGreen, xcolor.CodeFgHiRed)
+	c.Println("hello BgHiGreen FgHiRed")
 }

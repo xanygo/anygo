@@ -55,18 +55,18 @@ func BgHi{{.Color}}(format string, a ...any) {
 }
 
 func {{.Color}}String(format string, a ...any) string {
-	return getByID(CodeFg{{.Color}}).Sprintf(format, a...)
+	return getByID(CodeFg{{.Color}}).SprintfFunc(format)(a...)
 }
 
 func Hi{{.Color}}String(format string, a ...any) string {
-	return getByID(CodeFgHi{{.Color}}).Sprintf(format, a...)
+	return getByID(CodeFgHi{{.Color}}).SprintfFunc(format)(a...)
 }
 
 func Bg{{.Color}}String(format string, a ...any) string {
-	return getByID(CodeBg{{.Color}}).Sprintf(format, a...)
+	return getByID(CodeBg{{.Color}}).SprintfFunc(format)(a...)
 }
 
 func BgHi{{.Color}}String(format string, a ...any) string {
-	return getByID(CodeBgHi{{.Color}}).Sprintf(format, a...)
+	return getByID(CodeBgHi{{.Color}}).SprintfFunc(format)(a...)
 }
 `

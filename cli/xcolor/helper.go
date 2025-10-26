@@ -19,19 +19,19 @@ func BgHiBlack(format string, a ...any) {
 }
 
 func BlackString(format string, a ...any) string {
-	return getByID(CodeFgBlack).Sprintf(format, a...)
+	return getByID(CodeFgBlack).SprintfFunc(format)(a...)
 }
 
 func HiBlackString(format string, a ...any) string {
-	return getByID(CodeFgHiBlack).Sprintf(format, a...)
+	return getByID(CodeFgHiBlack).SprintfFunc(format)(a...)
 }
 
 func BgBlackString(format string, a ...any) string {
-	return getByID(CodeBgBlack).Sprintf(format, a...)
+	return getByID(CodeBgBlack).SprintfFunc(format)(a...)
 }
 
 func BgHiBlackString(format string, a ...any) string {
-	return getByID(CodeBgHiBlack).Sprintf(format, a...)
+	return getByID(CodeBgHiBlack).SprintfFunc(format)(a...)
 }
 
 func Red(format string, a ...any) {
@@ -51,19 +51,19 @@ func BgHiRed(format string, a ...any) {
 }
 
 func RedString(format string, a ...any) string {
-	return getByID(CodeFgRed).Sprintf(format, a...)
+	return getByID(CodeFgRed).SprintfFunc(format)(a...)
 }
 
 func HiRedString(format string, a ...any) string {
-	return getByID(CodeFgHiRed).Sprintf(format, a...)
+	return getByID(CodeFgHiRed).SprintfFunc(format)(a...)
 }
 
 func BgRedString(format string, a ...any) string {
-	return getByID(CodeBgRed).Sprintf(format, a...)
+	return getByID(CodeBgRed).SprintfFunc(format)(a...)
 }
 
 func BgHiRedString(format string, a ...any) string {
-	return getByID(CodeBgHiRed).Sprintf(format, a...)
+	return getByID(CodeBgHiRed).SprintfFunc(format)(a...)
 }
 
 func Green(format string, a ...any) {
@@ -83,19 +83,19 @@ func BgHiGreen(format string, a ...any) {
 }
 
 func GreenString(format string, a ...any) string {
-	return getByID(CodeFgGreen).Sprintf(format, a...)
+	return getByID(CodeFgGreen).SprintfFunc(format)(a...)
 }
 
 func HiGreenString(format string, a ...any) string {
-	return getByID(CodeFgHiGreen).Sprintf(format, a...)
+	return getByID(CodeFgHiGreen).SprintfFunc(format)(a...)
 }
 
 func BgGreenString(format string, a ...any) string {
-	return getByID(CodeBgGreen).Sprintf(format, a...)
+	return getByID(CodeBgGreen).SprintfFunc(format)(a...)
 }
 
 func BgHiGreenString(format string, a ...any) string {
-	return getByID(CodeBgHiGreen).Sprintf(format, a...)
+	return getByID(CodeBgHiGreen).SprintfFunc(format)(a...)
 }
 
 func Yellow(format string, a ...any) {
@@ -115,19 +115,19 @@ func BgHiYellow(format string, a ...any) {
 }
 
 func YellowString(format string, a ...any) string {
-	return getByID(CodeFgYellow).Sprintf(format, a...)
+	return getByID(CodeFgYellow).SprintfFunc(format)(a...)
 }
 
 func HiYellowString(format string, a ...any) string {
-	return getByID(CodeFgHiYellow).Sprintf(format, a...)
+	return getByID(CodeFgHiYellow).SprintfFunc(format)(a...)
 }
 
 func BgYellowString(format string, a ...any) string {
-	return getByID(CodeBgYellow).Sprintf(format, a...)
+	return getByID(CodeBgYellow).SprintfFunc(format)(a...)
 }
 
 func BgHiYellowString(format string, a ...any) string {
-	return getByID(CodeBgHiYellow).Sprintf(format, a...)
+	return getByID(CodeBgHiYellow).SprintfFunc(format)(a...)
 }
 
 func Blue(format string, a ...any) {
@@ -147,19 +147,19 @@ func BgHiBlue(format string, a ...any) {
 }
 
 func BlueString(format string, a ...any) string {
-	return getByID(CodeFgBlue).Sprintf(format, a...)
+	return getByID(CodeFgBlue).SprintfFunc(format)(a...)
 }
 
 func HiBlueString(format string, a ...any) string {
-	return getByID(CodeFgHiBlue).Sprintf(format, a...)
+	return getByID(CodeFgHiBlue).SprintfFunc(format)(a...)
 }
 
 func BgBlueString(format string, a ...any) string {
-	return getByID(CodeBgBlue).Sprintf(format, a...)
+	return getByID(CodeBgBlue).SprintfFunc(format)(a...)
 }
 
 func BgHiBlueString(format string, a ...any) string {
-	return getByID(CodeBgHiBlue).Sprintf(format, a...)
+	return getByID(CodeBgHiBlue).SprintfFunc(format)(a...)
 }
 
 func Magenta(format string, a ...any) {
@@ -179,19 +179,19 @@ func BgHiMagenta(format string, a ...any) {
 }
 
 func MagentaString(format string, a ...any) string {
-	return getByID(CodeFgMagenta).Sprintf(format, a...)
+	return getByID(CodeFgMagenta).SprintfFunc(format)(a...)
 }
 
 func HiMagentaString(format string, a ...any) string {
-	return getByID(CodeFgHiMagenta).Sprintf(format, a...)
+	return getByID(CodeFgHiMagenta).SprintfFunc(format)(a...)
 }
 
 func BgMagentaString(format string, a ...any) string {
-	return getByID(CodeBgMagenta).Sprintf(format, a...)
+	return getByID(CodeBgMagenta).SprintfFunc(format)(a...)
 }
 
 func BgHiMagentaString(format string, a ...any) string {
-	return getByID(CodeBgHiMagenta).Sprintf(format, a...)
+	return getByID(CodeBgHiMagenta).SprintfFunc(format)(a...)
 }
 
 func Cyan(format string, a ...any) {
@@ -211,19 +211,19 @@ func BgHiCyan(format string, a ...any) {
 }
 
 func CyanString(format string, a ...any) string {
-	return getByID(CodeFgCyan).Sprintf(format, a...)
+	return getByID(CodeFgCyan).SprintfFunc(format)(a...)
 }
 
 func HiCyanString(format string, a ...any) string {
-	return getByID(CodeFgHiCyan).Sprintf(format, a...)
+	return getByID(CodeFgHiCyan).SprintfFunc(format)(a...)
 }
 
 func BgCyanString(format string, a ...any) string {
-	return getByID(CodeBgCyan).Sprintf(format, a...)
+	return getByID(CodeBgCyan).SprintfFunc(format)(a...)
 }
 
 func BgHiCyanString(format string, a ...any) string {
-	return getByID(CodeBgHiCyan).Sprintf(format, a...)
+	return getByID(CodeBgHiCyan).SprintfFunc(format)(a...)
 }
 
 func White(format string, a ...any) {
@@ -243,18 +243,18 @@ func BgHiWhite(format string, a ...any) {
 }
 
 func WhiteString(format string, a ...any) string {
-	return getByID(CodeFgWhite).Sprintf(format, a...)
+	return getByID(CodeFgWhite).SprintfFunc(format)(a...)
 }
 
 func HiWhiteString(format string, a ...any) string {
-	return getByID(CodeFgHiWhite).Sprintf(format, a...)
+	return getByID(CodeFgHiWhite).SprintfFunc(format)(a...)
 }
 
 func BgWhiteString(format string, a ...any) string {
-	return getByID(CodeBgWhite).Sprintf(format, a...)
+	return getByID(CodeBgWhite).SprintfFunc(format)(a...)
 }
 
 func BgHiWhiteString(format string, a ...any) string {
-	return getByID(CodeBgHiWhite).Sprintf(format, a...)
+	return getByID(CodeBgHiWhite).SprintfFunc(format)(a...)
 }
 
