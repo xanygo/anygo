@@ -334,10 +334,8 @@ func (a *AesOFB) Encrypt(src []byte) ([]byte, error) {
 		_ = w.Close()
 		return nil, err
 	}
-	if err = w.Close(); err != nil {
-		return nil, err
-	}
-	return bf.Bytes(), nil
+	err = w.Close()
+	return bf.Bytes(), err
 }
 
 func (a *AesOFB) Decrypt(src []byte) ([]byte, error) {

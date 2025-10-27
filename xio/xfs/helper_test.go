@@ -11,7 +11,7 @@ import (
 )
 
 func TestExists(t *testing.T) {
-	ok1, err1 := Exists("file.go")
+	ok1, err1 := Exists("helper.go")
 	xt.True(t, ok1)
 	xt.NoError(t, err1)
 
