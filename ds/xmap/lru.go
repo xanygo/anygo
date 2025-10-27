@@ -97,11 +97,13 @@ func (lru *LRU[K, V]) Clear() {
 	lru.mux.Unlock()
 }
 
+// Keys 返回所有的 key，已按照使用时间排序，最近使用的排在前面
 func (lru *LRU[K, V]) Keys() []K {
 	lru.mux.Lock()
 	keys := make([]K, 0, len(lru.data))
-	for k := range lru.data {
-		keys = append(keys, k)
+	for el := lru.list.Front(); el != nil; el = el.Next() {
+		val := el.Value.(*lruValue[K, V])
+		keys = append(keys, val.Key)
 	}
 	lru.mux.Unlock()
 	return keys
@@ -128,4 +130,25 @@ func (lru *LRU[K, V]) Len() int {
 type lruValue[K comparable, V any] struct {
 	Key  K
 	Data V
+}
+
+type LRUReader[K string, V any] struct {
+	New   func(key K) V
+	Store *LRU[K, V]
+	mux   sync.Mutex
+}
+
+func (lr *LRUReader[K, V]) Get(key K) V {
+	if val, ok := lr.Store.Get(key); ok {
+		return val
+	}
+	lr.mux.Lock()
+	defer lr.mux.Unlock()
+	val := lr.New(key)
+	lr.Store.Set(key, val)
+	return val
+}
+
+func (lr *LRUReader[K, V]) Delete(keys ...K) {
+	lr.Store.Delete(keys...)
 }

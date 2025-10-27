@@ -124,3 +124,20 @@ func (sr *StoredResponse) Write(w http.ResponseWriter) {
 func (sr *StoredResponse) CreateTime() time.Time {
 	return time.Unix(sr.CreateAt, 0)
 }
+
+// FetchResponse 将 response 返回给传入的 rr
+//
+// 注意：传入的 rr 应该是已初始化的: rr := &http.Response{}
+func FetchResponse(rr *http.Response) HandlerFunc {
+	return func(ctx context.Context, resp *http.Response) error {
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		resp.Body = io.NopCloser(bytes.NewBuffer(body))
+		*rr = *resp
+		rr.Body = io.NopCloser(bytes.NewBuffer(body))
+		return nil
+	}
+}

@@ -152,13 +152,13 @@ func Error(w http.ResponseWriter, r *http.Request, code int, title string, error
 		"Message":    error,
 		"GoHomeText": "Go to Homepage",
 	}
-	if r.URL.Path == "/" {
+	if code != http.StatusNotFound || r.URL.Path == "/" {
 		data["GoHomeText"] = ""
 	}
-	bf := &bytes.Buffer{}
-	_ = errTpl.Execute(bf, data)
+
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(code)
-	_, _ = w.Write(bf.Bytes())
+	_ = errTpl.Execute(w, data)
 }
 
 // TextError 封装标准库 http.Error，若 context 已是 logContext,则将 code 和 error都记录到日志字段里去

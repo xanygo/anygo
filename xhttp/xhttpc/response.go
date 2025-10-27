@@ -28,9 +28,9 @@ type Response struct {
 
 func (resp *Response) String() string {
 	if resp.resp == nil {
-		return "HTTPResponse"
+		return "FetchResponse"
 	}
-	return "HTTPResponse:" + resp.resp.Status
+	return "FetchResponse:" + resp.resp.Status
 }
 
 func (resp *Response) LoadFrom(ctx context.Context, req xrpc.Request, node *xnet.ConnNode, opt xoption.Reader) error {

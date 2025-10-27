@@ -37,32 +37,19 @@ func (lf LookupIPFunc) LookupIP(ctx context.Context, network string, host string
 	return lf(ctx, network, host)
 }
 
-var defaultResolver = &xsync.OnceInit[Resolver]{
-	New: func() Resolver {
-		return &ResolverImpl{}
-	},
-}
-
-func DefaultResolver() Resolver {
-	return defaultResolver.Load()
-}
-
-func SetDefaultResolver(r Resolver) {
-	defaultResolver.Store(r)
-}
-
 var globalResolverITs resolverInterceptors
 
-// 在 interceptor.go 里统一用 RegisterIntercotor 注册
+// 在 interceptor.go 里统一用 WithInterceptor 注册
 func registerResolverIT(its ...*ResolverInterceptor) {
 	globalResolverITs = append(globalResolverITs, its...)
 }
 
-// LookupIP 将域名解析为 IP 地址列表
+// LookupIP 使用 DefaultResolver() 将域名解析为 IP 地址列表,会触发 ResolverInterceptor
 func LookupIP(ctx context.Context, network string, host string) ([]net.IP, error) {
 	return LookupIPWith(ctx, DefaultResolver(), network, host)
 }
 
+// LookupIPWith 使用指定的 Resolver 将域名解析为 IP 地址列表,会触发 ResolverInterceptor
 func LookupIPWith(ctx context.Context, re Resolver, network string, host string) ([]net.IP, error) {
 	if re == nil {
 		re = DefaultResolver()
@@ -71,16 +58,33 @@ func LookupIPWith(ctx context.Context, re Resolver, network string, host string)
 	return its.Execute(ctx, re.LookupIP, network, host)
 }
 
-// ResolverImpl 默认的 Resolver 实现，带有缓存
-type ResolverImpl struct {
+func ParseIPZone(s string) (net.IP, string) {
+	return internal.ParseIPZone(s)
+}
+
+var defaultResolver = &xsync.OnceInit[Resolver]{
+	New: func() Resolver {
+		return &CachedResolver{}
+	},
+}
+
+// DefaultResolver 获取默认的 Resolver，默认为 CachedResolver
+func DefaultResolver() Resolver {
+	return defaultResolver.Load()
+}
+
+// SetDefaultResolver 修改默认的 Resolver
+func SetDefaultResolver(r Resolver) {
+	defaultResolver.Store(r)
+}
+
+// CachedResolver 默认的 Resolver 实现，带有缓存
+type CachedResolver struct {
 	// Invoker 可选，实际查询名字的组件，当为 nil 时，会使用标准库的 net.DefaultResolver
 	Invoker Resolver
 
-	// Interceptors 可选，拦截器，先注册的先执行
-	Interceptors []*ResolverInterceptor
-
 	// CacheTTL 结果缓存时间,当 > 0 时缓存生效
-	//  若此无有效值，会尝试读取环境变量 AnyGo_Resolver_CaChe_TTL 的值，如  "3s" 表示缓存有效期 3 秒。
+	//  若此无有效值，会尝试读取环境变量 AnyGo_CachedResolver_TTL 的值，如  "3s" 表示缓存有效期 3 秒。
 	//  若上述两者均无有效值，最终会使用默认值 30 秒。
 	//  若值为 -1，则不缓存
 	CacheTTL time.Duration
@@ -96,26 +100,32 @@ type ResolverImpl struct {
 	cacheOnce xsync.OnceDoValue[*xcache.Reader[string, []net.IP]]
 }
 
-// LookupIP Lookup IP
-func (r *ResolverImpl) LookupIP(ctx context.Context, network string, host string) (ips []net.IP, err error) {
+func beforeResolver(host string) (ips []net.IP, err error) {
 	if ip, _ := internal.ParseIPZone(host); ip != nil {
 		return []net.IP{ip}, nil
 	}
-	if host == "dummy" {
+	if host == Dummy {
 		return dummyIPS, nil
+	}
+	return nil, nil
+}
+
+// LookupIP Lookup IP
+func (r *CachedResolver) LookupIP(ctx context.Context, network string, host string) (ips []net.IP, err error) {
+	if ips, _ = beforeResolver(host); ips != nil {
+		return ips, nil
 	}
 	if ttl := r.getTTL(); ttl > 0 {
 		key := network + "@" + host
 		r.getVisitLRU().Set(key, time.Now())
 		r.flushTask.Run(r.doFlush, resolverFlushLife, max(ttl/3, time.Second))
 	}
-	its := resolverInterceptors(r.Interceptors)
-	return its.Execute(ctx, r.lookupIP, network, host)
+	return r.lookupIP(ctx, network, host)
 }
 
 const resolverFlushLife = 5 * time.Minute
 
-func (r *ResolverImpl) lookupIP(ctx context.Context, network string, host string) ([]net.IP, error) {
+func (r *CachedResolver) lookupIP(ctx context.Context, network string, host string) ([]net.IP, error) {
 	cache := r.getCacheOnce()
 	if cache == nil {
 		return r.getStdResolver().LookupIP(ctx, network, host)
@@ -124,23 +134,18 @@ func (r *ResolverImpl) lookupIP(ctx context.Context, network string, host string
 	return cache.Get(ctx, cacheKey)
 }
 
-func (r *ResolverImpl) getStdResolver() Resolver {
+func (r *CachedResolver) getStdResolver() Resolver {
 	if r.Invoker != nil {
 		return r.Invoker
 	}
 	return net.DefaultResolver
 }
 
-// WithInterceptor 注册拦截器
-func (r *ResolverImpl) WithInterceptor(its ...*ResolverInterceptor) {
-	r.Interceptors = append(r.Interceptors, its...)
-}
-
-func (r *ResolverImpl) getVisitLRU() *xmap.LRU[string, time.Time] {
+func (r *CachedResolver) getVisitLRU() *xmap.LRU[string, time.Time] {
 	return r.lastVisitLRU.Do(r.initVisitLRU)
 }
 
-func (r *ResolverImpl) doFlush() {
+func (r *CachedResolver) doFlush() {
 	list := r.getVisitLRU().Map()
 	if len(list) == 0 {
 		return
@@ -159,7 +164,7 @@ func (r *ResolverImpl) doFlush() {
 		start := time.Now()
 		result, err1 := r.getCacheOnce().Flush(ctx, k)
 		if xattr.RunMode() == xattr.ModeDebug {
-			xlog.Debug(ctx, "ResolverImpl.doFlush",
+			xlog.Debug(ctx, "CachedResolver.doFlush",
 				xlog.String("key", k),
 				xlog.Any("result", result),
 				xlog.Any("error", err1),
@@ -169,16 +174,16 @@ func (r *ResolverImpl) doFlush() {
 	}
 }
 
-func (r *ResolverImpl) initVisitLRU() *xmap.LRU[string, time.Time] {
+func (r *CachedResolver) initVisitLRU() *xmap.LRU[string, time.Time] {
 	return xmap.NewLRU[string, time.Time](256)
 }
 
-func (r *ResolverImpl) getCacheOnce() *xcache.Reader[string, []net.IP] {
+func (r *CachedResolver) getCacheOnce() *xcache.Reader[string, []net.IP] {
 	return r.cacheOnce.Do(r.createCacheReader)
 }
 
 // 创建缓存对象：只会被调用一次
-func (r *ResolverImpl) createCacheReader() *xcache.Reader[string, []net.IP] {
+func (r *CachedResolver) createCacheReader() *xcache.Reader[string, []net.IP] {
 	ttl := r.getTTL()
 	if ttl < 0 {
 		return nil
@@ -200,20 +205,20 @@ func (r *ResolverImpl) createCacheReader() *xcache.Reader[string, []net.IP] {
 	return cache
 }
 
-func (r *ResolverImpl) getTTL() time.Duration {
+func (r *CachedResolver) getTTL() time.Duration {
 	if r.CacheTTL != 0 {
 		return r.CacheTTL
 	}
 	return r.getTTLFromEnv()
 }
 
-func (r *ResolverImpl) getTTLFromEnv() time.Duration {
+func (r *CachedResolver) getTTLFromEnv() time.Duration {
 	return envResolverCacheTTL.Load()
 }
 
 var envResolverCacheTTL = &xsync.OnceInit[time.Duration]{
 	New: func() time.Duration {
-		val := os.Getenv("AnyGo_Resolver_CaChe_TTL")
+		val := os.Getenv("AnyGo_CachedResolver_TTL")
 		ts, _ := time.ParseDuration(val)
 		if ts >= time.Millisecond {
 			return ts
@@ -247,6 +252,9 @@ func (r *ResolverInterceptor) Interceptor() {}
 type resolverInterceptors []*ResolverInterceptor
 
 func (rhs resolverInterceptors) Execute(ctx context.Context, invoker LookupIPFunc, network string, host string) (ips []net.IP, err error) {
+	if ips, _ = beforeResolver(host); ips != nil {
+		return ips, nil
+	}
 	lookIdx := -1
 	afterIdx := -1
 	for i := 0; i < len(rhs); i++ {

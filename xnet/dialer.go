@@ -26,9 +26,7 @@ func (df DialContextFunc) DialContext(ctx context.Context, network, address stri
 
 var defaultDialer = &xsync.OnceInit[Dialer]{
 	New: func() Dialer {
-		return &DialerImpl{
-			Timeout: 10 * time.Second,
-		}
+		return &HedgingDialer{}
 	},
 }
 
@@ -41,10 +39,12 @@ func DefaultDialer() Dialer {
 	return defaultDialer.Load()
 }
 
+// DialContext 使用 DefaultDialer 拨号，会触发 DialerInterceptor 相关逻辑
 func DialContext(ctx context.Context, network, address string) (net.Conn, error) {
 	return DialContextWith(ctx, DefaultDialer(), network, address)
 }
 
+// DialContextWith 使用指定的Dialer 拨号，会触发 DialerInterceptor 相关逻辑
 func DialContextWith(ctx context.Context, d Dialer, network, address string) (net.Conn, error) {
 	if d == nil {
 		d = DefaultDialer()
@@ -55,40 +55,31 @@ func DialContextWith(ctx context.Context, d Dialer, network, address string) (ne
 
 var globalDialIts dialerInterceptors
 
-// 在 interceptor.go 里统一用 RegisterIntercotor 注册
+// 在 interceptor.go 里统一用 WithInterceptor 注册
 func registerDialerITs(its ...*DialerInterceptor) {
 	globalDialIts = append(globalDialIts, its...)
 }
 
-// DialerImpl 拨号器的默认实现，已支持 DialerInterceptor
-type DialerImpl struct {
+// HedgingDialer 默认带有请求对冲功能的拨号器
+type HedgingDialer struct {
 	// Invoker 可选，底层拨号器,当为 nil 时，会使用 net.Dialer
 	Invoker Dialer
 
 	// Resolver 可选，dns 解析器，当为 nil 时，会使用 DefaultResolver
 	Resolver Resolver
 
-	// Interceptors 可选，拦截器列表
-	Interceptors []*DialerInterceptor
-
-	// Timeout 可选，超时时间
+	// Timeout 可选，超时时间, 默认为 0 - 不超时
 	Timeout time.Duration
 }
 
-// WithInterceptor register Interceptor
-func (d *DialerImpl) WithInterceptor(its ...*DialerInterceptor) {
-	d.Interceptors = append(d.Interceptors, its...)
-}
-
-func (d *DialerImpl) DialContext(ctx context.Context, network, address string) (conn net.Conn, err error) {
+func (d *HedgingDialer) DialContext(ctx context.Context, network, address string) (conn net.Conn, err error) {
 	if d.Timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, d.Timeout)
 		defer cancel()
 	}
-	its := dialerInterceptors(d.Interceptors)
 
-	conn, err = its.Execute(ctx, d.doDial, network, address, 0)
+	conn, err = d.doDial(ctx, network, address)
 
 	if err != nil {
 		return nil, err
@@ -112,7 +103,7 @@ func splitHostPort(hostPort string) (host string, port string, err error) {
 	return host, port, nil
 }
 
-func (d *DialerImpl) doDial(ctx context.Context, network string, address string) (net.Conn, error) {
+func (d *HedgingDialer) doDial(ctx context.Context, network string, address string) (net.Conn, error) {
 	if address == dummyIP {
 		return nil, errDialDummy
 	}
@@ -122,10 +113,14 @@ func (d *DialerImpl) doDial(ctx context.Context, network string, address string)
 		if err != nil {
 			return nil, err
 		}
-		// 不需要判断 host 已经是一个IP，统一交给 Resolver 去判断
-		ips, err := LookupIPWith(ctx, d.Resolver, string(nt), host)
-		if err != nil {
-			return nil, err
+		var ips []net.IP
+		if ip, _ := ParseIPZone(host); ip != nil {
+			ips = []net.IP{ip}
+		} else {
+			ips, err = LookupIPWith(ctx, d.Resolver, string(nt), host)
+			if err != nil {
+				return nil, err
+			}
 		}
 		return d.dialHedging(ctx, network, ips, port)
 	}
@@ -134,7 +129,7 @@ func (d *DialerImpl) doDial(ctx context.Context, network string, address string)
 
 var zeroDialer = &net.Dialer{}
 
-func (d *DialerImpl) dialStd(ctx context.Context, network string, address string) (net.Conn, error) {
+func (d *HedgingDialer) dialStd(ctx context.Context, network string, address string) (net.Conn, error) {
 	conn, err := zeroDialer.DialContext(ctx, network, address)
 	if err != nil {
 		return nil, err
@@ -142,9 +137,11 @@ func (d *DialerImpl) dialStd(ctx context.Context, network string, address string
 	return NewContextConn(ctx, conn), nil
 }
 
-func (d *DialerImpl) dialHedging(ctx context.Context, network string, ips []net.IP, port string) (net.Conn, error) {
-	if err := ctx.Err(); err != nil {
+func (d *HedgingDialer) dialHedging(ctx context.Context, network string, ips []net.IP, port string) (net.Conn, error) {
+	select {
+	case <-ctx.Done():
 		return nil, context.Cause(ctx)
+	default:
 	}
 	hr := &xpp.Hedging[net.Conn]{
 		Main: func(ctx context.Context) (net.Conn, error) {

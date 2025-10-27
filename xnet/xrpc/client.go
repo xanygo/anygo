@@ -66,6 +66,7 @@ func (cfg config) getService(srv any) (xservice.Service, error) {
 	if cfg.service != nil {
 		return cfg.service, nil
 	}
+
 	if cfg.registry != nil {
 		return xservice.FindServiceWithRegistry(cfg.registry, serviceName)
 	}

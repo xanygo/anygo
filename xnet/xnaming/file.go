@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"os"
 	"strings"
+	"sync"
 
+	"github.com/xanygo/anygo/ds/xmap"
+	"github.com/xanygo/anygo/xio/xfs"
 	"github.com/xanygo/anygo/xnet"
 )
 
@@ -27,17 +29,56 @@ var _ Naming = (*FileStore)(nil)
 //	# backup node
 //	10.0.0.1:9000  # comment
 type FileStore struct {
+	cache *xmap.LRUReader[string, *cachedFile]
+	once  sync.Once
 }
 
 func (f *FileStore) Scheme() string {
 	return "file"
 }
 
+func (f *FileStore) init() {
+	f.cache = &xmap.LRUReader[string, *cachedFile]{
+		New: func(key string) *cachedFile {
+			return &cachedFile{
+				path: key,
+				file: &xfs.CachedReader{
+					Path: key,
+				},
+			}
+		},
+		Store: xmap.NewLRU[string, *cachedFile](1024),
+	}
+}
+
 func (f *FileStore) Lookup(ctx context.Context, idc string, fileName string, param url.Values) ([]xnet.AddrNode, error) {
-	content, err := os.ReadFile(fileName)
+	f.once.Do(f.init)
+	return f.cache.Get(fileName).fetch()
+}
+
+func init() {
+	MustRegister(&FileStore{})
+}
+
+type cachedFile struct {
+	path  string
+	file  *xfs.CachedReader
+	addrs []xnet.AddrNode
+	err   error
+}
+
+func (cf *cachedFile) fetch() ([]xnet.AddrNode, error) {
+	content, fromCache, err := cf.file.ReadFile()
 	if err != nil {
 		return nil, err
 	}
+	if !fromCache {
+		cf.addrs, cf.err = cf.parser(content)
+	}
+	return cf.addrs, cf.err
+}
+
+func (cf *cachedFile) parser(content []byte) ([]xnet.AddrNode, error) {
 	lines := strings.Split(string(content), "\n")
 	nodes := make([]xnet.AddrNode, 0, len(lines))
 	for _, line := range lines {
@@ -46,7 +87,7 @@ func (f *FileStore) Lookup(ctx context.Context, idc string, fileName string, par
 		if line == "" {
 			continue
 		}
-		_, _, err = net.SplitHostPort(line)
+		_, _, err := net.SplitHostPort(line)
 		if err != nil {
 			return nil, err
 		}
@@ -57,11 +98,7 @@ func (f *FileStore) Lookup(ctx context.Context, idc string, fileName string, par
 		nodes = append(nodes, node)
 	}
 	if len(nodes) == 0 {
-		return nil, fmt.Errorf("no hostPort found in file %s", fileName)
+		return nil, fmt.Errorf("no hostPort found in file %s", cf.path)
 	}
 	return nodes, nil
-}
-
-func init() {
-	MustRegister(&FileStore{})
 }

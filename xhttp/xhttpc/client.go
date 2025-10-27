@@ -62,7 +62,7 @@ func InvokeWithCodec(ctx context.Context, service any, method string, url string
 	return Invoke(ctx, service, req, handler, opts...)
 }
 
-func Post(ctx context.Context, service any, url string, body io.Reader, ct string, handler HandlerFunc, opts ...xrpc.Option) error {
+func Post(ctx context.Context, service any, url string, ct string, body io.Reader, handler HandlerFunc, opts ...xrpc.Option) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
 	if err != nil {
 		return err
@@ -89,6 +89,65 @@ func SkipCache(ctx context.Context, skip bool) context.Context {
 func isSkipCache(ctx context.Context) bool {
 	val, _ := ctx.Value(ctxKeySkipCache).(bool)
 	return val
+}
+
+var _ Executor = (*http.Client)(nil)
+
+type Executor interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+var _ http.RoundTripper = (*Client)(nil)
+
+// Client 实现了 RoundTripper 的 HTTP Client
+//
+// 该 Client 所有方法都只会发送一次请求，不会处理更高层协议细节，例如重定向、认证或 Cookie。
+// 若需要处理重定向，可以结合 http.Client 使用
+type Client struct {
+	Service any           // 可选，当为空时，会使用 Dummy
+	Opts    []xrpc.Option // 可选，额外的 RPC Client 参数
+}
+
+func (c *Client) getService() any {
+	if c.Service == nil {
+		return xservice.DummyService()
+	}
+	return c.Service
+}
+
+func (c *Client) RoundTrip(req *http.Request) (*http.Response, error) {
+	r := &http.Response{}
+	handler := FetchResponse(r)
+	err := Invoke(req.Context(), c.getService(), req, handler, c.Opts...)
+	return r, err
+}
+
+func (c *Client) Get(ctx context.Context, url string) (*http.Response, error) {
+	r := &http.Response{}
+	handler := FetchResponse(r)
+	err := Get(ctx, c.getService(), url, handler, c.Opts...)
+	return r, err
+}
+
+func (c *Client) Post(ctx context.Context, url string, contentType string, body io.Reader) (*http.Response, error) {
+	r := &http.Response{}
+	handler := FetchResponse(r)
+	err := Post(ctx, c.getService(), url, contentType, body, handler, c.Opts...)
+	return r, err
+}
+
+func (c *Client) PostForm(ctx context.Context, url string, data url.Values) (*http.Response, error) {
+	r := &http.Response{}
+	handler := FetchResponse(r)
+	err := PostForm(ctx, c.getService(), url, data, handler, c.Opts...)
+	return r, err
+}
+
+func (c *Client) PostJSON(ctx context.Context, url string, data any) (*http.Response, error) {
+	r := &http.Response{}
+	handler := FetchResponse(r)
+	err := PostJSON(ctx, c.getService(), url, data, handler, c.Opts...)
+	return r, err
 }
 
 // CacheClient 带有缓存的 HTTP Client

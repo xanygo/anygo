@@ -35,7 +35,7 @@ func NewConn(c net.Conn, its ...*ConnInterceptor) net.Conn {
 
 var globalConnIts connInterceptors
 
-// 在 interceptor.go 里统一用 RegisterIntercotor 注册
+// 在 interceptor.go 里统一用 WithInterceptor 注册
 func registerConnInterceptor(its ...*ConnInterceptor) {
 	globalConnIts = append(globalConnIts, its...)
 }
