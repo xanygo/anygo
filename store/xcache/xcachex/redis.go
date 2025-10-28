@@ -34,6 +34,11 @@ type Redis struct {
 	mSetSha string
 }
 
+func (r *Redis) Has(ctx context.Context, key string) (bool, error) {
+	num, err := r.Client.EXISTS(ctx, r.KeyPrefix+key)
+	return num == 1, err
+}
+
 func (r *Redis) Get(ctx context.Context, key string) (value string, err error) {
 	r.readCnt.Add(1)
 	value, err = r.Client.Get(ctx, r.KeyPrefix+key)

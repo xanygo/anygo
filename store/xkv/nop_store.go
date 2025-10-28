@@ -166,3 +166,7 @@ func (n nopZSet[V]) ZRem(ctx context.Context, members ...V) error {
 func (n NopStorage[V]) Delete(ctx context.Context, keys ...string) error {
 	return nil
 }
+
+func (n NopStorage[V]) Has(ctx context.Context, key string) (bool, error) {
+	return false, nil
+}

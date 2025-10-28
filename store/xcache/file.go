@@ -63,6 +63,23 @@ type File[K comparable, V any] struct {
 	hitCnt    atomic.Uint64
 }
 
+func (fc *File[K, V]) Has(ctx context.Context, key K) (bool, error) {
+	select {
+	case <-ctx.Done():
+		return false, context.Cause(ctx)
+	default:
+	}
+
+	expired, _, err := fc.readByKey(key, false)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return false, nil
+		}
+		return false, err
+	}
+	return !expired, nil
+}
+
 func (fc *File[K, V]) Get(ctx context.Context, key K) (value V, err error) {
 	fc.readCnt.Add(1)
 	defer fc.autoGC()
@@ -246,12 +263,12 @@ func (fc *File[K, V]) cacheFilePath(key K) string {
 	return strings.Join([]string{fp, cacheFileExt}, "")
 }
 
-func (fc *File[K, V]) readByKey(key K, needData bool) (expire bool, data []byte, err error) {
+func (fc *File[K, V]) readByKey(key K, needData bool) (expired bool, data []byte, err error) {
 	fp := fc.cacheFilePath(key)
 	return fc.readByPath(fp, needData)
 }
 
-func (fc *File[K, V]) readByPath(fp string, needData bool) (expire bool, data []byte, err error) {
+func (fc *File[K, V]) readByPath(fp string, needData bool) (expired bool, data []byte, err error) {
 	file, err := os.Open(fp)
 	if err != nil {
 		return true, nil, err
@@ -272,9 +289,9 @@ func (fc *File[K, V]) readByPath(fp string, needData bool) (expire bool, data []
 	if err != nil {
 		return true, nil, err
 	}
-	expire = expireAt < time.Now().Unix()
+	expired = expireAt < time.Now().Unix()
 	if !needData {
-		return expire, nil, nil
+		return expired, nil, nil
 	}
 	// 第二行为创建时间，格式为：ctime=unix时间戳,跳过
 	_, _, err = br.ReadLine()
@@ -282,7 +299,7 @@ func (fc *File[K, V]) readByPath(fp string, needData bool) (expire bool, data []
 		return true, nil, fmt.Errorf("read second line : %w", err)
 	}
 	data, err = io.ReadAll(br)
-	return expire, data, err
+	return expired, data, err
 }
 
 func (fc *File[K, V]) autoGC() {

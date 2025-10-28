@@ -388,3 +388,7 @@ func (t transZSet[V]) ZRem(ctx context.Context, members ...V) error {
 func (tr Transformer[V]) Delete(ctx context.Context, keys ...string) error {
 	return tr.Storage.Delete(ctx, keys...)
 }
+
+func (tr Transformer[V]) Has(ctx context.Context, key string) (bool, error) {
+	return tr.Storage.Has(ctx, key)
+}

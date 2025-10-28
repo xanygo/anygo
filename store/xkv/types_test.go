@@ -24,6 +24,11 @@ func testStorage(t *testing.T, ff xkv.StringStorage) {
 		xt.True(t, found2)
 		xt.NoError(t, err2)
 		xt.Equal(t, "world", got2)
+
+		got3, err3 := ff.Has(context.Background(), "hello")
+		xt.NoError(t, err3)
+		xt.True(t, got3)
+
 		xt.NoError(t, ff.Delete(context.Background(), "hello"))
 	})
 

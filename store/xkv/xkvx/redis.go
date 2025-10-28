@@ -302,3 +302,8 @@ func (kv *RedisStorage) Delete(ctx context.Context, keys ...string) error {
 	_, err := kv.Client.Del(ctx, keys...)
 	return err
 }
+
+func (kv *RedisStorage) Has(ctx context.Context, key string) (bool, error) {
+	num, err := kv.Client.EXISTS(ctx, kv.KeyPrefix+key)
+	return num == 1, err
+}

@@ -137,6 +137,14 @@ type Storage[V any] interface {
 	Hash(key string) Hash[V]
 	Set(key string) Set[V]
 	ZSet(key string) ZSet[V]
+
+	// Has 返回 key 是否存在
+	// 存在：返回 true,nil
+	// 不存在：返回 false,nil
+	// 异常： 返回 false,error (error 不会是 xerror.NotFound)
+	Has(ctx context.Context, key string) (bool, error)
+
+	// Delete 批量删除 key
 	Delete(ctx context.Context, keys ...string) error
 }
 

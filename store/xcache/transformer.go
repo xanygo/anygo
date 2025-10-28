@@ -21,6 +21,10 @@ type Transformer[V any] struct {
 	Codec xcodec.Codec
 }
 
+func (t *Transformer[V]) Has(ctx context.Context, key string) (bool, error) {
+	return t.Cache.Has(ctx, key)
+}
+
 func (t *Transformer[V]) Get(ctx context.Context, key string) (value V, err error) {
 	str, err := t.Cache.Get(ctx, key)
 	if err != nil {

@@ -13,6 +13,12 @@ import (
 
 type (
 	Cache[K comparable, V any] interface {
+		// Has 返回，key 是否存在
+		// 存在：返回 true,nil
+		// 不存在：返回 false,nil
+		// 异常： 返回 false,error (error 不会是 xerror.NotFound)
+		Has(ctx context.Context, key K) (bool, error)
+
 		Getter[K, V]
 		Setter[K, V]
 		Deleter[K]

@@ -647,3 +647,10 @@ func (m *MemoryStore) Delete(ctx context.Context, keys ...string) error {
 	})
 	return nil
 }
+
+func (m *MemoryStore) Has(ctx context.Context, key string) (found bool, err error) {
+	m.withLock(func(db map[string]string, tps map[string]internal.DataType) {
+		_, found = db[key]
+	})
+	return found, nil
+}

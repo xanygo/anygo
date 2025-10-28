@@ -37,6 +37,10 @@ func (fb FileBase) getMetaFilePath() string {
 	return filepath.Join(fb.Dir, "meta")
 }
 
+func (fb FileBase) MetaFileStats() (os.FileInfo, error) {
+	return os.Stat(fb.getMetaFilePath())
+}
+
 func (fb FileBase) SaveMeta(tp DataType) error {
 	fp := fb.getMetaFilePath()
 	old, _ := fb.loadMeta()

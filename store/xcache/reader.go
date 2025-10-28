@@ -46,6 +46,10 @@ func (rd *Reader[K, V]) Read(ctx context.Context, key K) (v V, err error) {
 	return v, err
 }
 
+func (rd *Reader[K, V]) Has(ctx context.Context, key K) (bool, error) {
+	return rd.Cache.Has(ctx, key)
+}
+
 // Get 读取数据，若没有，会先查询
 func (rd *Reader[K, V]) Get(ctx context.Context, key K) (v V, err error) {
 	value, err := rd.Cache.Get(ctx, key)

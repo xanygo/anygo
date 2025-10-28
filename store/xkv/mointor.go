@@ -294,3 +294,9 @@ func (m *Monitor[V]) Delete(ctx context.Context, keys ...string) error {
 	}
 	return err
 }
+
+func (m *Monitor[V]) Has(ctx context.Context, key string) (bool, error) {
+	val, err := m.Store.Has(ctx, key)
+	m.doAfterRead(ctx, key, err)
+	return val, err
+}

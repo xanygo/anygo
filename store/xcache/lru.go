@@ -7,6 +7,7 @@ package xcache
 import (
 	"container/list"
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -42,6 +43,17 @@ type LRU[K comparable, V any] struct {
 	writeCnt  atomic.Uint64
 	deleteCnt atomic.Uint64
 	hitCnt    atomic.Uint64
+}
+
+func (lru *LRU[K, V]) Has(ctx context.Context, key K) (bool, error) {
+	_, err := lru.Get(ctx, key)
+	if err != nil {
+		if errors.Is(err, xerror.NotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 func (lru *LRU[K, V]) Get(_ context.Context, key K) (v V, err error) {

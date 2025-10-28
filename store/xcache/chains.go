@@ -63,6 +63,16 @@ type chains[K comparable, V any] struct {
 	caches []*Chain[K, V]
 }
 
+func (c *chains[K, V]) Has(ctx context.Context, key K) (has bool, err error) {
+	for _, item := range c.caches {
+		has, err = item.Cache.Has(ctx, key)
+		if has {
+			return has, nil
+		}
+	}
+	return false, err
+}
+
 func (c *chains[K, V]) Get(ctx context.Context, key K) (v V, err error) {
 	var errs []error
 	for idx, item := range c.caches {

@@ -66,6 +66,21 @@ func (f *FileStore) doGC() {
 	}
 }
 
+func (f *FileStore) Has(ctx context.Context, key string) (bool, error) {
+	fb := internal.FileBase{
+		Key: key,
+		Dir: f.getDataDir(key),
+	}
+	info, err := fb.MetaFileStats()
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return false, nil
+		}
+		return false, err
+	}
+	return !info.IsDir(), nil
+}
+
 func (f *FileStore) Delete(ctx context.Context, keys ...string) error {
 	errs := make([]error, 0)
 	for _, key := range keys {

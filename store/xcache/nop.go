@@ -23,14 +23,8 @@ type Nop[K comparable, V any] struct {
 	deleteCnt atomic.Uint64
 }
 
-func (n *Nop[K, V]) MSet(ctx context.Context, values map[K]V, ttl time.Duration) error {
-	n.writeCnt.Add(uint64(len(values)))
-	return nil
-}
-
-func (n *Nop[K, V]) MGet(ctx context.Context, keys ...K) (result map[K]V, err error) {
-	n.readCnt.Add(uint64(len(keys)))
-	return nil, nil
+func (n *Nop[K, V]) Has(ctx context.Context, key K) (bool, error) {
+	return false, nil
 }
 
 func (n *Nop[K, V]) Get(ctx context.Context, key K) (value V, err error) {
@@ -46,6 +40,16 @@ func (n *Nop[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration) 
 func (n *Nop[K, V]) Delete(ctx context.Context, keys ...K) error {
 	n.deleteCnt.Add(uint64(len(keys)))
 	return nil
+}
+
+func (n *Nop[K, V]) MSet(ctx context.Context, values map[K]V, ttl time.Duration) error {
+	n.writeCnt.Add(uint64(len(values)))
+	return nil
+}
+
+func (n *Nop[K, V]) MGet(ctx context.Context, keys ...K) (result map[K]V, err error) {
+	n.readCnt.Add(uint64(len(keys)))
+	return nil, nil
 }
 
 func (n *Nop[K, V]) Stats() Stats {

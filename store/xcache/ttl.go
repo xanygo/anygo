@@ -37,6 +37,10 @@ func (tw *TTLWrapper[K, V]) CacheTTL(ctx context.Context, key K, value V) time.D
 	return tw.Fixed
 }
 
+func (tw *TTLWrapper[K, V]) Has(ctx context.Context, key K) (bool, error) {
+	return tw.Cache.Has(ctx, key)
+}
+
 func (tw *TTLWrapper[K, V]) Get(ctx context.Context, key K) (value V, err error) {
 	return tw.Cache.Get(ctx, key)
 }
