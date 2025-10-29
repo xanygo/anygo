@@ -14,6 +14,8 @@ import (
 
 var _ Reader = (*Static)(nil)
 
+// Static 不支持更新的，依次轮询的负载均衡策略
+// 使用场景：测试、在 RPC 请求时，附带指定固定地址列表的场景
 type Static struct {
 	nodes []xnet.AddrNode
 	index atomic.Int32

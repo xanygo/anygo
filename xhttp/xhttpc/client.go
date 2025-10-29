@@ -23,6 +23,16 @@ import (
 	"github.com/xanygo/anygo/xnet/xservice"
 )
 
+type Invoker interface {
+	Invoke(ctx context.Context, service any, req *http.Request, handler HandlerFunc, opts ...xrpc.Option) error
+}
+
+type InvokeFunc func(ctx context.Context, service any, req *http.Request, handler HandlerFunc, opts ...xrpc.Option) error
+
+func (in InvokeFunc) Invoke(ctx context.Context, service any, req *http.Request, handler HandlerFunc, opts ...xrpc.Option) error {
+	return in(ctx, service, req, handler, opts...)
+}
+
 func Invoke(ctx context.Context, service any, req *http.Request, handler HandlerFunc, opts ...xrpc.Option) error {
 	hr := &NativeRequest{
 		Request: req,
@@ -97,6 +107,29 @@ type Executor interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
+// ExecutorToInvoker 将 Executor 转换为 Invoker
+//
+// 使用场景：
+// 默认的 Invoker 是不支持 302 跳转的，在使用 CacheClient 的时候，会有诸多限制，所以若需要跳转，则可以这样：
+//
+//	 hc := &http.Client{
+//	    Transport: &xhttpc.Client{},
+//	 }
+//	 cc := xhttpc.CacheClient{
+//	    Invoker: xhttpc.ExecutorToInvoker(hc),
+//		// ... 其他参数...
+//	 }
+func ExecutorToInvoker(e Executor) Invoker {
+	return InvokeFunc(func(ctx context.Context, service any, req *http.Request, handler HandlerFunc, opts ...xrpc.Option) error {
+		req = req.WithContext(ctx)
+		resp, err := e.Do(req)
+		if err != nil {
+			return err
+		}
+		return handler(ctx, resp)
+	})
+}
+
 var _ http.RoundTripper = (*Client)(nil)
 
 // Client 实现了 RoundTripper 的 HTTP Client
@@ -155,6 +188,7 @@ type CacheClient struct {
 	Cache   xcache.Cache[string, *StoredResponse] // 必填，缓存对象
 	Request *http.Request                         // 必填，请求
 	Key     string                                // 可选，缓存的 key，默认为读取 Request.URL 作为 key
+	Invoker Invoker                               // 可选，用于发送请求的实体
 
 	TTL         time.Duration  // 可选，缓存时间，默认 1 小时
 	PreFlush    time.Duration  // 可选，当缓存数据达到此有效期后，提前异步加载数据，默认为 0.8 * TTL
@@ -293,8 +327,12 @@ func (ci CacheClient) direct(ctx context.Context, decoder xcodec.Decoder, result
 	if !ok1 {
 		hs = append(hs, DecodeBody(decoder, result))
 	}
+	inv := ci.Invoker
+	if inv == nil {
+		inv = InvokeFunc(Invoke)
+	}
 	start := time.Now()
-	err := Invoke(ctx, ci.getService(), ci.Request, Combine(hs...), ci.Opts...)
+	err := inv.Invoke(ctx, ci.getService(), ci.Request, Combine(hs...), ci.Opts...)
 	rd.Cost = time.Since(start)
 	if ok1 {
 		*sr = *rd
