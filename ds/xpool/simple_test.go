@@ -16,11 +16,13 @@ import (
 )
 
 func TestSimple(t *testing.T) {
-	ct1 := xpool.FactoryFunc[*testCloser](func(ctx context.Context) (*testCloser, error) {
-		return &testCloser{
-			id: tid.Add(1),
-		}, nil
-	})
+	ct1 := &testFactory[*testCloser]{
+		new: func(ctx context.Context) (*testCloser, error) {
+			return &testCloser{
+				id: tid.Add(1),
+			}, nil
+		},
+	}
 	p1 := xpool.New[*testCloser](nil, ct1)
 	for i := 0; i < 10; i++ {
 		t.Run(fmt.Sprintf("1_loop_%d", i), func(t *testing.T) {
@@ -42,6 +44,16 @@ func TestSimple(t *testing.T) {
 			v1.Release(xpool.ErrBadEntry) // 放回去的时候标记错误
 		})
 	}
+}
+
+var _ xpool.Factory[io.Closer] = (*testFactory[io.Closer])(nil)
+
+type testFactory[V io.Closer] struct {
+	new func(ctx context.Context) (V, error)
+}
+
+func (t testFactory[V]) New(ctx context.Context) (V, error) {
+	return t.new(ctx)
 }
 
 var _ io.Closer = (*testCloser)(nil)

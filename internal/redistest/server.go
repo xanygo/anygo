@@ -25,6 +25,7 @@ func NewServer() (*Server, error) {
 	return srv, srv.Start()
 }
 
+// Server 用于测试 redis 的功能，依赖版本 redis 8
 type Server struct {
 	rootCtx context.Context
 	stop    context.CancelFunc

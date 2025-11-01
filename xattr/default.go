@@ -101,6 +101,10 @@ func RunMode() Mode {
 	return Default.RunMode()
 }
 
+func IsDebugMode() bool {
+	return RunMode() == ModeDebug
+}
+
 // SetRunMode (全局)设置应用的运行模式，是并发安全的
 func SetRunMode(mode Mode) {
 	Default.SetRunMode(mode)

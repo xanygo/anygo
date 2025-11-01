@@ -15,21 +15,25 @@ import (
 func TestRegisterGroup(t *testing.T) {
 	router := NewRouter()
 	RegisterGroup(router, "/user", &testUserHandler{})
-	xt.Len(t, router.subRoute, 11)
+	xt.Len(t, router.subRoute, 15)
 
 	wantKeys := []string{
 		"GET|/user",
 		"GET|/user/Index",
 
 		"DELETE|/user/",
+		"DELETE|/user/Delete",
 		"DELETE|/user/ByID",
+		"DELETE|/user/DeleteByID",
 
 		"GET|/user/Add",
 		"GET|/user/ByID",
+		"GET|/user/GetByID",
 		"GET|/user/Edit",
 
 		"GET|/user/Search",
 		"POST|/user/",
+		"POST|/user/Post",
 		"POST|/user/Save",
 		"PUT|/user/UpdateStatus",
 	}
@@ -38,8 +42,7 @@ func TestRegisterGroup(t *testing.T) {
 	for _, sr := range router.subRoute {
 		gotKeys = append(gotKeys, sr.UniqKey())
 	}
-	slices.Sort(gotKeys)
-	xt.Equal(t, wantKeys, gotKeys)
+	xt.SliceSortEqual(t, wantKeys, gotKeys)
 }
 
 var _ GroupHandler = (*testUserHandler)(nil)

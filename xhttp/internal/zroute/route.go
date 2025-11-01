@@ -363,10 +363,14 @@ func parserRegexpPattern(pattern string) (string, error) {
 					reg = `[0-9a-zA-Z]+`
 				case "Base36":
 					reg = `[0-9a-z]+`
+				case "Base58":
+					reg = `[1-9A-HJ-NP-Za-km-z]+`
 				case "Base64URL":
 					reg = `[0-9a-zA-Z\-_]+`
 				case "UINT":
 					reg = `0|[1-9][0-9]*`
+				case "INT":
+					reg = `[-]?(0|[1-9][0-9]*)`
 				}
 			}
 			regPatternNew += fmt.Sprintf("(?P<%s>%s)", name, reg)

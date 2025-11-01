@@ -6,6 +6,7 @@ package xhttp
 
 import (
 	"bytes"
+	"encoding/json"
 	"html/template"
 	"net/http"
 	"regexp"
@@ -118,6 +119,19 @@ func notFound(w http.ResponseWriter, r *http.Request) {
 	if internal.HandlerImage404(w, r) {
 		return
 	}
+	if IsAjax(r) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusNotFound)
+		data := map[string]any{
+			"LogID": xlog.FindLogID(r.Context()),
+			"Code":  http.StatusNotFound,
+			"Msg":   http.StatusText(http.StatusNotFound),
+		}
+		bf, _ := json.Marshal(data)
+		_, _ = w.Write(bf)
+		return
+	}
+
 	initErrTplOnce.Do(doInitErrTpl)
 
 	w.WriteHeader(http.StatusNotFound)
@@ -132,7 +146,6 @@ func notFound(w http.ResponseWriter, r *http.Request) {
 }
 
 func Error(w http.ResponseWriter, r *http.Request, code int, title string, error string) {
-	initErrTplOnce.Do(doInitErrTpl)
 	ctx := r.Context()
 	if xlog.IsContext(ctx) {
 		xlog.AddAttr(ctx,
@@ -141,6 +154,19 @@ func Error(w http.ResponseWriter, r *http.Request, code int, title string, error
 			xlog.String("ErrMsg", error),
 		)
 	}
+	if IsAjax(r) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(code)
+		data := map[string]any{
+			"LogID": xlog.FindLogID(r.Context()),
+			"Code":  code,
+			"Msg":   error,
+		}
+		bf, _ := json.Marshal(data)
+		_, _ = w.Write(bf)
+		return
+	}
+	initErrTplOnce.Do(doInitErrTpl)
 
 	if title == "" {
 		title = http.StatusText(code)

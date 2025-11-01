@@ -44,15 +44,21 @@ type element[V io.Closer] struct {
 	mux         sync.Mutex // guards following
 	obj         V
 	closed      bool
-	finalClosed bool      // obj.Close has been called
-	lastUsedAt  time.Time // 上次使用时间
-	usageCount  uint64    // 已被使用次数，回池后+1
+	finalClosed bool   // obj.Close has been called
+	usageCount  uint64 // 已被使用次数，回池后+1
+	releaseErr  error
 
 	// guarded by pool.mu
 	inUse bool
 
 	returnedAt time.Time // 返回对象池的时间或者创建时间
 	onPut      []func()  // code (with pool.mu held) run when conn is next returned
+}
+
+func (dc *element[V]) ReleaseErr() error {
+	dc.mux.Lock()
+	defer dc.mux.Unlock()
+	return dc.releaseErr
 }
 
 func (dc *element[V]) ID() uint64 {
@@ -70,7 +76,7 @@ func (dc *element[V]) CreatedAt() time.Time {
 func (dc *element[V]) LastUsedAt() time.Time {
 	dc.mux.Lock()
 	defer dc.mux.Unlock()
-	return dc.lastUsedAt
+	return dc.returnedAt
 }
 
 func (dc *element[V]) UsageCount() uint64 {
@@ -108,6 +114,9 @@ func (dc *element[V]) finalClose() error {
 
 func (dc *element[V]) releaseConn(err error) {
 	dc.pool.putConn(dc, err)
+	dc.mux.Lock()
+	dc.releaseErr = err
+	dc.mux.Unlock()
 }
 
 func (dc *element[V]) expired(timeout time.Duration) bool {
@@ -115,14 +124,6 @@ func (dc *element[V]) expired(timeout time.Duration) bool {
 		return false
 	}
 	return dc.createdAt.Add(timeout).Before(time.Now())
-}
-
-// validateConnection 验证是否有效
-func (dc *element[V]) validateConnection(err error) bool {
-	if dc.validator == nil {
-		return true
-	}
-	return dc.validator.Validate(dc.obj, err) == nil
 }
 
 // the dc.pool's Mutex is held.
@@ -202,7 +203,18 @@ func (p *simple[V]) Get(ctx context.Context) (Entry[V], error) {
 		el, err = p.conn(ctx, strategy)
 		return err
 	})
-	return el, err
+	return p.resultValue(el, err)
+}
+
+func (p *simple[V]) resultValue(e *element[V], err error) (Entry[V], error) {
+	if e == nil {
+		return nil, err
+	}
+	return e, err
+}
+
+func (p *simple[V]) GetIdle(ctx context.Context) (Entry[V], error) {
+	return p.resultValue(p.conn(ctx, cachedOnly))
 }
 
 func (p *simple[V]) Stats() Stats {
@@ -239,6 +251,8 @@ const (
 	// for one to become available (if MaxOpenConns has been reached) or
 	// creates a new database connection.
 	cachedOrNewConn
+
+	cachedOnly
 )
 
 func (p *simple[V]) newElement(obj V) *element[V] {
@@ -289,7 +303,7 @@ func (p *simple[V]) conn(ctx context.Context, strategy connReuseStrategy) (*elem
 
 	// Prefer a free connection, if possible.
 	last := len(p.frees) - 1
-	if strategy == cachedOrNewConn && last >= 0 {
+	if (strategy == cachedOrNewConn || strategy == cachedOnly) && last >= 0 {
 		// Reuse the lowest idle time connection so we can close
 		// connections which remain idle as soon as possible.
 		conn := p.frees[last]
@@ -304,6 +318,9 @@ func (p *simple[V]) conn(ctx context.Context, strategy connReuseStrategy) (*elem
 		p.mu.Unlock()
 
 		return conn, nil
+	} else if strategy == cachedOnly {
+		p.mu.Unlock()
+		return nil, nil
 	}
 
 	// Out of free connections or we were asked not to use one. If we're not
@@ -365,6 +382,7 @@ func (p *simple[V]) conn(ctx context.Context, strategy connReuseStrategy) (*elem
 	p.numOpen++ // optimistically
 	p.mu.Unlock()
 	ci, err := p.creator.New(ctx)
+
 	if err != nil {
 		p.mu.Lock()
 		p.numOpen-- // correct for earlier optimism
@@ -390,11 +408,18 @@ func stack() string {
 	return string(buf[:runtime.Stack(buf[:], false)])
 }
 
+func (p *simple[V]) validateConnection(dc *element[V], err error) bool {
+	if hv, ok := p.creator.(Validator[V]); ok {
+		return hv.Validate(dc.obj, err) == nil
+	}
+	return err == nil
+}
+
 // putConn adds a connection to the pool's free simple.
 // err is optionally the last error that occurred on this connection.
 func (p *simple[V]) putConn(dc *element[V], err error) {
 	if !errors.Is(err, ErrBadEntry) {
-		if !dc.validateConnection(err) {
+		if !p.validateConnection(dc, err) {
 			err = ErrBadEntry
 		}
 	}

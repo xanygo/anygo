@@ -23,9 +23,22 @@ var (
 
 type (
 	Pool[V io.Closer] interface {
+		// Get 获取一个，若有 idle 先使用 idle 的，若没有并且 Open 总个数在运行范围内，则创建一个新的，否则会一直等待
+		//
 		Get(ctx context.Context) (Entry[V], error)
+
+		// GetIdle 可用于调试场景，查看 IDLE 状态的元素，当没有的时候会返回  nil,nil
+		//
+		// 特别注意：通过 Get 或 GetIdle 读取到的 Entry，都需要通过 Put 放回 Pool
+		GetIdle(ctx context.Context) (Entry[V], error)
+
+		// Put 将用过的对象放回 Pool，若 error 被判断为 Entry 对象不可用了，则将对象关闭，否则放回 idle 队列
 		Put(e Entry[V], err error)
+
+		// Close 关闭 Pool
 		Close() error
+
+		// Stats 返回 Pool 的统计状态
 		Stats() Stats
 	}
 
@@ -46,18 +59,15 @@ type Entry[V io.Closer] interface {
 	// 其他 err!=nil 认为是业务异常，照常放回连接池
 	Release(err error)
 
+	// ReleaseErr 上一次 Release 时候的 error
+	ReleaseErr() error
+
 	// Closer 关闭底层对象
 	io.Closer
 }
 
 type Factory[V io.Closer] interface {
 	New(ctx context.Context) (V, error)
-}
-
-type FactoryFunc[V io.Closer] func(ctx context.Context) (V, error)
-
-func (f FactoryFunc[V]) New(ctx context.Context) (V, error) {
-	return f(ctx)
 }
 
 // Validator 校验对象池里的对象是否有效
@@ -175,6 +185,11 @@ type OpenEntry[V io.Closer] struct {
 	pool       Putter[V]
 	usageCount atomic.Uint64
 	using      atomic.Bool
+	releaseErr xsync.Value[error]
+}
+
+func (oe *OpenEntry[V]) ReleaseErr() error {
+	return oe.releaseErr.Load()
 }
 
 func (oe *OpenEntry[V]) UpdateUsing() {
@@ -206,6 +221,7 @@ func (oe *OpenEntry[V]) UsageCount() uint64 {
 func (oe *OpenEntry[V]) Release(err error) {
 	if oe.using.CompareAndSwap(true, false) {
 		oe.pool.Put(oe, err)
+		oe.releaseErr.Store(err)
 	}
 }
 

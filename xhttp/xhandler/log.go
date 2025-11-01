@@ -7,6 +7,7 @@ package xhandler
 import (
 	"context"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -182,7 +183,8 @@ func (w *captureWriter) WriteHeader(code int) {
 }
 
 func (w *captureWriter) Write(b []byte) (int, error) {
-	if len(w.body) < 32 && len(b) > 1 && isPrintable(b[0]) && isPrintable(b[1]) {
+	if len(w.body) < 32 && len(b) > 1 && strings.HasPrefix(w.Header().Get("Content-Type"), "text/") &&
+		isPrintable(b[0]) && isPrintable(b[1]) {
 		remain := 32 - len(w.body)
 		if remain > len(b) {
 			remain = len(b)

@@ -223,27 +223,31 @@ func MustCreate[K comparable, V any](pairs ...any) map[K]V {
 	if err != nil {
 		panic(err)
 	}
-
 	return result
 }
 
+// Create 传入 k-v 对，创建 map，若 传入 value == nil，则会当做零值
 func Create[K comparable, V any](pairs ...any) (map[K]V, error) {
 	total := len(pairs)
 	if total%2 != 0 {
 		return nil, fmt.Errorf("invalid map pairs, has an odd number (%d) of elements", total)
 	}
 	result := make(map[K]V, total/2)
-	for i := 0; i < len(pairs); i += 2 {
+	for i := 0; i < total; i += 2 {
 		key := pairs[i]
 		val := pairs[i+1]
 
 		kt, ok1 := key.(K)
 		if !ok1 {
-			return nil, fmt.Errorf("key(%d)=(%T)%#v is not %T", i, key, key, kt)
+			return nil, fmt.Errorf("key(%d)=%#v is not %T", i, key, kt)
 		}
-		vt, ok2 := val.(V)
-		if !ok2 {
-			return nil, fmt.Errorf("value(%d)=(%T)%#v is not %T", i, val, val, vt)
+		var vt V
+		if val != nil {
+			var ok2 bool
+			vt, ok2 = val.(V)
+			if !ok2 {
+				return nil, fmt.Errorf("map[%v]=%#v is not %T", key, val, vt)
+			}
 		}
 		result[kt] = vt
 	}

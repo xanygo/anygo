@@ -56,10 +56,10 @@ type PatternHandler struct {
 // 这个函数签名的注册结果如下：
 //
 //	user.Index        --> GET      /user/ 和 /user/Index
-//	user.Delete       --> DELETE   /user/
-//	user.Post         --> POST     /user/
-//	user.GetByID      --> GET      /user/ByID
-//	user.DeleteByID   --> DELETE   /user/ByID
+//	user.Delete       --> DELETE   /user/ 和 /user/Delete
+//	user.Post         --> POST     /user/ 和 /user/Post
+//	user.GetByID      --> GET      /user/ByID  和 /user/GetByID
+//	user.DeleteByID   --> DELETE   /user/ByID  和 /user/DeleteByID
 //	user.UpdateStatus --> PUT      /user/UpdateStatus
 //	user.Search       --> GET      /user/Search
 //	user.Add          --> GET      /user/Add
@@ -105,10 +105,15 @@ func RegisterGroup(r *Router, prefix string, h GroupHandler, mds ...MiddlewareFu
 			r.handleMethod(method, prefix+metaStr, handler, mds...)
 		}
 
-		name = zroute.StripPrefixMethod(name, method)
-
 		meta["MethodName"] = name
 		metaStr = " meta|" + xmap.Join(meta, ",")
 		r.handleMethod(method, prefix+"/"+name+metaStr, handler, mds...)
+
+		// name = "DeleteByID" ---> shortName = "ByID"   《--  包含 HTTPMethod 前缀的情况
+		// name = "Index"      ---> shortName = "Index"  《--  普通名称
+		shortName := zroute.StripPrefixMethod(name, method)
+		if shortName != name {
+			r.handleMethod(method, prefix+"/"+shortName+metaStr, handler, mds...)
+		}
 	}
 }

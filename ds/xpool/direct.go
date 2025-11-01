@@ -18,6 +18,10 @@ type DirectPool[V io.Closer] struct {
 	numOpened atomic.Int64
 }
 
+func (d *DirectPool[V]) GetIdle(ctx context.Context) (Entry[V], error) {
+	return nil, nil
+}
+
 func (d *DirectPool[V]) Get(ctx context.Context) (Entry[V], error) {
 	item, err := d.Factory.New(ctx)
 	if err != nil {
@@ -51,6 +55,12 @@ var _ GroupPool[groupKey, string, io.Closer] = (*DirectGroup[groupKey, string, i
 type DirectGroup[K GroupKey[T], T comparable, V io.Closer] struct {
 	Factory GroupFactory[K, T, V]
 }
+
+func (dg *DirectGroup[K, T, V]) GetIdle(ctx context.Context, key K) (Entry[V], error) {
+	return nil, nil
+}
+
+func (dg *DirectGroup[K, T, V]) Range(fn func(key T, p Pool[V]) bool) {}
 
 func (dg *DirectGroup[K, T, V]) Get(ctx context.Context, key K) (Entry[V], error) {
 	v, err := dg.Factory.NewWithKey(ctx, key)

@@ -5,14 +5,20 @@
 package xhtml
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"html"
 	"html/template"
 	"io"
+	"io/fs"
 	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"slices"
 	"strings"
 	"sync"
@@ -102,12 +108,26 @@ func (t *TPLRequest) PathHas(sub string) bool {
 	return strings.Contains(t.Request.URL.Path, sub)
 }
 
-func (t *TPLRequest) PathHasPrefix(sub string) bool {
-	return strings.HasPrefix(t.Request.URL.Path, sub)
+func (t *TPLRequest) PathHasPrefix(prefix string) bool {
+	return strings.HasPrefix(t.Request.URL.Path, prefix)
 }
 
-func (t *TPLRequest) PathHasSuffix(sub string) bool {
-	return strings.HasSuffix(t.Request.URL.Path, sub)
+func (t *TPLRequest) EchoPathHasPrefix(prefix string, echo any) any {
+	if strings.HasPrefix(t.Request.URL.Path, prefix) {
+		return echo
+	}
+	return nil
+}
+
+func (t *TPLRequest) PathHasSuffix(suffix string) bool {
+	return strings.HasSuffix(t.Request.URL.Path, suffix)
+}
+
+func (t *TPLRequest) EchoPathHasSuffix(suffix string, echo any) any {
+	if strings.HasSuffix(t.Request.URL.Path, suffix) {
+		return echo
+	}
+	return nil
 }
 
 func (t *TPLRequest) EchoPathHas(sub string, echo any) any {
@@ -115,6 +135,14 @@ func (t *TPLRequest) EchoPathHas(sub string, echo any) any {
 		return echo
 	}
 	return nil
+}
+
+func (t *TPLRequest) PathValue(name string) string {
+	return t.Request.PathValue(name)
+}
+
+func (t *TPLRequest) PathValueHas(name string) bool {
+	return t.Request.PathValue(name) != ""
 }
 
 // FuncMap 用于模版的辅助方法
@@ -143,7 +171,7 @@ var FuncMap = template.FuncMap{
 	// 返回指定长度的可用作 id 的字符串(首字母总是英文字母，其他为字母或数字）， 如 {{ xRandIDN 10 }}
 	"xRandIDN": xstr.RandIdentN,
 
-	// 返回长度为5 的可用作 id 的字符串(首字母总是英文字母，其他为字母或数字）
+	// 返回长度为 5 的可用作 id 的字符串(首字母总是英文字母，其他为字母或数字）
 	"xRandID": func() string {
 		return xstr.RandIdentN(5)
 	},
@@ -272,6 +300,12 @@ var FuncMap = template.FuncMap{
 	"xTrim":      strings.Trim,
 
 	"xnl2br": tplfn.NL2BR,
+
+	// 统计字符串的行数( \n 的个数)，返回值不小于 min
+	"xMinLines": func(min int, str string) int {
+		n := strings.Count(str, "\n") + 1
+		return max(min, n)
+	},
 }
 
 func Dump(w io.Writer, obj any) {
@@ -304,4 +338,85 @@ func init() {
 	SetConst("pid", os.Getpid())
 	SetConst("ppid", os.Getppid())
 	SetConst("startTime", time.Now())
+}
+
+func WithFuncMap(tpl *template.Template) *template.Template {
+	tpl = tpl.Funcs(FuncMap)
+	m1 := make(template.FuncMap, len(AdvancedFuncMap))
+	for key, fn := range AdvancedFuncMap {
+		m1[key] = fn(tpl)
+	}
+	return tpl.Funcs(m1)
+}
+
+// AdvancedFuncMap 支持在模版函数中读取到 Template 对象的更高级的辅助函数
+var AdvancedFuncMap = map[string]func(tpl *template.Template) any{
+	"xRenderEscaped": func(tmpl *template.Template) any {
+		return func(name string, values ...any) (template.HTML, error) {
+			var data any
+			switch len(values) {
+			case 0:
+			case 1:
+				data = values[0]
+			default:
+				return "", errors.New("too many values")
+			}
+			var buf bytes.Buffer
+			if err := tmpl.ExecuteTemplate(&buf, name, data); err != nil {
+				return "", err
+			}
+			return template.HTML(html.EscapeString(buf.String())), nil
+		}
+	},
+}
+
+// WalkParseFS 遍历读取 fsys ，并将符合 pattern 的文件解析
+//
+// pattern: 不能包含目录，有效值，如 *.html
+//
+// 注意：所有的文件名和 define 定义的块，都不应该出现重名
+func WalkParseFS(t *template.Template, fsys fs.FS, root string, patterns ...string) (*template.Template, error) {
+	if len(patterns) == 0 {
+		return nil, errors.New("no pattern")
+	}
+
+	sub, err := fs.Sub(fsys, root)
+	if err != nil {
+		return nil, err
+	}
+	fsys = sub
+	parserOne := func(filename string) error {
+		content, err1 := fs.ReadFile(fsys, filename)
+		if err1 != nil {
+			return err1
+		}
+		tmpl := t.New(path.Base(filename))
+		_, err1 = tmpl.Parse(string(content))
+
+		if err1 == nil || !strings.Contains(filename, "/") {
+			return err1
+		}
+
+		return fmt.Errorf("%v (%s)", err1, filename)
+	}
+
+	err = fs.WalkDir(fsys, ".", func(fp string, d fs.DirEntry, err error) error {
+		if fp == root {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		for _, pattern := range patterns {
+			if ok, _ := path.Match(pattern, path.Base(fp)); !ok {
+				continue
+			}
+			return parserOne(fp)
+		}
+		return nil
+	})
+	return t, err
 }

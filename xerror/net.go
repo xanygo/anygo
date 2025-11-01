@@ -25,6 +25,9 @@ func IsClientNetError(err error) bool {
 	if errors.As(err, &ne) {
 		return true
 	}
+	if errors.Is(err, net.ErrClosed) {
+		return true
+	}
 	var errno syscall.Errno
 	if errors.As(err, &errno) {
 		return true

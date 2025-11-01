@@ -43,7 +43,7 @@ func NewBytesBufferPool(maxCap int) *BytesBufferPool {
 	}
 }
 
-// BytesBufferPool  BytesBuffer 的对象池，
+// BytesBufferPool  *bytes.Buffer 的对象池，
 // 若 buffer 的 caption > maxCap 时，该对象会被丢弃，以避免占用过多内存
 type BytesBufferPool struct {
 	maxCap int
@@ -65,12 +65,12 @@ func (p *BytesBufferPool) Put(bf *bytes.Buffer) {
 // DefaultBytesBufferPool 全局的 BytesBuffer 对象池
 var DefaultBytesBufferPool = NewBytesBufferPool(1 << 20)
 
-// GetBytesBuffer 从全局 BytesBuffer 对象池获取一个新的 Buffer 对象
+// GetBytesBuffer 从全局 BytesBuffer 对象池获取一个新的 *bytes.Buffer 对象
 func GetBytesBuffer() *bytes.Buffer {
 	return DefaultBytesBufferPool.Get()
 }
 
-// PutBytesBuffer 将 Buffer 对象放回全局的 BytesBuffer 对象池
+// PutBytesBuffer 将 *bytes.Buffer  对象放回全局的 BytesBuffer 对象池
 func PutBytesBuffer(bf *bytes.Buffer) {
 	DefaultBytesBufferPool.Put(bf)
 }

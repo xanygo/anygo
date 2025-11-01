@@ -27,19 +27,23 @@ var _ xpool.GroupFactory[xnet.AddrNode, string, *xnet.ConnNode] = (*ConnFactory)
 var _ xpool.Validator[*xnet.ConnNode] = (*ConnFactory)(nil)
 
 type ConnFactory struct {
-	Single func(ctx context.Context) (*xnet.ConnNode, error)
-	Group  func(ctx context.Context, addr xnet.AddrNode) (*xnet.ConnNode, error)
+	Addr    xnet.AddrNode
+	Connect func(ctx context.Context, addr xnet.AddrNode) (*xnet.ConnNode, error)
+}
+
+func (c *ConnFactory) KeyFactory(key xnet.AddrNode) xpool.Factory[*xnet.ConnNode] {
+	return &ConnFactory{
+		Addr:    key,
+		Connect: c.Connect,
+	}
 }
 
 func (c *ConnFactory) New(ctx context.Context) (*xnet.ConnNode, error) {
-	return c.Single(ctx)
+	return c.Connect(ctx, c.Addr)
 }
 
 func (c *ConnFactory) NewWithKey(ctx context.Context, key xnet.AddrNode) (*xnet.ConnNode, error) {
-	if c.Group != nil {
-		return c.Group(ctx, key)
-	}
-	return c.Single(ctx)
+	return c.Connect(ctx, key)
 }
 
 // Validate 验证网络连接是否有效
@@ -117,7 +121,7 @@ func fixOption(opt *xpool.Option) {
 
 func newLong(opt *xpool.Option, cc Connector) ConnGroupPool {
 	fac := &ConnFactory{
-		Group: func(ctx context.Context, addr xnet.AddrNode) (*xnet.ConnNode, error) {
+		Connect: func(ctx context.Context, addr xnet.AddrNode) (*xnet.ConnNode, error) {
 			node, err := Connect(ctx, cc, addr, nil)
 			if node != nil {
 				node.LongPool = true
@@ -130,7 +134,7 @@ func newLong(opt *xpool.Option, cc Connector) ConnGroupPool {
 
 func newShort(opt *xpool.Option, cc Connector) ConnGroupPool {
 	fac := &ConnFactory{
-		Group: func(ctx context.Context, addr xnet.AddrNode) (*xnet.ConnNode, error) {
+		Connect: func(ctx context.Context, addr xnet.AddrNode) (*xnet.ConnNode, error) {
 			return Connect(ctx, cc, addr, nil)
 		},
 	}
