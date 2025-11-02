@@ -91,11 +91,11 @@ type Option struct {
 	MaxLifeTime time.Duration
 
 	// MaxIdleTime 最大空闲等待时间，超过后将被销毁
-	// <=0 时使用默认值 10 分钟
+	// <=0 时使用默认值 5 分钟
 	MaxIdleTime time.Duration
 
 	// MaxPoolIdleTime GroupPool 使用，当超过此时长未被使用后，关闭并清理对应的 Pool
-	// <=0 时使用默认值 10 minute
+	// <=0 时使用默认值 5 minute
 	MaxPoolIdleTime time.Duration
 }
 
@@ -103,9 +103,9 @@ type Option struct {
 func (opt *Option) Normalization() *Option {
 	if opt == nil {
 		return &Option{
-			MaxLifeTime:     30 * time.Hour,
-			MaxIdleTime:     10 * time.Minute,
-			MaxPoolIdleTime: 10 * time.Minute,
+			MaxLifeTime:     30 * time.Minute,
+			MaxIdleTime:     5 * time.Minute,
+			MaxPoolIdleTime: 5 * time.Minute,
 		}
 	}
 	nv := &Option{
@@ -119,13 +119,13 @@ func (opt *Option) Normalization() *Option {
 		nv.MaxIdle = nv.MaxOpen
 	}
 	if nv.MaxLifeTime <= 0 {
-		nv.MaxLifeTime = 30 * time.Hour
+		nv.MaxLifeTime = 30 * time.Minute
 	}
 	if nv.MaxIdleTime <= 0 {
-		nv.MaxIdleTime = 10 * time.Minute
+		nv.MaxIdleTime = 5 * time.Minute
 	}
 	if nv.MaxPoolIdleTime <= 0 {
-		nv.MaxPoolIdleTime = 10 * time.Minute
+		nv.MaxPoolIdleTime = 5 * time.Minute
 	}
 	return nv
 }
@@ -133,6 +133,10 @@ func (opt *Option) Normalization() *Option {
 // Stats Pool's Stats
 type Stats struct {
 	Open bool // 连接池的状态，true-正常，false-已关闭
+
+	MaxOpen     int           // 配置项：最大打开数
+	MaxLifeTime time.Duration // 配置项：最大存活时长
+	MaxIdleTime time.Duration // 配置项：最大空闲时长
 
 	NumOpen int // 当前，已打开的总数
 	InUse   int // 当前，正被使用的总数
@@ -150,6 +154,10 @@ type Stats struct {
 
 func (s Stats) Add(b Stats) Stats {
 	return Stats{
+		MaxOpen:     b.MaxOpen,
+		MaxIdleTime: b.MaxIdleTime,
+		MaxLifeTime: b.MaxLifeTime,
+
 		Open:    s.Open || b.Open,
 		NumOpen: s.NumOpen + b.NumOpen,
 		InUse:   s.InUse + b.InUse,

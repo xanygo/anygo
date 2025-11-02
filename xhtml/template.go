@@ -5,11 +5,9 @@
 package xhtml
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"html"
 	"html/template"
 	"io"
@@ -361,8 +359,9 @@ var AdvancedFuncMap = map[string]func(tpl *template.Template) any{
 			default:
 				return "", errors.New("too many values")
 			}
-			var buf bytes.Buffer
-			if err := tmpl.ExecuteTemplate(&buf, name, data); err != nil {
+			buf := xsync.GetBytesBuffer()
+			defer xsync.PutBytesBuffer(buf)
+			if err := tmpl.ExecuteTemplate(buf, name, data); err != nil {
 				return "", err
 			}
 			return template.HTML(html.EscapeString(buf.String())), nil
@@ -374,7 +373,11 @@ var AdvancedFuncMap = map[string]func(tpl *template.Template) any{
 //
 // pattern: 不能包含目录，有效值，如 *.html
 //
-// 注意：所有的文件名和 define 定义的块，都不应该出现重名
+// 注意：
+//  1. 所有 define 定义的块，全局应该不出现重名，在使用 template 方法渲染的时候，不应该添加其所在目录，
+//     如在 user/index.html 文件中有 {{ define "status.part" }} Ok {{ end }},
+//     不管是在那个目录的那个文件，渲染该块，都不能添加目录： {{ template "status.part" .User }}
+//  2. 使用 template 渲染的时候，需要使用完整的路径，如 {{ template "user/index.html" . }}
 func WalkParseFS(t *template.Template, fsys fs.FS, root string, patterns ...string) (*template.Template, error) {
 	if len(patterns) == 0 {
 		return nil, errors.New("no pattern")
@@ -390,14 +393,9 @@ func WalkParseFS(t *template.Template, fsys fs.FS, root string, patterns ...stri
 		if err1 != nil {
 			return err1
 		}
-		tmpl := t.New(path.Base(filename))
+		tmpl := t.New(filename)
 		_, err1 = tmpl.Parse(string(content))
-
-		if err1 == nil || !strings.Contains(filename, "/") {
-			return err1
-		}
-
-		return fmt.Errorf("%v (%s)", err1, filename)
+		return err1
 	}
 
 	err = fs.WalkDir(fsys, ".", func(fp string, d fs.DirEntry, err error) error {

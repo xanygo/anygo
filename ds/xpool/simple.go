@@ -221,6 +221,10 @@ func (p *simple[V]) Stats() Stats {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	st := Stats{
+		MaxOpen:     p.maxOpen,
+		MaxLifeTime: p.maxLifetime,
+		MaxIdleTime: p.maxIdleTime,
+
 		Open:              !p.closed,
 		NumOpen:           p.numOpen,
 		InUse:             p.numOpen - len(p.frees),
@@ -437,6 +441,7 @@ func (p *simple[V]) putConn(dc *element[V], err error) {
 		p.lastPut[dc] = stack()
 	}
 	dc.inUse = false
+	dc.usageCount++
 	dc.returnedAt = time.Now()
 
 	for _, fn := range dc.onPut {
