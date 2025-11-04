@@ -79,7 +79,7 @@ func CutLastNBefore(s string, substr string, n int) (before string) {
 // CutLastNAfter 反向在字符串 s 中查找第 n ( n>=0 ) 个子字符串 ,并返回后面部分
 func CutLastNAfter(s string, substr string, n int) (after string) {
 	index := LastIndexN(s, substr, n)
-	return CutIndexAfter(s, index+len(substr))
+	return CutIndexAfter(s, index)
 }
 
 // CutLastByteN 反向在字符串 s 中查找第 n ( n>=0 ) 个字符(c) ,并拆分为前后两部分

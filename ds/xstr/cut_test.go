@@ -178,3 +178,63 @@ func TestSubstr(t *testing.T) {
 		})
 	}
 }
+
+func TestCutLastNAfter(t *testing.T) {
+	type args struct {
+		s      string
+		substr string
+		n      int
+	}
+	tests := []struct {
+		name      string
+		args      args
+		wantAfter string
+	}{
+		{
+			name: "case 1",
+			args: args{
+				s:      "abc/hello/world",
+				substr: "/",
+				n:      1,
+			},
+			wantAfter: "hello/world",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if gotAfter := CutLastNAfter(tt.args.s, tt.args.substr, tt.args.n); gotAfter != tt.wantAfter {
+				t.Errorf("CutLastNAfter() = %v, want %v", gotAfter, tt.wantAfter)
+			}
+		})
+	}
+}
+
+func TestCutLastNBefore(t *testing.T) {
+	type args struct {
+		s      string
+		substr string
+		n      int
+	}
+	tests := []struct {
+		name       string
+		args       args
+		wantBefore string
+	}{
+		{
+			name: "case 1",
+			args: args{
+				s:      "abc/hello/world",
+				substr: "/",
+				n:      1,
+			},
+			wantBefore: "abc",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if gotBefore := CutLastNBefore(tt.args.s, tt.args.substr, tt.args.n); gotBefore != tt.wantBefore {
+				t.Errorf("CutLastNBefore() = %v, want %v", gotBefore, tt.wantBefore)
+			}
+		})
+	}
+}

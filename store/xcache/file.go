@@ -156,7 +156,7 @@ func (fc *File[K, V]) doSet(key K, value V, ttl time.Duration) error {
 	_, err := os.Stat(dir)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			if err := os.MkdirAll(dir, 0755); err != nil && !errors.Is(err, fs.ErrExist) {
+			if err = os.MkdirAll(dir, 0755); err != nil && !errors.Is(err, fs.ErrExist) {
 				return err
 			}
 		} else {

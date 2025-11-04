@@ -143,6 +143,15 @@ func (t *TPLRequest) PathValueHas(name string) bool {
 	return t.Request.PathValue(name) != ""
 }
 
+func (t *TPLRequest) Path() string {
+	return t.Request.URL.Path
+}
+
+// Dir 当前地址的父目录
+func (t *TPLRequest) Dir() string {
+	return path.Dir(t.Request.URL.Path)
+}
+
 // FuncMap 用于模版的辅助方法
 var FuncMap = template.FuncMap{
 	// 渲染一个 Element 为 HTML 字符串
@@ -209,7 +218,7 @@ var FuncMap = template.FuncMap{
 	// 如 {{ $iter := xEachOfIter "a" "b" "c" }}
 	//  {{ range $index,$item:= .Items }}
 	//    {{ $item.Value}}
-	//    {{ $item.Next }} // 依次输出 "a" "b" "c"
+	//    {{ $iter.Next }} // 依次输出 "a" "b" "c"
 	//  {{ end }}
 	"xEachOfIter": tplfn.EachOfIter,
 
@@ -304,6 +313,17 @@ var FuncMap = template.FuncMap{
 		n := strings.Count(str, "\n") + 1
 		return max(min, n)
 	},
+	"xPathDir": path.Dir,
+	"xPathDirN": func(p string, n int) string {
+		for i := 0; i < n; i++ {
+			p = path.Dir(p)
+		}
+		return p
+	},
+	"xPathClean": path.Clean,
+	"xPathJoin":  path.Join,
+	"xPathBase":  path.Base,
+	"xPathIsAbs": path.IsAbs,
 }
 
 func Dump(w io.Writer, obj any) {

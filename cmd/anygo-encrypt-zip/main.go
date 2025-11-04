@@ -24,8 +24,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/xanygo/anygo/cli/xcolor"
 	"github.com/xanygo/anygo/ds/xhash"
 	"github.com/xanygo/anygo/ds/xstr"
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/ds/xzip"
 	"github.com/xanygo/anygo/xcodec"
 )
@@ -51,6 +53,12 @@ func main() {
 	if *outfile == "" {
 		log.Fatal("-o flag is required")
 	}
+	generateEzFile()
+
+	generateGoFile()
+}
+
+func generateEzFile() {
 	content := createZip()
 	rd, err := zip.NewReader(bytes.NewReader(content), int64(len(content)))
 	assert(err, "zip.NewReader")
@@ -90,15 +98,23 @@ func main() {
 	for idx, name := range names {
 		fmt.Fprintf(os.Stderr, "%s %03d    %s \n", space, idx, name)
 	}
+}
 
-	generateGoFile()
+var msgPrefix = xsync.OnceInit[string]{
+	New: func() string {
+		wd, _ := os.Getwd()
+		wd = xstr.CutLastNAfter(wd, string(filepath.Separator), 2)
+		if len(wd) > 30 {
+			wd = xstr.CutLastNAfter(wd, string(filepath.Separator), 1)
+		}
+		wd = xcolor.CyanString("%30s", wd)
+		txt := fmt.Sprintf("[%d]%s %s : ", os.Getpid(), exeName, wd)
+		return txt
+	},
 }
 
 func getMsgPrefix() string {
-	wd, _ := os.Getwd()
-	wd = xstr.CutLastNAfter(wd, string(filepath.Separator), 3)
-	txt := exeName + fmt.Sprintf("%30s", wd) + " : "
-	return txt
+	return msgPrefix.Load()
 }
 
 func createZip() []byte {
@@ -211,9 +227,15 @@ func generateGoFile() {
 	bf, err := format.Source([]byte(str))
 	assert(err, "Format Go file: "+fileName)
 
+	old, _ := os.ReadFile(fileName)
+
+	if len(old) > 0 && bytes.Equal(old, bf) {
+		fmt.Fprintf(os.Stderr, "%s %-15s %s\n", getMsgPrefix(), fileName, "not changed")
+		return
+	}
+
 	err = os.WriteFile(fileName, bf, 0644)
 	assert(err, "Write Go file")
-
 	space := strings.Repeat(" ", len(exeName))
 	fmt.Fprintln(os.Stderr, space+" generated "+fileName)
 }

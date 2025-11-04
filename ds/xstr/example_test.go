@@ -272,3 +272,13 @@ func ExampleSplitLen() {
 	// Output:
 	// ["he" "ll" "o-" "wo" "rl" "d"]
 }
+
+func ExampleCutLastNAfter() {
+	str := "abc/hello/world"
+	fmt.Println(xstr.CutLastNAfter(str, "/", 0)) // world
+	fmt.Println(xstr.CutLastNAfter(str, "/", 1)) // hello/world
+
+	// Output:
+	// world
+	// hello/world
+}
