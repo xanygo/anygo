@@ -314,3 +314,11 @@ func Chunk[S ~[]E, E any](s S, size int) []S {
 	}
 	return chunks
 }
+
+func Repeat[E any](v E, count int) []E {
+	result := make([]E, count)
+	for i := 0; i < count; i++ {
+		result[i] = v
+	}
+	return result
+}

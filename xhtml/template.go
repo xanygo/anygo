@@ -152,6 +152,14 @@ func (t *TPLRequest) Dir() string {
 	return path.Dir(t.Request.URL.Path)
 }
 
+func (t *TPLRequest) DirN(n int) string {
+	p := t.Request.URL.Path
+	for i := 0; i < n; i++ {
+		p = path.Dir(p)
+	}
+	return p
+}
+
 // FuncMap 用于模版的辅助方法
 var FuncMap = template.FuncMap{
 	// 渲染一个 Element 为 HTML 字符串
@@ -324,6 +332,12 @@ var FuncMap = template.FuncMap{
 	"xPathJoin":  path.Join,
 	"xPathBase":  path.Base,
 	"xPathIsAbs": path.IsAbs,
+	"xTernary": func(ok bool, x any, y any) any {
+		if ok {
+			return x
+		}
+		return y
+	},
 }
 
 func Dump(w io.Writer, obj any) {
