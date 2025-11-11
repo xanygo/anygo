@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/xanygo/anygo/internal/zbase"
+	"github.com/xanygo/anygo/internal/zreflect"
 )
 
 // Get 从 map 中读取指定 key 的值。支持 map 为 nil。
@@ -42,7 +42,7 @@ func GetString[K comparable, V any](m map[K]V, key K) (string, bool) {
 	if !found {
 		return "", false
 	}
-	return zbase.BaseTypeToString(v)
+	return zreflect.BaseTypeToString(v)
 }
 
 func GetInt64[K comparable, V any](m map[K]V, key K) (int64, bool) {
@@ -53,7 +53,7 @@ func GetInt64[K comparable, V any](m map[K]V, key K) (int64, bool) {
 	if !found {
 		return 0, false
 	}
-	return zbase.BaseTypeToInt64(v)
+	return zreflect.BaseTypeToInt64(v)
 }
 
 func GetInt[K comparable, V any](m map[K]V, key K) (int, bool) {

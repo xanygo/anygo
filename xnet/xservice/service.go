@@ -20,9 +20,9 @@ type Service interface {
 	Name() string   // 服务名称
 	String() string // 描述信息，可用于调试打印
 
-	Balancer() xbalance.Reader  // 负载均衡器
-	Connector() xdial.Connector // 拨号器，包括拨号和握手逻辑
-	Pool() xdial.ConnGroupPool  // 网络连接池
+	Balancer() xbalance.Reader      // 负载均衡器
+	Connector() xdial.Connector     // 拨号器，包括拨号和握手逻辑
+	GroupPool() xdial.ConnGroupPool // 网络连接池
 
 	Option() xoption.Reader
 
@@ -61,7 +61,7 @@ func (ds *serviceImpl) Option() xoption.Reader {
 	return ds.opt
 }
 
-func (ds *serviceImpl) Pool() xdial.ConnGroupPool {
+func (ds *serviceImpl) GroupPool() xdial.ConnGroupPool {
 	return ds.pool
 }
 

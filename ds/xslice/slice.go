@@ -248,8 +248,8 @@ func FilterOne[S ~[]E, E any](arr S, filter func(index int, item E) bool) (e E, 
 	return e, false
 }
 
-// MapFunc 使用回调函数 fn 依次对 slice 的元素处理，fn 返回的第二个值为 false 则丢弃该值，否则更新
-func MapFunc[S ~[]E, E any](arr S, fn func(index int, item E) (E, bool)) S {
+// MapFilter 使用回调函数 fn 依次对 slice 的元素处理，fn 返回的第二个值为 false 则丢弃该值，否则更新
+func MapFilter[S ~[]E, E any](arr S, fn func(index int, item E) (E, bool)) S {
 	if len(arr) == 0 {
 		return nil
 	}
@@ -258,6 +258,17 @@ func MapFunc[S ~[]E, E any](arr S, fn func(index int, item E) (E, bool)) S {
 		if nv, ok := fn(i, arr[i]); ok {
 			result = append(result, nv)
 		}
+	}
+	return result
+}
+
+func MapFunc[S ~[]E, E any](arr S, fn func(item E) E) S {
+	if len(arr) == 0 {
+		return nil
+	}
+	result := make(S, len(arr))
+	for i := 0; i < len(arr); i++ {
+		result[i] = fn(arr[i])
 	}
 	return result
 }

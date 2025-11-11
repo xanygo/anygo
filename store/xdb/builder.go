@@ -23,6 +23,7 @@ type Builder interface {
 type Condition struct {
 	builder strings.Builder
 	args    []any
+	err     error
 }
 
 func (c *Condition) Append(op string, str string, args ...any) {
@@ -35,6 +36,15 @@ func (c *Condition) Append(op string, str string, args ...any) {
 	c.args = append(c.args, args...)
 }
 
+func (c *Condition) AppendBuilder(op string, str string, b Builder) {
+	txt, args, err := b.Build()
+	if err != nil {
+		c.err = err
+		return
+	}
+	c.Append(op, str+" "+txt, args...)
+}
+
 func (c *Condition) And(str string, args ...any) {
 	c.Append("AND", str, args...)
 }
@@ -44,7 +54,7 @@ func (c *Condition) Or(str string, args ...any) {
 }
 
 func (c *Condition) Build() (string, []any, error) {
-	return c.builder.String(), c.args, nil
+	return c.builder.String(), c.args, c.err
 }
 
 func EmptyBuilder() Builder {
@@ -156,4 +166,18 @@ func (ib *InsertBuilder) Build() (string, []any, error) {
 	}
 
 	return ib.builder.String(), ib.args, ib.err
+}
+
+var _ Builder = (*InBuilder)(nil)
+
+type InBuilder struct {
+	Value []any
+}
+
+func (in *InBuilder) Build() (string, []any, error) {
+	if len(in.Value) == 0 {
+		return "", nil, errors.New("no value with InBuilder")
+	}
+	txt := strings.Join(xslice.Repeat("?", len(in.Value)), ",")
+	return txt, in.Value, nil
 }

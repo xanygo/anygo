@@ -19,6 +19,10 @@ var (
 	Raw = NewCodec("raw", rawEncode, rawDecode, "application/octet-stream")
 
 	Form = &FormCodec{}
+
+	CSV = CSVCodec{}
+
+	Text = TextCodec{}
 )
 
 type (
@@ -173,13 +177,23 @@ func (f FormCodec) Decode(bf []byte, a any) error {
 	}
 }
 
+// EncodeToString 使用 Encoder 将 obj 编码为 字符串，若 obj 本身就是字符串，则直接返回
 func EncodeToString(enc Encoder, obj any) (string, error) {
-	switch vv := obj.(type) {
-	case string:
-		return vv, nil
-	case []byte:
-		return string(vv), nil
+	rv := reflect.ValueOf(obj)
+	for {
+		if rv.Kind() == reflect.String {
+			return rv.String(), nil
+		} else if rv.Kind() == reflect.Ptr {
+			if rv.IsNil() {
+				return "", nil
+			}
+			rv = rv.Elem()
+		} else {
+			break
+		}
 	}
+
+	// 由于无法区分开 []byte 和 []uint8 ，所以不对 []byte 做特殊处理
 
 	bf, err := enc.Encode(obj)
 	if err != nil {
@@ -188,15 +202,18 @@ func EncodeToString(enc Encoder, obj any) (string, error) {
 	return unsafe.String(unsafe.SliceData(bf), len(bf)), nil
 }
 
+// DecodeFromString 使用 Decoder 将字符串 解码并赋值给 obj，若 obj 本身是字符串类型，则直接赋值
 func DecodeFromString(dec Decoder, str string, obj any) error {
-	switch p := obj.(type) {
-	case *string:
-		*p = str
-		return nil
-	case *[]byte:
-		*p = []byte(str)
+	rv := reflect.ValueOf(obj)
+	if rv.Kind() != reflect.Pointer || rv.IsNil() {
+		return fmt.Errorf("obj must be a non-nil pointer, got %T", obj)
+	}
+	elem := rv.Elem()
+	if elem.Kind() == reflect.String {
+		elem.SetString(str)
 		return nil
 	}
+
 	bf := unsafe.Slice(unsafe.StringData(str), len(str))
 	return Decode(dec, bf, obj)
 }

@@ -27,7 +27,7 @@ import (
 	"github.com/xanygo/anygo/ds/xstr"
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/ds/xurl"
-	"github.com/xanygo/anygo/internal/zbase"
+	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/xhtml/internal/tplfn"
 )
 
@@ -78,7 +78,7 @@ func (t *TPLRequest) NewLink(queryPair ...any) template.URL {
 
 func (t *TPLRequest) EchoQueryEQ(field string, value any, echo any) any {
 	query := t.getQuery()
-	if query.Get(field) == zbase.ToString(value) {
+	if query.Get(field) == zreflect.ToString(value) {
 		return echo
 	}
 	return nil
@@ -94,7 +94,7 @@ func (t *TPLRequest) QueryEQ(queryPair ...any) bool {
 	qs := t.getQuery()
 	for i := 0; i < len(queryPair); i += 2 {
 		key := queryPair[i].(string)
-		value := zbase.ToString(queryPair[i+1])
+		value := zreflect.ToString(queryPair[i+1])
 		if qs.Get(key) != value {
 			return false
 		}

@@ -9,8 +9,9 @@ import (
 	"text/template"
 )
 
+// RenderTemplate 将字符串作为模版渲染
 func RenderTemplate(tmpl string, data any) (string, error) {
-	t, err := template.New("tpl").Parse(tmpl)
+	t, err := template.New("text-template").Option("missingkey=invalid").Parse(tmpl)
 	if err != nil {
 		return "", err
 	}

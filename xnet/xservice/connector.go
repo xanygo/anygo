@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net"
 
 	"github.com/xanygo/anygo/ds/xmetric"
 	"github.com/xanygo/anygo/ds/xoption"
@@ -123,4 +124,32 @@ func (c *connector) tlsHandshake(ctx context.Context, conn *xnet.ConnNode, opt x
 	}
 	conn.AddWrap(tlsConn)
 	return conn, nil
+}
+
+const Network = "xservice"
+
+// DialerFuncWithServiceName 拨号时，直接使用的是 service 的名字作为 address
+func DialerFuncWithServiceName(srv Service) func(ctx context.Context, addr string) (net.Conn, error) {
+	return func(ctx context.Context, _ string) (net.Conn, error) {
+		note, err := xbalance.Pick(ctx, srv.Balancer())
+		if err != nil {
+			return nil, err
+		}
+		return xdial.Connect(ctx, srv.Connector(), *note, srv.Option())
+	}
+}
+
+// DialerFuncWithServiceName2 拨号时，直接使用的是 service 的名字作为 address，但是 service 优先从 reg 中查找
+func DialerFuncWithServiceName2(reg Registry) func(ctx context.Context, addr string) (net.Conn, error) {
+	return func(ctx context.Context, serviceName string) (net.Conn, error) {
+		srv, err := FindServiceWithRegistry(reg, serviceName)
+		if err != nil {
+			return nil, err
+		}
+		note, err := xbalance.Pick(ctx, srv.Balancer())
+		if err != nil {
+			return nil, err
+		}
+		return xdial.Connect(ctx, srv.Connector(), *note, srv.Option())
+	}
 }

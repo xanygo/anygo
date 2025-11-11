@@ -49,9 +49,7 @@ func ResultOf(lastInsertID, rowsAffected int64) driver.Result {
 func LastQueries() []string {
 	mu.Lock()
 	defer mu.Unlock()
-	out := make([]string, len(executedQueries))
-	copy(out, executedQueries)
-	return out
+	return slices.Clone(executedQueries)
 }
 
 // Reset clears expectations and recorded queries.
@@ -148,6 +146,8 @@ func convertToDriverValue(v any) driver.Value {
 	}
 }
 
+var _ driver.Driver = (*Driver)(nil)
+
 // Driver implements driver.Driver
 type Driver struct{}
 
@@ -155,6 +155,8 @@ func (d *Driver) Open(name string) (driver.Conn, error) {
 	// name ignored
 	return &conn{}, nil
 }
+
+var _ driver.Conn = (*conn)(nil)
 
 // conn implements driver.Conn and Prepare/Begin/Close
 type conn struct{}
@@ -169,8 +171,7 @@ func (c *conn) Begin() (driver.Tx, error) {
 	return tx{}, nil
 }
 
-// For context-aware DBs we could implement ConnBeginTx, ExecerContext, etc.
-// But for simple tests these are enough.
+var _ driver.Stmt = (*stmt)(nil)
 
 // stmt implements driver.Stmt
 type stmt struct {
@@ -189,14 +190,16 @@ func (s *stmt) Query(args []driver.Value) (driver.Rows, error) {
 	return querySQL(s.query)
 }
 
-// tx is a no-op tx implementing driver.Tx
+var _ driver.Tx = (*tx)(nil)
+
 type tx struct{}
 
 func (tx) Commit() error { return nil }
 
 func (tx) Rollback() error { return nil }
 
-// rows implements driver.Rows
+var _ driver.Rows = (*rows)(nil)
+
 type rows struct {
 	cols []string
 	data [][]driver.Value
@@ -213,6 +216,7 @@ func (r *rows) Next(dest []driver.Value) error {
 	}
 	row := r.data[r.pos]
 	if len(dest) != len(row) {
+		return fmt.Errorf("want %d destination values, got %d", len(dest), len(row))
 	}
 
 	copy(dest, row)

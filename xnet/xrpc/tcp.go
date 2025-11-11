@@ -155,7 +155,7 @@ func (c *TCP) tryOnce(ctx context.Context, cfg *config, req Request, resp Respon
 		return err
 	}
 
-	entry, errPool := xdial.GroupPoolGet(ctx, service.Pool(), *addr)
+	entry, errPool := xdial.GroupPoolGet(ctx, service.GroupPool(), *addr)
 
 	var conn *xnet.ConnNode
 	if errPool == nil {

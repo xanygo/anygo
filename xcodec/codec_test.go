@@ -54,21 +54,49 @@ func Test_Raw(t *testing.T) {
 }
 
 func TestEncodeToString(t *testing.T) {
-	got1, err1 := EncodeToString(JSON, "hello")
-	xt.NoError(t, err1)
-	xt.Equal(t, "hello", got1)
+	t.Run("string", func(t *testing.T) {
+		got1, err1 := EncodeToString(JSON, "hello")
+		xt.NoError(t, err1)
+		xt.Equal(t, "hello", got1)
 
-	var got2 string
-	err2 := DecodeFromString(JSON, "hello", &got2)
-	xt.NoError(t, err2)
-	xt.Equal(t, "hello", got2)
+		var got2 string
+		err2 := DecodeFromString(JSON, "hello", &got2)
+		xt.NoError(t, err2)
+		xt.Equal(t, "hello", got2)
+	})
 
-	got3, err3 := EncodeToString(JSON, []byte("hello"))
-	xt.NoError(t, err3)
-	xt.Equal(t, "hello", got3)
+	t.Run("bytes", func(t *testing.T) {
+		got3, err3 := EncodeToString(JSON, []byte("hello"))
+		xt.NoError(t, err3)
+		xt.Equal(t, `"aGVsbG8="`, got3)
 
-	var db []byte
-	err4 := DecodeFromString(JSON, "hello", &db)
-	xt.NoError(t, err4)
-	xt.Equal(t, "hello", string(db))
+		var db []byte
+		err4 := DecodeFromString(JSON, `"aGVsbG8="`, &db)
+		xt.NoError(t, err4)
+		xt.Equal(t, "hello", string(db))
+	})
+
+	t.Run("my-string", func(t *testing.T) {
+		type myString string
+		got5, err5 := EncodeToString(JSON, myString("hello"))
+		xt.NoError(t, err5)
+		xt.Equal(t, "hello", got5)
+
+		var s1 myString
+		err6 := DecodeFromString(JSON, `hello`, &s1)
+		xt.NoError(t, err6)
+		xt.Equal(t, "hello", string(s1))
+	})
+	t.Run("my-string-ptr", func(t *testing.T) {
+		type myString string
+		str := myString("hello")
+		got5, err5 := EncodeToString(JSON, &str)
+		xt.NoError(t, err5)
+		xt.Equal(t, "hello", got5)
+
+		var s1 myString
+		err6 := DecodeFromString(JSON, `hello`, &s1)
+		xt.NoError(t, err6)
+		xt.Equal(t, "hello", string(s1))
+	})
 }

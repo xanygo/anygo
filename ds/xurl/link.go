@@ -7,7 +7,7 @@ package xurl
 import (
 	"net/url"
 
-	"github.com/xanygo/anygo/internal/zbase"
+	"github.com/xanygo/anygo/internal/zreflect"
 )
 
 // BaseLink 基于当前已有 url，附加额外参数，生成新连接。
@@ -23,7 +23,7 @@ func BaseLink(base *url.URL, queryPair ...any) string {
 	query := base.Query()
 	for i := 0; i < len(queryPair); i += 2 {
 		key := queryPair[i].(string)
-		value := zbase.ToString(queryPair[i+1])
+		value := zreflect.ToString(queryPair[i+1])
 		if value == "" {
 			query.Del(key)
 		} else {
@@ -44,7 +44,7 @@ func NewLink(base *url.URL, queryPair ...any) string {
 	query := url.Values{}
 	for i := 0; i < len(queryPair); i += 2 {
 		key := queryPair[i].(string)
-		value := zbase.ToString(queryPair[i+1])
+		value := zreflect.ToString(queryPair[i+1])
 		if value != "" {
 			query.Set(key, value)
 		}

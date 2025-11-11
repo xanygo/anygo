@@ -99,6 +99,9 @@ func FindRegistry(name string) (Registry, error) {
 }
 
 func FindServiceWithRegistry(reg Registry, name string) (Service, error) {
+	if reg == nil {
+		return FindService(name)
+	}
 	ser, ok := reg.Find(name)
 	if ok {
 		return ser, nil
@@ -114,7 +117,16 @@ func FindServiceWithRegistry(reg Registry, name string) (Service, error) {
 // 若 name 不包含 / ，从 DefaultRegistry()
 // 若 name 包含 /, 如 other/name, 则先使用 FindRegistry("other") 找到对应的 Registry，然后查找 name
 // 若 name == “dummy”， 则直接返回 DummyService
-func FindService(name string) (Service, error) {
+func FindService(srv any) (Service, error) {
+	var name string
+	switch obj := srv.(type) {
+	case Service:
+		return obj, nil
+	case string:
+		name = obj
+	default:
+		return nil, fmt.Errorf("invalid type: %T", srv)
+	}
 	pre, after, found := strings.Cut(name, "/")
 	if !found {
 		ser, ok := DefaultRegistry().Find(name)

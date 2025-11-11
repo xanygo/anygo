@@ -53,10 +53,10 @@ type testUser1 struct {
 	Name   string            `db:"name"`
 	Enable bool              `db:"enable"`
 	Score  float64           `db:"score"`
-	IDs1   []int             `db:"ids1"`
+	IDs1   []int             `db:"ids1,codec:json"`
 	IDs2   []int             `db:"ids2,codec:json"`
 	IDs3   []int             // 没有定义 db tag，会被忽略
-	Md1    map[string]any    `db:"md1"`
+	Md1    map[string]any    `db:"md1,codec:json"`
 	Md2    map[string]string `db:"md2,codec:json"`
 
 	Bs1 []byte `db:"bs1"`

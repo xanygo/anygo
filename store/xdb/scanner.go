@@ -13,7 +13,7 @@ import (
 	"github.com/xanygo/anygo/ds/xstr"
 	"github.com/xanygo/anygo/ds/xstruct"
 	"github.com/xanygo/anygo/ds/xsync"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/store/xdb/dbcodec"
 )
 
 var tagName = xsync.OnceInit[string]{
@@ -58,6 +58,21 @@ func SetTagName(name string) {
 // 对于 csv 格式，即为使用英文逗号连接的字段，
 // 比如 ID2 []int    `db:"id,codec:csv"` ，在数据库中 查询出来值为 select '1,2,3' as link_ids 。
 func ScanRows[T any](rows *sql.Rows) ([]T, error) {
+	return ScanRowsLimit[T](rows, -1)
+}
+
+func ScanRowsFirst[T any](rows *sql.Rows) (v T, ok bool, err error) {
+	items, err := ScanRowsLimit[T](rows, -1)
+	if err != nil {
+		return v, false, err
+	}
+	if len(items) == 1 {
+		return items[0], true, nil
+	}
+	return v, false, nil
+}
+
+func ScanRowsLimit[T any](rows *sql.Rows, limit int) ([]T, error) {
 	defer rows.Close()
 
 	var result []T
@@ -83,6 +98,9 @@ func ScanRows[T any](rows *sql.Rows) ([]T, error) {
 			return nil, err
 		}
 		result = append(result, item)
+		if limit > 0 && len(result) >= limit {
+			break
+		}
 	}
 
 	if err = rows.Err(); err != nil {
@@ -198,7 +216,7 @@ func scanRowsAsStruct[T any](rows *sql.Rows, cols []string) (T, error) {
 	if len(serializerFields) > 0 {
 		for name, idx := range serializerFields {
 			tag := tags[name]
-			codec := tag.Value("codec")
+			codec := getCodecName(tag)
 			// 从 scanTargets 里取出 sql.NullString
 			sPtr := scanTargets[idx].(*sql.NullString)
 			field := structVal.Field(columnToField[name])
@@ -217,83 +235,32 @@ func scanRowsAsStruct[T any](rows *sql.Rows, cols []string) (T, error) {
 	return v, nil
 }
 
+func getCodecName(tag xstruct.Tag) string {
+	name := tag.Value("codec")
+	if name != "" {
+		return name
+	}
+	return dbcodec.TextName
+}
+
 func unmarshallingField(field reflect.Value, codec string, sPtr *sql.NullString) error {
 	if !sPtr.Valid || sPtr.String == "" {
 		// NULL 或空字符串，跳过或置为零值
 		return nil
 	}
 
-	rawStr := sPtr.String
-	switch codec {
-	case "json", "":
-		ptr := reflect.New(field.Type())
-		if len(rawStr) > 0 {
-			if err := xcodec.DecodeFromString(xcodec.JSON, rawStr, ptr.Interface()); err != nil {
-				return err
-			}
-		}
-		field.Set(ptr.Elem())
-		return nil
-	case "csv":
-		parts := strings.Split(rawStr, ",")
-		slice := reflect.MakeSlice(field.Type(), 0, len(parts))
-		elemType := field.Type().Elem()
-		for idx, p := range parts {
-			elem := reflect.New(elemType).Elem()
-			if err := setFromString(elem, strings.TrimSpace(p)); err != nil {
-				return fmt.Errorf("decode[%d](%q):%w", idx, p, err)
-			}
-			slice = reflect.Append(slice, elem)
-		}
-		field.Set(slice)
-		return nil
-	default:
-		if decoder, ok := codecs[codec]; ok {
-			ptr := reflect.New(field.Type())
-			if err := xcodec.DecodeFromString(decoder, rawStr, ptr.Interface()); err != nil {
-				return err
-			}
-			field.Set(ptr.Elem())
-			return nil
-		}
-		return fmt.Errorf("unsupported codec %q", codec)
+	decoder, err := dbcodec.Find(codec)
+	if err != nil {
+		return err
 	}
+	ptr := reflect.New(field.Type())
+	if err = decoder.Decode(sPtr.String, ptr.Interface()); err != nil {
+		return err
+	}
+	field.Set(ptr.Elem())
+	return nil
 }
-
-var codecs = map[string]xcodec.Codec{}
 
 func isComplexKind(k reflect.Kind) bool {
 	return k == reflect.Struct || k == reflect.Slice || k == reflect.Array || k == reflect.Map || k == reflect.Pointer
-}
-
-func isBasicKind(k reflect.Kind) bool {
-	switch k {
-	case reflect.Bool,
-		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
-		reflect.Float32, reflect.Float64,
-		reflect.String:
-		return true
-	default:
-		return false
-	}
-}
-
-func setFromString(v reflect.Value, s string) error {
-	switch v.Kind() {
-	case reflect.String:
-		v.SetString(s)
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		var x int64
-		_, err := fmt.Sscan(s, &x)
-		v.SetInt(x)
-		return err
-	case reflect.Float32, reflect.Float64:
-		var f float64
-		_, err := fmt.Sscan(s, &f)
-		v.SetFloat(f)
-		return err
-	default:
-	}
-	return nil
 }
