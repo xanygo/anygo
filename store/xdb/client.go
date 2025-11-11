@@ -78,7 +78,7 @@ func (c *Client) PrepareContext(ctx context.Context, query string) (Statement, e
 var _ RowQuerier = (*Client)(nil)
 
 func (c *Client) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
-	return c.db.QueryRowContext(ctx, query)
+	return c.db.QueryRowContext(ctx, query, args...)
 }
 
 var _ io.Closer = (*Client)(nil)

@@ -7,6 +7,7 @@ package xdb
 import (
 	"context"
 	"database/sql"
+	"iter"
 	"log"
 
 	"github.com/xanygo/anygo/safely"
@@ -60,6 +61,21 @@ func QueryMany[T any](ctx context.Context, q Queryer, query string, args ...any)
 		return nil, err
 	}
 	return ScanRows[T](rows)
+}
+
+func QueryManyIter[T any](ctx context.Context, q Queryer, query string, args ...any) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		rows, err := q.QueryContext(ctx, query, args...)
+		if err != nil {
+			var zero T
+			yield(zero, err)
+			return
+		}
+		defer rows.Close()
+		for k, v := range ScanRowsIter[T](rows) {
+			yield(k, v)
+		}
+	}
 }
 
 func QueryOne[T any](ctx context.Context, q Queryer, query string, args ...any) (v T, ok bool, err error) {

@@ -9,13 +9,14 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/ds/xstruct"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb/dbcodec"
 )
 
 // Encode 将结构体或 map 转成 map[string]any，用于 SQL insert
-func Encode(data any) (map[string]any, error) {
+func Encode(data any, cols ...string) (map[string]any, error) {
 	v := reflect.ValueOf(data)
 	if !v.IsValid() {
 		return nil, fmt.Errorf("invalid value: %v", v)
@@ -31,21 +32,21 @@ func Encode(data any) (map[string]any, error) {
 
 	switch v.Kind() {
 	case reflect.Struct:
-		return encodeStruct(v)
+		return encodeStruct(v, cols)
 	case reflect.Map:
-		return encodeMap(v)
+		return encodeMap(v, cols)
 	default:
 		return nil, fmt.Errorf("unsupported type %T", data)
 	}
 }
 
-func EncodeBatch[T any](items ...T) ([]map[string]any, error) {
+func EncodeBatch[T any](items []T, fields ...string) ([]map[string]any, error) {
 	if len(items) == 0 {
 		return nil, errors.New("no value to encode")
 	}
 	result := make([]map[string]any, 0, len(items))
 	for _, item := range items {
-		data, err := Encode(item)
+		data, err := Encode(item, fields...)
 		if err != nil {
 			return nil, err
 		}
@@ -55,9 +56,10 @@ func EncodeBatch[T any](items ...T) ([]map[string]any, error) {
 }
 
 // encodeStruct 处理 struct
-func encodeStruct(v reflect.Value) (map[string]any, error) {
+func encodeStruct(v reflect.Value, fields []string) (map[string]any, error) {
 	t := v.Type()
 	result := make(map[string]any)
+	fieldsLimit := xslice.ToMap(fields, true)
 
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
@@ -74,6 +76,11 @@ func encodeStruct(v reflect.Value) (map[string]any, error) {
 		if _, has := result[name]; has {
 			return nil, fmt.Errorf("duplicate field %q", name)
 		}
+
+		if len(fieldsLimit) > 0 && !fieldsLimit[name] {
+			continue
+		}
+
 		encodedVal, err := encodeStructFieldValue(val, tag)
 		if err != nil {
 			return nil, fmt.Errorf("encode field %q: %w", field.Name, err)
@@ -114,14 +121,19 @@ func encodeStructFieldValue(val any, tag xstruct.Tag) (any, error) {
 }
 
 // encodeMap 处理 map[string]any
-func encodeMap(v reflect.Value) (map[string]any, error) {
+func encodeMap(v reflect.Value, fields []string) (map[string]any, error) {
+	fieldsLimit := xslice.ToMap(fields, true)
 	result := make(map[string]any)
 	for _, k := range v.MapKeys() {
 		val := v.MapIndex(k).Interface()
 		if k.Kind() != reflect.String {
 			return nil, fmt.Errorf("key %#v is not a string", val)
 		}
-		result[k.String()] = val
+		key := k.String()
+		if len(fieldsLimit) > 0 && !fieldsLimit[key] {
+			continue
+		}
+		result[key] = val
 	}
 	return result, nil
 }

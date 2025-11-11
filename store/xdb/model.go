@@ -8,6 +8,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"iter"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xmap"
@@ -28,30 +31,50 @@ func NewMode[T any](client HasDriver) *Model[T] {
 }
 
 type Model[T any] struct {
-	dialect       dialect.Dialect
-	client        HasDriver
+	dialect dialect.Dialect
+	client  HasDriver
+
 	table         string
 	limit, offset int
-	err           error
+	fields        []string        // insert、update 的字段列表
+	updateIgnore  map[string]bool // update 时候忽略的字段列表
+
+	err error
 }
 
 func (m *Model[T]) Reset() *Model[T] {
 	m.limit = 0
 	m.offset = 0
+	m.fields = nil
+	m.updateIgnore = nil
 	return m
 }
 
 func (m *Model[T]) Clone() *Model[T] {
 	return &Model[T]{
-		dialect: m.dialect,
-		client:  m.client,
-		table:   m.table,
-		limit:   m.limit,
-		offset:  m.offset,
-		err:     m.err,
+		dialect:      m.dialect,
+		client:       m.client,
+		table:        m.table,
+		limit:        m.limit,
+		offset:       m.offset,
+		err:          m.err,
+		fields:       slices.Clone(m.fields),
+		updateIgnore: maps.Clone(m.updateIgnore),
 	}
 }
 
+// Fields 设置 insert、update 的字段列表，默认为空时，写入所有字段
+func (m *Model[T]) Fields(fields ...string) *Model[T] {
+	m.fields = fields
+	return m
+}
+
+func (m *Model[T]) UpdateIgnore(fields ...string) *Model[T] {
+	m.updateIgnore = xslice.ToMap(fields, true)
+	return m
+}
+
+// Table 设置表名
 func (m *Model[T]) Table(table string) *Model[T] {
 	m.table = table
 	return m
@@ -72,7 +95,7 @@ func (m *Model[T]) Insert(ctx context.Context, v T) (int64, error) {
 	if m.err != nil {
 		return 0, m.err
 	}
-	kv, err := Encode(v)
+	kv, err := Encode(v, m.fields...)
 	if err != nil {
 		return 0, err
 	}
@@ -110,7 +133,7 @@ func (m *Model[T]) InsertBatch(ctx context.Context, vs ...T) (int64, error) {
 	if len(vs) == 0 {
 		return 0, errors.New("no values")
 	}
-	values, err := EncodeBatch[T](vs...)
+	values, err := EncodeBatch[T](vs, m.fields...)
 	if err != nil {
 		return 0, err
 	}
@@ -149,26 +172,41 @@ func (m *Model[T]) InsertBatch(ctx context.Context, vs ...T) (int64, error) {
 }
 
 func (m *Model[T]) Update(ctx context.Context, v T, where string, args ...any) (int64, error) {
+	return m.doUpdate(ctx, v, m.updateIgnore, where, args...)
+}
+
+func (m *Model[T]) doUpdate(ctx context.Context, v T, ignoreFields map[string]bool, where string, args ...any) (int64, error) {
 	if m.err != nil {
 		return 0, m.err
 	}
 
-	kv, err := Encode(v)
+	kv, err := Encode(v, m.fields...)
 	if err != nil {
 		return 0, err
 	}
 	cols := xmap.Keys(kv)
 
-	where, args, err = m.buildWhere(where, args)
+	assigns := make([]string, 0, len(cols))
+	values := make([]any, 0, len(args))
+	for _, col := range cols {
+		if len(ignoreFields) > 0 && ignoreFields[col] {
+			continue
+		}
+		str := fmt.Sprintf(`%s=%s`, m.dialect.QuoteIdentifier(col), m.dialect.BindVar(len(assigns)+1))
+		assigns = append(assigns, str)
+		values = append(values, kv[col])
+	}
+
+	if len(assigns) == 0 {
+		return 0, errors.New("no update values")
+	}
+
+	where, args, err = m.buildWhere(len(assigns), where, args)
 	if err != nil {
 		return 0, err
 	}
 	if len(where) == 0 || len(args) == 0 {
 		return 0, errors.New("empty where clause")
-	}
-	assigns := make([]string, len(cols))
-	for i, col := range cols {
-		assigns[i] = fmt.Sprintf(`%s=%s`, m.dialect.QuoteIdentifier(col), m.dialect.BindVar(i+1))
 	}
 
 	sqlStr := fmt.Sprintf(
@@ -177,18 +215,29 @@ func (m *Model[T]) Update(ctx context.Context, v T, where string, args ...any) (
 		strings.Join(assigns, ", "),
 		where,
 	)
-	vals := xmap.Values(kv)
-	vals = append(vals, args...)
+	values = append(values, args...)
 
 	db, ok := m.client.(Execer)
 	if !ok {
 		return 0, fmt.Errorf("client (%T) is not Execer", m.client)
 	}
-	ret, err := Exec(ctx, db, sqlStr, vals...)
+	ret, err := Exec(ctx, db, sqlStr, values...)
 	if err != nil {
 		return 0, err
 	}
 	return ret.RowsAffected()
+}
+
+func (m *Model[T]) UpdateByPK(ctx context.Context, v T) (int64, error) {
+	pk, value, err := findStructPrimaryKV(v)
+	if err != nil {
+		return 0, err
+	}
+	where := m.dialect.QuoteIdentifier(pk) + "=?"
+	ignore := map[string]bool{
+		pk: true,
+	}
+	return m.doUpdate(ctx, v, ignore, where, value)
 }
 
 func (m *Model[T]) Delete(ctx context.Context, where string, args ...any) (int64, error) {
@@ -196,7 +245,7 @@ func (m *Model[T]) Delete(ctx context.Context, where string, args ...any) (int64
 		return 0, m.err
 	}
 	var err error
-	where, args, err = m.buildWhere(where, args)
+	where, args, err = m.buildWhere(0, where, args)
 	if err != nil {
 		return 0, err
 	}
@@ -223,7 +272,7 @@ func (m *Model[T]) First(ctx context.Context, fields []string, where string, arg
 	if m.err != nil {
 		return v, false, m.err
 	}
-	where, args, err = m.buildWhere(where, args)
+	where, args, err = m.buildWhere(0, where, args)
 	if err != nil {
 		return v, false, err
 	}
@@ -234,10 +283,10 @@ func (m *Model[T]) First(ctx context.Context, fields []string, where string, arg
 		field = strings.Join(xslice.MapFunc(fields, m.dialect.QuoteIdentifier), ",")
 	}
 	sqlStr := fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s %s",
+		"SELECT %s FROM %s %s %s",
 		field,
 		m.dialect.QuoteIdentifier(m.table),
-		where,
+		m.connectWhere(where),
 		m.dialect.LimitOffsetClause(1, 0),
 	)
 	db, ok := m.client.(Queryer)
@@ -251,30 +300,65 @@ func (m *Model[T]) List(ctx context.Context, fields []string, where string, args
 	if m.err != nil {
 		return nil, m.err
 	}
-	var field string
-	if len(fields) == 0 {
-		field = "*"
-	} else {
-		field = strings.Join(xslice.MapFunc(fields, m.dialect.QuoteIdentifier), ",")
+	var result []T
+	for item, err := range m.ListIter(ctx, fields, where, args...) {
+		if err != nil {
+			return result, err
+		}
+		result = append(result, item)
 	}
-	w1, a1, err := m.buildWhere(where, args)
-	if err != nil {
-		return nil, err
-	}
-	sqlStr := fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s",
-		field,
-		m.dialect.QuoteIdentifier(m.table),
-		w1,
-	)
-	db, ok := m.client.(Queryer)
-	if !ok {
-		return nil, fmt.Errorf("client (%T) is not Queryer", m.client)
-	}
-	return QueryMany[T](ctx, db, sqlStr, a1...)
+	return result, nil
 }
 
-func (m *Model[T]) buildWhere(where string, args []any) (string, []any, error) {
+func (m *Model[T]) ListIter(ctx context.Context, fields []string, where string, args ...any) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		var zero T
+		if m.err != nil {
+			yield(zero, m.err)
+			return
+		}
+
+		var field string
+		if len(fields) == 0 {
+			field = "*"
+		} else {
+			field = strings.Join(xslice.MapFunc(fields, m.dialect.QuoteIdentifier), ",")
+		}
+		var err error
+		where, args, err = m.buildWhere(0, where, args)
+		if err != nil {
+			yield(zero, err)
+			return
+		}
+
+		sqlStr := fmt.Sprintf(
+			"SELECT %s FROM %s %s",
+			field,
+			m.dialect.QuoteIdentifier(m.table),
+			m.connectWhere(where),
+		)
+		db, ok := m.client.(Queryer)
+		if !ok {
+			err = fmt.Errorf("client (%T) is not Queryer", m.client)
+			yield(zero, err)
+			return
+		}
+		for item, err := range QueryManyIter[T](ctx, db, sqlStr, args...) {
+			if !yield(item, err) {
+				return
+			}
+		}
+	}
+}
+
+func (m *Model[T]) connectWhere(where string) string {
+	if where == "" {
+		return ""
+	}
+	return " where " + where
+}
+
+func (m *Model[T]) buildWhere(indexStart int, where string, args []any) (string, []any, error) {
 	if m.dialect.BindVar(0) == "?" {
 		return where, args, nil
 	}
@@ -284,7 +368,7 @@ func (m *Model[T]) buildWhere(where string, args []any) (string, []any, error) {
 	idx := 1
 	for i := 0; i < len(where); i++ {
 		if where[i] == '?' {
-			sb.WriteString(m.dialect.BindVar(idx))
+			sb.WriteString(m.dialect.BindVar(indexStart + idx))
 			idx++
 		} else {
 			sb.WriteByte(where[i])

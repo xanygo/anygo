@@ -7,31 +7,14 @@ package xdb
 import (
 	"database/sql"
 	"fmt"
+	"iter"
 	"reflect"
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xstr"
 	"github.com/xanygo/anygo/ds/xstruct"
-	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/store/xdb/dbcodec"
 )
-
-var tagName = xsync.OnceInit[string]{
-	New: func() string {
-		return "db"
-	},
-}
-
-func TagName() string {
-	return tagName.Load()
-}
-
-func SetTagName(name string) {
-	if name == "" {
-		panic("empty tag name")
-	}
-	tagName.Store(name)
-}
 
 // ScanRows 读取并解析数据为指定的类型，T 类型可以是 struct、*struct、map[string]any 这三种类型
 //
@@ -74,40 +57,51 @@ func ScanRowsFirst[T any](rows *sql.Rows) (v T, ok bool, err error) {
 
 func ScanRowsLimit[T any](rows *sql.Rows, limit int) ([]T, error) {
 	defer rows.Close()
-
 	var result []T
-
-	cols, err := rows.Columns()
-	if err != nil {
-		return nil, err
-	}
-
-	var zero T
-	rv := reflect.ValueOf(&zero).Elem()
-	rt := rv.Type()
-
-	for rows.Next() {
-		var item T
-		switch rt.Kind() {
-		case reflect.Map:
-			item, err = scanRowsAsMap[T](rows, cols)
-		default:
-			item, err = scanRowsAsStruct[T](rows, cols)
-		}
+	for item, err := range ScanRowsIter[T](rows) {
 		if err != nil {
-			return nil, err
+			return result, err
 		}
 		result = append(result, item)
 		if limit > 0 && len(result) >= limit {
 			break
 		}
 	}
-
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-
 	return result, nil
+}
+
+// ScanRowsIter 依次读取并解析 Rows，需要自行调用 rows，Close()
+func ScanRowsIter[T any](rows *sql.Rows) iter.Seq2[T, error] {
+	var zero T
+	return func(yield func(T, error) bool) {
+		cols, err := rows.Columns()
+		if err != nil {
+			yield(zero, err)
+			return
+		}
+		rv := reflect.ValueOf(&zero).Elem()
+		rt := rv.Type()
+
+		for rows.Next() {
+			var item T
+			switch rt.Kind() {
+			case reflect.Map:
+				item, err = scanRowsAsMap[T](rows, cols)
+			default:
+				item, err = scanRowsAsStruct[T](rows, cols)
+			}
+			if err != nil {
+				yield(zero, err)
+				return
+			}
+			if !yield(item, nil) {
+				return
+			}
+		}
+		if err = rows.Err(); err != nil {
+			yield(zero, err)
+		}
+	}
 }
 
 func scanRowsAsMap[T any](rows *sql.Rows, cols []string) (T, error) {
@@ -233,14 +227,6 @@ func scanRowsAsStruct[T any](rows *sql.Rows, cols []string) (T, error) {
 	}
 
 	return v, nil
-}
-
-func getCodecName(tag xstruct.Tag) string {
-	name := tag.Value("codec")
-	if name != "" {
-		return name
-	}
-	return dbcodec.TextName
 }
 
 func unmarshallingField(field reflect.Value, codec string, sPtr *sql.NullString) error {
