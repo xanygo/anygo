@@ -425,3 +425,27 @@ func (m *Model[T]) buildWhere(indexStart int, where string, args []any) (string,
 	}
 	return sb.String(), args, nil
 }
+
+func (m *Model[T]) Count(ctx context.Context, field string, where string, args ...any) (num int64, err error) {
+	where, args, err = m.buildWhere(0, where, args)
+	if err != nil {
+		return 0, err
+	}
+	if field == "" {
+		field = "*"
+	} else if field != "*" && !strings.ContainsRune(field, ' ') {
+		field = m.dialect.QuoteIdentifier(field)
+	}
+	sqlStr := fmt.Sprintf("SELECT count(%s) from %s %s",
+		field,
+		m.dialect.QuoteIdentifier(m.table),
+		m.connectWhere(where),
+	)
+	db, ok := m.client.(RowQuerier)
+	if !ok {
+		return 0, fmt.Errorf("client (%T) is not RowQuerier", m.client)
+	}
+	row := db.QueryRowContext(ctx, sqlStr, args...)
+	err = row.Scan(&num)
+	return num, err
+}

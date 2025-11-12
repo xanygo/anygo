@@ -47,6 +47,8 @@ type SpanReader interface {
 	AttemptCount() int
 	Error() error
 	IsRecording() bool
+
+	// Children 为了使用方便，这里存储了其子 Span，最多允许 32个
 	Children() []SpanReader
 }
 

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/ds/xctx"
+	"github.com/xanygo/anygo/ds/xslice"
 )
 
 var _ Provider = (*InnerProvider)(nil)
@@ -43,11 +44,12 @@ func (t *tracer) Start(ctx context.Context, name string) (context.Context, Span)
 
 func newSpan(ctx context.Context, name string, end onEndFunc) *span {
 	return &span{
-		name:  name,
-		id:    NewSpanID(),
-		start: time.Now(),
-		ctx:   ctx,
-		onEnd: end,
+		name:     name,
+		id:       NewSpanID(),
+		start:    time.Now(),
+		ctx:      ctx,
+		onEnd:    end,
+		children: xslice.NewRing[SpanReader](128),
 	}
 }
 
@@ -63,7 +65,7 @@ type span struct {
 	err          error
 	attrs        []Attribute
 	parent       Span
-	children     []SpanReader
+	children     *xslice.Ring[SpanReader]
 	attemptCount int
 	mux          sync.Mutex
 }
@@ -155,7 +157,7 @@ func (s *span) NewChild(ctx context.Context, name string) (context.Context, Span
 		return ctx, emptySpan
 	}
 	child := newSpan(ctx, name, s.onEnd)
-	s.children = append(s.children, child)
+	s.children.Add(child)
 	ctx = context.WithValue(ctx, keySpan, child)
 	return ctx, child
 }
@@ -163,5 +165,5 @@ func (s *span) NewChild(ctx context.Context, name string) (context.Context, Span
 func (s *span) Children() []SpanReader {
 	s.mux.Lock()
 	defer s.mux.Unlock()
-	return s.children
+	return s.children.Values()
 }

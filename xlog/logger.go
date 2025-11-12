@@ -38,6 +38,21 @@ type Logger interface {
 	Output(ctx context.Context, level Level, callerSkip int, msg string, attr ...Attr)
 }
 
+type NopType interface {
+	Nop() bool
+}
+
+// IsNop 判断是否是一个空的 Logger
+func IsNop(l Logger) bool {
+	if l == nil {
+		return true
+	}
+	if nl, ok := l.(NopType); ok && nl.Nop() {
+		return true
+	}
+	return false
+}
+
 var _ Logger = (*NopLogger)(nil)
 
 // NopLogger 会丢弃所有日志的 logger
@@ -53,7 +68,9 @@ func (n NopLogger) Error(context.Context, string, ...Attr) {}
 
 func (n NopLogger) Output(context.Context, Level, int, string, ...Attr) {}
 
-func (n NopLogger) Nop() {}
+func (n NopLogger) Nop() bool {
+	return true
+}
 
 func NewSimple(w io.Writer) *Simple {
 	if dw, ok := w.(DispatchWriter); ok {
