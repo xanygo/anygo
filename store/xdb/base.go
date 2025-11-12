@@ -55,6 +55,7 @@ type Statement interface {
 	Close() error
 }
 
+// QueryMany 执行查询 SQL，并返回匹配的全部结果
 func QueryMany[T any](ctx context.Context, q Queryer, query string, args ...any) ([]T, error) {
 	rows, err := q.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -63,6 +64,7 @@ func QueryMany[T any](ctx context.Context, q Queryer, query string, args ...any)
 	return ScanRows[T](rows)
 }
 
+// QueryManyIter 行查询 SQL，并返回匹配结果的迭代器。只有读取完，或者退出迭代器，底层链接才会是否
 func QueryManyIter[T any](ctx context.Context, q Queryer, query string, args ...any) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
 		rows, err := q.QueryContext(ctx, query, args...)
@@ -78,6 +80,7 @@ func QueryManyIter[T any](ctx context.Context, q Queryer, query string, args ...
 	}
 }
 
+// QueryOne 查询并返回匹配的首条结果
 func QueryOne[T any](ctx context.Context, q Queryer, query string, args ...any) (v T, ok bool, err error) {
 	rows, err := q.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -86,6 +89,7 @@ func QueryOne[T any](ctx context.Context, q Queryer, query string, args ...any) 
 	return ScanRowsFirst[T](rows)
 }
 
+// Exec 执行写语句(insert、update、delete)
 func Exec(ctx context.Context, eq Execer, query string, args ...any) (sql.Result, error) {
 	log.Println("Exec:", query, args)
 	return eq.ExecContext(ctx, query, args...)
@@ -142,7 +146,7 @@ func (t *tx) PrepareContext(ctx context.Context, query string) (Statement, error
 	if err != nil {
 		return nil, err
 	}
-	return &stmt{Raw: s}, nil
+	return &stmt{Raw: s, query: query}, nil
 }
 
 func (t *tx) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
@@ -151,7 +155,16 @@ func (t *tx) QueryRowContext(ctx context.Context, query string, args ...any) *sq
 
 func (t *tx) StmtContext(ctx context.Context, s Statement) Statement {
 	st := t.Raw.StmtContext(ctx, s.Unwrap())
-	return &stmt{Raw: st}
+	nst := &stmt{
+		Raw: st,
+	}
+	if hq, ok := s.(hasSQLQuery); ok {
+		nst.query = hq.SQLQuery()
+	}
+	if hd, ok := s.(HasDriver); ok {
+		nst.driver = hd.Driver()
+	}
+	return nst
 }
 
 func (t *tx) Commit() error {
@@ -163,12 +176,14 @@ func (t *tx) Rollback() error {
 }
 
 var _ Statement = (*stmt)(nil)
-var _ HasDriver = (*stmt)(nil)
 
 type stmt struct {
 	Raw    *sql.Stmt
 	driver string
+	query  string
 }
+
+var _ HasDriver = (*stmt)(nil)
 
 func (s *stmt) Driver() string {
 	return s.driver
@@ -176,6 +191,16 @@ func (s *stmt) Driver() string {
 
 func (s *stmt) Unwrap() *sql.Stmt {
 	return s.Raw
+}
+
+type hasSQLQuery interface {
+	SQLQuery() string
+}
+
+var _ hasSQLQuery = (*stmt)(nil)
+
+func (s *stmt) SQLQuery() string {
+	return s.query
 }
 
 func (s *stmt) QueryContext(ctx context.Context, args ...any) (*sql.Rows, error) {

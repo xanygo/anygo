@@ -43,6 +43,7 @@ func getCodecName(tag xstruct.Tag) string {
 	return dbcodec.TextName
 }
 
+// findStructPrimaryKV 查找主键 key，并返回其值，并且要求值为非零值。
 func findStructPrimaryKV(obj any) (key string, value any, err error) {
 	v := reflect.ValueOf(obj)
 	if !v.IsValid() {
@@ -81,6 +82,10 @@ func findStructPrimaryKV(obj any) (key string, value any, err error) {
 			return "", nil, fmt.Errorf("multiple primary key fields: %s,%s", key, name)
 		}
 		key = name
+
+		if v.Field(i).IsZero() {
+			return "", nil, fmt.Errorf("primary key %s(%s) is zero value", field.Name, key)
+		}
 		value, err = encodeStructFieldValue(val, tag)
 		if err != nil {
 			return "", nil, fmt.Errorf("encode field %q: %w", field.Name, err)

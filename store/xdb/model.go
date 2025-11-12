@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"maps"
 	"slices"
 	"strings"
 
@@ -36,8 +35,8 @@ type Model[T any] struct {
 
 	table         string
 	limit, offset int
-	fields        []string        // insert、update 的字段列表
-	updateIgnore  map[string]bool // update 时候忽略的字段列表
+	onlyFields    []string // insert, update 的字段列表
+	ignoreFields  []string // select, update 时候忽略的字段列表
 
 	err error
 }
@@ -45,8 +44,8 @@ type Model[T any] struct {
 func (m *Model[T]) Reset() *Model[T] {
 	m.limit = 0
 	m.offset = 0
-	m.fields = nil
-	m.updateIgnore = nil
+	m.onlyFields = nil
+	m.ignoreFields = nil
 	return m
 }
 
@@ -58,23 +57,34 @@ func (m *Model[T]) Clone() *Model[T] {
 		limit:        m.limit,
 		offset:       m.offset,
 		err:          m.err,
-		fields:       slices.Clone(m.fields),
-		updateIgnore: maps.Clone(m.updateIgnore),
+		onlyFields:   slices.Clone(m.onlyFields),
+		ignoreFields: slices.Clone(m.ignoreFields),
 	}
 }
 
-// Fields 设置 insert、update 的字段列表，默认为空时，写入所有字段
-func (m *Model[T]) Fields(fields ...string) *Model[T] {
-	m.fields = fields
+// OnlyFields 设置 insert、update 的字段列表，默认为空时，写入所有字段
+func (m *Model[T]) OnlyFields(fields ...string) *Model[T] {
+	m.onlyFields = fields
 	return m
 }
 
-func (m *Model[T]) UpdateIgnore(fields ...string) *Model[T] {
-	m.updateIgnore = xslice.ToMap(fields, true)
+func (m *Model[T]) AppendOnlyFields(fields ...string) *Model[T] {
+	m.onlyFields = append(m.onlyFields, fields...)
 	return m
 }
 
-// Table 设置表名
+// IgnoreFields 设置 select 和 update 时候，需要忽略的字段，默认为空
+func (m *Model[T]) IgnoreFields(fields ...string) *Model[T] {
+	m.ignoreFields = fields
+	return m
+}
+
+func (m *Model[T]) AppendIgnoreFields(fields ...string) *Model[T] {
+	m.ignoreFields = append(m.ignoreFields, fields...)
+	return m
+}
+
+// Table 设置表名，若 T 没有实现 HasTable 接口时，可通过此设置
 func (m *Model[T]) Table(table string) *Model[T] {
 	m.table = table
 	return m
@@ -90,12 +100,19 @@ func (m *Model[T]) Offset(num int) *Model[T] {
 	return m
 }
 
+func (m *Model[T]) getEncoder() Encoder[T] {
+	return Encoder[T]{
+		OnlyFields:   m.onlyFields,
+		IgnoreFields: m.ignoreFields,
+	}
+}
+
 // Insert 基本的 Insert 功能
 func (m *Model[T]) Insert(ctx context.Context, v T) (int64, error) {
 	if m.err != nil {
 		return 0, m.err
 	}
-	kv, err := Encode(v, m.fields...)
+	kv, err := m.getEncoder().Encode(v)
 	if err != nil {
 		return 0, err
 	}
@@ -133,7 +150,7 @@ func (m *Model[T]) InsertBatch(ctx context.Context, vs ...T) (int64, error) {
 	if len(vs) == 0 {
 		return 0, errors.New("no values")
 	}
-	values, err := EncodeBatch[T](vs, m.fields...)
+	values, err := m.getEncoder().EncodeBatch(vs...)
 	if err != nil {
 		return 0, err
 	}
@@ -172,15 +189,14 @@ func (m *Model[T]) InsertBatch(ctx context.Context, vs ...T) (int64, error) {
 }
 
 func (m *Model[T]) Update(ctx context.Context, v T, where string, args ...any) (int64, error) {
-	return m.doUpdate(ctx, v, m.updateIgnore, where, args...)
+	return m.doUpdate(ctx, v, where, args...)
 }
 
-func (m *Model[T]) doUpdate(ctx context.Context, v T, ignoreFields map[string]bool, where string, args ...any) (int64, error) {
+func (m *Model[T]) doUpdate(ctx context.Context, v T, where string, args ...any) (int64, error) {
 	if m.err != nil {
 		return 0, m.err
 	}
-
-	kv, err := Encode(v, m.fields...)
+	kv, err := m.getEncoder().Encode(v)
 	if err != nil {
 		return 0, err
 	}
@@ -189,9 +205,6 @@ func (m *Model[T]) doUpdate(ctx context.Context, v T, ignoreFields map[string]bo
 	assigns := make([]string, 0, len(cols))
 	values := make([]any, 0, len(args))
 	for _, col := range cols {
-		if len(ignoreFields) > 0 && ignoreFields[col] {
-			continue
-		}
 		str := fmt.Sprintf(`%s=%s`, m.dialect.QuoteIdentifier(col), m.dialect.BindVar(len(assigns)+1))
 		assigns = append(assigns, str)
 		values = append(values, kv[col])
@@ -228,16 +241,19 @@ func (m *Model[T]) doUpdate(ctx context.Context, v T, ignoreFields map[string]bo
 	return ret.RowsAffected()
 }
 
+// UpdateByPK 使用主键更新数据
+//
+// 需要再 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,primaryKey"`
 func (m *Model[T]) UpdateByPK(ctx context.Context, v T) (int64, error) {
 	pk, value, err := findStructPrimaryKV(v)
 	if err != nil {
 		return 0, err
 	}
 	where := m.dialect.QuoteIdentifier(pk) + "=?"
-	ignore := map[string]bool{
-		pk: true,
-	}
-	return m.doUpdate(ctx, v, ignore, where, value)
+
+	m1 := m.Clone()
+	m1.AppendIgnoreFields(pk)
+	return m1.doUpdate(ctx, v, where, value)
 }
 
 func (m *Model[T]) Delete(ctx context.Context, where string, args ...any) (int64, error) {
@@ -268,7 +284,31 @@ func (m *Model[T]) Delete(ctx context.Context, where string, args ...any) (int64
 	return ret.RowsAffected()
 }
 
-func (m *Model[T]) First(ctx context.Context, fields []string, where string, args ...any) (v T, ok bool, err error) {
+// DeleteByPK 使用主键删除数据
+//
+// 需要再 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,primaryKey"`
+func (m *Model[T]) DeleteByPK(ctx context.Context, v T) (int64, error) {
+	pk, value, err := findStructPrimaryKV(v)
+	if err != nil {
+		return 0, err
+	}
+	where := m.dialect.QuoteIdentifier(pk) + "=?"
+	return m.Delete(ctx, where, value)
+}
+
+func (m *Model[T]) selectFields() (string, error) {
+	var zero T
+	fields, err := m.getEncoder().Fields(zero)
+	if err != nil {
+		return "", err
+	}
+	if len(fields) == 0 {
+		return "*", nil
+	}
+	return strings.Join(xslice.MapFunc(fields, m.dialect.QuoteIdentifier), ","), nil
+}
+
+func (m *Model[T]) First(ctx context.Context, where string, args ...any) (v T, ok bool, err error) {
 	if m.err != nil {
 		return v, false, m.err
 	}
@@ -276,11 +316,9 @@ func (m *Model[T]) First(ctx context.Context, fields []string, where string, arg
 	if err != nil {
 		return v, false, err
 	}
-	var field string
-	if len(fields) == 0 {
-		field = "*"
-	} else {
-		field = strings.Join(xslice.MapFunc(fields, m.dialect.QuoteIdentifier), ",")
+	field, err := m.selectFields()
+	if err != nil {
+		return v, false, err
 	}
 	sqlStr := fmt.Sprintf(
 		"SELECT %s FROM %s %s %s",
@@ -296,12 +334,24 @@ func (m *Model[T]) First(ctx context.Context, fields []string, where string, arg
 	return QueryOne[T](ctx, db, sqlStr, args...)
 }
 
-func (m *Model[T]) List(ctx context.Context, fields []string, where string, args ...any) ([]T, error) {
+// FindByPK 使用主键查找数据
+//
+// 需要再 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,primaryKey"`
+func (m *Model[T]) FindByPK(ctx context.Context, v T) (nv T, ok bool, err error) {
+	pk, value, err := findStructPrimaryKV(v)
+	if err != nil {
+		return nv, false, err
+	}
+	where := m.dialect.QuoteIdentifier(pk) + "=?"
+	return m.First(ctx, where, value)
+}
+
+func (m *Model[T]) List(ctx context.Context, where string, args ...any) ([]T, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 	var result []T
-	for item, err := range m.ListIter(ctx, fields, where, args...) {
+	for item, err := range m.ListIter(ctx, where, args...) {
 		if err != nil {
 			return result, err
 		}
@@ -310,7 +360,7 @@ func (m *Model[T]) List(ctx context.Context, fields []string, where string, args
 	return result, nil
 }
 
-func (m *Model[T]) ListIter(ctx context.Context, fields []string, where string, args ...any) iter.Seq2[T, error] {
+func (m *Model[T]) ListIter(ctx context.Context, where string, args ...any) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
 		var zero T
 		if m.err != nil {
@@ -318,13 +368,12 @@ func (m *Model[T]) ListIter(ctx context.Context, fields []string, where string, 
 			return
 		}
 
-		var field string
-		if len(fields) == 0 {
-			field = "*"
-		} else {
-			field = strings.Join(xslice.MapFunc(fields, m.dialect.QuoteIdentifier), ",")
+		field, err := m.selectFields()
+		if err != nil {
+			yield(zero, err)
+			return
 		}
-		var err error
+
 		where, args, err = m.buildWhere(0, where, args)
 		if err != nil {
 			yield(zero, err)

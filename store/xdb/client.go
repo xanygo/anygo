@@ -72,7 +72,7 @@ func (c *Client) PrepareContext(ctx context.Context, query string) (Statement, e
 	if err != nil {
 		return nil, err
 	}
-	return &stmt{Raw: s, driver: c.driver}, nil
+	return &stmt{Raw: s, driver: c.driver, query: query}, nil
 }
 
 var _ RowQuerier = (*Client)(nil)

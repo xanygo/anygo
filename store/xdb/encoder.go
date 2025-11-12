@@ -16,28 +16,8 @@ import (
 )
 
 // Encode 将结构体或 map 转成 map[string]any，用于 SQL insert
-func Encode(data any, cols ...string) (map[string]any, error) {
-	v := reflect.ValueOf(data)
-	if !v.IsValid() {
-		return nil, fmt.Errorf("invalid value: %v", v)
-	}
-
-	// 支持指针类型
-	if v.Kind() == reflect.Pointer {
-		if v.IsNil() {
-			return nil, fmt.Errorf("nil pointer: %#v", data)
-		}
-		v = v.Elem()
-	}
-
-	switch v.Kind() {
-	case reflect.Struct:
-		return encodeStruct(v, cols)
-	case reflect.Map:
-		return encodeMap(v, cols)
-	default:
-		return nil, fmt.Errorf("unsupported type %T", data)
-	}
+func Encode[T any](data T, cols ...string) (map[string]any, error) {
+	return Encoder[T]{OnlyFields: cols}.Encode(data)
 }
 
 func EncodeBatch[T any](items []T, fields ...string) ([]map[string]any, error) {
@@ -55,40 +35,97 @@ func EncodeBatch[T any](items []T, fields ...string) ([]map[string]any, error) {
 	return result, nil
 }
 
+type Encoder[T any] struct {
+	OnlyFields   []string // 当不为空时，输出结果的 key 只限定此列表中的
+	IgnoreFields []string // 当不为空时，输出结果的 key 限定不能是此列表中的
+}
+
+func (e Encoder[T]) Encode(data T) (map[string]any, error) {
+	v := reflect.ValueOf(data)
+	if !v.IsValid() {
+		return nil, fmt.Errorf("invalid value: %v", v)
+	}
+
+	// 支持指针类型
+	if v.Kind() == reflect.Pointer {
+		if v.IsNil() {
+			return nil, fmt.Errorf("nil pointer: %#v", data)
+		}
+		v = v.Elem()
+	}
+
+	switch v.Kind() {
+	case reflect.Struct:
+		return e.encodeStruct(v)
+	case reflect.Map:
+		return e.encodeMap(v)
+	default:
+		return nil, fmt.Errorf("unsupported type %T", data)
+	}
+}
+
+func (e Encoder[T]) EncodeBatch(items ...T) ([]map[string]any, error) {
+	if len(items) == 0 {
+		return nil, errors.New("no value to encode")
+	}
+	result := make([]map[string]any, 0, len(items))
+	for _, item := range items {
+		data, err := e.Encode(item)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, data)
+	}
+	return result, nil
+}
+
 // encodeStruct 处理 struct
-func encodeStruct(v reflect.Value, fields []string) (map[string]any, error) {
+func (e Encoder[T]) encodeStruct(v reflect.Value) (map[string]any, error) {
+	result := make(map[string]any, len(e.OnlyFields))
+	err := e.withStruct(v, func(name string, tag xstruct.Tag, field reflect.StructField, value reflect.Value) error {
+		encodedVal, err := encodeStructFieldValue(value.Interface(), tag)
+		if err != nil {
+			return fmt.Errorf("encode field %q: %w", field.Name, err)
+		}
+		result[name] = encodedVal
+		return nil
+	})
+	return result, err
+}
+
+func (e Encoder[T]) withStruct(v reflect.Value, fn func(name string, tag xstruct.Tag, field reflect.StructField, value reflect.Value) error) error {
 	t := v.Type()
-	result := make(map[string]any)
-	fieldsLimit := xslice.ToMap(fields, true)
+	keys := make(map[string]struct{}, len(e.OnlyFields))
+	fieldsLimit := xslice.ToMap(e.OnlyFields, true)
+	fieldsIgnore := xslice.ToMap(e.IgnoreFields, true)
 
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		if !v.Field(i).CanInterface() {
 			continue
 		}
-		val := v.Field(i).Interface()
 
 		tag := xstruct.ParserTag(field.Tag.Get(TagName()))
 		name := tag.Name()
 		if name == "-" || name == "" {
 			continue
 		}
-		if _, has := result[name]; has {
-			return nil, fmt.Errorf("duplicate field %q", name)
+		if _, has := keys[name]; has {
+			return fmt.Errorf("duplicate field %q", name)
 		}
 
 		if len(fieldsLimit) > 0 && !fieldsLimit[name] {
 			continue
 		}
-
-		encodedVal, err := encodeStructFieldValue(val, tag)
-		if err != nil {
-			return nil, fmt.Errorf("encode field %q: %w", field.Name, err)
+		if len(fieldsIgnore) > 0 && fieldsIgnore[name] {
+			continue
 		}
-		result[name] = encodedVal
+		if err := fn(name, tag, field, v.Field(i)); err != nil {
+			return err
+		}
+		keys[name] = struct{}{}
 	}
-
-	return result, nil
+	return nil
 }
 
 // encodeStructFieldValue 对单个字段根据类型和 serializer 转换
@@ -121,8 +158,9 @@ func encodeStructFieldValue(val any, tag xstruct.Tag) (any, error) {
 }
 
 // encodeMap 处理 map[string]any
-func encodeMap(v reflect.Value, fields []string) (map[string]any, error) {
-	fieldsLimit := xslice.ToMap(fields, true)
+func (e Encoder[T]) encodeMap(v reflect.Value) (map[string]any, error) {
+	fieldsLimit := xslice.ToMap(e.OnlyFields, true)
+	fieldsIgnore := xslice.ToMap(e.IgnoreFields, true)
 	result := make(map[string]any)
 	for _, k := range v.MapKeys() {
 		val := v.MapIndex(k).Interface()
@@ -133,9 +171,55 @@ func encodeMap(v reflect.Value, fields []string) (map[string]any, error) {
 		if len(fieldsLimit) > 0 && !fieldsLimit[key] {
 			continue
 		}
+		if len(fieldsIgnore) > 0 && fieldsIgnore[key] {
+			continue
+		}
 		result[key] = val
 	}
 	return result, nil
+}
+
+// Fields 获取 data 的字段列表。
+//
+//  1. 当类型是 struct 的时候，返回有有效的 db tag的字段（以使用 OnlyFiles 和 IgnoreFields 过滤）。
+//     若返回的字段列表为空，会报错。
+//  2. 当类型是 map 时，返回 nil,nil
+//  3. 其他类型，返回 error
+func (e Encoder[T]) Fields(data T) ([]string, error) {
+	v := reflect.ValueOf(data)
+	if !v.IsValid() {
+		return nil, fmt.Errorf("invalid value: %v", v)
+	}
+
+	// 支持指针类型
+	if v.Kind() == reflect.Pointer {
+		if v.IsNil() {
+			return nil, fmt.Errorf("nil pointer: %#v", data)
+		}
+		v = v.Elem()
+	}
+
+	switch v.Kind() {
+	case reflect.Struct:
+		return e.structFields(v)
+	case reflect.Map:
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("unsupported type %T", data)
+	}
+}
+
+func (e Encoder[T]) structFields(v reflect.Value) ([]string, error) {
+	var result []string
+	err := e.withStruct(v, func(name string, tag xstruct.Tag, field reflect.StructField, value reflect.Value) error {
+		result = append(result, name)
+		return nil
+	})
+	if err != nil && len(result) == 0 {
+		var zero T
+		return nil, fmt.Errorf("%T has no fileds", zero)
+	}
+	return result, err
 }
 
 type Expr string
