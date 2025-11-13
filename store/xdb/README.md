@@ -17,12 +17,43 @@ DSN="{{.Username}}:{{.Password}}@{{.Network}}({{.HOST_PORT}})/{{.DBName}}?charse
 package dao
 
 type User struct{
-	ID int64 `db:"id"`
-	Name string `db:"name"`
+	ID       int64  `db:"id,primaryKey,autoIncr"`
+	Name     string `db:"name"`
+	Password string `db:"password"`
+	Salt     string `db:"salt"`
+}
+
+
+type Admin struct{
+	User             // 支持 Embed 类型
 	Roles []string `db:"roles,codec:csv"`
 }
+
+func (a Admin)TableName()string{
+	return "admin"
+}
+
 ```
 
+### Tag
+  默认的 tag 名称为 `db`，可以使用 `SetTagName` 方法修改。
+  格式为：
+  ```
+  db:"{数据库字段名}[,属性1][,属性2]"
+  ```
+  属性格式为 field:value  或者 field，如 
+  ```
+  ID int64 `db:"name,primaryKey,autoIncr"`
+  
+  ArticleIDs []int64  `db:"aids,codec:csv"`
+  ```
+支持属性如下：
+
+| 名称         | 说明                                 | 示例                      |
+|------------|------------------------------------|-------------------------|
+| primaryKey | 主键                                 |                         |
+| codec      | 对于复杂的类型，在写入数据库时编码，在查询出来后，解码        | codec:csv 或者 codec:json |
+| autoIncr   | 标记此字段为数据库主键。Encode 时，若字段为零值，则忽略该字段 |                         |
 
 ### codec 参数
 数据编解码的方式：

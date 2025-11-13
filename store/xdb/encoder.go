@@ -103,12 +103,26 @@ func (e Encoder[T]) sliceToMapTrue(s []string) map[string]bool {
 }
 
 func (e Encoder[T]) withStruct(v reflect.Value, fn func(name string, tag xstruct.Tag, field reflect.StructField, value reflect.Value) error) error {
+	if v.Kind() != reflect.Struct {
+		return fmt.Errorf("unsupported type %s, expect struct", v.Kind().String())
+	}
 	keys := make(map[string]struct{}, len(e.OnlyFields))
 	fieldsLimit := e.sliceToMapTrue(e.OnlyFields)
 	fieldsIgnore := e.sliceToMapTrue(e.IgnoreFields)
-
 	tn := TagName()
 	err := zreflect.RangeStructFields(v.Type(), func(field reflect.StructField) error {
+		// embed 类型的，详见 testUser3、testUser4
+		if field.Anonymous {
+			fv := v.FieldByName(field.Name)
+			switch fv.Kind() {
+			case reflect.Struct:
+				return e.withStruct(fv, fn)
+			case reflect.Ptr:
+				return e.withStruct(fv.Elem(), fn)
+			default:
+				panic(fmt.Sprintf("what Anonymous %s: %v", fv.Kind(), fv))
+			}
+		}
 		if !field.IsExported() {
 			return nil
 		}

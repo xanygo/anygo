@@ -152,38 +152,66 @@ func scanRowsAsStruct[T any](rows *sql.Rows, cols []string) (T, error) {
 	}
 
 	scanTargets := make([]any, len(cols))
-	columnToField := make(map[string]string) // 用于存储  dbFieldName -> structFieldName 的关系
+	columnToField := make(map[string]reflect.Value) // 用于存储  dbFieldName -> structFieldName 的关系
 	tags := make(map[string]xstruct.Tag)
 
 	tn := TagName()
-	zreflect.RangeStructFields(structVal.Type(), func(field reflect.StructField) error {
-		if !field.IsExported() {
-			return nil
-		}
-		tag := xstruct.ParserTagCached(field.Tag, tn)
-		name := tag.Name()
-		if name == "" || name == "-" {
-			// 此字段不需要解析
-			return nil
-		}
-		name = strings.ToLower(name)
-		columnToField[name] = field.Name
-		tags[name] = tag
 
-		return nil
-	})
+	var doScanField func(tv reflect.Value) error
+
+	doScanField = func(tv reflect.Value) error {
+		err := zreflect.RangeStructFields(tv.Type(), func(field reflect.StructField) error {
+			if field.Anonymous {
+				fv := tv.FieldByName(field.Name)
+				switch field.Type.Kind() {
+				case reflect.Struct:
+					return doScanField(fv)
+				case reflect.Ptr:
+					if fv.IsNil() {
+						if fv.CanSet() {
+							fv.Set(reflect.New(field.Type.Elem()))
+						} else {
+							return fmt.Errorf("field %q Cannot Set", field.Name)
+						}
+					}
+					return doScanField(fv.Elem())
+				default:
+					panic(fmt.Sprintf("what Anonymous kind %v, filed=%q", field.Type.Kind(), field.Name))
+				}
+			}
+			if !field.IsExported() {
+				return nil
+			}
+			tag := xstruct.ParserTagCached(field.Tag, tn)
+			name := tag.Name()
+			if name == "" || name == "-" {
+				// 此字段不需要解析
+				return nil
+			}
+			name = strings.ToLower(name)
+			columnToField[name] = tv.FieldByName(field.Name)
+			tags[name] = tag
+
+			return nil
+		})
+		return err
+	}
+
+	if err := doScanField(structVal); err != nil {
+		var zero T
+		return zero, err
+	}
 
 	serializerFields := make(map[string]int)
 	for idx, col := range cols {
 		name := strings.ToLower(col)
-		fieldName, ok := columnToField[name]
+		fieldValue, ok := columnToField[name]
 		if !ok {
 			var dummy any
 			scanTargets[idx] = &dummy
 			continue
 		}
 
-		fieldValue := structVal.FieldByName(fieldName)
 		if !isComplexKind(fieldValue.Kind()) {
 			scanTargets[idx] = fieldValue.Addr().Interface()
 			continue
@@ -204,7 +232,7 @@ func scanRowsAsStruct[T any](rows *sql.Rows, cols []string) (T, error) {
 			codec := getCodecName(tag)
 			// 从 scanTargets 里取出 sql.NullString
 			sPtr := scanTargets[idx].(*sql.NullString)
-			fieldValue := structVal.FieldByName(columnToField[name])
+			fieldValue := columnToField[name]
 			if err := unmarshallingField(fieldValue, codec, sPtr); err != nil {
 				return v, fmt.Errorf("unmarshalling field %q: %w", name, err)
 			}

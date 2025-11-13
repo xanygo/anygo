@@ -14,6 +14,7 @@ import (
 
 func TestScanRows(t *testing.T) {
 	db := xtdr.MustOpen()
+	defer xtdr.Reset()
 	t.Run("case 1", func(t *testing.T) {
 		xtdr.ExpectQuery("select 1", []string{"id", "name"}, [][]any{{1, "hello"}, {2, "world"}})
 		ret, err := db.Query("select 1")
@@ -57,9 +58,9 @@ func TestScanRows(t *testing.T) {
 		xtdr.ExpectQuery("select 1", []string{"csv1", "mp1"}, [][]any{{"1,2", `{"k1":"v1"}`}, {"", ""}})
 		ret, err := db.Query("select 1")
 		xt.NoError(t, err)
-		users, err := xdb.ScanRows[testUser2](ret)
+		users, err := xdb.ScanRows[TestUser2](ret)
 		xt.NoError(t, err)
-		want := []testUser2{
+		want := []TestUser2{
 			{CSV1: []int{1, 2}, MP1: map[string]string{"k1": "v1"}},
 			{CSV1: nil, MP1: nil},
 		}
@@ -67,7 +68,74 @@ func TestScanRows(t *testing.T) {
 	})
 }
 
-type testUser2 struct {
-	CSV1 []int             `db:"csv1,codec:csv"`
-	MP1  map[string]string `db:"mp1,codec:json"`
+func TestScanRowsEmbed(t *testing.T) {
+	db := xtdr.MustOpen()
+
+	t.Run("testUser3", func(t *testing.T) {
+		xtdr.ExpectQuery("select 1", []string{"id", "name", "csv1"}, [][]any{{1, "hello", "1,2"}, {2, "world", "2,3"}})
+		ret, err := db.Query("select 1")
+		xt.NoError(t, err)
+		users, err := xdb.ScanRows[testUser3](ret)
+		xt.NoError(t, err)
+		want := []testUser3{
+			{Name: "hello", TestUser2: TestUser2{CSV1: []int{1, 2}}},
+			{Name: "world", TestUser2: TestUser2{CSV1: []int{2, 3}}},
+		}
+		xt.Equal(t, want, users)
+	})
+
+	t.Run("testUser4", func(t *testing.T) {
+		xtdr.ExpectQuery("select 1", []string{"id", "name", "csv1"}, [][]any{{1, "hello", "1,2"}, {2, "world", "2,3"}})
+		ret, err := db.Query("select 1")
+		xt.NoError(t, err)
+		users, err := xdb.ScanRows[testUser4](ret)
+		xt.NoError(t, err)
+		want := []testUser4{
+			{Name: "hello", TestUser2: &TestUser2{CSV1: []int{1, 2}}},
+			{Name: "world", TestUser2: &TestUser2{CSV1: []int{2, 3}}},
+		}
+		xt.Equal(t, want, users)
+	})
+	t.Run("testUser6", func(t *testing.T) {
+		xtdr.ExpectQuery("select 1", []string{"id", "name", "csv1"}, [][]any{{1, "hello", "1,2"}, {2, "world", "2,3"}})
+		ret, err := db.Query("select 1")
+		xt.NoError(t, err)
+		users, err := xdb.ScanRows[testUser6](ret)
+		xt.Error(t, err)
+		xt.Empty(t, users)
+		xt.ErrorContains(t, err, "Cannot Set")
+	})
+
+	t.Run("testUser22", func(t *testing.T) {
+		values := [][]any{{"u22-value", "u21-hello", "1,2", ""}, {"hello", "world", "2,3", `{"k1":"v1"}`}}
+		xtdr.ExpectQuery("select 1", []string{"u22", "u21", "csv1", "mp1"}, values)
+		ret, err := db.Query("select 1")
+		xt.NoError(t, err)
+		users, err := xdb.ScanRows[TestUser22](ret)
+		xt.NoError(t, err)
+		want := []TestUser22{
+			{
+				U22: "u22-value",
+				TestUser21: TestUser21{
+					U21: "u21-hello",
+					TestUser2: TestUser2{
+						CSV1: []int{1, 2},
+					},
+				},
+			},
+			{
+				U22: "hello",
+				TestUser21: TestUser21{
+					U21: "world",
+					TestUser2: TestUser2{
+						CSV1: []int{2, 3},
+						MP1: map[string]string{
+							"k1": "v1",
+						},
+					},
+				},
+			},
+		}
+		xt.Equal(t, want, users)
+	})
 }
