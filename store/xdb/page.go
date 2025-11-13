@@ -11,29 +11,33 @@ import (
 
 // Pagination 分页信息
 type Pagination struct {
-	Total int // 总结果条数
-	Page  int // 当前页数,总是 > 0, 若是第一页，则值为 1
-	Size  int // 每一页的结果数
+	TotalRecords int // 总结果条数
+	PageIndex    int // 当前页数,总是 > 0, 若是第一页，则值为 1
+	PageCount    int // 总页数,可选，当 >0 时有效。否则依据 TotalRecords 计数而来
+	PageSize     int // 当前页最大结果数
 }
 
-// TotalPages 总页数，返回结果总是 >= 1
-func (p Pagination) TotalPages() int {
-	if p.Total <= p.Size {
+// GetPageCount 总页数，返回结果总是 >= 1
+func (p Pagination) GetPageCount() int {
+	if p.PageCount > 0 {
+		return p.PageCount
+	}
+	if p.TotalRecords <= p.PageSize {
 		return 1
 	}
-	page := math.Ceil(float64(p.Total) / float64(p.Size))
+	page := math.Ceil(float64(p.TotalRecords) / float64(p.PageSize))
 	return int(page)
 }
 
 // NearPages 输入当前页码，得到有效的前后 num 页的起止页码
 func (p Pagination) NearPages(num int) (start int, end int) {
-	start = p.Page - num
-	end = p.Page + num
+	start = p.PageIndex - num
+	end = p.PageIndex + num
 	for start < 1 {
 		start++
 		end++
 	}
-	totalPage := p.TotalPages()
+	totalPage := p.GetPageCount()
 	for end > totalPage {
 		end--
 		start--
@@ -60,10 +64,15 @@ func PageList[T any](ctx context.Context, b Builder, page int, size int, search 
 		return Pagination{}, nil, err
 	}
 	pageInfo := Pagination{
-		Page:  page,
-		Total: int(total),
-		Size:  size,
+		PageIndex:    page,
+		TotalRecords: int(total),
+		PageSize:     size,
 	}
+	items := toPageRecord[T](datas, page, size)
+	return pageInfo, items, nil
+}
+
+func toPageRecord[T any](datas []T, page int, size int) []Record[T] {
 	items := make([]Record[T], len(datas))
 	for idx, value := range datas {
 		items[idx] = Record[T]{
@@ -73,7 +82,7 @@ func PageList[T any](ctx context.Context, b Builder, page int, size int, search 
 			Ext:   map[string]any{},
 		}
 	}
-	return pageInfo, items, nil
+	return items
 }
 
 // CountSearch 统计结果数以及分页的结果集

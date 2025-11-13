@@ -463,6 +463,10 @@ func (m *Model[T]) Count(ctx context.Context, field string, where string, args .
 	} else if field != "*" && !strings.ContainsRune(field, ' ') {
 		field = m.dialect.QuoteIdentifier(field)
 	}
+	return m.doCount(ctx, field, where, args...)
+}
+
+func (m *Model[T]) doCount(ctx context.Context, field string, where string, args ...any) (num int64, err error) {
 	sqlStr := fmt.Sprintf("SELECT count(%s) from %s %s",
 		field,
 		m.dialect.QuoteIdentifier(m.table),
@@ -473,4 +477,37 @@ func (m *Model[T]) Count(ctx context.Context, field string, where string, args .
 		return 0, fmt.Errorf("client (%T) is not RowQuerier", m.client)
 	}
 	return Count(ctx, db, sqlStr, args...)
+}
+
+func (m *Model[T]) ListPage(ctx context.Context, page int, size int, where string, args ...any) (Pagination, []Record[T], error) {
+	if size < 1 {
+		return Pagination{}, nil, fmt.Errorf("invalid size=%d", size)
+	}
+	where, args, err := m.buildWhere(0, where, args)
+	if err != nil {
+		return Pagination{}, nil, err
+	}
+	page = max(page, 1) // 最小值为 1
+	total, err := m.doCount(ctx, "*", where, args...)
+	if err != nil {
+		return Pagination{}, nil, err
+	}
+
+	info := Pagination{
+		TotalRecords: int(total),
+		PageSize:     size,
+		PageIndex:    page,
+	}
+
+	offset := (page - 1) * size
+	if int64(offset) >= total {
+		return info, nil, nil
+	}
+	m1 := m.Clone()
+	result, err := m1.Limit(size).Offset(offset).List(ctx, where, args)
+	if err != nil {
+		return info, nil, err
+	}
+	items := toPageRecord[T](result, page, size)
+	return info, items, nil
 }
