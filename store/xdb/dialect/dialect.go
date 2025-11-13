@@ -9,7 +9,7 @@ type Dialect interface {
 	Name() string
 
 	// BindVar 返回第 i 个绑定变量的占位符。
-	// 例如：Postgres -> "$1", MySQL/SQLite -> "?"
+	// 例如：Postgres -> "$1", MySQL/SQLite3 -> "?"
 	// i 从 1 开始。
 	BindVar(i int) string
 
@@ -35,9 +35,6 @@ type Dialect interface {
 	// SupportsReturning 表示方言是否支持 INSERT ... RETURNING / UPDATE ... RETURNING
 	SupportsReturning() bool
 
-	// SupportsUpsert 表示是否有原生 upsert（ON CONFLICT / ON DUPLICATE KEY UPDATE 等）
-	SupportsUpsert() bool
-
 	// DefaultValueExpr 返回 DB 的默认值表达式（例如 "DEFAULT" 或 ""）
 	DefaultValueExpr() string
 }
@@ -52,13 +49,14 @@ type ReturningDialect interface {
 type UpsertDialect interface {
 	// UpsertSQL
 	// table: 表名
+	// count: 数据条数
 	// cols: 所有字段
 	// conflictCols: 冲突字段（主键或唯一键）
 	// updateCols: 冲突时需要更新的字段
 	// args: 对应参数值
 	// returningCols: 可选返回字段
 	// 返回可执行 SQL + 参数切片
-	UpsertSQL(table string, cols, conflictCols, updateCols []string, args []any, returningCols []string) (string, []any)
+	UpsertSQL(table string, count int, cols, conflictCols, updateCols []string, returningCols []string) string
 }
 
 // SchemaDialect DDL 相关扩展（创建表、列类型等）

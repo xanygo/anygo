@@ -128,10 +128,6 @@ func (m *Model[T]) Insert(ctx context.Context, v T) (int64, error) {
 		strings.Join(qcols, ", "),
 		m.dialect.PlaceholderList(len(kv), 1),
 	)
-	if r, ok := any(m.dialect).(dialect.ReturningDialect); ok {
-		sqlStr += " " + r.ReturningClause()
-	}
-
 	db, ok := m.client.(Execer)
 	if !ok {
 		return 0, fmt.Errorf("client (%T) is not Execer", m.client)
@@ -186,6 +182,37 @@ func (m *Model[T]) InsertBatch(ctx context.Context, vs ...T) (int64, error) {
 		return 0, err
 	}
 	return ret.RowsAffected()
+}
+
+func (m *Model[T]) Upsert(ctx context.Context, conflictCols []string, updateCols []string, values ...T) (int64, error) {
+	if len(values) == 0 {
+		return 0, errors.New("no values")
+	}
+	dup, ok := m.dialect.(dialect.UpsertDialect)
+	if !ok {
+		return 0, fmt.Errorf("dialect (%T) is not UpsertDialect", m.dialect)
+	}
+	db, ok := m.client.(Execer)
+	if !ok {
+		return 0, fmt.Errorf("client (%T) is not Execer", m.client)
+	}
+	kvSlice, err := m.getEncoder().EncodeBatch(values...)
+	if err != nil {
+		return 0, err
+	}
+	cols := xmap.Keys(kvSlice[0])
+	if miss, ok := xslice.AllContains(cols, updateCols); !ok {
+		return 0, fmt.Errorf("invalid updateCols: %q not in %q", miss, cols)
+	}
+	args := make([]any, 0, len(values)*len(cols))
+	for _, item := range kvSlice {
+		for _, col := range cols {
+			args = append(args, item[col])
+		}
+	}
+	sqlStr := dup.UpsertSQL(m.table, len(values), cols, conflictCols, updateCols, nil)
+	ret, err := Exec(ctx, db, sqlStr, args...)
+	return RowsAffected(ret, err)
 }
 
 func (m *Model[T]) Update(ctx context.Context, v T, where string, args ...any) (int64, error) {
@@ -445,7 +472,5 @@ func (m *Model[T]) Count(ctx context.Context, field string, where string, args .
 	if !ok {
 		return 0, fmt.Errorf("client (%T) is not RowQuerier", m.client)
 	}
-	row := db.QueryRowContext(ctx, sqlStr, args...)
-	err = row.Scan(&num)
-	return num, err
+	return Count(ctx, db, sqlStr, args...)
 }

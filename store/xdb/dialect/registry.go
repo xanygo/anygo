@@ -32,6 +32,6 @@ func init() {
 	Register(MySQL{})
 	Register(MariaDB{})
 	Register(Postgres{})
-	Register(SQLite{})
+	Register(SQLite3{})
 	Register(SQLServerDialect{})
 }

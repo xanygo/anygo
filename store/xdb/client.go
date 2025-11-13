@@ -148,6 +148,8 @@ func (c *Client) ExecContext(ctx context.Context, query string, args ...any) (re
 			Start:  time.Now(),
 			Client: c.Name(),
 			Driver: c.Driver(),
+			Query:  query,
+			Args:   args,
 		}
 		defer func() {
 			event.End = time.Now()
@@ -171,6 +173,7 @@ func (c *Client) PrepareContext(ctx context.Context, query string) (ns Statement
 			Client: c.Name(),
 			Driver: c.Driver(),
 			StmtID: stmtID,
+			Query:  query,
 		}
 		defer func() {
 			event.End = time.Now()

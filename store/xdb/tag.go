@@ -33,7 +33,14 @@ func SetTagName(name string) {
 const (
 	tagPrimaryKey = "primaryKey"
 	tagCodec      = "codec"
+
+	tagAutoIncr      = "autoInc"
+	tagAutoIncrement = "autoIncrement" // tagAutoIncr 的缩写
 )
+
+func isTagAutoIncr(tag xstruct.Tag) bool {
+	return tag.Has(tagAutoIncr) || tag.Has(tagAutoIncrement)
+}
 
 func getCodecName(tag xstruct.Tag) string {
 	name := tag.Value(tagCodec)
@@ -68,7 +75,8 @@ func findStructPrimaryKV(obj any) (key string, value any, err error) {
 		if !v.Field(i).CanInterface() {
 			continue
 		}
-		val := v.Field(i).Interface()
+		fv := v.Field(i)
+		val := fv.Interface()
 
 		tag := xstruct.ParserTag(field.Tag.Get(TagName()))
 		name := tag.Name()
@@ -83,7 +91,7 @@ func findStructPrimaryKV(obj any) (key string, value any, err error) {
 		}
 		key = name
 
-		if v.Field(i).IsZero() {
+		if fv.IsZero() {
 			return "", nil, fmt.Errorf("primary key %s(%s) is zero value", field.Name, key)
 		}
 		value, err = encodeStructFieldValue(val, tag)

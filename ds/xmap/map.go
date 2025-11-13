@@ -133,6 +133,19 @@ func Values[K comparable, V any](m map[K]V) []V {
 	return values
 }
 
+func KeyValues[K comparable, V any](m map[K]V) ([]K, []V) {
+	if len(m) == 0 {
+		return nil, nil
+	}
+	keys := make([]K, 0, len(m))
+	values := make([]V, 0, len(m))
+	for k, v := range m {
+		keys = append(keys, k)
+		values = append(values, v)
+	}
+	return keys, values
+}
+
 // Filter  从 map 中 过滤出满足条件的项
 //
 // filter: 过滤函数，参数依次为 k、v 分别是 map 的 key 和 value、ok-已过滤满足条件的个数

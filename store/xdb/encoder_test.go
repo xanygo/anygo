@@ -62,3 +62,17 @@ type testUser1 struct {
 	Bs1 []byte `db:"bs1"`
 	ID2 *int   `db:"id2"`
 }
+
+// BenchmarkEncodeStruct-4           328579              3513 ns/op            3432 B/op         41 allocs/op
+func BenchmarkEncodeStruct(b *testing.B) {
+	u1 := testUser1{
+		ID:   1000,
+		Name: "name1",
+		Md2:  map[string]string{"k": "v"},
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		xdb.Encode(u1)
+	}
+}

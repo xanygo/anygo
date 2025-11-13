@@ -241,3 +241,13 @@ func TestChunk(t *testing.T) {
 	}
 	xt.Equal(t, want, got)
 }
+
+func TestAllContains(t *testing.T) {
+	miss, ok := AllContains([]string{"a", "b"}, []string{"a"})
+	xt.True(t, ok)
+	xt.Empty(t, miss)
+
+	miss, ok = AllContains([]string{"a", "b"}, []string{"c"})
+	xt.False(t, ok)
+	xt.Equal(t, "c", miss)
+}

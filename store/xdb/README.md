@@ -35,3 +35,10 @@ type User struct{
 | date     | 可用于 time.Time 类型的字段                            | `2025-11-11 13:00:00` |
 | dateTime | 可用于 time.Time 类型的字段                            | `2025-11-11 13:00:00` |
 | timespan | 可用于 time.Time 类型的字段,数据库中存储的 int 类型的值           | `1234567890`          |
+
+
+## 驱动
+| 名称      | import path                    | 说明                  |
+|---------|--------------------------------|---------------------|
+| mysql   | github.com/go-sql-driver/mysql | 支持 MySQL 和 MariaDB  |
+| sqlite3 | github.com/mattn/go-sqlite3    | 支持 sqlite3,需要 cGo=1 |

@@ -169,3 +169,9 @@ func StmtQueryManyIter[T any](ctx context.Context, q Statement, args ...any) ite
 func StmtExec(ctx context.Context, eq Statement, args ...any) (sql.Result, error) {
 	return eq.ExecContext(ctx, args...)
 }
+
+func Count(ctx context.Context, q RowQuerier, query string, args ...any) (num int64, err error) {
+	row := q.QueryRowContext(ctx, query, args...)
+	err = row.Scan(&num)
+	return num, err
+}

@@ -7,6 +7,8 @@ package dialect
 import (
 	"fmt"
 	"strings"
+
+	"github.com/xanygo/anygo/ds/xslice"
 )
 
 // MariaDB 实现 Dialect 接口
@@ -69,11 +71,6 @@ func (MariaDB) SupportsReturning() bool {
 	return true
 }
 
-// SupportsUpsert MariaDB 支持 ON DUPLICATE KEY UPDATE。
-func (MariaDB) SupportsUpsert() bool {
-	return true
-}
-
 // DefaultValueExpr 默认值关键字
 func (MariaDB) DefaultValueExpr() string {
 	return "DEFAULT"
@@ -92,27 +89,28 @@ func (MariaDB) ReturningClause(columns ...string) string {
 	return "RETURNING " + strings.Join(quoted, ", ")
 }
 
-func (MariaDB) UpsertSQL(table string, columns, conflictCols, updateCols []string, args []any, returningCols []string) (string, []any) {
-	colList := strings.Join(columns, ", ")
-	valPlaceholders := make([]string, len(columns))
-	for i := range columns {
-		valPlaceholders[i] = "?"
-	}
+var _ UpsertDialect = MariaDB{}
+
+func (d MariaDB) UpsertSQL(table string, count int, columns, conflictCols, updateCols []string, returningCols []string) string {
+	colList := strings.Join(xslice.MapFunc(columns, d.QuoteIdentifier), ",")
+
+	valPlaceholders := "(" + strings.Join(xslice.Repeat("?", len(columns)), ",") + ")"
 
 	updateAssignments := make([]string, len(updateCols))
 	for i, c := range updateCols {
+		c = d.QuoteIdentifier(c)
 		updateAssignments[i] = fmt.Sprintf("%s = VALUES(%s)", c, c)
 	}
 
 	sqlStr := fmt.Sprintf(
-		"INSERT INTO %s (%s) VALUES (%s) ON DUPLICATE KEY UPDATE %s",
+		"INSERT INTO %s (%s) VALUES %s ON DUPLICATE KEY UPDATE %s",
 		table,
 		colList,
-		strings.Join(valPlaceholders, ", "),
+		strings.Join(xslice.Repeat(valPlaceholders, count), ","),
 		strings.Join(updateAssignments, ", "),
 	)
 
-	return sqlStr, args
+	return sqlStr
 }
 
 func (MariaDB) AutoIncrementColumnType(baseType string) string {

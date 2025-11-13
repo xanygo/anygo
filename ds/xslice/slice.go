@@ -333,3 +333,16 @@ func Repeat[E any](v E, count int) []E {
 	}
 	return result
 }
+
+// AllContains 判断 small 是否都被 big 包含
+//
+// 返回：首个不被包含的值，成功状态
+func AllContains[S ~[]E, E comparable](big S, small S) (miss E, ok bool) {
+	index := ToMap(big, struct{}{})
+	for _, item := range small {
+		if _, ok = index[item]; !ok {
+			return item, ok
+		}
+	}
+	return miss, true
+}

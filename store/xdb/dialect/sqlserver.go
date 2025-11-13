@@ -91,28 +91,35 @@ func (SQLServerDialect) ReturningClause(columns ...string) string {
 	return "OUTPUT " + strings.Join(quoted, ", ")
 }
 
+var _ UpsertDialect = SQLServerDialect{}
+
 // UpsertSQL 生成 SQL Server MERGE UPSERT
 // table: 表名
+// count: 数据条数
 // cols: 所有字段
 // conflictCols: 主键或唯一键字段
 // updateCols: 需要更新的字段
 // args: 对应参数值
 // 返回：SQL string + 参数切片
-func (SQLServerDialect) UpsertSQL(table string, cols, conflictCols, updateCols []string, args []any, returningCols []string) (string, []any) {
-	if len(conflictCols) == 0 || len(updateCols) == 0 {
-		return "", nil
-	}
-
-	// source 子表占位符
-	placeholders := make([]string, len(cols))
-	for i := range cols {
-		placeholders[i] = fmt.Sprintf("@p%d", i+1)
+func (d SQLServerDialect) UpsertSQL(table string, count int, cols, conflictCols, updateCols []string, returningCols []string) string {
+	valPlaceholders := make([]string, len(cols))
+	for c := 0; c < count; c++ {
+		tmp := make([]string, len(cols))
+		for i := range cols {
+			tmp[i] = fmt.Sprintf("@p%d", c*i+1)
+		}
+		str := "(" + strings.Join(tmp, ",") + ")"
+		valPlaceholders = append(valPlaceholders, str)
 	}
 
 	// ON 条件
 	onCond := make([]string, len(conflictCols))
+
+	placeholders := make([]string, len(cols))
 	for i, c := range conflictCols {
+		c = d.QuoteIdentifier(c)
 		onCond[i] = fmt.Sprintf("target.[%s] = source.[%s]", c, c)
+		placeholders[i] = fmt.Sprintf("source.%s", c)
 	}
 
 	// UPDATE 赋值
@@ -124,32 +131,47 @@ func (SQLServerDialect) UpsertSQL(table string, cols, conflictCols, updateCols [
 	// OUTPUT 子句
 	var output string
 	if len(returningCols) > 0 {
-		cols := make([]string, len(returningCols))
+		tmp := make([]string, len(returningCols))
 		for i, c := range returningCols {
-			cols[i] = fmt.Sprintf("inserted.[%s]", c)
+			tmp[i] = fmt.Sprintf("inserted.[%s]", c)
 		}
-		output = "OUTPUT " + strings.Join(cols, ", ")
+		output = "OUTPUT " + strings.Join(tmp, ", ")
 	}
+
+	// MERGE INTO users AS t
+	// USING (VALUES
+	//    (1, 'Tom', 10),
+	//    (2, 'Bob', 15),
+	//    (3, 'Amy', 20)
+	// ) AS s(id, name, score)
+	//    ON t.id = s.id
+	// WHEN MATCHED THEN
+	//    UPDATE SET
+	//        t.name = s.name,
+	//        t.score = s.score
+	// WHEN NOT MATCHED THEN
+	//    INSERT (id, name, score)
+	//    VALUES (s.id, s.name, s.score);
 
 	// 生成完整 MERGE SQL
 	sqlStr := fmt.Sprintf(
 		`MERGE INTO %s AS target
-USING (VALUES (%s)) AS source (%s)
+USING (VALUES %s) AS source (%s)
 ON %s
 WHEN MATCHED THEN UPDATE SET %s
 WHEN NOT MATCHED THEN INSERT (%s) VALUES (%s)
 %s;`,
 		table,
-		strings.Join(placeholders, ", "), // VALUES 占位
-		strings.Join(cols, ", "),         // source 列
-		strings.Join(onCond, " AND "),    // ON 条件
-		strings.Join(assigns, ", "),      // UPDATE
-		strings.Join(cols, ", "),         // INSERT 列
-		strings.Join(placeholders, ", "), // INSERT VALUES
-		output,                           // OUTPUT
+		strings.Join(valPlaceholders, ","), // VALUES 占位
+		strings.Join(cols, ", "),           // source 列
+		strings.Join(onCond, " AND "),      // ON 条件
+		strings.Join(assigns, ", "),        // UPDATE
+		strings.Join(cols, ", "),           // INSERT 列
+		strings.Join(placeholders, ", "),   // INSERT VALUES
+		output,                             // OUTPUT
 	)
 
-	return sqlStr, args
+	return sqlStr
 }
 
 // AutoIncrementColumnType 返回自增列定义

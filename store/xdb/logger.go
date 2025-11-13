@@ -6,13 +6,13 @@ package xdb
 
 import (
 	"context"
-	"log"
 
 	"github.com/xanygo/anygo/xlog"
 )
 
 type Logger struct {
 	Logger xlog.Logger
+	NoArgs bool
 }
 
 func (l *Logger) ToInterceptor() *Interceptor {
@@ -43,12 +43,17 @@ func (l *Logger) after(ctx context.Context, e Event) {
 		xlog.Int("args.len", len(e.Args)),
 		xlog.ErrorAttr("error", e.Error),
 	}
+	if !l.NoArgs {
+		attrs = append(attrs, xlog.Any("args", e.Args))
+	}
 	if e.TxID != "" {
 		attrs = append(attrs, xlog.String("txID", e.TxID))
 	}
 	if e.StmtID != "" {
 		attrs = append(attrs, xlog.String("StmtID", e.StmtID))
 	}
-	log.Println("after call")
 	logger.Output(ctx, xlog.LevelInfo, 3, e.Action, attrs...)
+	if e.Error != nil {
+		logger.Output(ctx, xlog.LevelError, 3, e.Action, attrs...)
+	}
 }

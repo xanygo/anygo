@@ -6,7 +6,10 @@ package xstruct
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
+
+	"github.com/xanygo/anygo/internal/zcache"
 )
 
 type Tag struct {
@@ -77,4 +80,17 @@ func ParserTag(str string) Tag {
 		}
 	}
 	return t
+}
+
+var structTagCache = &zcache.MapCache[[2]string, Tag]{}
+
+func ParserTagCached(tag reflect.StructTag, name string) Tag {
+	key := [2]string{string(tag), name}
+	val, ok := structTagCache.Load(key)
+	if ok {
+		return val
+	}
+	val = ParserTag(tag.Get(name))
+	structTagCache.Set(key, val)
+	return val
 }

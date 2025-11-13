@@ -93,39 +93,56 @@ func (e Encoder[T]) encodeStruct(v reflect.Value) (map[string]any, error) {
 	return result, err
 }
 
-func (e Encoder[T]) withStruct(v reflect.Value, fn func(name string, tag xstruct.Tag, field reflect.StructField, value reflect.Value) error) error {
-	t := v.Type()
-	keys := make(map[string]struct{}, len(e.OnlyFields))
-	fieldsLimit := xslice.ToMap(e.OnlyFields, true)
-	fieldsIgnore := xslice.ToMap(e.IgnoreFields, true)
+var sliceEmpty = map[string]bool{}
 
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		if !v.Field(i).CanInterface() {
-			continue
+func (e Encoder[T]) sliceToMapTrue(s []string) map[string]bool {
+	if len(s) == 0 {
+		return sliceEmpty
+	}
+	return xslice.ToMap(e.OnlyFields, true)
+}
+
+func (e Encoder[T]) withStruct(v reflect.Value, fn func(name string, tag xstruct.Tag, field reflect.StructField, value reflect.Value) error) error {
+	keys := make(map[string]struct{}, len(e.OnlyFields))
+	fieldsLimit := e.sliceToMapTrue(e.OnlyFields)
+	fieldsIgnore := e.sliceToMapTrue(e.IgnoreFields)
+
+	tn := TagName()
+	err := zreflect.RangeStructFields(v.Type(), func(field reflect.StructField) error {
+		if !field.IsExported() {
+			return nil
+		}
+		fv := v.FieldByName(field.Name)
+		if !fv.CanInterface() {
+			return nil
 		}
 
-		tag := xstruct.ParserTag(field.Tag.Get(TagName()))
+		tag := xstruct.ParserTagCached(field.Tag, tn)
 		name := tag.Name()
 		if name == "-" || name == "" {
-			continue
+			return nil
 		}
 		if _, has := keys[name]; has {
 			return fmt.Errorf("duplicate field %q", name)
 		}
 
 		if len(fieldsLimit) > 0 && !fieldsLimit[name] {
-			continue
+			return nil
 		}
 		if len(fieldsIgnore) > 0 && fieldsIgnore[name] {
-			continue
+			return nil
 		}
-		if err := fn(name, tag, field, v.Field(i)); err != nil {
+		if isTagAutoIncr(tag) && fv.IsZero() {
+			// 当时自增长类型、并且是零值，则跳过该字段
+			return nil
+		}
+		if err := fn(name, tag, field, fv); err != nil {
 			return err
 		}
 		keys[name] = struct{}{}
-	}
-	return nil
+		return nil
+	})
+	return err
 }
 
 // encodeStructFieldValue 对单个字段根据类型和 serializer 转换
@@ -159,8 +176,8 @@ func encodeStructFieldValue(val any, tag xstruct.Tag) (any, error) {
 
 // encodeMap 处理 map[string]any
 func (e Encoder[T]) encodeMap(v reflect.Value) (map[string]any, error) {
-	fieldsLimit := xslice.ToMap(e.OnlyFields, true)
-	fieldsIgnore := xslice.ToMap(e.IgnoreFields, true)
+	fieldsLimit := e.sliceToMapTrue(e.OnlyFields)
+	fieldsIgnore := e.sliceToMapTrue(e.IgnoreFields)
 	result := make(map[string]any)
 	for _, k := range v.MapKeys() {
 		val := v.MapIndex(k).Interface()
@@ -212,6 +229,9 @@ func (e Encoder[T]) Fields(data T) ([]string, error) {
 func (e Encoder[T]) structFields(v reflect.Value) ([]string, error) {
 	var result []string
 	err := e.withStruct(v, func(name string, tag xstruct.Tag, field reflect.StructField, value reflect.Value) error {
+		if field.IsExported() {
+			return nil
+		}
 		result = append(result, name)
 		return nil
 	})

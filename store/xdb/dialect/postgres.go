@@ -7,6 +7,8 @@ package dialect
 import (
 	"fmt"
 	"strings"
+
+	"github.com/xanygo/anygo/ds/xslice"
 )
 
 // Postgres 实现 Dialect 接口
@@ -69,11 +71,6 @@ func (Postgres) SupportsReturning() bool {
 	return true
 }
 
-// SupportsUpsert 返回 true
-func (Postgres) SupportsUpsert() bool {
-	return true
-}
-
 // DefaultValueExpr 默认值关键字
 func (Postgres) DefaultValueExpr() string {
 	return "DEFAULT"
@@ -93,23 +90,30 @@ func (Postgres) ReturningClause(columns ...string) string {
 
 var _ UpsertDialect = (*Postgres)(nil)
 
-func (Postgres) UpsertSQL(table string, cols, conflictCols, updateCols []string, args []any, returningCols []string) (string, []any) {
-	colList := strings.Join(cols, ", ")
+func (d Postgres) UpsertSQL(table string, count int, cols, conflictCols, updateCols []string, returningCols []string) string {
+	colList := strings.Join(xslice.MapFunc(cols, d.QuoteIdentifier), ",")
+
 	valPlaceholders := make([]string, len(cols))
-	for i := range cols {
-		valPlaceholders[i] = fmt.Sprintf("$%d", i+1)
+	for c := 0; c < count; c++ {
+		tmp := make([]string, len(cols))
+		for i := range cols {
+			tmp[i] = fmt.Sprintf("$%d", c*i+1)
+		}
+		str := "(" + strings.Join(tmp, ",") + ")"
+		valPlaceholders = append(valPlaceholders, str)
 	}
 
 	updateAssignments := make([]string, len(updateCols))
 	for i, c := range updateCols {
+		c = d.QuoteIdentifier(c)
 		updateAssignments[i] = fmt.Sprintf("%s = EXCLUDED.%s", c, c)
 	}
 
 	sqlStr := fmt.Sprintf(
-		"INSERT INTO %s (%s) VALUES (%s) ON CONFLICT (%s) DO UPDATE SET %s",
+		"INSERT INTO %s (%s) VALUES %s ON CONFLICT (%s) DO UPDATE SET %s",
 		table,
 		colList,
-		strings.Join(valPlaceholders, ", "),
+		strings.Join(valPlaceholders, ","),
 		strings.Join(conflictCols, ", "),
 		strings.Join(updateAssignments, ", "),
 	)
@@ -117,8 +121,7 @@ func (Postgres) UpsertSQL(table string, cols, conflictCols, updateCols []string,
 	if len(returningCols) > 0 {
 		sqlStr += " RETURNING " + strings.Join(returningCols, ", ")
 	}
-
-	return sqlStr, args
+	return sqlStr
 }
 
 // AutoIncrementColumnType PostgreSQL 自增列类型
