@@ -12,4 +12,7 @@ type Codec interface {
 
 	// Decode 解码
 	Decode(b string, a any) error
+
+	// Kind 数据库中存储的数据类型
+	Kind() Kind
 }

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/store/xdb/dbcodec"
 )
 
 // SQLite3 实现 Dialect 接口
@@ -130,32 +131,31 @@ func (d SQLite3) UpsertSQL(table string, count int, columns, conflictCols, updat
 	return sqlStr
 }
 
-func (SQLite3) AutoIncrementColumnType(baseType string) string {
-	// SQLite3 中自增列需定义为 INTEGER PRIMARY KEY AUTOINCREMENT
-	if strings.EqualFold(baseType, "integer") {
-		return "INTEGER PRIMARY KEY AUTOINCREMENT"
+var _ SchemaDialect = SQLite3{}
+
+func (SQLite3) AutoIncrementColumnType(baseType string, primaryKey bool) string {
+	bt := baseType
+	if primaryKey {
+		baseType += " PRIMARY KEY"
+	}
+	if bt == "INTEGER" {
+		return baseType + " AUTOINCREMENT"
 	}
 	return baseType
 }
 
-func (SQLite3) ColumnType(kind string, size int) string {
-	switch strings.ToLower(kind) {
-	case "string", "varchar":
-		if size <= 0 {
-			size = 255
-		}
+func (SQLite3) ColumnType(kind dbcodec.Kind, size int) string {
+	switch kind {
+	case dbcodec.KindString:
 		return "TEXT"
-	case "int", "integer":
+	case dbcodec.KindInt, dbcodec.KindInt8, dbcodec.KindInt16, dbcodec.KindInt32, dbcodec.KindInt64,
+		dbcodec.KindUint, dbcodec.KindUint8, dbcodec.KindUint16, dbcodec.KindUint32, dbcodec.KindUint64:
 		return "INTEGER"
-	case "bigint":
+	case dbcodec.KindBoolean:
 		return "INTEGER"
-	case "bool", "boolean":
-		return "INTEGER"
-	case "float", "double", "real":
+	case dbcodec.KindFloat32, dbcodec.KindFloat64:
 		return "REAL"
-	case "text":
-		return "TEXT"
-	case "json":
+	case dbcodec.KindJSON:
 		// SQLite3 3.38+ 支持 JSON 函数，但底层仍 TEXT
 		return "TEXT"
 	default:
@@ -163,6 +163,11 @@ func (SQLite3) ColumnType(kind string, size int) string {
 	}
 }
 
-func (SQLite3) CreateTableIfNotExists() string {
-	return "CREATE TABLE IF NOT EXISTS"
+func (d SQLite3) CreateTableIfNotExists(table string) string {
+	return "CREATE TABLE IF NOT EXISTS " + d.QuoteIdentifier(table)
+}
+
+func (d SQLite3) AddColumnIfNotExists(table string, col string) string {
+	// 原生不支持
+	return ""
 }

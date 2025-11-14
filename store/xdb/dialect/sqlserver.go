@@ -7,6 +7,8 @@ package dialect
 import (
 	"fmt"
 	"strings"
+
+	"github.com/xanygo/anygo/store/xdb/dbcodec"
 )
 
 var _ Dialect = (*SQLServerDialect)(nil)
@@ -174,43 +176,62 @@ WHEN NOT MATCHED THEN INSERT (%s) VALUES (%s)
 	return sqlStr
 }
 
-// AutoIncrementColumnType 返回自增列定义
-func (SQLServerDialect) AutoIncrementColumnType(baseType string) string {
-	switch strings.ToLower(baseType) {
-	case "int", "integer":
-		return "INT IDENTITY(1,1)"
-	case "bigint":
-		return "BIGINT IDENTITY(1,1)"
-	default:
-		return baseType
+var _ SchemaDialect = SQLServerDialect{}
+
+func (d SQLServerDialect) AutoIncrementColumnType(baseType string, primaryKey bool) string {
+	if strings.Contains(baseType, "INT") {
+		baseType += " IDENTITY(1,1)"
 	}
+	if primaryKey {
+		return baseType + " PRIMARY KEY"
+	}
+	return baseType
 }
 
 // ColumnType 映射通用类型到 SQL Server 类型
-func (SQLServerDialect) ColumnType(kind string, size int) string {
-	switch strings.ToLower(kind) {
-	case "string", "varchar":
+func (SQLServerDialect) ColumnType(kind dbcodec.Kind, size int) string {
+	switch kind {
+	case dbcodec.KindString:
 		if size <= 0 {
-			size = 255
+			return "TEXT"
 		}
 		return fmt.Sprintf("VARCHAR(%d)", size)
-	case "text":
-		return "TEXT"
-	case "int", "integer":
+
+	case dbcodec.KindUint8:
+		return "TINYINT"
+	case dbcodec.KindUint16, dbcodec.KindInt32:
 		return "INT"
-	case "bigint":
+	case dbcodec.KindInt, dbcodec.KindUint, dbcodec.KindUint32, dbcodec.KindInt64:
 		return "BIGINT"
-	case "bool", "boolean":
+	case dbcodec.KindInt8, dbcodec.KindInt16:
+		return "SMALLINT"
+	case dbcodec.KindUint64:
+		return "NUMERIC(20,0)"
+
+	case dbcodec.KindBoolean:
 		return "BIT"
-	case "float", "double", "real":
+
+	case dbcodec.KindFloat32:
+		return "REAL"
+	case dbcodec.KindFloat64:
 		return "FLOAT"
-	case "json":
+
+	case dbcodec.KindBinary:
+		return "VARBINARY(MAX)"
+
+	case dbcodec.KindJSON:
 		return "NVARCHAR(MAX)" // SQL Server 2016+ 可以用 JSON 函数处理
 	default:
-		return kind
+		panic("unknown kind:" + kind)
 	}
 }
 
-func (SQLServerDialect) CreateTableIfNotExists() string {
-	return "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='[TABLE]' AND xtype='U') CREATE TABLE"
+func (d SQLServerDialect) CreateTableIfNotExists(table string) string {
+	return "IF NOT EXISTS (SELECT * FROM sysobjects where id = object_id('" +
+		table + "') and OBJECTPROPERTY(id, 'IsUserTable') = 1 ) CREATE TABLE " + d.QuoteIdentifier(table)
+}
+
+func (d SQLServerDialect) AddColumnIfNotExists(table string, col string) string {
+	// 原生不支持
+	return ""
 }

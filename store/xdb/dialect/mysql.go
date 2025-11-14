@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/store/xdb/dbcodec"
 )
 
 var _ Dialect = (*MySQL)(nil)
@@ -108,35 +109,71 @@ func (d MySQL) UpsertSQL(table string, count int, columns, conflictCols, updateC
 	return sqlStr
 }
 
-func (MySQL) AutoIncrementColumnType(baseType string) string {
-	// 例如 baseType="BIGINT" => "BIGINT AUTO_INCREMENT"
-	return baseType + " AUTO_INCREMENT"
+var _ SchemaDialect = MySQL{}
+
+func (MySQL) AutoIncrementColumnType(baseType string, primaryKey bool) string {
+	if primaryKey {
+		baseType += " PRIMARY KEY"
+	}
+	if strings.Contains(baseType, "INT") {
+		return baseType + " AUTO_INCREMENT"
+	}
+	return baseType
 }
 
-func (MySQL) ColumnType(kind string, size int) string {
-	switch strings.ToLower(kind) {
-	case "string", "varchar":
+func (MySQL) ColumnType(kind dbcodec.Kind, size int) string {
+	switch kind {
+	case dbcodec.KindString:
 		if size <= 0 {
 			size = 255
 		}
 		return fmt.Sprintf("VARCHAR(%d)", size)
-	case "int", "integer":
+
+	case dbcodec.KindInt:
 		return "INT"
-	case "bigint":
+	case dbcodec.KindInt8:
+		return "TINYINT"
+	case dbcodec.KindInt16:
+		return "SMALLINT"
+	case dbcodec.KindInt32:
+		return "INT"
+	case dbcodec.KindInt64:
 		return "BIGINT"
-	case "bool", "boolean":
+
+	case dbcodec.KindUint:
+		return "INT UNSIGNED"
+	case dbcodec.KindUint8:
+		return "TINYINT UNSIGNED"
+	case dbcodec.KindUint16:
+		return "SMALLINT UNSIGNED"
+	case dbcodec.KindUint32:
+		return "INT UNSIGNED"
+	case dbcodec.KindUint64:
+		return "BIGINT UNSIGNED"
+
+	case dbcodec.KindBoolean:
 		return "TINYINT(1)"
-	case "float":
+	case dbcodec.KindFloat32:
 		return "FLOAT"
-	case "double":
+	case dbcodec.KindFloat64:
 		return "DOUBLE"
-	case "text":
-		return "TEXT"
+	case dbcodec.KindBinary:
+		return "BLOB"
+	case dbcodec.KindJSON:
+		return "LONGTEXT"
+	case dbcodec.KindDate:
+		return "DATE"
+	case dbcodec.KindDateTime:
+		return "DATETIME"
 	default:
-		return kind
+		panic("unknown kind:" + kind)
 	}
 }
 
-func (MySQL) CreateTableIfNotExists() string {
-	return "CREATE TABLE IF NOT EXISTS"
+func (d MySQL) CreateTableIfNotExists(table string) string {
+	return "CREATE TABLE IF NOT EXISTS " + d.QuoteIdentifier(table)
+}
+
+func (d MySQL) AddColumnIfNotExists(table string, col string) string {
+	return fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s", d.QuoteIdentifier(table), d.QuoteIdentifier(col))
 }

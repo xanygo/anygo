@@ -12,6 +12,11 @@ import (
 	"github.com/xanygo/anygo/safely"
 )
 
+type DBCore interface {
+	Queryer
+	Execer
+}
+
 type (
 	// Queryer 封装执行查询并返回多行结果的方法
 	Queryer interface {

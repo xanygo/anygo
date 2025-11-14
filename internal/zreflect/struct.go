@@ -24,7 +24,10 @@ func loadStructMeta(t reflect.Type) *structMeta {
 	meta := &structMeta{
 		Fields: collectFields(t),
 	}
-	structMetaCache.Set(t, meta)
+	// 匿名 struct
+	if t.Name() != "" && t.PkgPath() != "" {
+		structMetaCache.Set(t, meta)
+	}
 	return meta
 }
 

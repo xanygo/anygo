@@ -4,6 +4,8 @@
 
 package dialect
 
+import "github.com/xanygo/anygo/store/xdb/dbcodec"
+
 type Dialect interface {
 	// Name 返回方言名称，如 "postgres", "mysql", "sqlite3"
 	Name() string
@@ -62,13 +64,16 @@ type UpsertDialect interface {
 // SchemaDialect DDL 相关扩展（创建表、列类型等）
 type SchemaDialect interface {
 	// AutoIncrementColumnType 返回用于自增的列类型或后缀，如 "SERIAL" / "INTEGER PRIMARY KEY AUTOINCREMENT"。
-	AutoIncrementColumnType(baseType string) string
+	AutoIncrementColumnType(baseType string, primaryKey bool) string
 
-	// ColumnType 将通用列类型映射为方言列类型（例如 "string" -> "VARCHAR(255)"）。
-	ColumnType(kind string, size int) string
+	// ColumnType 将通用列类型映射为方言列类型（例如 "string" -> "VARCHAR(255)"）
+	ColumnType(kind dbcodec.Kind, size int) string
 
 	// CreateTableIfNotExists 返回 CREATE TABLE ... IF NOT EXISTS 的片段（或空串如果不支持）。
-	CreateTableIfNotExists() string
+	CreateTableIfNotExists(table string) string
+
+	// AddColumnIfNotExists 添加字段，若不存在
+	AddColumnIfNotExists(table string, col string) string
 }
 
 // JSONDialect JSON 操作相关（Postgres JSONB / MySQL JSON）

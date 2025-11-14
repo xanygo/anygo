@@ -11,6 +11,10 @@ var _ Codec = (*CSV)(nil)
 type CSV struct {
 }
 
+func (j CSV) Kind() Kind {
+	return KindString
+}
+
 func (j CSV) Name() string {
 	return "csv"
 }

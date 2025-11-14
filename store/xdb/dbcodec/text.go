@@ -14,6 +14,10 @@ var _ Codec = (*Text)(nil)
 
 type Text struct{}
 
+func (t Text) Kind() Kind {
+	return KindString
+}
+
 func (t Text) Name() string {
 	return TextName
 }

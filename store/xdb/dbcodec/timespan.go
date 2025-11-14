@@ -15,6 +15,10 @@ var _ Codec = (*TimeSpan)(nil)
 type TimeSpan struct {
 }
 
+func (t TimeSpan) Kind() Kind {
+	return KindInt64
+}
+
 func (t TimeSpan) Name() string {
 	return "timespan"
 }

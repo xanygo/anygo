@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/store/xdb/dbcodec"
 )
 
 // MariaDB 实现 Dialect 接口
@@ -44,18 +45,7 @@ func (d MariaDB) QuoteQualifiedIdentifier(parts ...string) string {
 // LimitOffsetClause 生成 LIMIT/OFFSET 语句。
 // 与 MySQL 一致。
 func (MariaDB) LimitOffsetClause(limit, offset int) string {
-	if limit < 0 && offset <= 0 {
-		return ""
-	}
-	switch {
-	case limit >= 0 && offset > 0:
-		return fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
-	case limit >= 0:
-		return fmt.Sprintf("LIMIT %d", limit)
-	default:
-		// limit < 0, offset > 0 → 表示“取所有剩余行”
-		return fmt.Sprintf("LIMIT 18446744073709551615 OFFSET %d", offset)
-	}
+	return (MySQL{}).LimitOffsetClause(limit, offset)
 }
 
 // PlaceholderList 返回 n 个问号占位符，用逗号分隔。
@@ -113,37 +103,20 @@ func (d MariaDB) UpsertSQL(table string, count int, columns, conflictCols, updat
 	return sqlStr
 }
 
-func (MariaDB) AutoIncrementColumnType(baseType string) string {
-	return baseType + " AUTO_INCREMENT"
+var _ SchemaDialect = MariaDB{}
+
+func (MariaDB) AutoIncrementColumnType(baseType string, primaryKey bool) string {
+	return (MySQL{}).AutoIncrementColumnType(baseType, primaryKey)
 }
 
-func (MariaDB) ColumnType(kind string, size int) string {
-	switch strings.ToLower(kind) {
-	case "string", "varchar":
-		if size <= 0 {
-			size = 255
-		}
-		return fmt.Sprintf("VARCHAR(%d)", size)
-	case "int", "integer":
-		return "INT"
-	case "bigint":
-		return "BIGINT"
-	case "bool", "boolean":
-		return "TINYINT(1)"
-	case "float":
-		return "FLOAT"
-	case "double":
-		return "DOUBLE"
-	case "text":
-		return "TEXT"
-	case "json":
-		// MariaDB 没有真正 JSON 类型，用 LONGTEXT 模拟
-		return "LONGTEXT"
-	default:
-		return kind
-	}
+func (MariaDB) ColumnType(kind dbcodec.Kind, size int) string {
+	return (MySQL{}).ColumnType(kind, size)
 }
 
-func (MariaDB) CreateTableIfNotExists() string {
-	return "CREATE TABLE IF NOT EXISTS"
+func (d MariaDB) CreateTableIfNotExists(table string) string {
+	return "CREATE TABLE IF NOT EXISTS " + d.QuoteIdentifier(table)
+}
+
+func (d MariaDB) AddColumnIfNotExists(table string, col string) string {
+	return fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s", d.QuoteIdentifier(table), d.QuoteIdentifier(col))
 }

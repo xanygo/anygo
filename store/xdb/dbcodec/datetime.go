@@ -13,6 +13,10 @@ var _ Codec = (*DateTime)(nil)
 
 type DateTime struct{}
 
+func (t DateTime) Kind() Kind {
+	return KindDateTime
+}
+
 func (t DateTime) Name() string {
 	return "dateTime"
 }

@@ -13,6 +13,10 @@ var _ Codec = (*JSON)(nil)
 type JSON struct {
 }
 
+func (j JSON) Kind() Kind {
+	return KindJSON
+}
+
 func (j JSON) Name() string {
 	return "json"
 }

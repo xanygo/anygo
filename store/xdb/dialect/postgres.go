@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/store/xdb/dbcodec"
 )
 
 // Postgres 实现 Dialect 接口
@@ -124,43 +125,64 @@ func (d Postgres) UpsertSQL(table string, count int, cols, conflictCols, updateC
 	return sqlStr
 }
 
-// AutoIncrementColumnType PostgreSQL 自增列类型
-func (Postgres) AutoIncrementColumnType(baseType string) string {
-	switch strings.ToLower(baseType) {
-	case "int", "integer":
-		return "SERIAL"
-	case "bigint":
-		return "BIGSERIAL"
+var _ SchemaDialect = Postgres{}
+
+// AutoIncrementColumnType Postgres 自增列类型
+func (Postgres) AutoIncrementColumnType(baseType string, primaryKey bool) string {
+	switch baseType {
+	case "INTEGER":
+		baseType = "SERIAL" // 32 位自增
+	case "SMALLINT":
+		baseType = "SMALLSERIAL"
+	case "BIGINT":
+		baseType = "BIGSERIAL" // 64 位自增
 	default:
-		return baseType
 	}
+	if primaryKey {
+		return baseType + " PRIMARY KEY"
+	}
+	return baseType
 }
 
-// ColumnType 映射通用类型到 PostgreSQL 类型
-func (Postgres) ColumnType(kind string, size int) string {
-	switch strings.ToLower(kind) {
-	case "string", "varchar":
+// ColumnType 映射通用类型到 Postgres 类型
+func (Postgres) ColumnType(kind dbcodec.Kind, size int) string {
+	switch kind {
+	case dbcodec.KindString:
 		if size <= 0 {
 			return "TEXT"
 		}
 		return fmt.Sprintf("VARCHAR(%d)", size)
-	case "int", "integer":
+	case dbcodec.KindInt8, dbcodec.KindInt16, dbcodec.KindUint8:
+		return "SMALLINT"
+	case dbcodec.KindInt, dbcodec.KindInt32, dbcodec.KindUint16:
 		return "INTEGER"
-	case "bigint":
+	case dbcodec.KindUint, dbcodec.KindInt64, dbcodec.KindUint32:
 		return "BIGINT"
-	case "bool", "boolean":
+	case dbcodec.KindUint64:
+		return "NUMERIC(20,0)"
+	case dbcodec.KindBinary:
+		return "BYTEA"
+	case dbcodec.KindBoolean:
 		return "BOOLEAN"
-	case "float", "double", "real":
+	case dbcodec.KindFloat32:
+		return "REAL"
+	case dbcodec.KindFloat64:
 		return "DOUBLE PRECISION"
-	case "text":
-		return "TEXT"
-	case "json":
+	case dbcodec.KindJSON:
 		return "JSONB"
+	case dbcodec.KindDate:
+		return "DATE"
+	case dbcodec.KindDateTime:
+		return "TIMESTAMP"
 	default:
 		return "TEXT"
 	}
 }
 
-func (Postgres) CreateTableIfNotExists() string {
-	return "CREATE TABLE IF NOT EXISTS"
+func (d Postgres) CreateTableIfNotExists(table string) string {
+	return "CREATE TABLE IF NOT EXISTS " + d.QuoteIdentifier(table)
+}
+
+func (d Postgres) AddColumnIfNotExists(table string, col string) string {
+	return fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s", d.QuoteIdentifier(table), d.QuoteIdentifier(col))
 }
