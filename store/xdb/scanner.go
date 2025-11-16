@@ -14,6 +14,7 @@ import (
 	"github.com/xanygo/anygo/ds/xstruct"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb/dbcodec"
+	"github.com/xanygo/anygo/store/xdb/dbschema"
 )
 
 // ScanRows 读取并解析数据为指定的类型，T 类型可以是 struct、*struct、map[string]any 这三种类型
@@ -155,7 +156,7 @@ func scanRowsAsStruct[T any](rows *sql.Rows, cols []string) (T, error) {
 	columnToField := make(map[string]reflect.Value) // 用于存储  dbFieldName -> structFieldName 的关系
 	tags := make(map[string]xstruct.Tag)
 
-	tn := TagName()
+	tn := dbschema.TagName()
 
 	var doScanField func(tv reflect.Value) error
 
@@ -229,7 +230,7 @@ func scanRowsAsStruct[T any](rows *sql.Rows, cols []string) (T, error) {
 	if len(serializerFields) > 0 {
 		for name, idx := range serializerFields {
 			tag := tags[name]
-			codec := getCodecName(tag)
+			codec := dbschema.TagCodecName(tag)
 			// 从 scanTargets 里取出 sql.NullString
 			sPtr := scanTargets[idx].(*sql.NullString)
 			fieldValue := columnToField[name]

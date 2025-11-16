@@ -5,11 +5,13 @@
 package dialect
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xdb/dbcodec"
+	"github.com/xanygo/anygo/store/xdb/dbschema"
 )
 
 // Postgres 实现 Dialect 接口
@@ -20,7 +22,7 @@ func (Postgres) Name() string {
 	return "postgres"
 }
 
-// BindVar 返回 PostgreSQL 的占位符 `$1`, `$2`, ...
+// BindVar 返回 Postgres 的占位符 `$1`, `$2`, ...
 func (Postgres) BindVar(i int) string {
 	return fmt.Sprintf("$%d", i)
 }
@@ -70,11 +72,6 @@ func (Postgres) PlaceholderList(n, start int) string {
 // SupportsReturning 返回 true
 func (Postgres) SupportsReturning() bool {
 	return true
-}
-
-// DefaultValueExpr 默认值关键字
-func (Postgres) DefaultValueExpr() string {
-	return "DEFAULT"
 }
 
 // ReturningClause 生成 RETURNING 子句
@@ -127,23 +124,6 @@ func (d Postgres) UpsertSQL(table string, count int, cols, conflictCols, updateC
 
 var _ SchemaDialect = Postgres{}
 
-// AutoIncrementColumnType Postgres 自增列类型
-func (Postgres) AutoIncrementColumnType(baseType string, primaryKey bool) string {
-	switch baseType {
-	case "INTEGER":
-		baseType = "SERIAL" // 32 位自增
-	case "SMALLINT":
-		baseType = "SMALLSERIAL"
-	case "BIGINT":
-		baseType = "BIGSERIAL" // 64 位自增
-	default:
-	}
-	if primaryKey {
-		return baseType + " PRIMARY KEY"
-	}
-	return baseType
-}
-
 // ColumnType 映射通用类型到 Postgres 类型
 func (Postgres) ColumnType(kind dbcodec.Kind, size int) string {
 	switch kind {
@@ -183,6 +163,51 @@ func (d Postgres) CreateTableIfNotExists(table string) string {
 	return "CREATE TABLE IF NOT EXISTS " + d.QuoteIdentifier(table)
 }
 
-func (d Postgres) AddColumnIfNotExists(table string, col string) string {
-	return fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s", d.QuoteIdentifier(table), d.QuoteIdentifier(col))
+// func (d Postgres) addColumnIfNotExists(table string, col string) string {
+//	return fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s", d.QuoteIdentifier(table), d.QuoteIdentifier(col))
+// }
+
+// autoIncrementColumnType Postgres 自增列类型
+func (Postgres) autoIncrementColumnType(baseType string) string {
+	switch baseType {
+	case "INTEGER":
+		return "SERIAL" // 32 位自增
+	case "SMALLINT":
+		return "SMALLSERIAL"
+	case "BIGINT":
+		return "BIGSERIAL" // 64 位自增
+	default:
+		return baseType
+	}
+}
+
+func (d Postgres) ColumnString(fs *dbschema.ColumnSchema) string {
+	var sb strings.Builder
+	sb.WriteString(d.QuoteIdentifier(fs.Name))
+	sb.WriteString(" ")
+	baseType := d.ColumnType(fs.Kind, fs.Size)
+	if fs.AutoIncrement {
+		sb.WriteString(d.autoIncrementColumnType(baseType))
+	} else {
+		sb.WriteString(baseType)
+	}
+	if fs.NotNull {
+		sb.WriteString(" NOT NULL")
+	}
+	if fs.Unique {
+		sb.WriteString(" UNIQUE")
+	}
+	if fs.IsPrimaryKey {
+		sb.WriteString(" PRIMARY KEY")
+	}
+
+	return sb.String()
+}
+
+var _ MigrateDialect = Postgres{}
+
+func (d Postgres) Migrate(ctx context.Context, db DBCore, schema dbschema.TableSchema) error {
+	sqlStr := createTableSQL(schema, d, d)
+	_, err := db.ExecContext(ctx, sqlStr)
+	return err
 }

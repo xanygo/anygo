@@ -5,11 +5,13 @@
 package dialect
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xdb/dbcodec"
+	"github.com/xanygo/anygo/store/xdb/dbschema"
 )
 
 // MariaDB 实现 Dialect 接口
@@ -61,11 +63,6 @@ func (MariaDB) SupportsReturning() bool {
 	return true
 }
 
-// DefaultValueExpr 默认值关键字
-func (MariaDB) DefaultValueExpr() string {
-	return "DEFAULT"
-}
-
 // ReturningClause 返回 RETURNING 子句。
 // 如果 columns 为空，返回 RETURNING *。
 func (MariaDB) ReturningClause(columns ...string) string {
@@ -105,18 +102,25 @@ func (d MariaDB) UpsertSQL(table string, count int, columns, conflictCols, updat
 
 var _ SchemaDialect = MariaDB{}
 
-func (MariaDB) AutoIncrementColumnType(baseType string, primaryKey bool) string {
-	return (MySQL{}).AutoIncrementColumnType(baseType, primaryKey)
-}
-
 func (MariaDB) ColumnType(kind dbcodec.Kind, size int) string {
 	return (MySQL{}).ColumnType(kind, size)
+}
+
+func (d MariaDB) ColumnString(fs *dbschema.ColumnSchema) string {
+	return (MySQL{}).ColumnString(fs)
 }
 
 func (d MariaDB) CreateTableIfNotExists(table string) string {
 	return "CREATE TABLE IF NOT EXISTS " + d.QuoteIdentifier(table)
 }
 
-func (d MariaDB) AddColumnIfNotExists(table string, col string) string {
-	return fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s", d.QuoteIdentifier(table), d.QuoteIdentifier(col))
+//	func (d MariaDB) addColumnIfNotExists(table string, col string) string {
+//		return fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s", d.QuoteIdentifier(table), d.QuoteIdentifier(col))
+//	}
+var _ MigrateDialect = MariaDB{}
+
+func (d MariaDB) Migrate(ctx context.Context, db DBCore, schema dbschema.TableSchema) error {
+	sqlStr := createTableSQL(schema, d, d)
+	_, err := db.ExecContext(ctx, sqlStr)
+	return err
 }

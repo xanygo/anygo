@@ -5,11 +5,13 @@
 package dialect
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xdb/dbcodec"
+	"github.com/xanygo/anygo/store/xdb/dbschema"
 )
 
 var _ Dialect = (*MySQL)(nil)
@@ -80,11 +82,6 @@ func (MySQL) SupportsReturning() bool {
 	return false
 }
 
-// DefaultValueExpr MySQL 默认值关键字
-func (MySQL) DefaultValueExpr() string {
-	return "DEFAULT"
-}
-
 var _ UpsertDialect = MySQL{}
 
 func (d MySQL) UpsertSQL(table string, count int, columns, conflictCols, updateCols []string, returningCols []string) string {
@@ -110,16 +107,6 @@ func (d MySQL) UpsertSQL(table string, count int, columns, conflictCols, updateC
 }
 
 var _ SchemaDialect = MySQL{}
-
-func (MySQL) AutoIncrementColumnType(baseType string, primaryKey bool) string {
-	if primaryKey {
-		baseType += " PRIMARY KEY"
-	}
-	if strings.Contains(baseType, "INT") {
-		return baseType + " AUTO_INCREMENT"
-	}
-	return baseType
-}
 
 func (MySQL) ColumnType(kind dbcodec.Kind, size int) string {
 	switch kind {
@@ -174,6 +161,34 @@ func (d MySQL) CreateTableIfNotExists(table string) string {
 	return "CREATE TABLE IF NOT EXISTS " + d.QuoteIdentifier(table)
 }
 
-func (d MySQL) AddColumnIfNotExists(table string, col string) string {
-	return fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s", d.QuoteIdentifier(table), d.QuoteIdentifier(col))
+//	func (d MySQL) addColumnIfNotExists(table string, col string) string {
+//		return fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s", d.QuoteIdentifier(table), d.QuoteIdentifier(col))
+//	}
+func (d MySQL) ColumnString(fs *dbschema.ColumnSchema) string {
+	var sb strings.Builder
+	sb.WriteString(d.QuoteIdentifier(fs.Name))
+	sb.WriteString(" ")
+	baseType := d.ColumnType(fs.Kind, fs.Size)
+	sb.WriteString(baseType)
+	if fs.NotNull {
+		sb.WriteString(" NOT NULL")
+	}
+	if fs.Unique {
+		sb.WriteString(" UNIQUE")
+	}
+	if fs.IsPrimaryKey {
+		sb.WriteString(" PRIMARY KEY")
+	}
+	if fs.AutoIncrement {
+		sb.WriteString(" AUTO_INCREMENT")
+	}
+	return sb.String()
+}
+
+var _ MigrateDialect = MySQL{}
+
+func (d MySQL) Migrate(ctx context.Context, db DBCore, schema dbschema.TableSchema) error {
+	sqlStr := createTableSQL(schema, d, d)
+	_, err := db.ExecContext(ctx, sqlStr)
+	return err
 }

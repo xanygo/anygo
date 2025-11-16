@@ -8,9 +8,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
+	"github.com/xanygo/anygo/store/xdb/dbschema"
 	"github.com/xanygo/anygo/store/xdb/dialect"
 )
 
@@ -28,7 +28,7 @@ func MigrateWithTable(db DBCore, obj any, table string) error {
 	return nil
 }
 
-func doMigrate(ctx context.Context, db DBCore, obj any, table string) error {
+func doMigrate(ctx context.Context, db dialect.DBCore, obj any, table string) error {
 	if table == "" {
 		if ht, ok := obj.(HasTable); ok {
 			table = ht.TableName()
@@ -44,8 +44,12 @@ func doMigrate(ctx context.Context, db DBCore, obj any, table string) error {
 	if err != nil {
 		return err
 	}
+	md, ok := fy.(dialect.MigrateDialect)
+	if !ok {
+		return errors.New("db does not implement MigrateDialect")
+	}
 
-	schema, err := (schemaParser{}).Get(obj)
+	schema, err := dbschema.Schema(obj)
 	if err != nil {
 		return err
 	}
@@ -53,20 +57,9 @@ func doMigrate(ctx context.Context, db DBCore, obj any, table string) error {
 		schema.Table = table
 	}
 
-	if table == "" {
+	if schema.Table == "" {
 		return fmt.Errorf("%T should implement HasTable interface", obj)
 	}
-	sqls, err := schema.AlterAddSQL(fy)
-	if err != nil {
-		return err
-	}
-	for _, sqlStr := range sqls {
-		log.Println("sql:", sqlStr)
-		// continue
-		_, err = db.ExecContext(ctx, sqlStr)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	err = md.Migrate(ctx, db, *schema)
+	return err
 }

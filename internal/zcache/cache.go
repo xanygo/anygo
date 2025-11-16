@@ -46,12 +46,12 @@ func (mc *MapCache[K, V]) Get1(key K) V {
 	return nv
 }
 
-func (mc *MapCache[K, V]) Get2(key K, fn func() V) V {
+func (mc *MapCache[K, V]) Get2(key K, fn func(key K) V) V {
 	value, ok := mc.db.Load(key)
 	if ok {
 		return value.(V)
 	}
-	nv := fn()
+	nv := fn(key)
 	mc.db.Store(key, nv)
 	return nv
 }

@@ -5,10 +5,12 @@
 package dialect
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/xanygo/anygo/store/xdb/dbcodec"
+	"github.com/xanygo/anygo/store/xdb/dbschema"
 )
 
 var _ Dialect = (*SQLServerDialect)(nil)
@@ -69,16 +71,6 @@ func (d SQLServerDialect) PlaceholderList(n, start int) string {
 // SupportsReturning SQL Server 不直接支持 RETURNING
 func (SQLServerDialect) SupportsReturning() bool {
 	return false
-}
-
-// SupportsUpsert 支持 MERGE 语法实现 UPSERT
-func (SQLServerDialect) SupportsUpsert() bool {
-	return true
-}
-
-// DefaultValueExpr 默认值关键字
-func (SQLServerDialect) DefaultValueExpr() string {
-	return "DEFAULT"
 }
 
 // ReturningClause SQL Server 用 OUTPUT 子句实现
@@ -178,16 +170,6 @@ WHEN NOT MATCHED THEN INSERT (%s) VALUES (%s)
 
 var _ SchemaDialect = SQLServerDialect{}
 
-func (d SQLServerDialect) AutoIncrementColumnType(baseType string, primaryKey bool) string {
-	if strings.Contains(baseType, "INT") {
-		baseType += " IDENTITY(1,1)"
-	}
-	if primaryKey {
-		return baseType + " PRIMARY KEY"
-	}
-	return baseType
-}
-
 // ColumnType 映射通用类型到 SQL Server 类型
 func (SQLServerDialect) ColumnType(kind dbcodec.Kind, size int) string {
 	switch kind {
@@ -231,7 +213,31 @@ func (d SQLServerDialect) CreateTableIfNotExists(table string) string {
 		table + "') and OBJECTPROPERTY(id, 'IsUserTable') = 1 ) CREATE TABLE " + d.QuoteIdentifier(table)
 }
 
-func (d SQLServerDialect) AddColumnIfNotExists(table string, col string) string {
-	// 原生不支持
-	return ""
+func (d SQLServerDialect) ColumnString(fs *dbschema.ColumnSchema) string {
+	var sb strings.Builder
+	sb.WriteString(d.QuoteIdentifier(fs.Name))
+	sb.WriteString(" ")
+	baseType := d.ColumnType(fs.Kind, fs.Size)
+	sb.WriteString(baseType)
+	if fs.AutoIncrement && strings.Contains(baseType, "INT") {
+		sb.WriteString(" IDENTITY(1,1)")
+	}
+	if fs.NotNull {
+		sb.WriteString(" NOT NULL")
+	}
+	if fs.Unique {
+		sb.WriteString(" UNIQUE")
+	}
+	if fs.IsPrimaryKey {
+		sb.WriteString(" PRIMARY KEY")
+	}
+	return sb.String()
+}
+
+var _ MigrateDialect = SQLServerDialect{}
+
+func (d SQLServerDialect) Migrate(ctx context.Context, db DBCore, schema dbschema.TableSchema) error {
+	sqlStr := createTableSQL(schema, d, d)
+	_, err := db.ExecContext(ctx, sqlStr)
+	return err
 }

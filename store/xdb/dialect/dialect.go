@@ -4,7 +4,13 @@
 
 package dialect
 
-import "github.com/xanygo/anygo/store/xdb/dbcodec"
+import (
+	"context"
+	"database/sql"
+
+	"github.com/xanygo/anygo/store/xdb/dbcodec"
+	"github.com/xanygo/anygo/store/xdb/dbschema"
+)
 
 type Dialect interface {
 	// Name 返回方言名称，如 "postgres", "mysql", "sqlite3"
@@ -36,9 +42,6 @@ type Dialect interface {
 
 	// SupportsReturning 表示方言是否支持 INSERT ... RETURNING / UPDATE ... RETURNING
 	SupportsReturning() bool
-
-	// DefaultValueExpr 返回 DB 的默认值表达式（例如 "DEFAULT" 或 ""）
-	DefaultValueExpr() string
 }
 
 // ReturningDialect 提供 RETURNING 子句生成（仅对支持的方言实现）
@@ -63,17 +66,18 @@ type UpsertDialect interface {
 
 // SchemaDialect DDL 相关扩展（创建表、列类型等）
 type SchemaDialect interface {
-	// AutoIncrementColumnType 返回用于自增的列类型或后缀，如 "SERIAL" / "INTEGER PRIMARY KEY AUTOINCREMENT"。
-	AutoIncrementColumnType(baseType string, primaryKey bool) string
-
 	// ColumnType 将通用列类型映射为方言列类型（例如 "string" -> "VARCHAR(255)"）
 	ColumnType(kind dbcodec.Kind, size int) string
 
+	// ColumnString 创建字段的 schema
+	ColumnString(schema *dbschema.ColumnSchema) string
+
 	// CreateTableIfNotExists 返回 CREATE TABLE ... IF NOT EXISTS 的片段（或空串如果不支持）。
 	CreateTableIfNotExists(table string) string
+}
 
-	// AddColumnIfNotExists 添加字段，若不存在
-	AddColumnIfNotExists(table string, col string) string
+type MigrateDialect interface {
+	Migrate(ctx context.Context, db DBCore, schema dbschema.TableSchema) error
 }
 
 // JSONDialect JSON 操作相关（Postgres JSONB / MySQL JSON）
@@ -86,4 +90,10 @@ type JSONDialect interface {
 type Capability interface {
 	// HasFeature 返回方言是否支持某个特性标识（例如 "window_functions", "cte", "json"）
 	HasFeature(feature string) bool
+}
+
+type DBCore interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }

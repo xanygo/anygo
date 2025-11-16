@@ -22,7 +22,7 @@ func TestRangeStructFields(t *testing.T) {
 			return nil
 		})
 		xt.NoError(t, err)
-		xt.Equal(t, []string{"Fields"}, names)
+		xt.Equal(t, []string{"Columns"}, names)
 		xt.Equal(t, 1, structMetaCache.Count())
 	})
 
@@ -35,7 +35,7 @@ func TestRangeStructFields(t *testing.T) {
 			return nil
 		})
 		xt.NoError(t, err)
-		xt.Equal(t, []string{"Fields"}, names)
+		xt.Equal(t, []string{"Columns"}, names)
 
 		xt.Equal(t, 2, structMetaCache.Count())
 	})

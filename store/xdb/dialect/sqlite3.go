@@ -5,11 +5,13 @@
 package dialect
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xdb/dbcodec"
+	"github.com/xanygo/anygo/store/xdb/dbschema"
 )
 
 // SQLite3 实现 Dialect 接口
@@ -74,11 +76,6 @@ func (SQLite3) SupportsReturning() bool {
 	return true
 }
 
-// DefaultValueExpr 返回默认值表达式。
-func (SQLite3) DefaultValueExpr() string {
-	return "DEFAULT"
-}
-
 // ReturningClause 生成 RETURNING 子句。
 // 空 columns 表示 RETURNING *。
 func (SQLite3) ReturningClause(columns ...string) string {
@@ -133,17 +130,6 @@ func (d SQLite3) UpsertSQL(table string, count int, columns, conflictCols, updat
 
 var _ SchemaDialect = SQLite3{}
 
-func (SQLite3) AutoIncrementColumnType(baseType string, primaryKey bool) string {
-	bt := baseType
-	if primaryKey {
-		baseType += " PRIMARY KEY"
-	}
-	if bt == "INTEGER" {
-		return baseType + " AUTOINCREMENT"
-	}
-	return baseType
-}
-
 func (SQLite3) ColumnType(kind dbcodec.Kind, size int) string {
 	switch kind {
 	case dbcodec.KindString:
@@ -163,11 +149,37 @@ func (SQLite3) ColumnType(kind dbcodec.Kind, size int) string {
 	}
 }
 
+func (d SQLite3) ColumnString(fs *dbschema.ColumnSchema) string {
+	var sb strings.Builder
+	sb.WriteString(d.QuoteIdentifier(fs.Name))
+	sb.WriteString(" ")
+	baseType := d.ColumnType(fs.Kind, fs.Size)
+	sb.WriteString(baseType)
+	if fs.NotNull {
+		sb.WriteString(" NOT NULL")
+	}
+	if fs.Unique {
+		sb.WriteString(" UNIQUE")
+	}
+
+	if fs.IsPrimaryKey {
+		sb.WriteString(" PRIMARY KEY")
+	}
+	if fs.AutoIncrement {
+		sb.WriteString(" AUTOINCREMENT")
+	}
+
+	return sb.String()
+}
+
 func (d SQLite3) CreateTableIfNotExists(table string) string {
 	return "CREATE TABLE IF NOT EXISTS " + d.QuoteIdentifier(table)
 }
 
-func (d SQLite3) AddColumnIfNotExists(table string, col string) string {
-	// 原生不支持
-	return ""
+var _ MigrateDialect = SQLite3{}
+
+func (d SQLite3) Migrate(ctx context.Context, db DBCore, schema dbschema.TableSchema) error {
+	sqlStr := createTableSQL(schema, d, d)
+	_, err := db.ExecContext(ctx, sqlStr)
+	return err
 }

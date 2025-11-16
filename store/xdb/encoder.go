@@ -13,6 +13,7 @@ import (
 	"github.com/xanygo/anygo/ds/xstruct"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb/dbcodec"
+	"github.com/xanygo/anygo/store/xdb/dbschema"
 )
 
 // Encode 将结构体或 map 转成 map[string]any，用于 SQL insert
@@ -109,7 +110,7 @@ func (e Encoder[T]) withStruct(v reflect.Value, fn func(name string, tag xstruct
 	keys := make(map[string]struct{}, len(e.OnlyFields))
 	fieldsLimit := e.sliceToMapTrue(e.OnlyFields)
 	fieldsIgnore := e.sliceToMapTrue(e.IgnoreFields)
-	tn := TagName()
+	tn := dbschema.TagName()
 	err := zreflect.RangeStructFields(v.Type(), func(field reflect.StructField) error {
 		// embed 类型的，详见 testUser3、testUser4
 		if field.Anonymous {
@@ -146,7 +147,7 @@ func (e Encoder[T]) withStruct(v reflect.Value, fn func(name string, tag xstruct
 		if len(fieldsIgnore) > 0 && fieldsIgnore[name] {
 			return nil
 		}
-		if isTagAutoIncr(tag) && fv.IsZero() {
+		if dbschema.TagHasAutoIncr(tag) && fv.IsZero() {
 			// 当时自增长类型、并且是零值，则跳过该字段
 			return nil
 		}
@@ -180,7 +181,7 @@ func encodeStructFieldValue(val any, tag xstruct.Tag) (any, error) {
 		return val, nil
 	}
 	// 对 slice / map / struct / pointer 类型用 serializer
-	codec := getCodecName(tag)
+	codec := dbschema.TagCodecName(tag)
 	encoder, err := dbcodec.Find(codec)
 	if err != nil {
 		return nil, err
@@ -286,12 +287,12 @@ func findStructPrimaryKV(obj any) (key string, value any, err error) {
 		fv := v.Field(i)
 		val := fv.Interface()
 
-		tag := xstruct.ParserTag(field.Tag.Get(TagName()))
+		tag := xstruct.ParserTag(field.Tag.Get(dbschema.TagName()))
 		name := tag.Name()
 		if name == "-" || name == "" {
 			continue
 		}
-		if !tag.Has(tagPrimaryKey) {
+		if !dbschema.TagHasPrimaryKey(tag) {
 			continue
 		}
 		if key != "" {

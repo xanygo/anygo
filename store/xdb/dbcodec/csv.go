@@ -4,7 +4,9 @@
 
 package dbcodec
 
-import "github.com/xanygo/anygo/xcodec"
+import (
+	"github.com/xanygo/anygo/xcodec"
+)
 
 var _ Codec = (*CSV)(nil)
 
