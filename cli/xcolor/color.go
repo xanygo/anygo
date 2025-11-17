@@ -5,14 +5,15 @@
 package xcolor
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 
-	"github.com/xanygo/anygo/ds/xslice"
-	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/internal/zos"
 )
 
@@ -54,7 +55,12 @@ type Color struct {
 const escape = "\x1b"
 
 func (c *Color) init() {
-	c.begin = []byte(fmt.Sprintf("%s[%sm", escape, xslice.Join(c.ids, ";")))
+	tmp := make([]string, len(c.ids))
+	for i, id := range c.ids {
+		tmp[i] = strconv.Itoa(int(id))
+	}
+	c.begin = []byte(fmt.Sprintf("%s[%sm", escape, strings.Join(tmp, ";")))
+
 	c.end = []byte(fmt.Sprintf("%s[%dm", escape, reset))
 	c.endLn = []byte(string(c.end) + "\n")
 }
@@ -72,7 +78,7 @@ func (c *Color) Fprintf(w io.Writer, format string, a ...any) (n int, err error)
 		return fmt.Fprintf(w, format, a...)
 	}
 
-	bf := bp.Get()
+	bf := bp.Get().(*bytes.Buffer)
 	defer bp.Put(bf)
 
 	bf.Write(c.begin)
@@ -90,7 +96,7 @@ func (c *Color) String(txt string) string {
 	if noColor {
 		return txt
 	}
-	bf := bp.Get()
+	bf := bp.Get().(*bytes.Buffer)
 	defer bp.Put(bf)
 	bf.Write(c.begin)
 	bf.WriteString(txt)
@@ -98,7 +104,11 @@ func (c *Color) String(txt string) string {
 	return bf.String()
 }
 
-var bp = xsync.NewBytesBufferPool(18 * 1024)
+var bp = &sync.Pool{
+	New: func() any {
+		return &bytes.Buffer{}
+	},
+}
 
 func (c *Color) Fprintln(w io.Writer, a ...any) (n int, err error) {
 	if len(a) == 0 {
@@ -107,7 +117,7 @@ func (c *Color) Fprintln(w io.Writer, a ...any) (n int, err error) {
 	if noColor {
 		return fmt.Fprintln(w, a...)
 	}
-	bf := bp.Get()
+	bf := bp.Get().(*bytes.Buffer)
 	defer bp.Put(bf)
 
 	bf.Write(c.begin)
@@ -126,7 +136,7 @@ func (c *Color) Fprint(w io.Writer, a ...any) (n int, err error) {
 		return fmt.Fprint(w, a...)
 	}
 
-	bf := bp.Get()
+	bf := bp.Get().(*bytes.Buffer)
 	defer bp.Put(bf)
 
 	bf.Write(c.begin)
@@ -151,14 +161,14 @@ func (c *Color) Sprintf(format string, a ...any) string {
 	if len(a) == 0 {
 		return c.String(format)
 	}
-	bf := bp.Get()
+	bf := bp.Get().(*bytes.Buffer)
 	defer bp.Put(bf)
 	c.Fprintf(bf, format, a...)
 	return bf.String()
 }
 
 func (c *Color) Sprint(a ...any) string {
-	bf := bp.Get()
+	bf := bp.Get().(*bytes.Buffer)
 	defer bp.Put(bf)
 	c.Fprint(bf, a...)
 	return bf.String()

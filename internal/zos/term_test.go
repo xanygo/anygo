@@ -2,19 +2,20 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2025-10-25
 
-package zos
+package zos_test
 
 import (
 	"os"
 	"testing"
 
+	"github.com/xanygo/anygo/internal/zos"
 	"github.com/xanygo/anygo/xt"
 )
 
 func TestIsTerminalFile(t *testing.T) {
-	isTerminal(os.Stdout)
+	zos.IsTerminalFile(os.Stdout)
 	f, err := os.Open("term.go")
 	xt.NoError(t, err)
 	defer f.Close()
-	xt.False(t, IsTerminalFile(f))
+	xt.False(t, zos.IsTerminalFile(f))
 }

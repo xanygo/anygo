@@ -27,6 +27,12 @@ func TestEqual(t *testing.T) {
 	})
 }
 
+func TestEqualMap(t *testing.T) {
+	m1 := map[string]any{"k1": 1}
+	m2 := map[string]any{"k1": int64(1)}
+	NotEqual(t, m1, m2)
+}
+
 func TestError(t *testing.T) {
 	mt := newMyTesting(t)
 	mt.Success(func(t Testing) {

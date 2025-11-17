@@ -11,6 +11,8 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+
+	"github.com/xanygo/anygo/internal/zreflect"
 )
 
 func Equal[T any](t Testing, expected T, actual T) {
@@ -18,7 +20,7 @@ func Equal[T any](t Testing, expected T, actual T) {
 		h.Helper()
 	}
 	if !equal(expected, actual) {
-		t.Fatalf("Not equal: \n expected: %#v\n   actual: %#v", expected, actual)
+		t.Fatalf("Not equal: \n%s", sprintfDiff(expected, actual))
 	}
 }
 
@@ -27,7 +29,8 @@ func NotEqual[T any](t Testing, expected T, actual T) {
 		h.Helper()
 	}
 	if equal(expected, actual) {
-		t.Fatalf("Should not equal: %#v", actual)
+		str := zreflect.DumpString(actual)
+		t.Fatalf("Should not equal: %s", str)
 	}
 }
 
@@ -339,7 +342,7 @@ func SliceSortEqual[S ~[]E, E cmp.Ordered](t Testing, expected S, actual S) {
 	actual = slices.Clone(actual)
 	slices.Sort(actual)
 	if !equal(expected, actual) {
-		t.Fatalf("Not equal: \n expected: %#v\n   actual: %#v", expected, actual)
+		t.Fatalf("Not equal: \n%s", sprintfDiff(expected, actual))
 	}
 }
 
@@ -354,7 +357,8 @@ func SliceSortNotEqual[S ~[]E, E cmp.Ordered](t Testing, expected S, actual S) {
 	actual = slices.Clone(actual)
 	slices.Sort(actual)
 	if equal(expected, actual) {
-		t.Fatalf("Values should not be equal:\n  expected:  %#v\n  actual: %#v", expected, actual)
+		str := zreflect.DumpString(actual)
+		t.Fatalf("Values should not be equal:\n %s", str)
 	}
 }
 

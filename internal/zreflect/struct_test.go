@@ -2,42 +2,47 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2025-11-13
 
-package zreflect
+package zreflect_test
 
 import (
 	"reflect"
 	"testing"
 
+	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/xt"
 )
 
 func TestRangeStructFields(t *testing.T) {
-	structMetaCache.Clear()
+	type structMeta struct {
+		Fields []reflect.StructField
+	}
+
+	zreflect.StructMetaCache.Clear()
 	t.Run("structMeta-ptr", func(t *testing.T) {
 		m1 := &structMeta{}
 		t1 := reflect.TypeOf(m1)
 		var names []string
-		err := RangeStructFields(t1, func(f reflect.StructField) error {
+		err := zreflect.RangeStructFields(t1, func(f reflect.StructField) error {
 			names = append(names, f.Name)
 			return nil
 		})
 		xt.NoError(t, err)
 		xt.Equal(t, []string{"Columns"}, names)
-		xt.Equal(t, 1, structMetaCache.Count())
+		xt.Equal(t, 1, zreflect.StructMetaCache.Count())
 	})
 
 	t.Run("structMeta", func(t *testing.T) {
 		m1 := structMeta{}
 		t1 := reflect.TypeOf(m1)
 		var names []string
-		err := RangeStructFields(t1, func(f reflect.StructField) error {
+		err := zreflect.RangeStructFields(t1, func(f reflect.StructField) error {
 			names = append(names, f.Name)
 			return nil
 		})
 		xt.NoError(t, err)
 		xt.Equal(t, []string{"Columns"}, names)
 
-		xt.Equal(t, 2, structMetaCache.Count())
+		xt.Equal(t, 2, zreflect.StructMetaCache.Count())
 	})
 
 	type user struct {
@@ -49,19 +54,19 @@ func TestRangeStructFields(t *testing.T) {
 		m1 := user{Name: "hello", age: 1, Class: 1}
 		t1 := reflect.TypeOf(m1)
 		var names []string
-		err := RangeStructFields(t1, func(f reflect.StructField) error {
+		err := zreflect.RangeStructFields(t1, func(f reflect.StructField) error {
 			names = append(names, f.Name)
 			return nil
 		})
 		xt.NoError(t, err)
 		xt.SliceSortEqual(t, []string{"Name", "Class", "age"}, names)
 
-		xt.Equal(t, 3, structMetaCache.Count())
+		xt.Equal(t, 3, zreflect.StructMetaCache.Count())
 	})
 }
 
 func BenchmarkRangeStructFields(b *testing.B) {
-	structMetaCache.Clear()
+	zreflect.StructMetaCache.Clear()
 	type user struct {
 		Name  string
 		age   int
@@ -73,7 +78,7 @@ func BenchmarkRangeStructFields(b *testing.B) {
 		u := user{}
 		t := reflect.TypeOf(u)
 		for i := 0; i < b.N; i++ {
-			RangeStructFields(t, func(f reflect.StructField) error {
+			zreflect.RangeStructFields(t, func(f reflect.StructField) error {
 				return nil
 			})
 		}

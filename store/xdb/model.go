@@ -17,6 +17,7 @@ import (
 	"github.com/xanygo/anygo/store/xdb/dialect"
 )
 
+// HasTable 给 Model 使用的 struct 可以选择实现该接口，以自动读取数据库表名
 type HasTable interface {
 	TableName() string
 }
@@ -29,6 +30,7 @@ func NewMode[T any](client HasDriver) *Model[T] {
 	return m
 }
 
+// Model 轻量 ORM 实现，已实现数据模型常用的增删改查功能
 type Model[T any] struct {
 	dialect dialect.Dialect
 	client  HasDriver
@@ -479,7 +481,8 @@ func (m *Model[T]) doCount(ctx context.Context, field string, where string, args
 	return Count(ctx, db, sqlStr, args...)
 }
 
-func (m *Model[T]) ListPage(ctx context.Context, page int, size int, where string, args ...any) (Pagination, []Record[T], error) {
+// ListPage 分页查询，适应于数据量不太大的场景
+func (m *Model[T]) ListPage(ctx context.Context, page int, size int, where string, args ...any) (Pagination, []PageRecord[T], error) {
 	if size < 1 {
 		return Pagination{}, nil, fmt.Errorf("invalid size=%d", size)
 	}
@@ -508,6 +511,6 @@ func (m *Model[T]) ListPage(ctx context.Context, page int, size int, where strin
 	if err != nil {
 		return info, nil, err
 	}
-	items := toPageRecord[T](result, page, size)
+	items := ToPageRecords[T](result, (page-1)*size)
 	return info, items, nil
 }

@@ -52,6 +52,12 @@ const (
 
 	TagType = "type" // 数据类型，必须是有效的 dbschema.Kind 的值
 
+	// TagDefault 默认值，格式为 default:[[fn|string|number]|]value
+	// 示例：
+	// 1.默认值为空字符串：“name,default”
+	// 2.默认值为数字：“name,default:number|123”
+	// 3.默认值为字符串：“name,default:string|hello”
+	// 4.默认值为数据库函数：“name,default:fn|CURRENT_TIMESTAMP”
 	TagDefault = "default" // 默认值
 )
 

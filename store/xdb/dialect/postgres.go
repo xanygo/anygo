@@ -200,7 +200,17 @@ func (d Postgres) ColumnString(fs *dbschema.ColumnSchema) string {
 	if fs.IsPrimaryKey {
 		sb.WriteString(" PRIMARY KEY")
 	}
-
+	if dv := fs.Default; dv != nil {
+		sb.WriteString(" DEFAULT ")
+		switch dv.Type {
+		case dbschema.DefaultValueTypeNumber, dbschema.DefaultValueTypeFn:
+			sb.WriteString(dv.Value)
+		case dbschema.DefaultValueTypeString:
+			sb.WriteString(d.QuoteIdentifier(fs.Default.Value))
+		default:
+			panic(fmt.Sprintf("unknown default value type: %q", dv.Type))
+		}
+	}
 	return sb.String()
 }
 

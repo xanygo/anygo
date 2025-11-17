@@ -14,17 +14,17 @@ type structMeta struct {
 	Fields []reflect.StructField
 }
 
-var structMetaCache = &zcache.MapCache[reflect.Type, *structMeta]{}
+var StructMetaCache = &zcache.MapCache[reflect.Type, *structMeta]{}
 
 func loadStructMeta(t reflect.Type) *structMeta {
-	v, ok := structMetaCache.Load(t)
+	v, ok := StructMetaCache.Load(t)
 	if ok {
 		return v
 	}
 	meta := &structMeta{
 		Fields: collectFields(t),
 	}
-	structMetaCache.Set(t, meta)
+	StructMetaCache.Set(t, meta)
 	return meta
 }
 

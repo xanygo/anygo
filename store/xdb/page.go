@@ -55,7 +55,7 @@ func (p Pagination) NearPages(num int) (start int, end int) {
 //
 // page: 当前页码，总是 >=1
 // size: 查询结果数，总是 >=1
-func PageList[T any](ctx context.Context, b Builder, page int, size int, search CountSearch[T]) (Pagination, []Record[T], error) {
+func PageList[T any](ctx context.Context, b Builder, page int, size int, search CountSearch[T]) (Pagination, []PageRecord[T], error) {
 	if b == nil {
 		b = EmptyBuilder()
 	}
@@ -68,33 +68,33 @@ func PageList[T any](ctx context.Context, b Builder, page int, size int, search 
 		TotalRecords: int(total),
 		PageSize:     size,
 	}
-	items := toPageRecord[T](datas, page, size)
+	items := ToPageRecords[T](datas, (page-1)*size)
 	return pageInfo, items, nil
 }
 
-func toPageRecord[T any](datas []T, page int, size int) []Record[T] {
-	items := make([]Record[T], len(datas))
-	for idx, value := range datas {
-		items[idx] = Record[T]{
+func ToPageRecords[T any](items []T, offset int) []PageRecord[T] {
+	result := make([]PageRecord[T], len(items))
+	for idx, value := range items {
+		result[idx] = PageRecord[T]{
 			Value: value,
 			Order: idx,
-			Index: (page-1)*size + idx,
+			Index: offset + idx,
 			Ext:   map[string]any{},
 		}
 	}
-	return items
+	return result
 }
 
 // CountSearch 统计结果数以及分页的结果集
 type CountSearch[T any] func(ctx context.Context, b Builder, page int, size int) (int64, []T, error)
 
-type Record[T any] struct {
+type PageRecord[T any] struct {
 	Value T
 	Order int // 当前页面索引
 	Index int // 在所有页面的索引
 	Ext   map[string]any
 }
 
-func (r Record[T]) HumanIndex() int {
+func (r PageRecord[T]) HumanIndex() int {
 	return r.Index + 1
 }
