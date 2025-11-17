@@ -31,6 +31,8 @@ func NewMode[T any](client HasDriver) *Model[T] {
 }
 
 // Model 轻量 ORM 实现，已实现数据模型常用的增删改查功能
+//
+// 使用此 Model 的 where 条件统一使用 ? 占位符，在执行前，会将 ? 替换为方言的占位符
 type Model[T any] struct {
 	dialect dialect.Dialect
 	client  HasDriver
@@ -272,7 +274,7 @@ func (m *Model[T]) doUpdate(ctx context.Context, v T, where string, args ...any)
 
 // UpdateByPK 使用主键更新数据
 //
-// 需要再 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,primaryKey"`
+// 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 func (m *Model[T]) UpdateByPK(ctx context.Context, v T) (int64, error) {
 	pk, value, err := findStructPrimaryKV(v)
 	if err != nil {
@@ -315,7 +317,7 @@ func (m *Model[T]) Delete(ctx context.Context, where string, args ...any) (int64
 
 // DeleteByPK 使用主键删除数据
 //
-// 需要再 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,primaryKey"`
+// 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 func (m *Model[T]) DeleteByPK(ctx context.Context, v T) (int64, error) {
 	pk, value, err := findStructPrimaryKV(v)
 	if err != nil {
@@ -365,7 +367,7 @@ func (m *Model[T]) First(ctx context.Context, where string, args ...any) (v T, o
 
 // FindByPK 使用主键查找数据
 //
-// 需要再 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,primaryKey"`
+// 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 func (m *Model[T]) FindByPK(ctx context.Context, v T) (nv T, ok bool, err error) {
 	pk, value, err := findStructPrimaryKV(v)
 	if err != nil {
@@ -441,7 +443,7 @@ func (m *Model[T]) buildWhere(indexStart int, where string, args []any) (string,
 		return where, args, nil
 	}
 
-	// 将 ? 替换为 $1, $2 ...
+	// 将 ? 替换为方言的占位符，如 $1, $2 ...
 	var sb strings.Builder
 	idx := 1
 	for i := 0; i < len(where); i++ {

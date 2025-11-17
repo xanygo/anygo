@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xstruct"
 	"github.com/xanygo/anygo/internal/zcache"
 	"github.com/xanygo/anygo/internal/zreflect"
@@ -19,9 +21,10 @@ import (
 )
 
 type TableSchema struct {
-	Table       string
-	Columns     []*ColumnSchema
-	name2Column map[string]*ColumnSchema
+	Table        string
+	Columns      []*ColumnSchema
+	name2Column  map[string]*ColumnSchema
+	columnsNames []string
 }
 
 func (ts *TableSchema) ColumnByName(name string) (*ColumnSchema, error) {
@@ -30,6 +33,10 @@ func (ts *TableSchema) ColumnByName(name string) (*ColumnSchema, error) {
 		return f, nil
 	}
 	return nil, errors.New("not exist")
+}
+
+func (ts *TableSchema) ColumnsNames() []string {
+	return ts.columnsNames
 }
 
 type ColumnSchema struct {
@@ -45,6 +52,10 @@ type ColumnSchema struct {
 	Codec         string // 字段编解码器
 
 	Default *DefaultValueSchema
+}
+
+func (scf *ColumnSchema) String() string {
+	return fmt.Sprintf("%#v", scf)
 }
 
 type IndexSchema struct {
@@ -69,6 +80,7 @@ const (
 	DefaultValueTypeFn
 )
 
+// Schema 传入一个 struct，获取其 db schema 定义
 func Schema(obj any) (*TableSchema, error) {
 	return (schemaParser{}).Parser(obj)
 }
@@ -81,6 +93,9 @@ type schemaParser struct{}
 
 func (sp schemaParser) Parser(obj any) (*TableSchema, error) {
 	rt := reflect.TypeOf(obj)
+	if rt.Kind() == reflect.Ptr {
+		rt = rt.Elem()
+	}
 	if rt.Kind() != reflect.Struct {
 		return nil, errors.New("obj is not a struct")
 	}
@@ -158,16 +173,18 @@ func (sp schemaParser) getSchema(rt reflect.Type) (*TableSchema, error) {
 	}
 
 	err := scan(rt)
+	sc.columnsNames = xmap.Keys(sc.name2Column)
+	slices.Sort(sc.columnsNames)
 	return sc, err
 }
 
 func (sp schemaParser) parserField(f reflect.StructField, tag xstruct.Tag) (*ColumnSchema, error) {
 	field := &ColumnSchema{
 		Name:          tag.Name(),
-		AutoIncrement: TagHasAutoIncr(tag),
+		AutoIncrement: TagHasAutoInc(tag),
 		IsPrimaryKey:  TagHasPrimaryKey(tag),
 		NotNull:       tag.Has(TagNotNull),
-		Unique:        tag.Has(TagUnique),
+		Unique:        TagHasUnique(tag),
 	}
 
 	var err error

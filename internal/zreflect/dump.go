@@ -128,7 +128,9 @@ func dumpValue(v reflect.Value, visited map[uintptr]bool) map[string]any {
 		size := v.Len()
 		items := make([]any, 0, size)
 		for i := 0; i < size; i++ {
-			items = append(items, dumpValue(v.Index(i), visited))
+			item := dumpValue(v.Index(i), visited)
+			item["Index"] = i
+			items = append(items, item)
 		}
 		m["Len"] = size
 		m["Elem"] = items

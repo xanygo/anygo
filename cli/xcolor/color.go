@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -57,7 +56,7 @@ const escape = "\x1b"
 func (c *Color) init() {
 	tmp := make([]string, len(c.ids))
 	for i, id := range c.ids {
-		tmp[i] = strconv.Itoa(int(id))
+		tmp[i] = fmt.Sprint(id)
 	}
 	c.begin = []byte(fmt.Sprintf("%s[%sm", escape, strings.Join(tmp, ";")))
 
@@ -78,7 +77,7 @@ func (c *Color) Fprintf(w io.Writer, format string, a ...any) (n int, err error)
 		return fmt.Fprintf(w, format, a...)
 	}
 
-	bf := bp.Get().(*bytes.Buffer)
+	bf := getBP()
 	defer bp.Put(bf)
 
 	bf.Write(c.begin)
@@ -96,7 +95,7 @@ func (c *Color) String(txt string) string {
 	if noColor {
 		return txt
 	}
-	bf := bp.Get().(*bytes.Buffer)
+	bf := getBP()
 	defer bp.Put(bf)
 	bf.Write(c.begin)
 	bf.WriteString(txt)
@@ -110,6 +109,12 @@ var bp = &sync.Pool{
 	},
 }
 
+func getBP() *bytes.Buffer {
+	bf := bp.Get().(*bytes.Buffer)
+	bf.Reset()
+	return bf
+}
+
 func (c *Color) Fprintln(w io.Writer, a ...any) (n int, err error) {
 	if len(a) == 0 {
 		return w.Write([]byte("\n"))
@@ -117,7 +122,7 @@ func (c *Color) Fprintln(w io.Writer, a ...any) (n int, err error) {
 	if noColor {
 		return fmt.Fprintln(w, a...)
 	}
-	bf := bp.Get().(*bytes.Buffer)
+	bf := getBP()
 	defer bp.Put(bf)
 
 	bf.Write(c.begin)
@@ -136,7 +141,7 @@ func (c *Color) Fprint(w io.Writer, a ...any) (n int, err error) {
 		return fmt.Fprint(w, a...)
 	}
 
-	bf := bp.Get().(*bytes.Buffer)
+	bf := getBP()
 	defer bp.Put(bf)
 
 	bf.Write(c.begin)
@@ -161,14 +166,14 @@ func (c *Color) Sprintf(format string, a ...any) string {
 	if len(a) == 0 {
 		return c.String(format)
 	}
-	bf := bp.Get().(*bytes.Buffer)
+	bf := getBP()
 	defer bp.Put(bf)
 	c.Fprintf(bf, format, a...)
 	return bf.String()
 }
 
 func (c *Color) Sprint(a ...any) string {
-	bf := bp.Get().(*bytes.Buffer)
+	bf := getBP()
 	defer bp.Put(bf)
 	c.Fprint(bf, a...)
 	return bf.String()

@@ -28,15 +28,16 @@ func SetTagName(name string) {
 }
 
 const (
-	TagPrimaryKey = "primaryKey"
-	TagPK         = "pk" // TagPrimaryKey 的缩写
+	// TagPK 主键，也可以写全称 primaryKey
+	TagPK = "pk" // TagPrimaryKey 的缩写
 
 	TagCodec = "codec"
 
-	TagAutoIncrement = "autoIncrement"
-	TagAutoIncr      = "autoInc" // TagAutoIncrement 的缩写
+	// TagAutoInc 自增长字段标记
+	TagAutoInc = "autoInc" // "autoIncrement" 的缩写
 
-	TagUnique = "unique" // 唯一键，不需要值
+	// TagUnique 唯一键，不需要值,也可以是完整的 unique
+	TagUnique = "uniq" //
 
 	// TagIndex 标记此字段需要添加索引
 	// 示例：
@@ -46,6 +47,7 @@ const (
 	TagIndex       = "index"
 	TagUniqueIndex = "uniqueIndex" // 值格式同 TagIndex
 
+	// TagSize 值类型的容量
 	TagSize = "size"
 
 	TagNotNull = "notNull"
@@ -61,12 +63,16 @@ const (
 	TagDefault = "default" // 默认值
 )
 
-func TagHasAutoIncr(tag xstruct.Tag) bool {
-	return tag.Has(TagAutoIncr) || tag.Has(TagAutoIncrement)
+func TagHasAutoInc(tag xstruct.Tag) bool {
+	return tag.Has(TagAutoInc) || tag.Has("autoIncrement")
 }
 
 func TagHasPrimaryKey(tag xstruct.Tag) bool {
-	return tag.Has(TagPK) || tag.Has(TagPrimaryKey)
+	return tag.Has(TagPK) || tag.Has("primaryKey")
+}
+
+func TagHasUnique(tag xstruct.Tag) bool {
+	return tag.Has(TagUnique) || tag.Has("unique")
 }
 
 func TagCodecName(tag xstruct.Tag) string {

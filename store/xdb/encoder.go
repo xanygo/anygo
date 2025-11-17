@@ -147,7 +147,7 @@ func (e Encoder[T]) withStruct(v reflect.Value, fn func(name string, tag xstruct
 		if len(fieldsIgnore) > 0 && fieldsIgnore[name] {
 			return nil
 		}
-		if dbschema.TagHasAutoIncr(tag) && fv.IsZero() {
+		if dbschema.TagHasAutoInc(tag) && fv.IsZero() {
 			// 当时自增长类型、并且是零值，则跳过该字段
 			return nil
 		}
@@ -233,7 +233,7 @@ func (e Encoder[T]) Fields(data T) ([]string, error) {
 
 	switch v.Kind() {
 	case reflect.Struct:
-		return e.structFields(v)
+		return e.structFields(data)
 	case reflect.Map:
 		return nil, nil
 	default:
@@ -241,20 +241,12 @@ func (e Encoder[T]) Fields(data T) ([]string, error) {
 	}
 }
 
-func (e Encoder[T]) structFields(v reflect.Value) ([]string, error) {
-	var result []string
-	err := e.withStruct(v, func(name string, tag xstruct.Tag, field reflect.StructField, value reflect.Value) error {
-		if field.IsExported() {
-			return nil
-		}
-		result = append(result, name)
-		return nil
-	})
-	if err != nil && len(result) == 0 {
-		var zero T
-		return nil, fmt.Errorf("%T has no fileds", zero)
+func (e Encoder[T]) structFields(v T) ([]string, error) {
+	sc, err := dbschema.Schema(v)
+	if err != nil {
+		return nil, err
 	}
-	return result, err
+	return sc.ColumnsNames(), nil
 }
 
 type Expr string

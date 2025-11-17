@@ -5,6 +5,7 @@
 package xstruct
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -15,6 +16,15 @@ import (
 type Tag struct {
 	name   string
 	values map[string]string
+}
+
+func (t Tag) String() string {
+	data := map[string]any{
+		"Name":   t.name,
+		"Values": t.values,
+	}
+	bf, _ := json.Marshal(data)
+	return string(bf)
 }
 
 func (t Tag) Name() string {
@@ -44,8 +54,8 @@ func (t Tag) Has(key string) bool {
 	if t.values == nil {
 		return false
 	}
-	_, ok := t.values[key]
-	return ok
+	_, has := t.values[key]
+	return has
 }
 
 func (t Tag) WithName(name string) Tag {
