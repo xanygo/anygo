@@ -32,7 +32,7 @@ var (
 )
 
 var (
-	DefaultConnectRetry     = 0                // 默认网络连接次数
+	DefaultConnectRetry     = 1                // 默认网络连接次数
 	DefaultConnectTimeout   = 10 * time.Second // 默认连接超时
 	DefaultWriteTimeout     = 5 * time.Second  // 默认网络写超时
 	DefaultReadTimeout      = 5 * time.Second  // 默认网络读超时
@@ -42,9 +42,7 @@ var (
 )
 
 func SetConnectTimeout(opt Writer, timeout time.Duration) {
-	if timeout > 0 {
-		opt.Set(KeyConnectTimeout, timeout)
-	}
+	opt.Set(KeyConnectTimeout, timeout)
 }
 
 func ConnectTimeout(opt Reader) time.Duration {
@@ -60,9 +58,7 @@ func ConnectRetry(opt Reader) int {
 }
 
 func SetWriteTimeout(opt Writer, timeout time.Duration) {
-	if timeout > 0 {
-		opt.Set(KeyWriteTimeout, timeout)
-	}
+	opt.Set(KeyWriteTimeout, timeout)
 }
 
 func WriteTimeout(opt Reader) time.Duration {
@@ -70,9 +66,7 @@ func WriteTimeout(opt Reader) time.Duration {
 }
 
 func SetReadTimeout(opt Writer, timeout time.Duration) {
-	if timeout > 0 {
-		opt.Set(KeyReadTimeout, timeout)
-	}
+	opt.Set(KeyReadTimeout, timeout)
 }
 
 func ReadTimeout(opt Reader) time.Duration {
@@ -80,9 +74,7 @@ func ReadTimeout(opt Reader) time.Duration {
 }
 
 func SetHandshakeTimeout(opt Writer, timeout time.Duration) {
-	if timeout > 0 {
-		opt.Set(KeyHandshakeTimeout, timeout)
-	}
+	opt.Set(KeyHandshakeTimeout, timeout)
 }
 
 func HandshakeTimeout(opt Reader) time.Duration {
@@ -99,9 +91,7 @@ func Retry(opt Reader) int {
 }
 
 func SetMaxResponseSize(opt Writer, maxSize int64) {
-	if maxSize > 0 {
-		opt.Set(KeyMaxResponseSize, maxSize)
-	}
+	opt.Set(KeyMaxResponseSize, maxSize)
 }
 
 const (

@@ -18,7 +18,11 @@ func SetOptHTTP(opt xoption.Writer, val HTTPPart) {
 }
 
 func OptHTTP(opt xoption.Reader) HTTPPart {
-	return xoption.GetAsDefault[HTTPPart](opt, xOptKeyHTTP, HTTPPart{})
+	val, ok := xoption.GetAs[HTTPPart](opt, xOptKeyHTTP)
+	if ok {
+		return val
+	}
+	return HTTPPart{}
 }
 
 func SetOptConnPool(opt xoption.Writer, val *ConnPoolPart) {

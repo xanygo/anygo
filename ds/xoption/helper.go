@@ -22,10 +22,14 @@ func GetAs[V any](opt Reader, key Key) (e V, b bool) {
 	return vt, ok
 }
 
-func GetAsDefault[V any](opt Reader, key Key, def V) V {
+// GetAsDefault 获取值，要求 key 存在，并且不是 零值
+func GetAsDefault[V comparable](opt Reader, key Key, def V) V {
 	val, ok := GetAs[V](opt, key)
 	if ok {
-		return val
+		var zero V
+		if val != zero {
+			return val
+		}
 	}
 	return def
 }
@@ -78,8 +82,13 @@ func Duration(opt Reader, key Key, def time.Duration) time.Duration {
 	return GetAsDefault[time.Duration](opt, key, def)
 }
 
+// Map 读取 map 属性。key 存在，并且 map 有值才返回，否则返回默认值
 func Map(opt Reader, key Key, def map[string]any) map[string]any {
-	return GetAsDefault[map[string]any](opt, key, def)
+	val, ok := GetAs[map[string]any](opt, key)
+	if ok && len(val) > 0 {
+		return val
+	}
+	return def
 }
 
 func Bool(opt Reader, key Key, def bool) bool {

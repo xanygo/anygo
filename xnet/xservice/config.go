@@ -27,7 +27,7 @@ type Config struct {
 	Name string `json:"Name" yaml:"Name" validator:"required"`
 
 	ConnectTimeout   int64  `json:"ConnectTimeout"   yaml:"ConnectTimeout"`   // 连接超时,可选，单位毫秒
-	ConnectRetry     int    `json:"ConnectRetry"     yaml:"ConnectRetry"`     // 连接重试次数，默认为 0
+	ConnectRetry     int    `json:"ConnectRetry"     yaml:"ConnectRetry"`     // 连接重试次数，默认为 1
 	WriteTimeout     int64  `json:"WriteTimeout"     yaml:"WriteTimeout"`     // 写超时时间，单位毫秒
 	ReadTimeout      int64  `json:"ReadTimeout"      yaml:"ReadTimeout"`      // 读超时时间，单位毫秒
 	HandshakeTimeout int64  `json:"HandshakeTimeout" yaml:"HandshakeTimeout"` // 握手超时时间，单位毫秒
@@ -119,15 +119,33 @@ func (c *Config) Parser(idc string) (Service, error) {
 		return nil, errors.New("name is empty")
 	}
 	opt := xoption.NewDynamic()
-	xoption.SetConnectTimeout(opt, time.Duration(c.ConnectTimeout)*time.Millisecond)
-	xoption.SetConnectRetry(opt, c.ConnectRetry)
-	xoption.SetWriteTimeout(opt, time.Duration(c.WriteTimeout)*time.Millisecond)
-	xoption.SetReadTimeout(opt, time.Duration(c.ReadTimeout)*time.Millisecond)
-	xoption.SetHandshakeTimeout(opt, time.Duration(c.HandshakeTimeout)*time.Millisecond)
-	xoption.SetRetry(opt, c.Retry)
-	xoption.SetMaxResponseSize(opt, c.MaxResponseSize)
-	SetOptConnPool(opt, c.ConnPool)
-	xoption.SetProtocol(opt, c.Protocol)
+	if c.ConnectTimeout > 0 {
+		xoption.SetConnectTimeout(opt, time.Duration(c.ConnectTimeout)*time.Millisecond)
+	}
+	if c.ConnectRetry > 0 {
+		xoption.SetConnectRetry(opt, c.ConnectRetry)
+	}
+	if c.WriteTimeout > 0 {
+		xoption.SetWriteTimeout(opt, time.Duration(c.WriteTimeout)*time.Millisecond)
+	}
+	if c.ReadTimeout > 0 {
+		xoption.SetReadTimeout(opt, time.Duration(c.ReadTimeout)*time.Millisecond)
+	}
+	if c.HandshakeTimeout > 0 {
+		xoption.SetHandshakeTimeout(opt, time.Duration(c.HandshakeTimeout)*time.Millisecond)
+	}
+	if c.Retry > 0 {
+		xoption.SetRetry(opt, c.Retry)
+	}
+	if c.MaxResponseSize > 0 {
+		xoption.SetMaxResponseSize(opt, c.MaxResponseSize)
+	}
+	if c.ConnPool != nil {
+		SetOptConnPool(opt, c.ConnPool)
+	}
+	if c.Protocol != "" {
+		xoption.SetProtocol(opt, c.Protocol)
+	}
 	if c.TLS != nil {
 		tc, err := c.TLS.Parser()
 		if err != nil {
