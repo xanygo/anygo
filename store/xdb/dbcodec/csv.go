@@ -5,16 +5,17 @@
 package dbcodec
 
 import (
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 	"github.com/xanygo/anygo/xcodec"
 )
 
-var _ Codec = (*CSV)(nil)
+var _ dbtype.Codec = (*CSV)(nil)
 
 type CSV struct {
 }
 
-func (j CSV) Kind() Kind {
-	return KindString
+func (j CSV) Kind() dbtype.Kind {
+	return dbtype.KindString
 }
 
 func (j CSV) Name() string {

@@ -1,15 +1,13 @@
 //  Copyright(C) 2025 github.com/hidu  All Rights Reserved.
 //  Author: hidu <duv123+git@gmail.com>
-//  Date: 2025-11-11
+//  Date: 2025-11-20
 
-package dialect
+package dbtype
 
 import (
 	"context"
 	"database/sql"
-
-	"github.com/xanygo/anygo/store/xdb/dbcodec"
-	"github.com/xanygo/anygo/store/xdb/dbschema"
+	"reflect"
 )
 
 type Dialect interface {
@@ -40,8 +38,11 @@ type Dialect interface {
 	// 例如：PlaceholderList(3, 1) -> "$1,$2,$3" 或 "?,?,?"。
 	PlaceholderList(n, start int) string
 
-	// SupportsReturning 表示方言是否支持 INSERT ... RETURNING / UPDATE ... RETURNING
-	SupportsReturning() bool
+	// SupportReturning 表示方言是否支持 INSERT ... RETURNING / UPDATE ... RETURNING
+	SupportReturning() bool
+
+	// SupportLastInsertId 是否支持 LastInsertId()
+	SupportLastInsertId() bool
 }
 
 // ReturningDialect 提供 RETURNING 子句生成（仅对支持的方言实现）
@@ -64,20 +65,24 @@ type UpsertDialect interface {
 	UpsertSQL(table string, count int, cols, conflictCols, updateCols []string, returningCols []string) string
 }
 
+type CoderDialect interface {
+	ColumnCodec(p reflect.Type) (Codec, error)
+}
+
 // SchemaDialect DDL 相关扩展（创建表、列类型等）
 type SchemaDialect interface {
 	// ColumnType 将通用列类型映射为方言列类型（例如 "string" -> "VARCHAR(255)"）
-	ColumnType(kind dbcodec.Kind, size int) string
+	ColumnType(kind Kind, size int) string
 
 	// ColumnString 创建字段的 schema
-	ColumnString(schema *dbschema.ColumnSchema) string
+	ColumnString(schema ColumnSchema) string
 
 	// CreateTableIfNotExists 返回 CREATE TABLE ... IF NOT EXISTS 的片段（或空串如果不支持）。
 	CreateTableIfNotExists(table string) string
 }
 
 type MigrateDialect interface {
-	Migrate(ctx context.Context, db DBCore, schema dbschema.TableSchema) error
+	Migrate(ctx context.Context, db DBCore, schema TableSchema) error
 }
 
 // JSONDialect JSON 操作相关（Postgres JSONB / MySQL JSON）

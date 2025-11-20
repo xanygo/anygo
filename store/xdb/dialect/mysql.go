@@ -10,11 +10,10 @@ import (
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xslice"
-	"github.com/xanygo/anygo/store/xdb/dbcodec"
-	"github.com/xanygo/anygo/store/xdb/dbschema"
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
-var _ Dialect = (*MySQL)(nil)
+var _ dbtype.Dialect = (*MySQL)(nil)
 
 type MySQL struct{}
 
@@ -77,12 +76,16 @@ func (MySQL) PlaceholderList(n, start int) string {
 	return strings.TrimRight(strings.Repeat("?,", n), ",")
 }
 
-// SupportsReturning MySQL 直到 8.0.19 仍不支持 RETURNING 子句（除非用 MariaDB）。
-func (MySQL) SupportsReturning() bool {
+// SupportReturning MySQL 直到 8.0.19 仍不支持 RETURNING 子句（除非用 MariaDB）。
+func (MySQL) SupportReturning() bool {
 	return false
 }
 
-var _ UpsertDialect = MySQL{}
+func (MySQL) SupportLastInsertId() bool {
+	return true
+}
+
+var _ dbtype.UpsertDialect = MySQL{}
 
 func (d MySQL) UpsertSQL(table string, count int, columns, conflictCols, updateCols []string, returningCols []string) string {
 	colList := strings.Join(xslice.MapFunc(columns, d.QuoteIdentifier), ",")
@@ -106,51 +109,51 @@ func (d MySQL) UpsertSQL(table string, count int, columns, conflictCols, updateC
 	return sqlStr
 }
 
-var _ SchemaDialect = MySQL{}
+var _ dbtype.SchemaDialect = MySQL{}
 
-func (MySQL) ColumnType(kind dbcodec.Kind, size int) string {
+func (MySQL) ColumnType(kind dbtype.Kind, size int) string {
 	switch kind {
-	case dbcodec.KindString:
+	case dbtype.KindString:
 		if size <= 0 {
 			size = 255
 		}
 		return fmt.Sprintf("VARCHAR(%d)", size)
 
-	case dbcodec.KindInt:
+	case dbtype.KindInt:
 		return "INT"
-	case dbcodec.KindInt8:
+	case dbtype.KindInt8:
 		return "TINYINT"
-	case dbcodec.KindInt16:
+	case dbtype.KindInt16:
 		return "SMALLINT"
-	case dbcodec.KindInt32:
+	case dbtype.KindInt32:
 		return "INT"
-	case dbcodec.KindInt64:
+	case dbtype.KindInt64:
 		return "BIGINT"
 
-	case dbcodec.KindUint:
+	case dbtype.KindUint:
 		return "INT UNSIGNED"
-	case dbcodec.KindUint8:
+	case dbtype.KindUint8:
 		return "TINYINT UNSIGNED"
-	case dbcodec.KindUint16:
+	case dbtype.KindUint16:
 		return "SMALLINT UNSIGNED"
-	case dbcodec.KindUint32:
+	case dbtype.KindUint32:
 		return "INT UNSIGNED"
-	case dbcodec.KindUint64:
+	case dbtype.KindUint64:
 		return "BIGINT UNSIGNED"
 
-	case dbcodec.KindBoolean:
+	case dbtype.KindBoolean:
 		return "TINYINT(1)"
-	case dbcodec.KindFloat32:
+	case dbtype.KindFloat32:
 		return "FLOAT"
-	case dbcodec.KindFloat64:
+	case dbtype.KindFloat64:
 		return "DOUBLE"
-	case dbcodec.KindBinary:
+	case dbtype.KindBinary:
 		return "BLOB"
-	case dbcodec.KindJSON:
+	case dbtype.KindJSON:
 		return "LONGTEXT"
-	case dbcodec.KindDate:
+	case dbtype.KindDate:
 		return "DATE"
-	case dbcodec.KindDateTime:
+	case dbtype.KindDateTime:
 		return "DATETIME"
 	default:
 		panic("unknown kind:" + kind)
@@ -164,11 +167,14 @@ func (d MySQL) CreateTableIfNotExists(table string) string {
 //	func (d MySQL) addColumnIfNotExists(table string, col string) string {
 //		return fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s", d.QuoteIdentifier(table), d.QuoteIdentifier(col))
 //	}
-func (d MySQL) ColumnString(fs *dbschema.ColumnSchema) string {
+func (d MySQL) ColumnString(fs dbtype.ColumnSchema) string {
 	var sb strings.Builder
 	sb.WriteString(d.QuoteIdentifier(fs.Name))
 	sb.WriteString(" ")
-	baseType := d.ColumnType(fs.Kind, fs.Size)
+	baseType := fs.Native
+	if baseType == "" {
+		baseType = d.ColumnType(fs.Kind, fs.Size)
+	}
 	sb.WriteString(baseType)
 	if fs.NotNull {
 		sb.WriteString(" NOT NULL")
@@ -185,9 +191,9 @@ func (d MySQL) ColumnString(fs *dbschema.ColumnSchema) string {
 	if dv := fs.Default; dv != nil {
 		sb.WriteString(" DEFAULT ")
 		switch dv.Type {
-		case dbschema.DefaultValueTypeNumber, dbschema.DefaultValueTypeFn:
+		case dbtype.DefaultValueTypeNumber, dbtype.DefaultValueTypeFn:
 			sb.WriteString(dv.Value)
-		case dbschema.DefaultValueTypeString:
+		case dbtype.DefaultValueTypeString:
 			sb.WriteString(d.QuoteIdentifier(fs.Default.Value))
 		default:
 			panic(fmt.Sprintf("unknown default value type: %q", dv.Type))
@@ -196,9 +202,9 @@ func (d MySQL) ColumnString(fs *dbschema.ColumnSchema) string {
 	return sb.String()
 }
 
-var _ MigrateDialect = MySQL{}
+var _ dbtype.MigrateDialect = MySQL{}
 
-func (d MySQL) Migrate(ctx context.Context, db DBCore, schema dbschema.TableSchema) error {
+func (d MySQL) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.TableSchema) error {
 	sqlStr := createTableSQL(schema, d, d)
 	_, err := db.ExecContext(ctx, sqlStr)
 	return err

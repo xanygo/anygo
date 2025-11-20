@@ -5,16 +5,17 @@
 package dbcodec
 
 import (
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 	"github.com/xanygo/anygo/xcodec"
 )
 
-var _ Codec = (*JSON)(nil)
+var _ dbtype.Codec = (*JSON)(nil)
 
 type JSON struct {
 }
 
-func (j JSON) Kind() Kind {
-	return KindJSON
+func (j JSON) Kind() dbtype.Kind {
+	return dbtype.KindJSON
 }
 
 func (j JSON) Name() string {

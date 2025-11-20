@@ -21,10 +21,12 @@ type DBCore interface {
 type (
 	// Queryer 封装执行查询并返回多行结果的方法
 	Queryer interface {
+		HasDriver
 		QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 	}
 
 	StmtQueryer interface {
+		HasDriver
 		QueryContext(ctx context.Context, args ...any) (*sql.Rows, error)
 	}
 )
@@ -32,10 +34,12 @@ type (
 // Execer 封装执行 SQL 语句的方法
 type (
 	Execer interface {
+		HasDriver
 		ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	}
 
 	StmtExecer interface {
+		HasDriver
 		ExecContext(ctx context.Context, args ...any) (sql.Result, error)
 	}
 )
@@ -43,10 +47,12 @@ type (
 type (
 	// RowQuerier 封装执行查询并返回单行结果的方法
 	RowQuerier interface {
+		HasDriver
 		QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 	}
 
 	StmtRowQuerier interface {
+		HasDriver
 		QueryRowContext(ctx context.Context, args ...any) *sql.Row
 	}
 )
@@ -84,7 +90,7 @@ func QueryMany[T any](ctx context.Context, q Queryer, query string, args ...any)
 	if err != nil {
 		return nil, err
 	}
-	return ScanRows[T](rows)
+	return ScanRows[T](q, rows)
 }
 
 // QueryManyIter 行查询 SQL，并返回匹配结果的迭代器。只有读取完，或者退出迭代器，底层链接才会是否
@@ -97,7 +103,7 @@ func QueryManyIter[T any](ctx context.Context, q Queryer, query string, args ...
 			return
 		}
 		defer rows.Close()
-		for k, v := range ScanRowsIter[T](rows) {
+		for k, v := range ScanRowsIter[T](q, rows) {
 			yield(k, v)
 		}
 	}
@@ -109,7 +115,7 @@ func QueryOne[T any](ctx context.Context, q Queryer, query string, args ...any) 
 	if err != nil {
 		return v, false, err
 	}
-	return ScanRowsFirst[T](rows)
+	return ScanRowsFirst[T](q, rows)
 }
 
 // Exec 执行写语句(insert、update、delete)
@@ -146,7 +152,7 @@ func StmtQueryMany[T any](ctx context.Context, q Statement, args ...any) ([]T, e
 	if err != nil {
 		return nil, err
 	}
-	return ScanRows[T](rows)
+	return ScanRows[T](q, rows)
 }
 
 func StmtQueryOne[T any](ctx context.Context, q Statement, query string, args ...any) (v T, ok bool, err error) {
@@ -154,7 +160,7 @@ func StmtQueryOne[T any](ctx context.Context, q Statement, query string, args ..
 	if err != nil {
 		return v, false, err
 	}
-	return ScanRowsFirst[T](rows)
+	return ScanRowsFirst[T](q, rows)
 }
 
 func StmtQueryManyIter[T any](ctx context.Context, q Statement, args ...any) iter.Seq2[T, error] {
@@ -166,7 +172,7 @@ func StmtQueryManyIter[T any](ctx context.Context, q Statement, args ...any) ite
 			return
 		}
 		defer rows.Close()
-		for k, v := range ScanRowsIter[T](rows) {
+		for k, v := range ScanRowsIter[T](q, rows) {
 			yield(k, v)
 		}
 	}

@@ -12,22 +12,22 @@ import (
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/ds/xstruct"
 	"github.com/xanygo/anygo/internal/zreflect"
-	"github.com/xanygo/anygo/store/xdb/dbcodec"
 	"github.com/xanygo/anygo/store/xdb/dbschema"
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
 // Encode 将结构体或 map 转成 map[string]any，用于 SQL insert
-func Encode[T any](data T, cols ...string) (map[string]any, error) {
-	return Encoder[T]{OnlyFields: cols}.Encode(data)
+func Encode[T any](fy dbtype.Dialect, data T, cols ...string) (map[string]any, error) {
+	return Encoder[T]{Dialect: fy, OnlyFields: cols}.Encode(data)
 }
 
-func EncodeBatch[T any](items []T, fields ...string) ([]map[string]any, error) {
+func EncodeBatch[T any](fy dbtype.Dialect, items []T, fields ...string) ([]map[string]any, error) {
 	if len(items) == 0 {
 		return nil, errors.New("no value to encode")
 	}
 	result := make([]map[string]any, 0, len(items))
 	for _, item := range items {
-		data, err := Encode(item, fields...)
+		data, err := Encode(fy, item, fields...)
 		if err != nil {
 			return nil, err
 		}
@@ -37,6 +37,7 @@ func EncodeBatch[T any](items []T, fields ...string) ([]map[string]any, error) {
 }
 
 type Encoder[T any] struct {
+	Dialect      dbtype.Dialect
 	OnlyFields   []string // 当不为空时，输出结果的 key 只限定此列表中的
 	IgnoreFields []string // 当不为空时，输出结果的 key 限定不能是此列表中的
 }
@@ -57,7 +58,11 @@ func (e Encoder[T]) Encode(data T) (map[string]any, error) {
 
 	switch v.Kind() {
 	case reflect.Struct:
-		return e.encodeStruct(v)
+		schema, err := dbschema.Schema(e.Dialect, data)
+		if err != nil {
+			return nil, err
+		}
+		return e.encodeStruct(v, schema)
 	case reflect.Map:
 		return e.encodeMap(v)
 	default:
@@ -81,10 +86,14 @@ func (e Encoder[T]) EncodeBatch(items ...T) ([]map[string]any, error) {
 }
 
 // encodeStruct 处理 struct
-func (e Encoder[T]) encodeStruct(v reflect.Value) (map[string]any, error) {
+func (e Encoder[T]) encodeStruct(v reflect.Value, schema *dbtype.TableSchema) (map[string]any, error) {
 	result := make(map[string]any, len(e.OnlyFields))
 	err := e.withStruct(v, func(name string, tag xstruct.Tag, field reflect.StructField, value reflect.Value) error {
-		encodedVal, err := encodeStructFieldValue(value.Interface(), tag)
+		fs, err := schema.ColumnByName(name)
+		if err != nil {
+			return err
+		}
+		encodedVal, err := e.encodeStructFieldValue(fs, value.Interface())
 		if err != nil {
 			return fmt.Errorf("encode field %q: %w", field.Name, err)
 		}
@@ -160,35 +169,6 @@ func (e Encoder[T]) withStruct(v reflect.Value, fn func(name string, tag xstruct
 	return err
 }
 
-// encodeStructFieldValue 对单个字段根据类型和 serializer 转换
-func encodeStructFieldValue(val any, tag xstruct.Tag) (any, error) {
-	rv := reflect.ValueOf(val)
-	if !rv.IsValid() {
-		return nil, fmt.Errorf("invalid value: %v", val)
-	}
-	// 处理指针
-	if rv.Kind() == reflect.Pointer {
-		if rv.IsNil() {
-			rv = reflect.New(rv.Type().Elem()).Elem()
-			val = rv.Interface()
-		} else {
-			rv = rv.Elem()
-			val = rv.Interface()
-		}
-	}
-
-	if zreflect.IsBasicKind(rv.Kind()) {
-		return val, nil
-	}
-	// 对 slice / map / struct / pointer 类型用 serializer
-	codec := dbschema.TagCodecName(tag)
-	encoder, err := dbcodec.Find(codec)
-	if err != nil {
-		return nil, err
-	}
-	return encoder.Encode(val)
-}
-
 // encodeMap 处理 map[string]any
 func (e Encoder[T]) encodeMap(v reflect.Value) (map[string]any, error) {
 	fieldsLimit := e.sliceToMapTrue(e.OnlyFields)
@@ -242,32 +222,87 @@ func (e Encoder[T]) Fields(data T) ([]string, error) {
 }
 
 func (e Encoder[T]) structFields(v T) ([]string, error) {
-	sc, err := dbschema.Schema(v)
+	sc, err := dbschema.Schema(e.Dialect, v)
 	if err != nil {
 		return nil, err
 	}
-	return sc.ColumnsNames(), nil
+	return sc.ColumnsNames, nil
 }
 
-type Expr string
+// encodeStructFieldValue 对单个字段根据类型和 serializer 转换
+func (e Encoder[T]) encodeStructFieldValue(schema dbtype.ColumnSchema, val any) (any, error) {
+	rv := reflect.ValueOf(val)
+	if !rv.IsValid() {
+		return nil, fmt.Errorf("invalid value: %v", val)
+	}
+	// 处理指针
+	if rv.Kind() == reflect.Pointer {
+		if rv.IsNil() {
+			rv = reflect.New(rv.Type().Elem()).Elem()
+			val = rv.Interface()
+		} else {
+			rv = rv.Elem()
+			val = rv.Interface()
+		}
+	}
 
-// findStructPrimaryKV 查找主键 key，并返回其值，并且要求值为非零值。
-func findStructPrimaryKV(obj any) (key string, value any, err error) {
+	// 优先查找方言里有没有针对类型的 codec
+	if dc, ok := e.Dialect.(dbtype.CoderDialect); ok {
+		if encoder, err := dc.ColumnCodec(rv.Type()); err != nil {
+			return nil, err
+		} else if encoder != nil {
+			return encoder.Encode(val)
+		}
+	}
+
+	if schema.Kind == dbtype.KindNative || zreflect.IsBasicKind(rv.Kind()) {
+		return val, nil
+	}
+
+	// 对 slice / map / struct / pointer 类型用 serializer
+	if schema.Codec == nil {
+		return val, nil
+	}
+	return schema.Codec.Encode(val)
+}
+
+// PKNameAndValue 查找主键 key，并返回其值，并且要求值为非零值。
+func (e Encoder[T]) PKNameAndValue(obj T) (name string, value any, err error) {
+	cs, fv, err := e.PrimaryKey(obj)
+	if err != nil {
+		return "", nil, err
+	}
+	if fv.IsZero() {
+		return "", nil, fmt.Errorf("pk(%q) is zero value", cs.Name)
+	}
+	value, err = e.encodeStructFieldValue(cs, fv.Interface())
+	if err != nil {
+		return "", nil, err
+	}
+	return cs.Name, value, err
+}
+
+func (e Encoder[T]) PrimaryKey(obj T) (cs dbtype.ColumnSchema, fv reflect.Value, err error) {
 	v := reflect.ValueOf(obj)
 	if !v.IsValid() {
-		return "", nil, fmt.Errorf("invalid value: %v", v)
+		return cs, fv, fmt.Errorf("invalid value: %v", v)
 	}
 
 	// 支持指针类型
 	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
-			return "", nil, fmt.Errorf("nil pointer: %#v", obj)
+			return cs, fv, fmt.Errorf("nil pointer: %#v", obj)
 		}
 		v = v.Elem()
 	}
 
 	if v.Kind() != reflect.Struct {
-		return "", nil, fmt.Errorf("invalid value: %#v", obj)
+		return cs, fv, fmt.Errorf("invalid value: %#v", obj)
+	}
+
+	schema, err := dbschema.Schema(e.Dialect, obj)
+	if err != nil {
+		return cs, fv, err
 	}
 
 	t := v.Type()
@@ -276,32 +311,22 @@ func findStructPrimaryKV(obj any) (key string, value any, err error) {
 		if !v.Field(i).CanInterface() {
 			continue
 		}
-		fv := v.Field(i)
-		val := fv.Interface()
+		fv = v.Field(i)
 
 		tag := xstruct.ParserTag(field.Tag.Get(dbschema.TagName()))
 		name := tag.Name()
 		if name == "-" || name == "" {
 			continue
 		}
-		if !dbschema.TagHasPrimaryKey(tag) {
+		cs, err = schema.ColumnByName(name)
+		if err != nil {
+			return cs, fv, err
+		}
+		if !cs.IsPrimaryKey {
 			continue
 		}
-		if key != "" {
-			return "", nil, fmt.Errorf("multiple primary key fields: %s,%s", key, name)
-		}
-		key = name
+		return cs, fv, nil
+	}
 
-		if fv.IsZero() {
-			return "", nil, fmt.Errorf("primary key %s(%s) is zero value", field.Name, key)
-		}
-		value, err = encodeStructFieldValue(val, tag)
-		if err != nil {
-			return "", nil, fmt.Errorf("encode field %q: %w", field.Name, err)
-		}
-	}
-	if key == "" {
-		return "", nil, fmt.Errorf("no primary key field: %s", t.Name())
-	}
-	return key, value, nil
+	return cs, fv, fmt.Errorf("no primary key column found for %T", obj)
 }

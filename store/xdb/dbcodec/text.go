@@ -5,17 +5,18 @@
 package dbcodec
 
 import (
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 	"github.com/xanygo/anygo/xcodec"
 )
 
 const TextName = "text"
 
-var _ Codec = (*Text)(nil)
+var _ dbtype.Codec = (*Text)(nil)
 
 type Text struct{}
 
-func (t Text) Kind() Kind {
-	return KindString
+func (t Text) Kind() dbtype.Kind {
+	return dbtype.KindString
 }
 
 func (t Text) Name() string {

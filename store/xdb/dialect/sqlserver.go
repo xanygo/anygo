@@ -9,11 +9,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/xanygo/anygo/store/xdb/dbcodec"
-	"github.com/xanygo/anygo/store/xdb/dbschema"
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
-var _ Dialect = (*SQLServerDialect)(nil)
+var _ dbtype.Dialect = (*SQLServerDialect)(nil)
 
 type SQLServerDialect struct{}
 
@@ -68,8 +67,12 @@ func (d SQLServerDialect) PlaceholderList(n, start int) string {
 	return strings.Join(holders, ", ")
 }
 
-// SupportsReturning SQL Server 不直接支持 RETURNING
-func (SQLServerDialect) SupportsReturning() bool {
+// SupportReturning SQL Server 不直接支持 RETURNING
+func (SQLServerDialect) SupportReturning() bool {
+	return false
+}
+
+func (SQLServerDialect) SupportLastInsertId() bool {
 	return false
 }
 
@@ -85,7 +88,7 @@ func (SQLServerDialect) ReturningClause(columns ...string) string {
 	return "OUTPUT " + strings.Join(quoted, ", ")
 }
 
-var _ UpsertDialect = SQLServerDialect{}
+var _ dbtype.UpsertDialect = SQLServerDialect{}
 
 // UpsertSQL 生成 SQL Server MERGE UPSERT
 // table: 表名
@@ -168,40 +171,40 @@ WHEN NOT MATCHED THEN INSERT (%s) VALUES (%s)
 	return sqlStr
 }
 
-var _ SchemaDialect = SQLServerDialect{}
+var _ dbtype.SchemaDialect = SQLServerDialect{}
 
 // ColumnType 映射通用类型到 SQL Server 类型
-func (SQLServerDialect) ColumnType(kind dbcodec.Kind, size int) string {
+func (SQLServerDialect) ColumnType(kind dbtype.Kind, size int) string {
 	switch kind {
-	case dbcodec.KindString:
+	case dbtype.KindString:
 		if size <= 0 {
 			return "TEXT"
 		}
 		return fmt.Sprintf("VARCHAR(%d)", size)
 
-	case dbcodec.KindUint8:
+	case dbtype.KindUint8:
 		return "TINYINT"
-	case dbcodec.KindUint16, dbcodec.KindInt32:
+	case dbtype.KindUint16, dbtype.KindInt32:
 		return "INT"
-	case dbcodec.KindInt, dbcodec.KindUint, dbcodec.KindUint32, dbcodec.KindInt64:
+	case dbtype.KindInt, dbtype.KindUint, dbtype.KindUint32, dbtype.KindInt64:
 		return "BIGINT"
-	case dbcodec.KindInt8, dbcodec.KindInt16:
+	case dbtype.KindInt8, dbtype.KindInt16:
 		return "SMALLINT"
-	case dbcodec.KindUint64:
+	case dbtype.KindUint64:
 		return "NUMERIC(20,0)"
 
-	case dbcodec.KindBoolean:
+	case dbtype.KindBoolean:
 		return "BIT"
 
-	case dbcodec.KindFloat32:
+	case dbtype.KindFloat32:
 		return "REAL"
-	case dbcodec.KindFloat64:
+	case dbtype.KindFloat64:
 		return "FLOAT"
 
-	case dbcodec.KindBinary:
+	case dbtype.KindBinary:
 		return "VARBINARY(MAX)"
 
-	case dbcodec.KindJSON:
+	case dbtype.KindJSON:
 		return "NVARCHAR(MAX)" // SQL Server 2016+ 可以用 JSON 函数处理
 	default:
 		panic("unknown kind:" + kind)
@@ -213,11 +216,14 @@ func (d SQLServerDialect) CreateTableIfNotExists(table string) string {
 		table + "') and OBJECTPROPERTY(id, 'IsUserTable') = 1 ) CREATE TABLE " + d.QuoteIdentifier(table)
 }
 
-func (d SQLServerDialect) ColumnString(fs *dbschema.ColumnSchema) string {
+func (d SQLServerDialect) ColumnString(fs dbtype.ColumnSchema) string {
 	var sb strings.Builder
 	sb.WriteString(d.QuoteIdentifier(fs.Name))
 	sb.WriteString(" ")
-	baseType := d.ColumnType(fs.Kind, fs.Size)
+	baseType := fs.Native
+	if baseType == "" {
+		baseType = d.ColumnType(fs.Kind, fs.Size)
+	}
 	sb.WriteString(baseType)
 	if fs.AutoIncrement && strings.Contains(baseType, "INT") {
 		sb.WriteString(" IDENTITY(1,1)")
@@ -234,9 +240,9 @@ func (d SQLServerDialect) ColumnString(fs *dbschema.ColumnSchema) string {
 	if dv := fs.Default; dv != nil {
 		sb.WriteString(" DEFAULT ")
 		switch dv.Type {
-		case dbschema.DefaultValueTypeNumber, dbschema.DefaultValueTypeFn:
+		case dbtype.DefaultValueTypeNumber, dbtype.DefaultValueTypeFn:
 			sb.WriteString(dv.Value)
-		case dbschema.DefaultValueTypeString:
+		case dbtype.DefaultValueTypeString:
 			sb.WriteString(d.QuoteIdentifier(fs.Default.Value))
 		default:
 			panic(fmt.Sprintf("unknown default value type: %q", dv.Type))
@@ -245,9 +251,9 @@ func (d SQLServerDialect) ColumnString(fs *dbschema.ColumnSchema) string {
 	return sb.String()
 }
 
-var _ MigrateDialect = SQLServerDialect{}
+var _ dbtype.MigrateDialect = SQLServerDialect{}
 
-func (d SQLServerDialect) Migrate(ctx context.Context, db DBCore, schema dbschema.TableSchema) error {
+func (d SQLServerDialect) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.TableSchema) error {
 	sqlStr := createTableSQL(schema, d, d)
 	_, err := db.ExecContext(ctx, sqlStr)
 	return err

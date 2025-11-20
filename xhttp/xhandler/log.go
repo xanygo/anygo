@@ -183,7 +183,9 @@ func (w *captureWriter) WriteHeader(code int) {
 }
 
 func (w *captureWriter) Write(b []byte) (int, error) {
-	if len(w.body) < 32 && len(b) > 1 && strings.HasPrefix(w.Header().Get("Content-Type"), "text/") &&
+	ct := w.Header().Get("Content-Type")
+	if len(w.body) < 32 && len(b) > 1 &&
+		(strings.HasPrefix(ct, "text/") || strings.Contains(ct, "/json")) &&
 		isPrintable(b[0]) && isPrintable(b[1]) {
 		remain := 32 - len(w.body)
 		if remain > len(b) {

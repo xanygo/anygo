@@ -7,14 +7,16 @@ package dbcodec
 import (
 	"fmt"
 	"time"
+
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
-var _ Codec = (*DateTime)(nil)
+var _ dbtype.Codec = (*DateTime)(nil)
 
 type DateTime struct{}
 
-func (t DateTime) Kind() Kind {
-	return KindDateTime
+func (t DateTime) Kind() dbtype.Kind {
+	return dbtype.KindDateTime
 }
 
 func (t DateTime) Name() string {
@@ -41,7 +43,13 @@ func (t DateTime) Decode(str string, a any) error {
 		*ptr = time.Time{}
 		return nil
 	}
-	tm, err := time.ParseInLocation(time.DateTime, str, time.Local)
+	var tm time.Time
+	var err error
+	if len(str) == len("2025-11-19T15:13:19Z") {
+		tm, err = time.ParseInLocation(time.RFC3339, str, time.Local)
+	} else {
+		tm, err = time.ParseInLocation(time.DateTime, str, time.Local)
+	}
 	if err != nil {
 		return fmt.Errorf("parse time failed: %w", err)
 	}

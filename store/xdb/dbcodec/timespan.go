@@ -8,15 +8,17 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
-var _ Codec = (*TimeSpan)(nil)
+var _ dbtype.Codec = (*TimeSpan)(nil)
 
 type TimeSpan struct {
 }
 
-func (t TimeSpan) Kind() Kind {
-	return KindInt64
+func (t TimeSpan) Kind() dbtype.Kind {
+	return dbtype.KindInt64
 }
 
 func (t TimeSpan) Name() string {

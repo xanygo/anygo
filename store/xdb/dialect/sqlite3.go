@@ -10,8 +10,7 @@ import (
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xslice"
-	"github.com/xanygo/anygo/store/xdb/dbcodec"
-	"github.com/xanygo/anygo/store/xdb/dbschema"
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
 // SQLite3 实现 Dialect 接口
@@ -71,25 +70,29 @@ func (SQLite3) PlaceholderList(n, start int) string {
 	return strings.TrimRight(strings.Repeat("?,", n), ",")
 }
 
-// SupportsReturning 从 SQLite3 3.35.0 (2021-03) 起支持 RETURNING。
-func (SQLite3) SupportsReturning() bool {
+// SupportReturning 从 SQLite3 3.35.0 (2021-03) 起支持 RETURNING。
+func (SQLite3) SupportReturning() bool {
+	return true
+}
+
+func (SQLite3) SupportLastInsertId() bool {
 	return true
 }
 
 // ReturningClause 生成 RETURNING 子句。
 // 空 columns 表示 RETURNING *。
-func (SQLite3) ReturningClause(columns ...string) string {
+func (d SQLite3) ReturningClause(columns ...string) string {
 	if len(columns) == 0 {
 		return "RETURNING *"
 	}
 	quoted := make([]string, len(columns))
 	for i, c := range columns {
-		quoted[i] = fmt.Sprintf(`"%s"`, c)
+		quoted[i] = d.QuoteIdentifier(c)
 	}
 	return "RETURNING " + strings.Join(quoted, ", ")
 }
 
-var _ UpsertDialect = SQLite3{}
+var _ dbtype.UpsertDialect = SQLite3{}
 
 // UpsertSQL 在 3.24.0 版本（2018年）开始支持
 func (d SQLite3) UpsertSQL(table string, count int, columns, conflictCols, updateCols []string, returningCols []string) string {
@@ -128,20 +131,20 @@ func (d SQLite3) UpsertSQL(table string, count int, columns, conflictCols, updat
 	return sqlStr
 }
 
-var _ SchemaDialect = SQLite3{}
+var _ dbtype.SchemaDialect = SQLite3{}
 
-func (SQLite3) ColumnType(kind dbcodec.Kind, size int) string {
+func (SQLite3) ColumnType(kind dbtype.Kind, size int) string {
 	switch kind {
-	case dbcodec.KindString:
+	case dbtype.KindString:
 		return "TEXT"
-	case dbcodec.KindInt, dbcodec.KindInt8, dbcodec.KindInt16, dbcodec.KindInt32, dbcodec.KindInt64,
-		dbcodec.KindUint, dbcodec.KindUint8, dbcodec.KindUint16, dbcodec.KindUint32, dbcodec.KindUint64:
+	case dbtype.KindInt, dbtype.KindInt8, dbtype.KindInt16, dbtype.KindInt32, dbtype.KindInt64,
+		dbtype.KindUint, dbtype.KindUint8, dbtype.KindUint16, dbtype.KindUint32, dbtype.KindUint64:
 		return "INTEGER"
-	case dbcodec.KindBoolean:
+	case dbtype.KindBoolean:
 		return "INTEGER"
-	case dbcodec.KindFloat32, dbcodec.KindFloat64:
+	case dbtype.KindFloat32, dbtype.KindFloat64:
 		return "REAL"
-	case dbcodec.KindJSON:
+	case dbtype.KindJSON:
 		// SQLite3 3.38+ 支持 JSON 函数，但底层仍 TEXT
 		return "TEXT"
 	default:
@@ -149,7 +152,7 @@ func (SQLite3) ColumnType(kind dbcodec.Kind, size int) string {
 	}
 }
 
-func (d SQLite3) ColumnString(fs *dbschema.ColumnSchema) string {
+func (d SQLite3) ColumnString(fs dbtype.ColumnSchema) string {
 	var sb strings.Builder
 	sb.WriteString(d.QuoteIdentifier(fs.Name))
 	sb.WriteString(" ")
@@ -171,9 +174,9 @@ func (d SQLite3) ColumnString(fs *dbschema.ColumnSchema) string {
 	if dv := fs.Default; dv != nil {
 		sb.WriteString(" DEFAULT ")
 		switch dv.Type {
-		case dbschema.DefaultValueTypeNumber, dbschema.DefaultValueTypeFn:
+		case dbtype.DefaultValueTypeNumber, dbtype.DefaultValueTypeFn:
 			sb.WriteString(dv.Value)
-		case dbschema.DefaultValueTypeString:
+		case dbtype.DefaultValueTypeString:
 			sb.WriteString(d.QuoteIdentifier(fs.Default.Value))
 		default:
 			panic(fmt.Sprintf("unknown default value type: %q", dv.Type))
@@ -187,9 +190,9 @@ func (d SQLite3) CreateTableIfNotExists(table string) string {
 	return "CREATE TABLE IF NOT EXISTS " + d.QuoteIdentifier(table)
 }
 
-var _ MigrateDialect = SQLite3{}
+var _ dbtype.MigrateDialect = SQLite3{}
 
-func (d SQLite3) Migrate(ctx context.Context, db DBCore, schema dbschema.TableSchema) error {
+func (d SQLite3) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.TableSchema) error {
 	sqlStr := createTableSQL(schema, d, d)
 	_, err := db.ExecContext(ctx, sqlStr)
 	return err

@@ -6,12 +6,14 @@ package dialect
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xslice"
-	"github.com/xanygo/anygo/store/xdb/dbcodec"
-	"github.com/xanygo/anygo/store/xdb/dbschema"
+	"github.com/xanygo/anygo/internal/zreflect"
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
 // Postgres 实现 Dialect 接口
@@ -69,24 +71,29 @@ func (Postgres) PlaceholderList(n, start int) string {
 	return strings.Join(holders, ", ")
 }
 
-// SupportsReturning 返回 true
-func (Postgres) SupportsReturning() bool {
+// SupportReturning 返回 true
+func (Postgres) SupportReturning() bool {
 	return true
 }
 
+func (Postgres) SupportLastInsertId() bool {
+	// LastInsertId is not supported by this driver
+	return false
+}
+
 // ReturningClause 生成 RETURNING 子句
-func (Postgres) ReturningClause(columns ...string) string {
+func (d Postgres) ReturningClause(columns ...string) string {
 	if len(columns) == 0 {
 		return "RETURNING *"
 	}
 	quoted := make([]string, len(columns))
 	for i, c := range columns {
-		quoted[i] = fmt.Sprintf(`"%s"`, c)
+		quoted[i] = d.QuoteIdentifier(c)
 	}
 	return "RETURNING " + strings.Join(quoted, ", ")
 }
 
-var _ UpsertDialect = (*Postgres)(nil)
+var _ dbtype.UpsertDialect = (*Postgres)(nil)
 
 func (d Postgres) UpsertSQL(table string, count int, cols, conflictCols, updateCols []string, returningCols []string) string {
 	colList := strings.Join(xslice.MapFunc(cols, d.QuoteIdentifier), ",")
@@ -122,37 +129,38 @@ func (d Postgres) UpsertSQL(table string, count int, cols, conflictCols, updateC
 	return sqlStr
 }
 
-var _ SchemaDialect = Postgres{}
+var _ dbtype.SchemaDialect = Postgres{}
 
 // ColumnType 映射通用类型到 Postgres 类型
-func (Postgres) ColumnType(kind dbcodec.Kind, size int) string {
+func (Postgres) ColumnType(kind dbtype.Kind, size int) string {
 	switch kind {
-	case dbcodec.KindString:
+	case dbtype.KindString:
 		if size <= 0 {
 			return "TEXT"
 		}
 		return fmt.Sprintf("VARCHAR(%d)", size)
-	case dbcodec.KindInt8, dbcodec.KindInt16, dbcodec.KindUint8:
+	case dbtype.KindInt8, dbtype.KindInt16, dbtype.KindUint8:
 		return "SMALLINT"
-	case dbcodec.KindInt, dbcodec.KindInt32, dbcodec.KindUint16:
+	case dbtype.KindInt, dbtype.KindInt32, dbtype.KindUint16:
 		return "INTEGER"
-	case dbcodec.KindUint, dbcodec.KindInt64, dbcodec.KindUint32:
+	case dbtype.KindUint, dbtype.KindInt64, dbtype.KindUint32:
 		return "BIGINT"
-	case dbcodec.KindUint64:
-		return "NUMERIC(20,0)"
-	case dbcodec.KindBinary:
+	case dbtype.KindUint64:
+		return "BIGINT"
+		// return "NUMERIC(20,0)" // NUMERIC 不支持自增长
+	case dbtype.KindBinary:
 		return "BYTEA"
-	case dbcodec.KindBoolean:
+	case dbtype.KindBoolean:
 		return "BOOLEAN"
-	case dbcodec.KindFloat32:
+	case dbtype.KindFloat32:
 		return "REAL"
-	case dbcodec.KindFloat64:
+	case dbtype.KindFloat64:
 		return "DOUBLE PRECISION"
-	case dbcodec.KindJSON:
+	case dbtype.KindJSON:
 		return "JSONB"
-	case dbcodec.KindDate:
+	case dbtype.KindDate:
 		return "DATE"
-	case dbcodec.KindDateTime:
+	case dbtype.KindDateTime:
 		return "TIMESTAMP"
 	default:
 		return "TEXT"
@@ -181,11 +189,14 @@ func (Postgres) autoIncrementColumnType(baseType string) string {
 	}
 }
 
-func (d Postgres) ColumnString(fs *dbschema.ColumnSchema) string {
+func (d Postgres) ColumnString(fs dbtype.ColumnSchema) string {
 	var sb strings.Builder
 	sb.WriteString(d.QuoteIdentifier(fs.Name))
 	sb.WriteString(" ")
-	baseType := d.ColumnType(fs.Kind, fs.Size)
+	baseType := fs.Native
+	if baseType == "" {
+		baseType = d.ColumnType(fs.Kind, fs.Size)
+	}
 	if fs.AutoIncrement {
 		sb.WriteString(d.autoIncrementColumnType(baseType))
 	} else {
@@ -203,9 +214,9 @@ func (d Postgres) ColumnString(fs *dbschema.ColumnSchema) string {
 	if dv := fs.Default; dv != nil {
 		sb.WriteString(" DEFAULT ")
 		switch dv.Type {
-		case dbschema.DefaultValueTypeNumber, dbschema.DefaultValueTypeFn:
+		case dbtype.DefaultValueTypeNumber, dbtype.DefaultValueTypeFn:
 			sb.WriteString(dv.Value)
-		case dbschema.DefaultValueTypeString:
+		case dbtype.DefaultValueTypeString:
 			sb.WriteString(d.QuoteIdentifier(fs.Default.Value))
 		default:
 			panic(fmt.Sprintf("unknown default value type: %q", dv.Type))
@@ -214,10 +225,96 @@ func (d Postgres) ColumnString(fs *dbschema.ColumnSchema) string {
 	return sb.String()
 }
 
-var _ MigrateDialect = Postgres{}
+var _ dbtype.MigrateDialect = Postgres{}
 
-func (d Postgres) Migrate(ctx context.Context, db DBCore, schema dbschema.TableSchema) error {
+func (d Postgres) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.TableSchema) error {
 	sqlStr := createTableSQL(schema, d, d)
 	_, err := db.ExecContext(ctx, sqlStr)
 	return err
+}
+
+var _ dbtype.CoderDialect = Postgres{}
+
+func (d Postgres) ColumnCodec(p reflect.Type) (dbtype.Codec, error) {
+	switch p.Kind() {
+	default:
+		return nil, nil
+	case reflect.Slice, reflect.Array:
+		if zreflect.IsBasicKind(p.Elem().Kind()) {
+			return pgAnyArrayCodec{}, nil
+		}
+		return nil, nil
+	}
+}
+
+var _ dbtype.Codec = pgAnyArrayCodec{}
+
+// pgAnyArrayCodec 数组类型的编解码功能
+// 当字段这样定义包含 type:auto_json 的时候，会使用：
+//
+//	Scores []int `db:"scores,type:auto_json,native:int[]"`
+type pgAnyArrayCodec struct{}
+
+func (p pgAnyArrayCodec) Name() string {
+	return "pgx_array"
+}
+
+func (p pgAnyArrayCodec) Encode(a any) (any, error) {
+	return a, nil
+}
+
+func (p pgAnyArrayCodec) Decode(b string, a any) error {
+	rv := reflect.ValueOf(a)
+	if rv.Kind() != reflect.Pointer {
+		return fmt.Errorf("target must be pointer to slice, got %T", a)
+	}
+	str := p.arrayToJSONSimple(b)
+	return json.Unmarshal([]byte(str), a)
+}
+
+func (p pgAnyArrayCodec) Kind() dbtype.Kind {
+	return dbtype.KindArray
+}
+
+func (p pgAnyArrayCodec) arrayToJSONSimple(s string) string {
+	var buf strings.Builder
+	inString := false
+	escape := false
+
+	for i := 0; i < len(s); i++ {
+		ch := s[i]
+
+		if escape {
+			buf.WriteByte(ch)
+			escape = false
+			continue
+		}
+
+		if ch == '\\' {
+			escape = true
+			buf.WriteByte(ch)
+			continue
+		}
+
+		if ch == '"' {
+			inString = !inString
+			buf.WriteByte(ch)
+			continue
+		}
+
+		if !inString {
+			switch ch {
+			case '{':
+				buf.WriteByte('[')
+				continue
+			case '}':
+				buf.WriteByte(']')
+				continue
+			}
+		}
+
+		buf.WriteByte(ch)
+	}
+
+	return buf.String()
 }

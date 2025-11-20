@@ -7,14 +7,16 @@ package dbcodec
 import (
 	"fmt"
 	"time"
+
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
-var _ Codec = (*Date)(nil)
+var _ dbtype.Codec = (*Date)(nil)
 
 type Date struct{}
 
-func (t Date) Kind() Kind {
-	return KindDate
+func (t Date) Kind() dbtype.Kind {
+	return dbtype.KindDate
 }
 
 func (t Date) Name() string {

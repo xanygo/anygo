@@ -34,7 +34,7 @@ const (
 	TagCodec = "codec"
 
 	// TagAutoInc 自增长字段标记
-	TagAutoInc = "autoInc" // "autoIncrement" 的缩写
+	TagAutoInc = "auto_inc" // "autoIncrement" 的缩写
 
 	// TagUnique 唯一键，不需要值,也可以是完整的 unique
 	TagUnique = "uniq" //
@@ -45,12 +45,15 @@ const (
 	// index:idx_uid           -> 创建独立索引，索引名称为 idx_uid
 	// index:idx_uid_class,1   -> 创建联合索引，索引名称为 idx_uid_class，此字段在索引中排序为 1
 	TagIndex       = "index"
-	TagUniqueIndex = "uniqueIndex" // 值格式同 TagIndex
+	TagUniqueIndex = "unique_index" // 值格式同 TagIndex
 
 	// TagSize 值类型的容量
 	TagSize = "size"
 
-	TagNotNull = "notNull"
+	TagNotNull = "not-null"
+
+	// TagNative 数据库原生的类型定义
+	TagNative = "native"
 
 	TagType = "type" // 数据类型，必须是有效的 dbschema.Kind 的值
 

@@ -6,15 +6,16 @@ package xdb
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"iter"
 	"reflect"
-	"strings"
 
 	"github.com/xanygo/anygo/ds/xstruct"
 	"github.com/xanygo/anygo/internal/zreflect"
-	"github.com/xanygo/anygo/store/xdb/dbcodec"
 	"github.com/xanygo/anygo/store/xdb/dbschema"
+	"github.com/xanygo/anygo/store/xdb/dbtype"
+	"github.com/xanygo/anygo/store/xdb/dialect"
 )
 
 // ScanRows 读取并解析数据为指定的类型，T 类型可以是 struct、*struct、map[string]any 这三种类型
@@ -41,12 +42,12 @@ import (
 //
 // 对于 csv 格式，即为使用英文逗号连接的字段，
 // 比如 ID2 []int    `db:"id,codec:csv"` ，在数据库中 查询出来值为 select '1,2,3' as link_ids 。
-func ScanRows[T any](rows *sql.Rows) ([]T, error) {
-	return ScanRowsLimit[T](rows, -1)
+func ScanRows[T any](db HasDriver, rows *sql.Rows) ([]T, error) {
+	return ScanRowsLimit[T](db, rows, -1)
 }
 
-func ScanRowsFirst[T any](rows *sql.Rows) (v T, ok bool, err error) {
-	items, err := ScanRowsLimit[T](rows, -1)
+func ScanRowsFirst[T any](db HasDriver, rows *sql.Rows) (v T, ok bool, err error) {
+	items, err := ScanRowsLimit[T](db, rows, -1)
 	if err != nil {
 		return v, false, err
 	}
@@ -56,10 +57,10 @@ func ScanRowsFirst[T any](rows *sql.Rows) (v T, ok bool, err error) {
 	return v, false, nil
 }
 
-func ScanRowsLimit[T any](rows *sql.Rows, limit int) ([]T, error) {
+func ScanRowsLimit[T any](db HasDriver, rows *sql.Rows, limit int) ([]T, error) {
 	defer rows.Close()
 	var result []T
-	for item, err := range ScanRowsIter[T](rows) {
+	for item, err := range ScanRowsIter[T](db, rows) {
 		if err != nil {
 			return result, err
 		}
@@ -72,7 +73,7 @@ func ScanRowsLimit[T any](rows *sql.Rows, limit int) ([]T, error) {
 }
 
 // ScanRowsIter 依次读取并解析 Rows，需要自行调用 rows，Close()
-func ScanRowsIter[T any](rows *sql.Rows) iter.Seq2[T, error] {
+func ScanRowsIter[T any](db HasDriver, rows *sql.Rows) iter.Seq2[T, error] {
 	var zero T
 	return func(yield func(T, error) bool) {
 		cols, err := rows.Columns()
@@ -83,13 +84,20 @@ func ScanRowsIter[T any](rows *sql.Rows) iter.Seq2[T, error] {
 		rv := reflect.ValueOf(&zero).Elem()
 		rt := rv.Type()
 
+		dz, err := dialect.Find(db.Driver())
+		if err != nil {
+			yield(zero, err)
+			return
+		}
+		schema, scErr := dbschema.Schema(dz, zero)
+
 		for rows.Next() {
 			var item T
 			switch rt.Kind() {
 			case reflect.Map:
 				item, err = scanRowsAsMap[T](rows, cols)
 			default:
-				item, err = scanRowsAsStruct[T](rows, cols)
+				item, err = scanRowsAsStruct[T](rows, cols, schema, scErr)
 			}
 			if err != nil {
 				yield(zero, err)
@@ -137,8 +145,11 @@ func scanRowsAsMap[T any](rows *sql.Rows, cols []string) (T, error) {
 	return m.Interface().(T), nil
 }
 
-func scanRowsAsStruct[T any](rows *sql.Rows, cols []string) (T, error) {
+func scanRowsAsStruct[T any](rows *sql.Rows, cols []string, schema *dbtype.TableSchema, scErr error) (T, error) {
 	var v T
+	if scErr != nil {
+		return v, scErr
+	}
 	rv := reflect.ValueOf(&v).Elem()
 	rt := rv.Type()
 
@@ -154,7 +165,6 @@ func scanRowsAsStruct[T any](rows *sql.Rows, cols []string) (T, error) {
 
 	scanTargets := make([]any, len(cols))
 	columnToField := make(map[string]reflect.Value) // 用于存储  dbFieldName -> structFieldName 的关系
-	tags := make(map[string]xstruct.Tag)
 
 	tn := dbschema.TagName()
 
@@ -189,9 +199,7 @@ func scanRowsAsStruct[T any](rows *sql.Rows, cols []string) (T, error) {
 				// 此字段不需要解析
 				return nil
 			}
-			name = strings.ToLower(name)
 			columnToField[name] = tv.FieldByName(field.Name)
-			tags[name] = tag
 
 			return nil
 		})
@@ -204,16 +212,19 @@ func scanRowsAsStruct[T any](rows *sql.Rows, cols []string) (T, error) {
 	}
 
 	serializerFields := make(map[string]int)
-	for idx, col := range cols {
-		name := strings.ToLower(col)
+	for idx, name := range cols {
 		fieldValue, ok := columnToField[name]
 		if !ok {
 			var dummy any
 			scanTargets[idx] = &dummy
 			continue
 		}
+		sc, err := schema.ColumnByName(name)
+		if err != nil {
+			return v, err
+		}
 
-		if !isComplexKind(fieldValue.Kind()) {
+		if sc.Kind == dbtype.KindNative || !isComplexKind(fieldValue.Kind()) {
 			scanTargets[idx] = fieldValue.Addr().Interface()
 			continue
 		}
@@ -229,13 +240,15 @@ func scanRowsAsStruct[T any](rows *sql.Rows, cols []string) (T, error) {
 
 	if len(serializerFields) > 0 {
 		for name, idx := range serializerFields {
-			tag := tags[name]
-			codec := dbschema.TagCodecName(tag)
+			sc, err := schema.ColumnByName(name)
+			if err != nil {
+				return v, err
+			}
 			// 从 scanTargets 里取出 sql.NullString
 			sPtr := scanTargets[idx].(*sql.NullString)
 			fieldValue := columnToField[name]
-			if err := unmarshallingField(fieldValue, codec, sPtr); err != nil {
-				return v, fmt.Errorf("unmarshalling field %q: %w", name, err)
+			if err = unmarshallingField(fieldValue, sc.Codec, sPtr); err != nil {
+				return v, fmt.Errorf("unmarshalling %q failed: %w", name, err)
 			}
 		}
 	}
@@ -249,18 +262,16 @@ func scanRowsAsStruct[T any](rows *sql.Rows, cols []string) (T, error) {
 	return v, nil
 }
 
-func unmarshallingField(field reflect.Value, codec string, sPtr *sql.NullString) error {
+func unmarshallingField(field reflect.Value, codec dbtype.Codec, sPtr *sql.NullString) error {
 	if !sPtr.Valid || sPtr.String == "" {
 		// NULL 或空字符串，跳过或置为零值
 		return nil
 	}
-
-	decoder, err := dbcodec.Find(codec)
-	if err != nil {
-		return err
+	if codec == nil {
+		return errors.New("miss codec")
 	}
 	ptr := reflect.New(field.Type())
-	if err = decoder.Decode(sPtr.String, ptr.Interface()); err != nil {
+	if err := codec.Decode(sPtr.String, ptr.Interface()); err != nil {
 		return err
 	}
 	field.Set(ptr.Elem())

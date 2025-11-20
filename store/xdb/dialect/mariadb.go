@@ -10,9 +10,10 @@ import (
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xslice"
-	"github.com/xanygo/anygo/store/xdb/dbcodec"
-	"github.com/xanygo/anygo/store/xdb/dbschema"
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
+
+var _ dbtype.Dialect = MariaDB{}
 
 // MariaDB 实现 Dialect 接口
 type MariaDB struct{}
@@ -58,25 +59,29 @@ func (MariaDB) PlaceholderList(n, start int) string {
 	return strings.TrimRight(strings.Repeat("?,", n), ",")
 }
 
-// SupportsReturning MariaDB 从 10.5 开始支持 RETURNING。
-func (MariaDB) SupportsReturning() bool {
+// SupportReturning MariaDB 从 10.5 开始支持 RETURNING。
+func (MariaDB) SupportReturning() bool {
+	return true
+}
+
+func (d MariaDB) SupportLastInsertId() bool {
 	return true
 }
 
 // ReturningClause 返回 RETURNING 子句。
 // 如果 columns 为空，返回 RETURNING *。
-func (MariaDB) ReturningClause(columns ...string) string {
+func (d MariaDB) ReturningClause(columns ...string) string {
 	if len(columns) == 0 {
 		return "RETURNING *"
 	}
 	quoted := make([]string, len(columns))
 	for i, c := range columns {
-		quoted[i] = fmt.Sprintf("`%s`", c)
+		quoted[i] = d.QuoteIdentifier(c)
 	}
 	return "RETURNING " + strings.Join(quoted, ", ")
 }
 
-var _ UpsertDialect = MariaDB{}
+var _ dbtype.UpsertDialect = MariaDB{}
 
 func (d MariaDB) UpsertSQL(table string, count int, columns, conflictCols, updateCols []string, returningCols []string) string {
 	colList := strings.Join(xslice.MapFunc(columns, d.QuoteIdentifier), ",")
@@ -100,13 +105,13 @@ func (d MariaDB) UpsertSQL(table string, count int, columns, conflictCols, updat
 	return sqlStr
 }
 
-var _ SchemaDialect = MariaDB{}
+var _ dbtype.SchemaDialect = MariaDB{}
 
-func (MariaDB) ColumnType(kind dbcodec.Kind, size int) string {
+func (MariaDB) ColumnType(kind dbtype.Kind, size int) string {
 	return (MySQL{}).ColumnType(kind, size)
 }
 
-func (d MariaDB) ColumnString(fs *dbschema.ColumnSchema) string {
+func (d MariaDB) ColumnString(fs dbtype.ColumnSchema) string {
 	return (MySQL{}).ColumnString(fs)
 }
 
@@ -117,9 +122,9 @@ func (d MariaDB) CreateTableIfNotExists(table string) string {
 //	func (d MariaDB) addColumnIfNotExists(table string, col string) string {
 //		return fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s", d.QuoteIdentifier(table), d.QuoteIdentifier(col))
 //	}
-var _ MigrateDialect = MariaDB{}
+var _ dbtype.MigrateDialect = MariaDB{}
 
-func (d MariaDB) Migrate(ctx context.Context, db DBCore, schema dbschema.TableSchema) error {
+func (d MariaDB) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.TableSchema) error {
 	sqlStr := createTableSQL(schema, d, d)
 	_, err := db.ExecContext(ctx, sqlStr)
 	return err

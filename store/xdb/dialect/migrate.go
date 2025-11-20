@@ -8,15 +8,15 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/xanygo/anygo/store/xdb/dbschema"
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
-func createTableSQL(ts dbschema.TableSchema, d Dialect, sd SchemaDialect) string {
+func createTableSQL(ts dbtype.TableSchema, d dbtype.Dialect, sd dbtype.SchemaDialect) string {
 	str := sd.CreateTableIfNotExists(ts.Table) + " (\n"
 
 	var lines []string
-	indexMap := map[string][]*dbschema.IndexSchema{}
-	uniqIndexMap := map[string][]*dbschema.IndexSchema{}
+	indexMap := map[string][]*dbtype.IndexSchema{}
+	uniqIndexMap := map[string][]*dbtype.IndexSchema{}
 	for _, field := range ts.Columns {
 		tmp := sd.ColumnString(field)
 		lines = append(lines, tmp)

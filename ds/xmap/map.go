@@ -133,6 +133,18 @@ func Values[K comparable, V any](m map[K]V) []V {
 	return values
 }
 
+// ValuesByKeys 返回的结果严格按照传入的 keys 的顺序
+func ValuesByKeys[K comparable, V any](m map[K]V, keys []K) []V {
+	if len(m) == 0 || len(keys) == 0 {
+		return nil
+	}
+	values := make([]V, 0, len(m))
+	for _, key := range keys {
+		values = append(values, m[key])
+	}
+	return values
+}
+
 func KeyValues[K comparable, V any](m map[K]V) ([]K, []V) {
 	if len(m) == 0 {
 		return nil, nil

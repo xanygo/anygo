@@ -1,6 +1,6 @@
 //  Copyright(C) 2025 github.com/hidu  All Rights Reserved.
 //  Author: hidu <duv123+git@gmail.com>
-//  Date: 2025-11-15
+//  Date: 2025-11-20
 
 package dbschema
 
@@ -18,80 +18,23 @@ import (
 	"github.com/xanygo/anygo/internal/zcache"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb/dbcodec"
-)
-
-type TableSchema struct {
-	Table        string
-	Columns      []*ColumnSchema
-	name2Column  map[string]*ColumnSchema
-	columnsNames []string
-}
-
-func (ts *TableSchema) ColumnByName(name string) (*ColumnSchema, error) {
-	f, ok := ts.name2Column[name]
-	if ok {
-		return f, nil
-	}
-	return nil, errors.New("not exist")
-}
-
-func (ts *TableSchema) ColumnsNames() []string {
-	return ts.columnsNames
-}
-
-type ColumnSchema struct {
-	Name          string // 字段名
-	IsPrimaryKey  bool
-	AutoIncrement bool // 自增长
-	Kind          dbcodec.Kind
-	Unique        bool         // 是否唯一键
-	Index         *IndexSchema // 索引的名称
-	UniqueIndex   *IndexSchema // 唯一索引
-	Size          int          // 定义列数据类型的大小或长度
-	NotNull       bool
-	Codec         string // 字段编解码器
-
-	Default *DefaultValueSchema
-}
-
-func (scf *ColumnSchema) String() string {
-	return fmt.Sprintf("%#v", scf)
-}
-
-type IndexSchema struct {
-	FieldName  string
-	IndexName  string // 索引
-	FieldOrder int    // 字段在索引中的顺序
-}
-
-type DefaultValueSchema struct {
-	// Type 值类型，可选值：number，string，fn
-	// 当为 number、fn 时：拼接到 schema 里去的时候，直接拼接，不需要使用 "" 转义
-	Type DefaultValueType
-
-	Value string // 值的字符串形式
-}
-
-type DefaultValueType int8
-
-const (
-	DefaultValueTypeString DefaultValueType = iota
-	DefaultValueTypeNumber
-	DefaultValueTypeFn
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
 // Schema 传入一个 struct，获取其 db schema 定义
-func Schema(obj any) (*TableSchema, error) {
-	return (schemaParser{}).Parser(obj)
+func Schema(fy dbtype.Dialect, obj any) (*dbtype.TableSchema, error) {
+	return (schemaParser{fy: fy}).Parser(obj)
 }
 
 type hasTable interface {
 	TableName() string
 }
 
-type schemaParser struct{}
+type schemaParser struct {
+	fy dbtype.Dialect
+}
 
-func (sp schemaParser) Parser(obj any) (*TableSchema, error) {
+func (sp schemaParser) Parser(obj any) (*dbtype.TableSchema, error) {
 	rt := reflect.TypeOf(obj)
 	if rt.Kind() == reflect.Ptr {
 		rt = rt.Elem()
@@ -115,7 +58,7 @@ func (sp schemaParser) Parser(obj any) (*TableSchema, error) {
 var schemaCache = zcache.MapCache[reflect.Type, *schemaCacheValue]{}
 
 type schemaCacheValue struct {
-	Schema TableSchema
+	Schema dbtype.TableSchema
 	Err    error
 }
 
@@ -127,9 +70,9 @@ func (sp schemaParser) getSchemaCacheValue(rt reflect.Type) *schemaCacheValue {
 	}
 }
 
-func (sp schemaParser) getSchema(rt reflect.Type) (*TableSchema, error) {
-	sc := &TableSchema{
-		name2Column: make(map[string]*ColumnSchema),
+func (sp schemaParser) getSchema(rt reflect.Type) (*dbtype.TableSchema, error) {
+	sc := &dbtype.TableSchema{
+		Name2Column: make(map[string]dbtype.ColumnSchema),
 	}
 
 	var scan func(reflect.Type) error
@@ -162,10 +105,10 @@ func (sp schemaParser) getSchema(rt reflect.Type) (*TableSchema, error) {
 			if err != nil {
 				return fmt.Errorf("field=%q: %w", field.Name, err)
 			}
-			if _, has := sc.name2Column[name]; has {
+			if _, has := sc.Name2Column[name]; has {
 				return fmt.Errorf("struct Field %q has duplicate column %q", field.Name, name)
 			}
-			sc.name2Column[name] = scf
+			sc.Name2Column[name] = scf
 			sc.Columns = append(sc.Columns, scf)
 			return nil
 		})
@@ -173,18 +116,21 @@ func (sp schemaParser) getSchema(rt reflect.Type) (*TableSchema, error) {
 	}
 
 	err := scan(rt)
-	sc.columnsNames = xmap.Keys(sc.name2Column)
-	slices.Sort(sc.columnsNames)
+	sc.ColumnsNames = xmap.Keys(sc.Name2Column)
+	slices.Sort(sc.ColumnsNames)
 	return sc, err
 }
 
-func (sp schemaParser) parserField(f reflect.StructField, tag xstruct.Tag) (*ColumnSchema, error) {
-	field := &ColumnSchema{
+func (sp schemaParser) parserField(f reflect.StructField, tag xstruct.Tag) (dbtype.ColumnSchema, error) {
+	field := dbtype.ColumnSchema{
+		ReflectType: f.Type,
+
 		Name:          tag.Name(),
 		AutoIncrement: TagHasAutoInc(tag),
 		IsPrimaryKey:  TagHasPrimaryKey(tag),
 		NotNull:       tag.Has(TagNotNull),
 		Unique:        TagHasUnique(tag),
+		Native:        tag.Value(TagNative),
 	}
 
 	var err error
@@ -193,43 +139,65 @@ func (sp schemaParser) parserField(f reflect.StructField, tag xstruct.Tag) (*Col
 		field.UniqueIndex, err = sp.parserIndex(field.Name, tag, true)
 	}
 	if err != nil {
-		return nil, err
+		return field, err
 	}
 
 	if size, has := tag.Get(TagSize); has {
 		num, err0 := strconv.Atoi(size)
 		if err0 != nil || num <= 0 {
-			return nil, fmt.Errorf("invalid size: %s", size)
+			return field, fmt.Errorf("invalid size: %s", size)
 		}
 		field.Size = num
 	}
 
 	tp := tag.Value(TagType)
 	if tp != "" {
-		tk := dbcodec.Kind(tp)
+		tk := dbtype.Kind(tp)
 		if !tk.IsValid() {
-			return nil, fmt.Errorf("invalid type: %q", tp)
+			return field, fmt.Errorf("invalid type: %q", tp)
 		}
 		field.Kind = tk
 	}
 
-	codec := tag.Value(TagCodec)
-	if codec != "" {
-		field.Codec = codec
-		cc, err0 := dbcodec.Find(codec)
-		if err0 != nil {
-			return nil, err0
-		}
-		if !field.Kind.IsValid() {
-			field.Kind = cc.Kind()
+	codecName := tag.Value(TagCodec)
+	if codecName != "" && !dbtype.KindAutoJSON.Is(codecName) {
+		field.Codec, err = findCodec(sp.fy, codecName)
+		if err != nil {
+			return field, err
 		}
 	}
+
+	if field.Codec == nil {
+		if dz, ok := sp.fy.(dbtype.CoderDialect); ok {
+			field.Codec, err = dz.ColumnCodec(f.Type)
+			if err != nil {
+				return field, err
+			}
+		}
+	}
+
+	if field.Codec != nil && !field.Kind.IsValid() {
+		// 当有明确的 Codec 的时候，使用 Codec 的 Kind
+		field.Kind = field.Codec.Kind()
+	}
+
+	if field.Codec == nil {
+		if codecName != "" && dbtype.KindAutoJSON.Is(codecName) {
+			field.Codec = dbcodec.JSON{}
+		} else {
+			field.Codec, err = findCodec(sp.fy, dbcodec.TextName)
+			if err != nil {
+				return field, err
+			}
+		}
+	}
+
 	if !field.Kind.IsValid() {
-		field.Kind, err = dbcodec.ReflectToKind(f.Type)
+		field.Kind, err = dbtype.ReflectToKind(f.Type)
 	}
 
 	if err != nil {
-		return nil, err
+		return field, err
 	}
 	if def, ok := tag.Get(TagDefault); ok {
 		field.Default, err = sp.parserDefault(def)
@@ -237,7 +205,11 @@ func (sp schemaParser) parserField(f reflect.StructField, tag xstruct.Tag) (*Col
 	return field, err
 }
 
-func (sp schemaParser) parserIndex(fieldName string, tag xstruct.Tag, isUniq bool) (*IndexSchema, error) {
+func findCodec(d dbtype.Dialect, name string) (dbtype.Codec, error) {
+	return dbcodec.Find(name+"@"+d.Name(), name)
+}
+
+func (sp schemaParser) parserIndex(fieldName string, tag xstruct.Tag, isUniq bool) (*dbtype.IndexSchema, error) {
 	indexTagName := TagIndex
 	indexNamePrefix := "idx_"
 	if isUniq {
@@ -250,7 +222,7 @@ func (sp schemaParser) parserIndex(fieldName string, tag xstruct.Tag, isUniq boo
 	}
 
 	if index == "" {
-		return &IndexSchema{
+		return &dbtype.IndexSchema{
 			IndexName:  indexNamePrefix + fieldName,
 			FieldOrder: -1,
 		}, nil
@@ -262,13 +234,13 @@ func (sp schemaParser) parserIndex(fieldName string, tag xstruct.Tag, isUniq boo
 		if err != nil || num < 0 {
 			return nil, fmt.Errorf("invalid field order in: %q", order)
 		}
-		return &IndexSchema{
+		return &dbtype.IndexSchema{
 			IndexName:  idxName,
 			FieldOrder: num,
 		}, nil
 	}
 
-	return &IndexSchema{
+	return &dbtype.IndexSchema{
 		IndexName:  index,
 		FieldOrder: 0,
 	}, nil
@@ -276,11 +248,11 @@ func (sp schemaParser) parserIndex(fieldName string, tag xstruct.Tag, isUniq boo
 
 var regNumber = regexp.MustCompile(`^-?\d+(\.\d+)?$`)
 
-func (sp schemaParser) parserDefault(def string) (*DefaultValueSchema, error) {
+func (sp schemaParser) parserDefault(def string) (*dbtype.DefaultValueSchema, error) {
 	def = strings.TrimSpace(def)
 	if def == "" {
-		return &DefaultValueSchema{
-			Type:  DefaultValueTypeString,
+		return &dbtype.DefaultValueSchema{
+			Type:  dbtype.DefaultValueTypeString,
 			Value: "",
 		}, nil
 	}
@@ -288,8 +260,8 @@ func (sp schemaParser) parserDefault(def string) (*DefaultValueSchema, error) {
 	tp = strings.TrimSpace(tp)
 	val = strings.TrimSpace(val)
 	if !found {
-		return &DefaultValueSchema{
-			Type:  DefaultValueTypeString,
+		return &dbtype.DefaultValueSchema{
+			Type:  dbtype.DefaultValueTypeString,
 			Value: val,
 		}, nil
 	}
@@ -298,18 +270,18 @@ func (sp schemaParser) parserDefault(def string) (*DefaultValueSchema, error) {
 		if !regNumber.MatchString(val) {
 			return nil, fmt.Errorf("invalid number: %q", val)
 		}
-		return &DefaultValueSchema{
-			Type:  DefaultValueTypeNumber,
+		return &dbtype.DefaultValueSchema{
+			Type:  dbtype.DefaultValueTypeNumber,
 			Value: val,
 		}, nil
 	case "fn":
-		return &DefaultValueSchema{
-			Type:  DefaultValueTypeFn,
+		return &dbtype.DefaultValueSchema{
+			Type:  dbtype.DefaultValueTypeFn,
 			Value: val,
 		}, nil
 	case "string":
-		return &DefaultValueSchema{
-			Type:  DefaultValueTypeString,
+		return &dbtype.DefaultValueSchema{
+			Type:  dbtype.DefaultValueTypeString,
 			Value: val,
 		}, nil
 	default:

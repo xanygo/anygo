@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/store/xdb/dbschema"
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 	"github.com/xanygo/anygo/store/xdb/dialect"
 )
 
@@ -28,7 +29,7 @@ func MigrateWithTable(db DBCore, obj any, table string) error {
 	return nil
 }
 
-func doMigrate(ctx context.Context, db dialect.DBCore, obj any, table string) error {
+func doMigrate(ctx context.Context, db dbtype.DBCore, obj any, table string) error {
 	if table == "" {
 		if ht, ok := obj.(HasTable); ok {
 			table = ht.TableName()
@@ -44,12 +45,12 @@ func doMigrate(ctx context.Context, db dialect.DBCore, obj any, table string) er
 	if err != nil {
 		return err
 	}
-	md, ok := fy.(dialect.MigrateDialect)
+	md, ok := fy.(dbtype.MigrateDialect)
 	if !ok {
 		return errors.New("db does not implement MigrateDialect")
 	}
 
-	schema, err := dbschema.Schema(obj)
+	schema, err := dbschema.Schema(fy, obj)
 	if err != nil {
 		return err
 	}

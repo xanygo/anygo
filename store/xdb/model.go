@@ -14,6 +14,8 @@ import (
 
 	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/store/xdb/dbschema"
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 	"github.com/xanygo/anygo/store/xdb/dialect"
 )
 
@@ -26,7 +28,7 @@ func NewMode[T any](client HasDriver) *Model[T] {
 	m := &Model[T]{
 		client: client,
 	}
-	m.dialect, m.err = dialect.Find(client.Driver())
+	m.init()
 	return m
 }
 
@@ -34,7 +36,7 @@ func NewMode[T any](client HasDriver) *Model[T] {
 //
 // 使用此 Model 的 where 条件统一使用 ? 占位符，在执行前，会将 ? 替换为方言的占位符
 type Model[T any] struct {
-	dialect dialect.Dialect
+	dialect dbtype.Dialect
 	client  HasDriver
 
 	table         string
@@ -42,7 +44,23 @@ type Model[T any] struct {
 	onlyFields    []string // insert, update 的字段列表
 	ignoreFields  []string // select, update 时候忽略的字段列表
 
+	schema *dbtype.TableSchema
+	pk     *dbtype.ColumnSchema // 可能为 nil
+
 	err error
+}
+
+func (m *Model[T]) init() {
+	m.dialect, m.err = dialect.Find(m.client.Driver())
+	if m.err == nil {
+		var zero T
+		m.schema, m.err = dbschema.Schema(m.dialect, zero)
+	}
+	if m.schema != nil {
+		if pk, _ := m.schema.PKColumn(); pk.Name != "" {
+			m.pk = &pk
+		}
+	}
 }
 
 func (m *Model[T]) Reset() *Model[T] {
@@ -106,13 +124,51 @@ func (m *Model[T]) Offset(num int) *Model[T] {
 
 func (m *Model[T]) getEncoder() Encoder[T] {
 	return Encoder[T]{
+		Dialect:      m.dialect,
 		OnlyFields:   m.onlyFields,
 		IgnoreFields: m.ignoreFields,
 	}
 }
 
 // Insert 基本的 Insert 功能
-func (m *Model[T]) Insert(ctx context.Context, v T) (int64, error) {
+func (m *Model[T]) Insert(ctx context.Context, v T) error {
+	if m.err != nil {
+		return m.err
+	}
+	kv, err := m.getEncoder().Encode(v)
+	if err != nil {
+		return err
+	}
+	if len(kv) == 0 {
+		return errors.New("no columns")
+	}
+
+	qcols := make([]string, 0, len(kv))
+	args := make([]any, 0, len(kv))
+	for k, v := range kv {
+		qcols = append(qcols, m.dialect.QuoteIdentifier(k))
+		args = append(args, v)
+	}
+
+	sqlStr := fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES (%s)",
+		m.dialect.QuoteIdentifier(m.table),
+		strings.Join(qcols, ", "),
+		m.dialect.PlaceholderList(len(kv), 1),
+	)
+
+	db, ok := m.client.(Execer)
+	if !ok {
+		return fmt.Errorf("client (%T) is not Execer", m.client)
+	}
+	_, err = Exec(ctx, db, sqlStr, args...)
+	return err
+}
+
+// InsertReturningID 写入一条新数据,并返回 int 类型的主键 ID
+//
+// 若没有主键或者数据库不支持 LastInsertId 或者 Returning，会返回 0
+func (m *Model[T]) InsertReturningID(ctx context.Context, v T) (int64, error) {
 	if m.err != nil {
 		return 0, m.err
 	}
@@ -124,7 +180,12 @@ func (m *Model[T]) Insert(ctx context.Context, v T) (int64, error) {
 		return 0, errors.New("no columns")
 	}
 
-	qcols := xslice.MapFunc(xmap.Keys(kv), m.dialect.QuoteIdentifier)
+	qcols := make([]string, 0, len(kv))
+	args := make([]any, 0, len(kv))
+	for k, v := range kv {
+		qcols = append(qcols, m.dialect.QuoteIdentifier(k))
+		args = append(args, v)
+	}
 
 	sqlStr := fmt.Sprintf(
 		"INSERT INTO %s (%s) VALUES (%s)",
@@ -132,15 +193,37 @@ func (m *Model[T]) Insert(ctx context.Context, v T) (int64, error) {
 		strings.Join(qcols, ", "),
 		m.dialect.PlaceholderList(len(kv), 1),
 	)
+	sli := m.dialect.SupportLastInsertId()
+	if !sli && m.dialect.SupportReturning() {
+		rd, ok := m.dialect.(dbtype.ReturningDialect)
+		if ok && m.pk != nil && m.pk.AutoIncrement {
+			sqlStr += " " + rd.ReturningClause(m.pk.Name)
+			return m.execReturning(ctx, m.client, sqlStr, args...)
+		}
+	}
+
 	db, ok := m.client.(Execer)
 	if !ok {
 		return 0, fmt.Errorf("client (%T) is not Execer", m.client)
 	}
-	ret, err := Exec(ctx, db, sqlStr, xmap.Values(kv)...)
+	ret, err := Exec(ctx, db, sqlStr, args...)
 	if err != nil {
 		return 0, err
 	}
-	return ret.LastInsertId()
+	if sli {
+		return ret.LastInsertId()
+	}
+	return 0, nil
+}
+
+func (m *Model[T]) execReturning(ctx context.Context, client HasDriver, sql string, args ...any) (int64, error) {
+	db, ok := client.(RowQuerier)
+	if !ok {
+		return 0, fmt.Errorf("client (%T) is not RowQuerier", client)
+	}
+	var id int64
+	err := db.QueryRowContext(ctx, sql, args...).Scan(&id)
+	return id, err
 }
 
 func (m *Model[T]) InsertBatch(ctx context.Context, vs ...T) (int64, error) {
@@ -167,7 +250,7 @@ func (m *Model[T]) InsertBatch(ctx context.Context, vs ...T) (int64, error) {
 		strings.Join(qCols, ","),
 		strings.Join(xslice.Repeat(holder, len(values)), ", "),
 	)
-	if r, ok := any(m.dialect).(dialect.ReturningDialect); ok {
+	if r, ok := any(m.dialect).(dbtype.ReturningDialect); ok {
 		sqlStr += " " + r.ReturningClause()
 	}
 
@@ -178,7 +261,9 @@ func (m *Model[T]) InsertBatch(ctx context.Context, vs ...T) (int64, error) {
 
 	vals := make([]any, 0, len(values)*len(cols))
 	for _, item := range values {
-		vals = append(vals, xmap.Values(item)...)
+		for _, col := range cols {
+			vals = append(vals, item[col])
+		}
 	}
 
 	ret, err := Exec(ctx, db, sqlStr, vals...)
@@ -192,7 +277,7 @@ func (m *Model[T]) Upsert(ctx context.Context, conflictCols []string, updateCols
 	if len(values) == 0 {
 		return 0, errors.New("no values")
 	}
-	dup, ok := m.dialect.(dialect.UpsertDialect)
+	dup, ok := m.dialect.(dbtype.UpsertDialect)
 	if !ok {
 		return 0, fmt.Errorf("dialect (%T) is not UpsertDialect", m.dialect)
 	}
@@ -276,7 +361,7 @@ func (m *Model[T]) doUpdate(ctx context.Context, v T, where string, args ...any)
 //
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 func (m *Model[T]) UpdateByPK(ctx context.Context, v T) (int64, error) {
-	pk, value, err := findStructPrimaryKV(v)
+	pk, value, err := m.getEncoder().PKNameAndValue(v)
 	if err != nil {
 		return 0, err
 	}
@@ -319,7 +404,7 @@ func (m *Model[T]) Delete(ctx context.Context, where string, args ...any) (int64
 //
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 func (m *Model[T]) DeleteByPK(ctx context.Context, v T) (int64, error) {
-	pk, value, err := findStructPrimaryKV(v)
+	pk, value, err := m.getEncoder().PKNameAndValue(v)
 	if err != nil {
 		return 0, err
 	}
@@ -369,7 +454,7 @@ func (m *Model[T]) First(ctx context.Context, where string, args ...any) (v T, o
 //
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 func (m *Model[T]) FindByPK(ctx context.Context, v T) (nv T, ok bool, err error) {
-	pk, value, err := findStructPrimaryKV(v)
+	pk, value, err := m.getEncoder().PKNameAndValue(v)
 	if err != nil {
 		return nv, false, err
 	}

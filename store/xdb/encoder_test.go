@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/store/xdb/dialect"
 	"github.com/xanygo/anygo/xt"
 )
 
@@ -72,6 +73,7 @@ type testUser6 struct {
 var _ = testUser6{skip: "ok"}
 
 func TestEncode(t *testing.T) {
+	dz := dialect.MySQL{}
 	t.Run("testUser1", func(t *testing.T) {
 		user1 := &testUser1{
 			sid:    100,
@@ -89,7 +91,7 @@ func TestEncode(t *testing.T) {
 		}
 		// id := 1
 		// user1.ID2 = &id
-		out1, err := xdb.Encode(user1)
+		out1, err := xdb.Encode(dz, user1)
 		xt.NoError(t, err)
 		t.Logf("out: %#v", out1)
 		xt.NotEmpty(t, out1)
@@ -117,7 +119,7 @@ func TestEncode(t *testing.T) {
 				MP1:  map[string]string{"key1": "value1"},
 			},
 		}
-		out1, err := xdb.Encode(u3)
+		out1, err := xdb.Encode(dz, u3)
 		xt.NoError(t, err)
 		t.Logf("out: %#v", out1)
 		want := map[string]any{
@@ -136,7 +138,7 @@ func TestEncode(t *testing.T) {
 				MP1:  map[string]string{"key1": "value1"},
 			},
 		}
-		out1, err := xdb.Encode(u3)
+		out1, err := xdb.Encode(dz, u3)
 		xt.NoError(t, err)
 		t.Logf("out: %#v", out1)
 		want := map[string]any{
@@ -158,7 +160,7 @@ func TestEncode(t *testing.T) {
 				},
 			},
 		}
-		out1, err := xdb.Encode(u22)
+		out1, err := xdb.Encode(dz, u22)
 		xt.NoError(t, err)
 		t.Logf("out: %#v", out1)
 		want := map[string]any{
@@ -181,6 +183,6 @@ func BenchmarkEncodeStruct(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		xdb.Encode(u1)
+		xdb.Encode(dialect.MySQL{}, u1)
 	}
 }

@@ -1,14 +1,30 @@
 //  Copyright(C) 2025 github.com/hidu  All Rights Reserved.
 //  Author: hidu <duv123+git@gmail.com>
-//  Date: 2025-11-15
+//  Date: 2025-11-20
 
-package dbcodec
+package dbtype
 
 type Kind string
 
+func (k Kind) IsValid() bool {
+	return allKinds[k]
+}
+
+func (k Kind) Is(name string) bool {
+	return k == Kind(name)
+}
+
+func (k Kind) String() string {
+	return string(k)
+}
+
 const (
 	KindInvalid Kind = "invalid"
-	KindString  Kind = "string"
+
+	KindNative   Kind = "native"    // 原生类型，数据库驱动已支持该类型，不需要额外的 Codec
+	KindAutoJSON Kind = "auto_json" // 需要数据库方言来不判断类型，若方言判断不出来，则默认使用 json 编解码
+
+	KindString Kind = "string"
 
 	KindInt   Kind = "int"
 	KindInt8  Kind = "int8"
@@ -28,15 +44,12 @@ const (
 	KindFloat64 Kind = "float64" // 8 字节（双精度）
 
 	KindBinary Kind = "binary"
+	KindArray  Kind = "array" // 数组类型
 	KindJSON   Kind = "json"
 
-	KindDate     Kind = "date"     // 仅日期 '2000-01-01'
-	KindDateTime Kind = "dateTime" // 日期和时间 '2000-01-01 00:00:00'
+	KindDate     Kind = "date"      // 仅日期 '2000-01-01'
+	KindDateTime Kind = "date_time" // 日期和时间 '2000-01-01 00:00:00'
 )
-
-func (k Kind) IsValid() bool {
-	return allKinds[k]
-}
 
 var allKinds = map[Kind]bool{
 	KindString: true,
@@ -60,6 +73,10 @@ var allKinds = map[Kind]bool{
 
 	KindBinary: true,
 	KindJSON:   true,
+	KindArray:  true,
+
+	KindNative:   true,
+	KindAutoJSON: true,
 
 	KindDate:     true,
 	KindDateTime: true,

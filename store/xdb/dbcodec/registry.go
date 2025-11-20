@@ -6,20 +6,23 @@ package dbcodec
 
 import (
 	"fmt"
+
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
-var codecs = map[string]Codec{}
+var codecs = map[string]dbtype.Codec{}
 
-func Register(codec Codec) {
+func Register(codec dbtype.Codec) {
 	codecs[codec.Name()] = codec
 }
 
-func Find(name string) (Codec, error) {
-	codec, ok := codecs[name]
-	if ok {
-		return codec, nil
+func Find(names ...string) (dbtype.Codec, error) {
+	for _, name := range names {
+		if codec, ok := codecs[name]; ok {
+			return codec, nil
+		}
 	}
-	return nil, fmt.Errorf("codec %q not found", name)
+	return nil, fmt.Errorf("codec %q not found", names)
 }
 
 func init() {
