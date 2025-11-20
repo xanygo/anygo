@@ -24,6 +24,7 @@ import (
 
 	"github.com/xanygo/anygo/ds/xbus"
 	"github.com/xanygo/anygo/internal/fctime"
+	"github.com/xanygo/anygo/internal/zos"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xerror"
@@ -332,6 +333,11 @@ func (fc *File[K, V]) gc() {
 		return
 	}
 	defer fc.gcRunning.Store(false)
+
+	// 由于此处是 i/o 密集操作，在一些性能较差的设备上，并行运行会影响其他逻辑对 i/o 的使用
+	// 所以限制全局并发度为 1
+	zos.GlobalLock()
+	defer zos.GlobalUnlock()
 
 	emptyDirs := make(map[string]bool, 10)
 	var fsc []fileCreateTime

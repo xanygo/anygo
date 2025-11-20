@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/xanygo/anygo/internal/zos"
 	"github.com/xanygo/anygo/store/xkv/internal"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xio/xfs"
@@ -58,6 +59,9 @@ func (f *FileStore) autoGC() {
 }
 
 func (f *FileStore) doGC() {
+	zos.GlobalLock()
+	defer zos.GlobalUnlock()
+
 	deleted, err := xfs.RemoveEmptyDir(f.DataDir)
 	if err != nil {
 		xlog.Warn(context.Background(), "anygo_xkv_FileStorage_gc", xlog.ErrorAttr("error", err))
