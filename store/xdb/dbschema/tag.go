@@ -7,7 +7,6 @@ package dbschema
 import (
 	"github.com/xanygo/anygo/ds/xstruct"
 	"github.com/xanygo/anygo/ds/xsync"
-	"github.com/xanygo/anygo/store/xdb/dbcodec"
 )
 
 var tagName = xsync.OnceInit[string]{
@@ -31,6 +30,7 @@ const (
 	// TagPK 主键，也可以写全称 primaryKey
 	TagPK = "pk" // TagPrimaryKey 的缩写
 
+	// TagCodec 编解码器：需要是 dbcodec 里注册的
 	TagCodec = "codec"
 
 	// TagAutoInc 自增长字段标记
@@ -50,6 +50,7 @@ const (
 	// TagSize 值类型的容量
 	TagSize = "size"
 
+	// TagNotNull 数据库里该字段定义添加 NOT NULL 属性
 	TagNotNull = "not-null"
 
 	// TagNative 数据库原生的类型定义
@@ -76,12 +77,4 @@ func TagHasPrimaryKey(tag xstruct.Tag) bool {
 
 func TagHasUnique(tag xstruct.Tag) bool {
 	return tag.Has(TagUnique) || tag.Has("unique")
-}
-
-func TagCodecName(tag xstruct.Tag) string {
-	name := tag.Value(TagCodec)
-	if name != "" {
-		return name
-	}
-	return dbcodec.TextName
 }

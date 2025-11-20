@@ -56,4 +56,19 @@ func TestText(t *testing.T) {
 		xt.NoError(t, err)
 		xt.Equal(t, "string", string(str))
 	})
+
+	getIntPtr := func(num int64) *int64 {
+		return &num
+	}
+	t.Run("ptr-int-1", func(t *testing.T) {
+		itp1 := getIntPtr(123)
+		out, err := tc.Encode(itp1)
+		xt.NoError(t, err)
+		xt.Equal(t, "123", string(out))
+
+		var num1 *int64
+		err = tc.Decode([]byte("123"), &num1)
+		xt.NoError(t, err)
+		xt.Equal(t, 123, *num1)
+	})
 }

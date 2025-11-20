@@ -57,6 +57,7 @@ func (m *Model[T]) init() {
 		m.schema, m.err = dbschema.Schema(m.dialect, zero)
 	}
 	if m.schema != nil {
+		m.table = m.schema.Table
 		if pk, _ := m.schema.PKColumn(); pk.Name != "" {
 			m.pk = &pk
 		}

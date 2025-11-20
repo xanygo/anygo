@@ -20,7 +20,7 @@ func (t DateTime) Kind() dbtype.Kind {
 }
 
 func (t DateTime) Name() string {
-	return "dateTime"
+	return "date_time"
 }
 
 func (t DateTime) Encode(a any) (any, error) {

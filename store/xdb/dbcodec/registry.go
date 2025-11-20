@@ -12,8 +12,13 @@ import (
 
 var codecs = map[string]dbtype.Codec{}
 
-func Register(codec dbtype.Codec) {
-	codecs[codec.Name()] = codec
+func Register(codec dbtype.Codec) bool {
+	name := codec.Name()
+	if _, ok := codecs[name]; ok {
+		return false
+	}
+	codecs[name] = codec
+	return true
 }
 
 func Find(names ...string) (dbtype.Codec, error) {

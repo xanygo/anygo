@@ -26,6 +26,8 @@ func BaseTypeToString(va any) (string, bool) {
 		return strconv.FormatFloat(rv.Float(), 'f', -1, rv.Type().Bits()), true
 	case reflect.Bool:
 		return strconv.FormatBool(rv.Bool()), true
+	case reflect.Pointer:
+		return BaseTypeToString(rv.Elem().Interface())
 	default:
 		return "", false
 	}
@@ -54,6 +56,13 @@ func BaseTypeToInt64(va any) (int64, bool) {
 
 	case reflect.Float32, reflect.Float64:
 		return int64(rv.Float()), true
+	case reflect.Pointer:
+		return BaseTypeToInt64(rv.Elem().Interface())
+	case reflect.Bool:
+		if rv.Bool() {
+			return 1, true
+		}
+		return 0, true
 	default:
 		return 0, false
 	}

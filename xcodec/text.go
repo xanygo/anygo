@@ -8,6 +8,7 @@ import (
 	"encoding"
 	"fmt"
 	"reflect"
+	"slices"
 
 	"github.com/xanygo/anygo/internal/zreflect"
 )
@@ -57,15 +58,26 @@ func (t TextCodec) Decode(bytes []byte, obj any) error {
 		return nil
 	case reflect.Slice, reflect.Array:
 		if elem.Type().Elem().Kind() == reflect.Uint8 {
-			elem.SetBytes(bytes)
+			elem.SetBytes(slices.Clone(bytes))
 			return nil
 		}
 	}
 	if zreflect.IsBasicKind(kind) {
-		if ev, err := zreflect.ParseBasicValue(string(bytes), elem.Type()); err == nil {
+		ev, err := zreflect.ParseBasicValue(string(bytes), elem.Type())
+		if err == nil {
 			elem.Set(ev)
-			return nil
 		}
+		return err
+	}
+
+	if kind == reflect.Pointer && zreflect.IsBasicKind(elem.Type().Elem().Kind()) {
+		fv := reflect.New(elem.Type().Elem()).Elem()
+		ev, err := zreflect.ParseBasicValue(string(bytes), fv.Type())
+		if err == nil {
+			fv.Set(ev)
+			elem.Set(reflect.ValueOf(fv.Addr().Interface()))
+		}
+		return err
 	}
 	return fmt.Errorf("type %T not implement TextUnmarshaler", obj)
 }
