@@ -25,6 +25,17 @@ type User struct {
 	Scores       []int     `db:"scores,codec:auto_json,native:int[]"`
 	Enable       bool      `db:"enable,not-null"`
 	a            int
+	UserEmb1
+	JS1 *UserJS1 `db:"js1,not-null,codec:json"`
+}
+
+type UserEmb1 struct {
+	E1 int `db:"e1,not-null"`
+}
+
+type UserJS1 struct {
+	ID   int
+	Name string
 }
 
 func (u User) TableName() string {
@@ -41,6 +52,7 @@ func WithUser(ctx context.Context, client *xdb.Client) {
 		Password:     "demo",
 		RegisterTime: time.Now(),
 		Scores:       []int{1, 2, 3},
+		a:            123,
 	}
 	id, err := orm.InsertReturningID(ctx, u)
 	log.Println("insert", id, errorText(err))
