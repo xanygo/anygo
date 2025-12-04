@@ -1,0 +1,206 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1100" font-family="monospace">
+  <!-- 背景白色 -->
+  <rect x="0" y="0" width="100%" height="100%" fill="#ffffff"/>
+
+  <!-- 表头 -->
+  <text x="10" y="20" font-weight="bold">编码</text>
+  <text x="150" y="20" font-weight="bold">方法</text>
+  <text x="300" y="20" font-weight="bold">代码</text>
+  <text x="400" y="20" font-weight="bold">效果</text>
+
+  <!-- 前景色普通色 -->
+  <text x="10" y="50">CodeFgBlack</text>
+  <text x="150" y="50">BlackString</text>
+  <text x="300" y="50">30</text>
+  <rect x="400" y="35" width="120" height="20" fill="#000000"/>
+  <text x="410" y="50" fill="#fff" font-size="12">黑色</text>
+
+  <text x="10" y="80">CodeFgRed</text>
+  <text x="150" y="80">RedString</text>
+  <text x="300" y="80">31</text>
+  <rect x="400" y="65" width="120" height="20" fill="#ff0000"/>
+  <text x="410" y="80" fill="#fff" font-size="12">红色</text>
+
+  <text x="10" y="110">CodeFgGreen</text>
+  <text x="150" y="110">GreenString</text>
+  <text x="300" y="110">32</text>
+  <rect x="400" y="95" width="120" height="20" fill="#00aa00"/>
+  <text x="410" y="110" fill="#fff" font-size="12">绿色</text>
+
+  <text x="10" y="140">CodeFgYellow</text>
+  <text x="150" y="140">YellowString</text>
+  <text x="300" y="140">33</text>
+  <rect x="400" y="125" width="120" height="20" fill="#aaaa00"/>
+  <text x="410" y="140" fill="#000" font-size="12">黄色</text>
+
+  <text x="10" y="170">CodeFgBlue</text>
+  <text x="150" y="170">BlueString</text>
+  <text x="300" y="170">34</text>
+  <rect x="400" y="155" width="120" height="20" fill="#0000ff"/>
+  <text x="410" y="170" fill="#fff" font-size="12">蓝色</text>
+
+  <text x="10" y="200">CodeFgMagenta</text>
+  <text x="150" y="200">MagentaString</text>
+  <text x="300" y="200">35</text>
+  <rect x="400" y="185" width="120" height="20" fill="#ff00ff"/>
+  <text x="410" y="200" fill="#fff" font-size="12">洋红</text>
+
+  <text x="10" y="230">CodeFgCyan</text>
+  <text x="150" y="230">CyanString</text>
+  <text x="300" y="230">36</text>
+  <rect x="400" y="215" width="120" height="20" fill="#00ffff"/>
+  <text x="410" y="230" fill="#000" font-size="12">青色</text>
+
+  <text x="10" y="260">CodeFgWhite</text>
+  <text x="150" y="260">WhiteString</text>
+  <text x="300" y="260">37</text>
+  <rect x="400" y="245" width="120" height="20" fill="#ffffff" stroke="#000"/>
+  <text x="410" y="260" fill="#000" font-size="12">白色</text>
+
+  <!-- 前景色高亮色 -->
+  <text x="10" y="290">CodeFgHiBlack</text>
+  <text x="150" y="290">HiBlackString</text>
+  <text x="300" y="290">90</text>
+  <rect x="400" y="275" width="120" height="20" fill="#666666"/>
+  <text x="410" y="290" fill="#fff" font-size="12">亮黑</text>
+
+  <text x="10" y="320">CodeFgHiRed</text>
+  <text x="150" y="320">HiRedString</text>
+  <text x="300" y="320">91</text>
+  <rect x="400" y="305" width="120" height="20" fill="#ff5555"/>
+  <text x="410" y="320" fill="#fff" font-size="12">亮红</text>
+
+  <text x="10" y="350">CodeFgHiGreen</text>
+  <text x="150" y="350">HiGreenString</text>
+  <text x="300" y="350">92</text>
+  <rect x="400" y="335" width="120" height="20" fill="#55ff55"/>
+  <text x="410" y="350" fill="#000" font-size="12">亮绿</text>
+
+  <text x="10" y="380">CodeFgHiYellow</text>
+  <text x="150" y="380">HiYellowString</text>
+  <text x="300" y="380">93</text>
+  <rect x="400" y="365" width="120" height="20" fill="#ffff55"/>
+  <text x="410" y="380" fill="#000" font-size="12">亮黄</text>
+
+  <text x="10" y="410">CodeFgHiBlue</text>
+  <text x="150" y="410">HiBlueString</text>
+  <text x="300" y="410">94</text>
+  <rect x="400" y="395" width="120" height="20" fill="#5555ff"/>
+  <text x="410" y="410" fill="#fff" font-size="12">亮蓝</text>
+
+  <text x="10" y="440">CodeFgHiMagenta</text>
+  <text x="150" y="440">HiMagentaString</text>
+  <text x="300" y="440">95</text>
+  <rect x="400" y="425" width="120" height="20" fill="#ff55ff"/>
+  <text x="410" y="440" fill="#fff" font-size="12">亮洋红</text>
+
+  <text x="10" y="470">CodeFgHiCyan</text>
+  <text x="150" y="470">HiCyanString</text>
+  <text x="300" y="470">96</text>
+  <rect x="400" y="455" width="120" height="20" fill="#55ffff"/>
+  <text x="410" y="470" fill="#000" font-size="12">亮青</text>
+
+  <text x="10" y="500">CodeFgHiWhite</text>
+  <text x="150" y="500">HiWhiteString</text>
+  <text x="300" y="500">97</text>
+  <rect x="400" y="485" width="120" height="20" fill="#ffffff" stroke="#000"/>
+  <text x="410" y="500" fill="#000" font-size="12">亮白</text>
+
+  <!-- 背景色普通色 -->
+  <text x="10" y="530">CodeBgBlack</text>
+  <text x="150" y="530">BlackString</text>
+  <text x="300" y="530">40</text>
+  <rect x="400" y="515" width="120" height="20" fill="#000000"/>
+  <text x="410" y="530" fill="#fff" font-size="12">背景黑</text>
+
+  <text x="10" y="560">CodeBgRed</text>
+  <text x="150" y="560">RedString</text>
+  <text x="300" y="560">41</text>
+  <rect x="400" y="545" width="120" height="20" fill="#ff0000"/>
+  <text x="410" y="560" fill="#fff" font-size="12">背景红</text>
+
+  <text x="10" y="590">CodeBgGreen</text>
+  <text x="150" y="590">GreenString</text>
+  <text x="300" y="590">42</text>
+  <rect x="400" y="575" width="120" height="20" fill="#00aa00"/>
+  <text x="410" y="590" fill="#fff" font-size="12">背景绿</text>
+
+  <text x="10" y="620">CodeBgYellow</text>
+  <text x="150" y="620">YellowString</text>
+  <text x="300" y="620">43</text>
+  <rect x="400" y="605" width="120" height="20" fill="#aaaa00"/>
+  <text x="410" y="620" fill="#000" font-size="12">背景黄</text>
+
+  <text x="10" y="650">CodeBgBlue</text>
+  <text x="150" y="650">BlueString</text>
+  <text x="300" y="650">44</text>
+  <rect x="400" y="635" width="120" height="20" fill="#0000ff"/>
+  <text x="410" y="650" fill="#fff" font-size="12">背景蓝</text>
+
+  <text x="10" y="680">CodeBgMagenta</text>
+  <text x="150" y="680">MagentaString</text>
+  <text x="300" y="680">45</text>
+  <rect x="400" y="665" width="120" height="20" fill="#ff00ff"/>
+  <text x="410" y="680" fill="#fff" font-size="12">背景洋红</text>
+
+  <text x="10" y="710">CodeBgCyan</text>
+  <text x="150" y="710">CyanString</text>
+  <text x="300" y="710">46</text>
+  <rect x="400" y="695" width="120" height="20" fill="#00ffff"/>
+  <text x="410" y="710" fill="#000" font-size="12">背景青</text>
+
+  <text x="10" y="740">CodeBgWhite</text>
+  <text x="150" y="740">WhiteString</text>
+  <text x="300" y="740">47</text>
+  <rect x="400" y="725" width="120" height="20" fill="#ffffff" stroke="#000"/>
+  <text x="410" y="740" fill="#000" font-size="12">背景白</text>
+
+  <!-- 背景色高亮色 -->
+  <text x="10" y="770">CodeBgHiBlack</text>
+  <text x="150" y="770">HiBlackString</text>
+  <text x="300" y="770">100</text>
+  <rect x="400" y="755" width="120" height="20" fill="#666666"/>
+  <text x="410" y="770" fill="#fff" font-size="12">亮黑背景</text>
+
+  <text x="10" y="800">CodeBgHiRed</text>
+  <text x="150" y="800">HiRedString</text>
+  <text x="300" y="800">101</text>
+  <rect x="400" y="785" width="120" height="20" fill="#ff5555"/>
+  <text x="410" y="800" fill="#fff" font-size="12">亮红背景</text>
+
+  <text x="10" y="830">CodeBgHiGreen</text>
+  <text x="150" y="830">HiGreenString</text>
+  <text x="300" y="830">102</text>
+  <rect x="400" y="815" width="120" height="20" fill="#55ff55"/>
+  <text x="410" y="830" fill="#000" font-size="12">亮绿背景</text>
+
+  <text x="10" y="860">CodeBgHiYellow</text>
+  <text x="150" y="860">HiYellowString</text>
+  <text x="300" y="860">103</text>
+  <rect x="400" y="845" width="120" height="20" fill="#ffff55"/>
+  <text x="410" y="860" fill="#000" font-size="12">亮黄背景</text>
+
+  <text x="10" y="890">CodeBgHiBlue</text>
+  <text x="150" y="890">HiBlueString</text>
+  <text x="300" y="890">104</text>
+  <rect x="400" y="875" width="120" height="20" fill="#5555ff"/>
+  <text x="410" y="890" fill="#fff" font-size="12">亮蓝背景</text>
+
+  <text x="10" y="920">CodeBgHiMagenta</text>
+  <text x="150" y="920">HiMagentaString</text>
+  <text x="300" y="920">105</text>
+  <rect x="400" y="905" width="120" height="20" fill="#ff55ff"/>
+  <text x="410" y="920" fill="#fff" font-size="12">亮洋红背景</text>
+
+  <text x="10" y="950">CodeBgHiCyan</text>
+  <text x="150" y="950">HiCyanString</text>
+  <text x="300" y="950">106</text>
+  <rect x="400" y="935" width="120" height="20" fill="#55ffff"/>
+  <text x="410" y="950" fill="#000" font-size="12">亮青背景</text>
+
+  <text x="10" y="980">CodeBgHiWhite</text>
+  <text x="150" y="980">HiWhiteString</text>
+  <text x="300" y="980">107</text>
+  <rect x="400" y="965" width="120" height="20" fill="#ffffff" stroke="#000"/>
+  <text x="410" y="980" fill="#000" font-size="12">亮白背景</text>
+</svg>
