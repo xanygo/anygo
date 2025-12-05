@@ -32,7 +32,7 @@ func (z *etagStore) getETag(fsSystem fs.FS, fp string) string {
 		return ""
 	}
 	str := hex.EncodeToString(m.Sum(nil))
-	result := fmt.Sprintf("%q", str)
+	result := fmt.Sprintf("W/%q", str)
 	z.values.Store(fp, result)
 	return result
 }
@@ -44,6 +44,18 @@ func (z *etagStore) hasSameETag(w http.ResponseWriter, req *http.Request, rd fs.
 	}
 	w.Header().Set("ETag", tag)
 	if match := req.Header.Get("If-None-Match"); match == tag {
+		w.WriteHeader(http.StatusNotModified)
+		return true
+	}
+	return false
+}
+
+func checkSameETag(w http.ResponseWriter, req *http.Request, etag string) bool {
+	if etag == "" {
+		return false
+	}
+	w.Header().Set("ETag", etag)
+	if match := req.Header.Get("If-None-Match"); match == etag {
 		w.WriteHeader(http.StatusNotModified)
 		return true
 	}

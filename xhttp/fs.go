@@ -21,8 +21,6 @@ import (
 	"sync"
 
 	"github.com/xanygo/anygo/ds/xmap"
-	"github.com/xanygo/anygo/ds/xslice"
-	"github.com/xanygo/anygo/ds/xzip"
 	"github.com/xanygo/anygo/xattr"
 	"github.com/xanygo/anygo/xlog"
 )
@@ -152,12 +150,47 @@ type ZipFile struct {
 	// NotFound 可选，当文件不存在时的回调
 	NotFound http.Handler
 
-	etag etagStore
-
-	initReader    *zip.Reader
-	initErr       error
-	initFileNames map[string]bool
 	once          sync.Once
+	initErr       error
+	initReader    *zip.Reader
+	initFileNames map[string]bool
+
+	initFiles *xmap.Sync[string, *zipFileEntry] // 延迟放入，只有在读取到，并且没有的时候才放入
+}
+
+var _ fs.File = (*zipFileEntry)(nil)
+
+type zipFileEntry struct {
+	File    *zip.File
+	Content []byte
+	etag    string
+	err     error
+	offset  int // 用于记录当前读取位置
+}
+
+func (z *zipFileEntry) FS() *zipFileEntry {
+	return &zipFileEntry{
+		File:    z.File,
+		Content: z.Content,
+	}
+}
+
+func (z *zipFileEntry) Read(p []byte) (int, error) {
+	if z.offset >= len(z.Content) {
+		return 0, io.EOF
+	}
+
+	n := copy(p, z.Content[z.offset:])
+	z.offset += n
+	return n, nil
+}
+
+func (z *zipFileEntry) Stat() (fs.FileInfo, error) {
+	return z.File.FileInfo(), nil
+}
+
+func (z *zipFileEntry) Close() error {
+	return nil
 }
 
 func (z *ZipFile) Init() error {
@@ -166,26 +199,75 @@ func (z *ZipFile) Init() error {
 }
 
 func (z *ZipFile) init() {
-	if z.Reader != nil {
-		z.initReader = z.Reader
-		z.initFileNames = xslice.ToMap(xzip.FileNames(z.Reader, 0), true)
-		return
-	}
-	if len(z.Content) == 0 {
+	if z.Reader == nil && len(z.Content) == 0 {
 		z.initErr = errors.New("both Reader and Content are empty")
 		return
 	}
-	z.initReader, z.initErr = zip.NewReader(bytes.NewReader(z.Content), int64(len(z.Content)))
-	if z.initReader != nil {
-		z.initFileNames = xslice.ToMap(xzip.FileNames(z.initReader, 0), true)
+	if z.Reader != nil {
+		z.initReader = z.Reader
 	}
+	if len(z.Content) > 0 {
+		z.initReader, z.initErr = zip.NewReader(bytes.NewReader(z.Content), int64(len(z.Content)))
+	}
+	if z.initErr != nil {
+		return
+	}
+
+	z.initFiles = &xmap.Sync[string, *zipFileEntry]{}
+	z.initFileNames = make(map[string]bool, len(z.initReader.File))
+
+	for _, f := range z.initReader.File {
+		if f.FileInfo().IsDir() {
+			continue
+		}
+		z.initFileNames[f.Name] = true
+	}
+}
+
+func (z *ZipFile) findFile(name string) (*zipFileEntry, error) {
+	// 延迟解压，在读取的时候，才解压并存放
+	if val, ok := z.initFiles.Load(name); ok {
+		return val, val.err
+	}
+
+	for _, f := range z.initReader.File {
+		if f.Name != name || f.FileInfo().IsDir() {
+			continue
+		}
+		ff := &zipFileEntry{
+			File: f,
+		}
+		rd, err := f.Open()
+		ff.err = err
+		if err == nil {
+			ff.Content, ff.err = io.ReadAll(rd)
+		}
+		if rd != nil {
+			_ = rd.Close()
+		}
+		if ff.err == nil {
+			ha := md5.Sum(ff.Content)
+			ff.etag = fmt.Sprintf("W/%q", hex.EncodeToString(ha[:]))
+		}
+		z.initFiles.Store(f.Name, ff)
+
+		return ff, ff.err
+	}
+	return nil, fs.ErrNotExist
 }
 
 func (z *ZipFile) Open(name string) (fs.File, error) {
 	if er := z.Init(); er != nil {
 		return nil, er
 	}
-	return z.initReader.Open(name)
+	if !z.initFileNames[name] {
+		return nil, fs.ErrNotExist
+	}
+	zf, err := z.findFile(name)
+	if err != nil {
+		return nil, err
+	}
+	return zf.FS(), nil
 }
 
 func (z *ZipFile) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -195,11 +277,16 @@ func (z *ZipFile) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	fileName := fullFSPath(z.RootDir, req.URL.Path)
 
-	if z.etag.hasSameETag(w, req, z.initReader, fileName) {
-		return
-	}
 	if z.initFileNames[fileName] {
-		http.ServeFileFS(w, req, z.initReader, fileName)
+		zf, err := z.findFile(fileName)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if checkSameETag(w, req, zf.etag) {
+			return
+		}
+		http.ServeContent(w, req, fileName, zf.File.Modified, bytes.NewReader(zf.Content))
 		return
 	}
 	if z.NotFound != nil {
@@ -212,7 +299,8 @@ func (z *ZipFile) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 // Exists 判断文件是否存在，fp 应该时经过了 path.Clean 的，并且不以 / 开头
 func (z *ZipFile) Exists(fp string) bool {
 	z.once.Do(z.init)
-	return len(z.initFileNames) > 0 && z.initFileNames[fullFSPath(z.RootDir, fp)]
+	fullPath := fullFSPath(z.RootDir, fp)
+	return len(z.initFileNames) > 0 && z.initFileNames[fullPath]
 }
 
 func ToFSHandler(h http.Handler) FSHandler {
