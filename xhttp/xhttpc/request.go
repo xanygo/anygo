@@ -81,7 +81,7 @@ func (r *Request) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.
 	if err != nil {
 		return err
 	}
-	if req.Host == xservice.Dummy {
+	if req.Host == xnet.Dummy {
 		req.Host = ""
 	}
 	setHeader(ctx, req, opt)
@@ -117,7 +117,7 @@ func (r *Request) getMethod() string {
 }
 
 func (r *Request) balancer(opt xoption.Reader, u *url.URL) xbalance.Reader {
-	if u.Host == "" || u.Hostname() == xservice.Dummy {
+	if u.Host == "" || u.Hostname() == xnet.Dummy {
 		return nil
 	}
 	proxy := xproxy.OptConfig(opt)
@@ -196,7 +196,7 @@ func (h *NativeRequest) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xo
 	defer node.SetDeadline(time.Time{})
 
 	req := h.Request.WithContext(ctx)
-	if req.Host == xservice.Dummy {
+	if req.Host == xnet.Dummy {
 		req.Host = ""
 	}
 	if req.Host == "" {
@@ -208,7 +208,7 @@ func (h *NativeRequest) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xo
 
 func (h *NativeRequest) balancer(opt xoption.Reader) xbalance.Reader {
 	host := h.Request.URL.Hostname()
-	if host == xservice.Dummy {
+	if host == xnet.Dummy {
 		return nil
 	}
 	if hostPort := getHostPort(h.Request.URL); hostPort != "" {

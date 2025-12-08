@@ -10,6 +10,7 @@ import (
 
 	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xnet"
 )
 
 // Registry 下游服务管理器
@@ -106,7 +107,7 @@ func FindServiceWithRegistry(reg Registry, name string) (Service, error) {
 	if ok {
 		return ser, nil
 	}
-	if name == Dummy {
+	if xnet.IsDummyName(name) {
 		return DummyService(), nil
 	}
 	return nil, fmt.Errorf("service %q %w", name, xerror.NotFound)
@@ -133,7 +134,7 @@ func FindService(srv any) (Service, error) {
 		if ok {
 			return ser, nil
 		}
-		if name == Dummy {
+		if xnet.IsDummyName(name) {
 			return DummyService(), nil
 		}
 		return nil, fmt.Errorf("service %q %w", name, xerror.NotFound)

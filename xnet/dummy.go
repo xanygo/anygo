@@ -4,11 +4,15 @@
 
 package xnet
 
-import "net"
+import (
+	"net"
+	"strings"
+)
 
 const (
 	// Dummy 虚拟的主机名，用于创建虚拟 service 等一些特殊的逻辑
-	Dummy = "dummy"
+	Dummy       = "dummy"
+	dummyPrefix = Dummy + "_"
 
 	dummyIP = "192.0.2.8"
 
@@ -22,4 +26,8 @@ var dummyIPS = []net.IP{net.ParseIP(dummyIP)}
 var errDialDummy = &net.AddrError{
 	Err:  "Access to dummy IP is forbidden",
 	Addr: dummyIP,
+}
+
+func IsDummyName(name string) bool {
+	return name == Dummy || strings.HasPrefix(name, dummyPrefix)
 }

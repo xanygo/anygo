@@ -20,6 +20,8 @@ type Config struct {
 	AuthType string `json:"AuthType" yaml:"AuthType"` // 认证类型，可选，可选值为： Basic(默认)
 	Username string `json:"Username" yaml:"Username"` // 认证账号，可选，有值时才会发送认证信息
 	Password string `json:"Password" yaml:"Password"` // 认证密码，可选
+	Host     string // 在 ParserProxyURL 解析的时候才会用到
+	Port     string // 在 ParserProxyURL 解析的时候才会用到
 	TLS      *xoption.TLSConfig
 }
 

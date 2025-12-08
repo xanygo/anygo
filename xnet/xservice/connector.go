@@ -9,9 +9,11 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/xanygo/anygo/ds/xmetric"
 	"github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xdial"
@@ -24,7 +26,7 @@ type connector struct{}
 
 func (c *connector) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (conn *xnet.ConnNode, err error) {
 	if useProxy := xoption.UseProxy(opt); useProxy != "" {
-		conn, err = c.connectProxy(ctx, useProxy, addr)
+		conn, err = c.connectProxy(ctx, useProxy, addr, opt)
 	} else {
 		conn, err = xdial.Connect(ctx, nil, addr, opt)
 	}
@@ -52,7 +54,7 @@ func (c *connector) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption
 	return conn, nil
 }
 
-func (c *connector) connectProxy(ctx context.Context, proxyName string, target xnet.AddrNode) (nc *xnet.ConnNode, err error) {
+func (c *connector) connectProxy(ctx context.Context, proxyName string, target xnet.AddrNode, opt xoption.Reader) (nc *xnet.ConnNode, err error) {
 	ctx, span := xmetric.Start(ctx, "ConnectProxy")
 	defer func() {
 		span.RecordError(err)
@@ -65,6 +67,9 @@ func (c *connector) connectProxy(ctx context.Context, proxyName string, target x
 
 	proxyService, err := FindService(proxyName)
 	if err != nil {
+		if strings.Contains(proxyName, "://") {
+			return c.connectProxyURL(ctx, proxyName, target, opt)
+		}
 		return nil, err
 	}
 	proxyConfig := xproxy.OptConfig(proxyService.Option())
@@ -88,6 +93,45 @@ func (c *connector) connectProxy(ctx context.Context, proxyName string, target x
 	}
 
 	proxyConn, err := xproxy.Proxy(ctx, proxyDriver, conn, proxyConfig, target)
+	if err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+	return proxyConn, nil
+}
+
+// connectProxyURL 处理传入的 UseProxy="http://127.0.0.1:3128" 这种格式
+// UseProxy 也支持传入多个代理地址，如 UseProxy="http://127.0.0.1:3128,http://10.10.0.1:3128",若是多个，则每次随机使用一个
+func (c *connector) connectProxyURL(ctx context.Context, proxy string, target xnet.AddrNode, opt xoption.Reader) (nc *xnet.ConnNode, err error) {
+	items := strings.Split(proxy, ",")
+	items = xslice.MapFilter(items, func(index int, item string) (string, bool) {
+		item = strings.TrimSpace(item)
+		return item, item != ""
+	})
+	oneProxy := xslice.Rand(items)
+	if len(oneProxy) == 0 {
+		return nil, fmt.Errorf("invalid proxy option %q", proxy)
+	}
+	cfg, err := xproxy.ParserProxyURL(oneProxy)
+	if err != nil {
+		return nil, err
+	}
+	address := net.JoinHostPort(cfg.Host, cfg.Port)
+	proxyAddr := xnet.AddrNode{
+		HostPort: address,
+		Addr:     xnet.NewAddr("tcp", address),
+	}
+
+	conn, err := xdial.Connect(ctx, nil, proxyAddr, opt)
+	if err != nil {
+		return nil, err
+	}
+	proxyDriver, err := xproxy.Find(cfg.Protocol)
+	if err != nil {
+		return nil, fmt.Errorf("proxy %q: %w", proxy, err)
+	}
+
+	proxyConn, err := xproxy.Proxy(ctx, proxyDriver, conn, cfg, target)
 	if err != nil {
 		_ = conn.Close()
 		return nil, err

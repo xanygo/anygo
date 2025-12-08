@@ -152,3 +152,15 @@ func OptOptionSetter(fn func(o xoption.Option)) Option {
 		fn(o.opt)
 	})
 }
+
+// OptUseProxy 使用代理，
+//
+// proxyURL 可以是:
+//
+//	1.一个 有 Proxy 配置段落的 service 的名字
+//	2. http 或者  https 代理的地址，如 http://127.0.0.1:3128
+func OptUseProxy(proxyURL string) Option {
+	return optionFunc(func(o *config) {
+		xoption.SetUseProxy(o.opt, proxyURL)
+	})
+}

@@ -6,6 +6,7 @@ package xslice
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"reflect"
 	"slices"
 	"strings"
@@ -345,4 +346,15 @@ func AllContains[S ~[]E, E comparable](big S, small S) (miss E, ok bool) {
 		}
 	}
 	return miss, true
+}
+
+func Rand[S ~[]E, E any](s S) (e E) {
+	switch len(s) {
+	case 0:
+		return e
+	case 1:
+		return s[0]
+	}
+	n := rand.IntN(len(s))
+	return s[n]
 }

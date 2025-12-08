@@ -12,9 +12,7 @@ import (
 	"github.com/xanygo/anygo/xnet"
 )
 
-const (
-	Dummy = xnet.Dummy
-)
+const Dummy = xnet.Dummy
 
 func DummyService() Service {
 	return dummyService.Load()
