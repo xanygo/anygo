@@ -84,7 +84,7 @@ func NoError(t Testing, err error) {
 		h.Helper()
 	}
 	if err != nil {
-		t.Fatalf("Received unexpected error:\n%+v", err)
+		t.Fatalf("Received unexpected error: %s", errorText(err))
 	}
 }
 

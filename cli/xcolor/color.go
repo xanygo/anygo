@@ -16,7 +16,12 @@ import (
 	"github.com/xanygo/anygo/internal/zos"
 )
 
-var noColor = os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" || !zos.IsTerminalFile(os.Stdout)
+var noColor atomic.Bool
+
+func init() {
+	no := os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" || !zos.IsTerminalFile(os.Stdout)
+	noColor.Store(no)
+}
 
 var output atomic.Value
 
@@ -33,7 +38,7 @@ func Output() io.Writer {
 }
 
 func SetColorable(enable bool) {
-	noColor = !enable
+	noColor.Store(!enable)
 }
 
 func New(ids ...Code) *Color {
@@ -70,7 +75,7 @@ func (c *Color) Add(code ...Code) {
 }
 
 func (c *Color) Fprintf(w io.Writer, format string, a ...any) (n int, err error) {
-	if noColor {
+	if noColor.Load() {
 		if len(a) == 0 {
 			return io.WriteString(w, format)
 		}
@@ -92,7 +97,7 @@ func (c *Color) Fprintf(w io.Writer, format string, a ...any) (n int, err error)
 }
 
 func (c *Color) String(txt string) string {
-	if noColor {
+	if noColor.Load() {
 		return txt
 	}
 	bf := getBP()
@@ -119,7 +124,7 @@ func (c *Color) Fprintln(w io.Writer, a ...any) (n int, err error) {
 	if len(a) == 0 {
 		return w.Write([]byte("\n"))
 	}
-	if noColor {
+	if noColor.Load() {
 		return fmt.Fprintln(w, a...)
 	}
 	bf := getBP()
@@ -137,7 +142,7 @@ func (c *Color) Fprint(w io.Writer, a ...any) (n int, err error) {
 	if len(a) == 0 {
 		return 0, nil
 	}
-	if noColor {
+	if noColor.Load() {
 		return fmt.Fprint(w, a...)
 	}
 

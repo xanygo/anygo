@@ -19,11 +19,13 @@ const (
 	CodeInvalidStatus
 	CodeInvalidParam
 	CodeDuplicateKey
+	CodeClosed
 )
 
 var (
 	// NotFound 错误：数据找不到
 	NotFound = NewCodeError(CodeNotFound, "not found")
+	Closed   = NewCodeError(CodeClosed, "closed")
 
 	// InvalidStatus 错误：数据的状态非正常
 	InvalidStatus = NewCodeError(CodeInvalidStatus, "invalid status")

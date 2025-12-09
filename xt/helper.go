@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+
+	"github.com/xanygo/anygo/cli/xcolor"
 )
 
 func equal(a any, b any) bool {
@@ -104,4 +106,8 @@ func getLen(x any) (length int, ok bool) {
 		ok = recover() == nil
 	}()
 	return v.Len(), true
+}
+
+func errorText(err error) string {
+	return xcolor.YellowString("<%T>", err) + " " + xcolor.RedString("%+v", err)
 }

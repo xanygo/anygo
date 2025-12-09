@@ -1,0 +1,157 @@
+goroutine 51 [running]:
+runtime/pprof.writeGoroutineStacks({0x6c3d00, 0xc0000480b0})
+	/home/work/sdk/go1.25.4/src/runtime/pprof/pprof.go:756 +0x6b
+runtime/pprof.writeGoroutine({0x6c3d00?, 0xc0000480b0?}, 0x0?)
+	/home/work/sdk/go1.25.4/src/runtime/pprof/pprof.go:745 +0x25
+runtime/pprof.(*Profile).WriteTo(0x66b01e?, {0x6c3d00?, 0xc0000480b0?}, 0x1b6?)
+	/home/work/sdk/go1.25.4/src/runtime/pprof/pprof.go:371 +0x14b
+github.com/xanygo/anygo/xio_test.TestNewMux.func1()
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux_test.go:23 +0x5b
+created by time.goFunc
+	/home/work/sdk/go1.25.4/src/time/sleep.go:215 +0x2d
+
+goroutine 1 [chan receive]:
+testing.(*T).Run(0xc00008e380, {0x66b588?, 0xc000059b30?}, 0x680008)
+	/home/work/sdk/go1.25.4/src/testing/testing.go:2005 +0x485
+testing.runTests.func1(0xc00008e380)
+	/home/work/sdk/go1.25.4/src/testing/testing.go:2477 +0x37
+testing.tRunner(0xc00008e380, 0xc000059c70)
+	/home/work/sdk/go1.25.4/src/testing/testing.go:1934 +0xea
+testing.runTests(0xc000012108, {0x86af80, 0x2, 0x2}, {0x7?, 0xc000016b00?, 0x8764e0?})
+	/home/work/sdk/go1.25.4/src/testing/testing.go:2475 +0x4b4
+testing.(*M).Run(0xc00007c320)
+	/home/work/sdk/go1.25.4/src/testing/testing.go:2337 +0x63a
+main.main()
+	_testmain.go:49 +0x9b
+
+goroutine 8 [sync.WaitGroup.Wait]:
+sync.runtime_SemacquireWaitGroup(0x613580?, 0x0?)
+	/home/work/sdk/go1.25.4/src/runtime/sema.go:114 +0x2e
+sync.(*WaitGroup).Wait(0xc000100020)
+	/home/work/sdk/go1.25.4/src/sync/waitgroup.go:206 +0x85
+github.com/xanygo/anygo/xio_test.TestNewMux(0xc00008e540)
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux_test.go:104 +0x32f
+testing.tRunner(0xc00008e540, 0x680008)
+	/home/work/sdk/go1.25.4/src/testing/testing.go:1934 +0xea
+created by testing.(*T).Run in goroutine 1
+	/home/work/sdk/go1.25.4/src/testing/testing.go:1997 +0x465
+
+goroutine 9 [sync.Mutex.Lock]:
+internal/sync.runtime_SemacquireMutex(0xc0000224d0?, 0x60?, 0xc0000222a0?)
+	/home/work/sdk/go1.25.4/src/runtime/sema.go:95 +0x25
+internal/sync.(*Mutex).lockSlow(0xc0000a4344)
+	/home/work/sdk/go1.25.4/src/internal/sync/mutex.go:149 +0x15d
+internal/sync.(*Mutex).Lock(...)
+	/home/work/sdk/go1.25.4/src/internal/sync/mutex.go:70
+sync.(*Mutex).Lock(...)
+	/home/work/sdk/go1.25.4/src/sync/mutex.go:46
+sync.(*Once).doSlow(0x53a819?, 0xc00005be28)
+	/home/work/sdk/go1.25.4/src/sync/once.go:74 +0x49
+sync.(*Once).Do(...)
+	/home/work/sdk/go1.25.4/src/sync/once.go:69
+github.com/xanygo/anygo/xio.(*MuxStream).doClose(0xc0000ca298?, 0x60?, 0x93?, {0x6c3d40, 0x867fa0})
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux.go:426 +0x7e
+github.com/xanygo/anygo/xio.(*Mux).readLoop(0xc0000ca280)
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux.go:293 +0x53b
+created by github.com/xanygo/anygo/xio.NewMux in goroutine 8
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux.go:83 +0xff
+
+goroutine 10 [sync.Mutex.Lock]:
+internal/sync.runtime_SemacquireMutex(0xc000022460?, 0xd0?, 0xc000022310?)
+	/home/work/sdk/go1.25.4/src/runtime/sema.go:95 +0x25
+internal/sync.(*Mutex).lockSlow(0xc000198084)
+	/home/work/sdk/go1.25.4/src/internal/sync/mutex.go:149 +0x15d
+internal/sync.(*Mutex).Lock(...)
+	/home/work/sdk/go1.25.4/src/internal/sync/mutex.go:70
+sync.(*Mutex).Lock(...)
+	/home/work/sdk/go1.25.4/src/sync/mutex.go:46
+sync.(*Once).doSlow(0x53a819?, 0xc000054e28)
+	/home/work/sdk/go1.25.4/src/sync/once.go:74 +0x49
+sync.(*Once).Do(...)
+	/home/work/sdk/go1.25.4/src/sync/once.go:69
+github.com/xanygo/anygo/xio.(*MuxStream).doClose(0xc0000ca398?, 0x60?, 0x93?, {0x6c3d40, 0x867fa0})
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux.go:426 +0x7e
+github.com/xanygo/anygo/xio.(*Mux).readLoop(0xc0000ca380)
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux.go:293 +0x53b
+created by github.com/xanygo/anygo/xio.NewMux in goroutine 8
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux.go:83 +0xff
+
+goroutine 18 [select]:
+net.(*pipe).write(0xc0000ca100, {0xc000014370, 0xd, 0xd})
+	/home/work/sdk/go1.25.4/src/net/pipe.go:194 +0x2f2
+net.(*pipe).Write(0xc000014370?, {0xc000014370?, 0xd?, 0x0?})
+	/home/work/sdk/go1.25.4/src/net/pipe.go:174 +0x1c
+github.com/xanygo/anygo/xio.(*Mux).writeFrame(0xc0000ca280, 0x2, 0x2, {0x0, 0x0, 0x0})
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux.go:191 +0x17e
+github.com/xanygo/anygo/xio.(*MuxStream).doClose.func1()
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux.go:429 +0xca
+sync.(*Once).doSlow(0xc000202f38?, 0x5bc333?)
+	/home/work/sdk/go1.25.4/src/sync/once.go:78 +0xac
+sync.(*Once).Do(...)
+	/home/work/sdk/go1.25.4/src/sync/once.go:69
+github.com/xanygo/anygo/xio.(*MuxStream).doClose(0x6c34c0?, 0x40?, 0x3e?, {0x6c3d40, 0x867fa0})
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux.go:426 +0x7e
+github.com/xanygo/anygo/xio.(*MuxStream).Close(...)
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux.go:417
+github.com/xanygo/anygo/xio_test.TestNewMux.func4()
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux_test.go:80 +0xea
+sync.(*WaitGroup).Go.func1()
+	/home/work/sdk/go1.25.4/src/sync/waitgroup.go:239 +0x4a
+created by sync.(*WaitGroup).Go in goroutine 8
+	/home/work/sdk/go1.25.4/src/sync/waitgroup.go:237 +0x73
+
+goroutine 35 [select]:
+net.(*pipe).write(0xc0000ca180, {0xc000014380, 0xd, 0xd})
+	/home/work/sdk/go1.25.4/src/net/pipe.go:194 +0x2f2
+net.(*pipe).Write(0xc000014380?, {0xc000014380?, 0xd?, 0x0?})
+	/home/work/sdk/go1.25.4/src/net/pipe.go:174 +0x1c
+github.com/xanygo/anygo/xio.(*Mux).writeFrame(0xc0000ca380, 0x4, 0x2, {0x0, 0x0, 0x0})
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux.go:191 +0x17e
+github.com/xanygo/anygo/xio.(*MuxStream).doClose.func1()
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux.go:429 +0xca
+sync.(*Once).doSlow(0xc000206a68?, 0x5bc23b?)
+	/home/work/sdk/go1.25.4/src/sync/once.go:78 +0xac
+sync.(*Once).Do(...)
+	/home/work/sdk/go1.25.4/src/sync/once.go:69
+github.com/xanygo/anygo/xio.(*MuxStream).doClose(0x66a3df?, 0xd?, 0x0?, {0x6c3d40, 0x867fa0})
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux.go:426 +0x7e
+github.com/xanygo/anygo/xio.(*MuxStream).Close(...)
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux.go:417
+github.com/xanygo/anygo/xio_test.TestNewMux.func2(0xc000198000)
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux_test.go:49 +0x2c2
+github.com/xanygo/anygo/xio_test.TestNewMux.func3.1()
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux_test.go:62 +0x1b
+sync.(*WaitGroup).Go.func1()
+	/home/work/sdk/go1.25.4/src/sync/waitgroup.go:239 +0x4a
+created by sync.(*WaitGroup).Go in goroutine 11
+	/home/work/sdk/go1.25.4/src/sync/waitgroup.go:237 +0x73
+
+goroutine 50 [sync.Mutex.Lock]:
+internal/sync.runtime_SemacquireMutex(0xc0000405a8?, 0xb0?, 0x1?)
+	/home/work/sdk/go1.25.4/src/runtime/sema.go:95 +0x25
+internal/sync.(*Mutex).lockSlow(0xc0000a4344)
+	/home/work/sdk/go1.25.4/src/internal/sync/mutex.go:149 +0x15d
+internal/sync.(*Mutex).Lock(...)
+	/home/work/sdk/go1.25.4/src/internal/sync/mutex.go:70
+sync.(*Mutex).Lock(...)
+	/home/work/sdk/go1.25.4/src/sync/mutex.go:46
+sync.(*Once).doSlow(0x0?, 0xc000203e30)
+	/home/work/sdk/go1.25.4/src/sync/once.go:74 +0x49
+sync.(*Once).Do(...)
+	/home/work/sdk/go1.25.4/src/sync/once.go:69
+github.com/xanygo/anygo/xio.(*MuxStream).doClose(0xc0000406a8?, 0x19?, 0xa1?, {0x6c3d40, 0x867fa0})
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux.go:426 +0x7e
+github.com/xanygo/anygo/xio.(*Mux).closeAllStreams(0xc000100060?, {0x6c3d40, 0x867fa0}, 0x1)
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux.go:226 +0xa5
+github.com/xanygo/anygo/xio.(*Mux).Close.func1()
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux.go:154 +0x3c
+sync.(*Once).doSlow(0xc00008e540?, 0xc0000a42c0?)
+	/home/work/sdk/go1.25.4/src/sync/once.go:78 +0xac
+sync.(*Once).Do(...)
+	/home/work/sdk/go1.25.4/src/sync/once.go:69
+github.com/xanygo/anygo/xio.(*Mux).Close(0xc0000407b8?)
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux.go:153 +0x46
+github.com/xanygo/anygo/xio_test.TestNewMux.func6()
+	/mnt/c/Users/work/workspace/xanygo/anygo/xio/mux_test.go:101 +0x17
+created by time.goFunc
+	/home/work/sdk/go1.25.4/src/time/sleep.go:215 +0x2d
