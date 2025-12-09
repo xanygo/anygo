@@ -71,10 +71,10 @@ type Mux struct {
 // NewMux 创建一个新的 Mux 并启动后台读取循环（readLoop）。
 // rw：底层 io.ReadWriteCloser
 // chanSize：接收远端 MuxStream 的缓冲通道大小
-func NewMux(client bool, rw io.ReadWriteCloser, chanSize int) *Mux {
+func NewMux(client bool, rw io.ReadWriteCloser) *Mux {
 	m := &Mux{
 		parent:     rw,
-		acceptCh:   make(chan *MuxStream, chanSize),
+		acceptCh:   make(chan *MuxStream, 32),
 		closedCh:   make(chan struct{}),
 		maxPayload: defaultMaxPayload,
 	}
@@ -153,14 +153,20 @@ func (m *Mux) Close() error {
 	return m.doClose(true, io.EOF)
 }
 
+func (m *Mux) Range(fn func(s *MuxStream) bool) {
+	m.streams.Range(func(_, v any) bool {
+		return fn(v.(*MuxStream))
+	})
+}
+
 func (m *Mux) doClose(notify bool, ce error) error {
 	var err error
 	m.closeOnce.Do(func() {
 		m.closeAllStreams(ce, notify)
 		close(m.closedCh)
-		m.closeAllStreams(ce, false)
 		err = m.parent.Close()
 	})
+	m.closeAllStreams(ce, false)
 	return err
 }
 
@@ -202,16 +208,17 @@ func (m *Mux) writeFrame(id uint32, flags streamFlag, payload []byte) error {
 	m.writeMu.Lock()
 	defer m.writeMu.Unlock()
 
-	// 写入头部
-	if _, err := m.parent.Write(header); err != nil {
-		return err
+	var err error
+	_, err = m.parent.Write(header)     // 写入头部
+	if err == nil && len(payload) > 0 { // 写入 payload（如果有）
+		_, err = m.parent.Write(payload)
 	}
-	// 写入 payload（如果有）
-	if len(payload) > 0 {
-		_, err := m.parent.Write(payload)
-		return err
+
+	// 写通道异常，关闭整个连接
+	if err != nil {
+		go m.doClose(false, err)
 	}
-	return nil
+	return err
 }
 
 // writeData 对大块数据进行分片写入。
@@ -267,8 +274,13 @@ func (m *Mux) readLoop() {
 		var stream *MuxStream
 		v, ok := m.streams.Load(id)
 		if ok {
+			if flags == flagOpen {
+				err := fmt.Errorf("streamID=%d already exists", id)
+				m.doClose(false, err)
+				return
+			}
 			stream = v.(*MuxStream)
-		} else {
+		} else if flags == flagOpen {
 			// 新的远端发起 MuxStream
 			stream = newMuxStream(m, id, true)
 			stream.hello = payload
@@ -281,6 +293,10 @@ func (m *Mux) readLoop() {
 			case <-m.closedCh:
 				return
 			}
+		} else {
+			err := fmt.Errorf("invalid streaID(%d) or flag(%b)", id, flags)
+			m.doClose(false, err)
+			return
 		}
 
 		switch flags {
@@ -373,14 +389,14 @@ func (s *MuxStream) Read(p []byte) (int, error) {
 
 	// 如果已关闭且没有数据
 	if s.closed.Load() {
-		return 0, s.closeErr.Load()
+		return 0, io.EOF
 	}
 
 	// 阻塞等待新的数据块或 MuxStream 被关闭
 	select {
 	case data, ok := <-s.ch:
 		if !ok {
-			return 0, s.closeErr.Load()
+			return 0, io.EOF
 		}
 		// 尽可能复制请求长度的数据，如果 data 更长，将剩余部分放入 pending
 		n := copy(p, data)
@@ -391,9 +407,11 @@ func (s *MuxStream) Read(p []byte) (int, error) {
 		}
 		return n, nil
 	case <-s.closedCh:
-		return 0, s.closeErr.Load()
+		return 0, io.EOF
 	case <-s.mux.closedCh:
-		return 0, errMuxClosed
+		return 0, io.EOF
+		// case <-time.After(10 * time.Second):
+		//	return 0, fmt.Errorf("timeout")
 	}
 }
 
@@ -401,7 +419,7 @@ func (s *MuxStream) Read(p []byte) (int, error) {
 // 如果数据过大，会自动分片通过 Mux 发送。
 func (s *MuxStream) Write(p []byte) (int, error) {
 	if s.closed.Load() {
-		return 0, s.closeErr.Load()
+		return 0, io.EOF
 	}
 
 	// 通过 Mux 写入分片数据
@@ -421,7 +439,7 @@ func (s *MuxStream) Err() error {
 
 // push 由 Mux.readLoop 调用，用于向 MuxStream 传入数据。
 func (s *MuxStream) push(data []byte) {
-	if s.closed.Load() {
+	if s.closed.Load() || len(data) == 0 {
 		return
 	}
 	select {

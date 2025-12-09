@@ -26,8 +26,8 @@ func TestNewMux(t *testing.T) {
 
 	client, server := net.Pipe()
 
-	muxClient := xio.NewMux(true, client, 16)
-	muxServer := xio.NewMux(false, server, 16)
+	muxClient := xio.NewMux(true, client)
+	muxServer := xio.NewMux(false, server)
 
 	handleServerStream := func(s *xio.MuxStream) {
 		t.Logf("handleServerStream sid=%d", s.ID())
