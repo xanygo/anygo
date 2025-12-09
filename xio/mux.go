@@ -285,7 +285,7 @@ func (m *Mux) readLoop() {
 
 		switch flags {
 		case flagOpen:
-			break
+			// do nothing
 		case flagData:
 			// DATA：将 payload 放入 MuxStream 的读取缓冲区
 			stream.push(payload)
