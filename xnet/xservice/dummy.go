@@ -29,8 +29,8 @@ func NewDummyService(name string) Service {
 		Name:           name,
 		ConnectRetry:   1,
 		ConnectTimeout: 5000,
-		WriteTimeout:   5000,
-		ReadTimeout:    5000,
+		WriteTimeout:   10000,
+		ReadTimeout:    45000,
 		Retry:          2,
 		WorkerCycle:    "24h",
 		DownStream: DownStreamPart{

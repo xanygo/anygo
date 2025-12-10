@@ -80,7 +80,7 @@ jobs:
     strategy:
       matrix:
         go: ['1.25']
-        servers: [ "windows-latest","macos-latest","macos-13"]
+        servers: [ "windows-latest","macos-latest","macos-15"]
     runs-on: ${{ matrix.servers }}
 
     steps:
