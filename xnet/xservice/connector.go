@@ -86,13 +86,13 @@ func (c *connector) connectProxy(ctx context.Context, proxyName string, target x
 	if err != nil {
 		return nil, err
 	}
-
-	conn, err := xdial.Connect(ctx, proxyService.Connector(), *proxyAddr, proxyService.Option())
+	proxyOpt := proxyService.Option()
+	conn, err := xdial.Connect(ctx, proxyService.Connector(), *proxyAddr, proxyOpt)
 	if err != nil {
 		return nil, err
 	}
 
-	proxyConn, err := xproxy.Proxy(ctx, proxyDriver, conn, proxyConfig, target)
+	proxyConn, err := xproxy.Proxy(ctx, proxyDriver, conn, proxyConfig, target, proxyOpt)
 	if err != nil {
 		_ = conn.Close()
 		return nil, err
@@ -131,7 +131,7 @@ func (c *connector) connectProxyURL(ctx context.Context, proxy string, target xn
 		return nil, fmt.Errorf("proxy %q: %w", proxy, err)
 	}
 
-	proxyConn, err := xproxy.Proxy(ctx, proxyDriver, conn, cfg, target)
+	proxyConn, err := xproxy.Proxy(ctx, proxyDriver, conn, cfg, target, opt)
 	if err != nil {
 		_ = conn.Close()
 		return nil, err
@@ -161,6 +161,11 @@ func (c *connector) tlsHandshake(ctx context.Context, conn *xnet.ConnNode, opt x
 		xmetric.AnyAttr("SkipVerify", tc.InsecureSkipVerify),
 	)
 	tlsConn := tls.Client(conn.Outer(), tc)
+
+	timeout := xoption.HandshakeTimeout(opt)
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, timeout)
+	defer cancel()
 
 	if err = tlsConn.HandshakeContext(ctx); err != nil {
 		_ = conn.Close()

@@ -7,6 +7,7 @@ package xproxy
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xnet"
@@ -86,8 +87,19 @@ func Find(protocol string) (Driver, error) {
 // Proxy  对 target 的地址进行代理
 // proxyConn: 和代理服务器的连接
 // target: 被代理的地址，其中的 HostPort 是必须是正常的值
-func Proxy(ctx context.Context, d Driver, proxyConn *xnet.ConnNode, c *Config, target xnet.AddrNode) (*xnet.ConnNode, error) {
+//
+// 若是出错，Proxy 方法不会关闭传入的 proxyConn，由调用方关闭
+//
+// 返回值：被代理逻辑处理过后的连接对象
+func Proxy(ctx context.Context, d Driver, proxyConn *xnet.ConnNode, c *Config, target xnet.AddrNode, opt xoption.Reader) (*xnet.ConnNode, error) {
+	timeout := xoption.ReadTimeout(opt) + xoption.WriteReadTimeout(opt)
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, timeout)
+	defer cancel()
+	_ = proxyConn.Conn.SetDeadline(time.Now().Add(timeout))
 	conn, err := d.Proxy(ctx, proxyConn, c, target.HostPort)
+	_ = proxyConn.SetDeadline(time.Time{})
+
 	if err != nil {
 		return proxyConn, err
 	}

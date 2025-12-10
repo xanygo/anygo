@@ -50,7 +50,8 @@ func (c *TCP) getServiceName(srv any) string {
 }
 
 func (c *TCP) Invoke(ctx context.Context, srv any, req Request, resp Response, opts ...Option) (result error) {
-	ctx, rootSpan := xmetric.Start(ctx, "invoke")
+	var rootSpan xmetric.Span
+	ctx, rootSpan = xmetric.Start(ctx, "invoke")
 	its := c.allITs(ctx)
 
 	cfg := &config{
@@ -112,6 +113,12 @@ func (c *TCP) Invoke(ctx context.Context, srv any, req Request, resp Response, o
 
 	attemptTotal := xoption.Retry(opt) + 1
 
+	// 设置整体的超时时间
+	timeout := time.Duration(attemptTotal) * xoption.TotalTimeout(opt)
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, timeout)
+	defer cancel()
+
 	rootSpan.SetAttemptCount(attemptTotal)
 
 	for attemptNo := 0; attemptNo < attemptTotal; attemptNo++ {
@@ -128,7 +135,13 @@ func (c *TCP) Invoke(ctx context.Context, srv any, req Request, resp Response, o
 
 func (c *TCP) tryOnce(ctx context.Context, cfg *config, req Request, resp Response, serviceName string, service xservice.Service, its []TCPInterceptor,
 	opt xoption.Reader) (result error) {
-	ctx, rootSpan := xmetric.Start(ctx, "TryOnce")
+	timeout := xoption.TotalTimeout(opt)
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	var rootSpan xmetric.Span
+	ctx, rootSpan = xmetric.Start(ctx, "TryOnce")
 	defer func() {
 		rootSpan.RecordError(result)
 		rootSpan.End()

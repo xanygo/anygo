@@ -39,6 +39,13 @@ func doHttpProxy(ctx context.Context, proxyConn *xnet.ConnNode, c *Config, targe
 	if err != nil {
 		return nil, err
 	}
+
+	select {
+	case <-ctx.Done():
+		return nil, context.Cause(ctx)
+	default:
+	}
+
 	bio := bufio.NewReader(proxyConn.Conn)
 	resp, err := http.ReadResponse(bio, nil)
 	if err != nil {
