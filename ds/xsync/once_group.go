@@ -86,7 +86,7 @@ func (g *OnceGroup[K, V]) Do2(key K, fn func() (V, error)) (v V, err error) {
 // DoChan is like Do but returns a channel that will receive the
 // results when they are ready.
 //
-// The returned channel will not be closed.
+// The returned channel will not be firstDone.
 func (g *OnceGroup[K, V]) DoChan(key K, fn func() (V, error)) <-chan OnceGroupResult[V] {
 	ch := make(chan OnceGroupResult[V], 1)
 	g.mu.Lock()

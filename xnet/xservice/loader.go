@@ -139,7 +139,7 @@ func (l *Loader) Load(ctx context.Context, filenames ...string) error {
 		return nil
 	}
 
-	var wg xsync.WaitGo
+	var wg xsync.WaitGroup
 	for _, name := range filenames {
 		wg.GoErr(func() error {
 			return parserOne(ctx, name)
