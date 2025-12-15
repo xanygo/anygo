@@ -7,13 +7,13 @@ package xhttpc
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xio"
 )
 
@@ -48,7 +48,7 @@ func StatusIn(codes ...int) HandlerFunc {
 	}
 	return func(ctx context.Context, resp *http.Response) error {
 		if !mp[resp.StatusCode] {
-			return fmt.Errorf("invalid status code %d", resp.StatusCode)
+			return xerror.NewStatusError(int64(resp.StatusCode))
 		}
 		return nil
 	}
@@ -57,7 +57,7 @@ func StatusIn(codes ...int) HandlerFunc {
 func StatusRange(begin int, end int) HandlerFunc {
 	return func(ctx context.Context, resp *http.Response) error {
 		if resp.StatusCode < begin || resp.StatusCode > end {
-			return fmt.Errorf("invalid status code %d", resp.StatusCode)
+			return xerror.NewStatusError(int64(resp.StatusCode))
 		}
 		return nil
 	}
@@ -67,14 +67,14 @@ func DecodeBody(dc xcodec.Decoder, a any) HandlerFunc {
 	return func(ctx context.Context, resp *http.Response) error {
 		status := resp.StatusCode
 		if status < 200 || status >= 500 {
-			return fmt.Errorf("invalid status code %d", status)
+			return xerror.NewStatusError(int64(status))
 		}
 		defer resp.Body.Close()
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return err
 		}
-		return dc.Decode(body, a)
+		return xcodec.Decode(dc, body, a)
 	}
 }
 

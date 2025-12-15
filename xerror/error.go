@@ -6,6 +6,7 @@ package xerror
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 )
 
@@ -16,7 +17,6 @@ type TraceError interface {
 
 const (
 	CodeNotFound = iota + 1000
-	CodeInvalidStatus
 	CodeInvalidParam
 	CodeDuplicateKey
 	CodeClosed
@@ -26,9 +26,6 @@ var (
 	// NotFound 错误：数据找不到
 	NotFound = NewCodeError(CodeNotFound, "not found")
 	Closed   = NewCodeError(CodeClosed, "closed")
-
-	// InvalidStatus 错误：数据的状态非正常
-	InvalidStatus = NewCodeError(CodeInvalidStatus, "invalid status")
 
 	// InvalidParam 错误：无效的请求参数
 	InvalidParam = NewCodeError(CodeInvalidParam, "invalid param")
@@ -63,4 +60,25 @@ func String(err error) string {
 		return ""
 	}
 	return err.Error()
+}
+
+func NewStatusError(code int64) *StatusError {
+	return &StatusError{
+		Code: code,
+	}
+}
+
+var _ CodeError = (*StatusError)(nil)
+
+// StatusError 状态异常的错误，常用语 rpc response 的校验
+type StatusError struct {
+	Code int64
+}
+
+func (s *StatusError) Error() string {
+	return "invalid status " + strconv.FormatInt(s.Code, 10)
+}
+
+func (s *StatusError) ErrCode() int64 {
+	return s.Code
 }

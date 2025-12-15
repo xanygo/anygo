@@ -51,6 +51,14 @@ func Get(ctx context.Context, service any, url string, handler HandlerFunc, opts
 	return Invoke(ctx, service, req, handler, opts...)
 }
 
+// GetAsJSON 使用 GET 读取 url 的内容（响应码必须为 200 ），并解析为 json 格式
+func GetAsJSON[T any](ctx context.Context, service any, url string, opts ...xrpc.Option) (obj *T, err error) {
+	obj = new(T)
+	handler := Combine(StatusIn(200), JSONBody(obj))
+	err = Get(ctx, service, url, handler, opts...)
+	return obj, err
+}
+
 func InvokeWithCodec(ctx context.Context, service any, method string, url string, body any, ec xcodec.Encoder, handler HandlerFunc, opts ...xrpc.Option) error {
 	var contentType string
 	if hct, ok := ec.(xcodec.HasContentType); ok {
@@ -264,8 +272,7 @@ func (ci CacheClient) Invoke(ctx context.Context, result any) error {
 			}
 			return nil
 		}
-
-		err = decoder.Decode(cachedResponse.Body, result)
+		err = xcodec.Decode(decoder, cachedResponse.Body, result)
 		if err == nil {
 			if npr {
 				ci.doPreFlush(ctx, decoder, result, key)

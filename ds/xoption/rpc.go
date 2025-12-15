@@ -31,14 +31,16 @@ var (
 	KeyExtra = NewKey(keyExtraPrefix)
 )
 
+// 定义为默认值，方便全局调整
 var (
-	DefaultConnectRetry     = 1                // 默认网络连接次数
-	DefaultConnectTimeout   = 10 * time.Second // 默认连接超时
-	DefaultWriteTimeout     = 5 * time.Second  // 默认网络写超时
-	DefaultReadTimeout      = 5 * time.Second  // 默认网络读超时
-	DefaultHandshakeTimeout = 5 * time.Second  // 默认 rpc 协议层面握手超时
-	DefaultRetry            = 1                // RPC 默认重试次数
-	DefaultWorkerCycle      = 5 * time.Second  // 默认的 worker 运行周期
+	DefaultConnectRetry           = 1                // 默认网络连接次数
+	DefaultConnectTimeout         = 10 * time.Second // 默认连接超时
+	DefaultWriteTimeout           = 5 * time.Second  // 默认网络写超时
+	DefaultReadTimeout            = 5 * time.Second  // 默认网络读超时
+	DefaultHandshakeTimeout       = 5 * time.Second  // 默认 rpc 协议层面握手超时
+	DefaultRetry                  = 1                // RPC 默认重试次数
+	DefaultWorkerCycle            = 5 * time.Second  // 默认的 worker 运行周期
+	DefaultMaxResponseSize  int64 = 64 * 1024 * 1024 // 默认最大响应大小，64 MB
 )
 
 func SetConnectTimeout(opt Writer, timeout time.Duration) {
@@ -94,12 +96,8 @@ func SetMaxResponseSize(opt Writer, maxSize int64) {
 	opt.Set(KeyMaxResponseSize, maxSize)
 }
 
-const (
-	mb = 1 << 20 // 1 MB
-)
-
 func MaxResponseSize(opt Reader) int64 {
-	return Int64(opt, KeyMaxResponseSize, 64*mb)
+	return Int64(opt, KeyMaxResponseSize, DefaultMaxResponseSize)
 }
 
 func WriteReadTimeout(opt Reader) time.Duration {

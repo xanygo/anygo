@@ -22,7 +22,7 @@ func Bind(r *http.Request, obj any) error {
 		if err != nil {
 			return err
 		}
-		err = xcodec.JSON.Decode(bf, obj)
+		err = xcodec.Decode(xcodec.JSON, bf, obj)
 		if err != nil {
 			return err
 		}

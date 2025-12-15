@@ -27,7 +27,7 @@ func TestSetConnectTimeout(t *testing.T) {
 		SetWriteTimeout(opt, time.Minute)
 		xt.Equal(t, time.Minute, WriteTimeout(opt))
 
-		xt.Equal(t, 64*mb, MaxResponseSize(opt))
+		xt.Equal(t, 64*1024*1024, MaxResponseSize(opt))
 		SetMaxResponseSize(opt, 5)
 		xt.Equal(t, 5, MaxResponseSize(opt))
 
