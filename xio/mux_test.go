@@ -29,7 +29,7 @@ func TestNewMux(t *testing.T) {
 	muxClient := xio.NewMux(true, client)
 	muxServer := xio.NewMux(false, server)
 
-	handleServerStream := func(s *xio.MuxStream) {
+	handleServerStream := func(s *xio.MuxStream[net.Conn]) {
 		t.Logf("handleServerStream sid=%d", s.ID())
 		defer s.Close()
 		buf := make([]byte, 1024)

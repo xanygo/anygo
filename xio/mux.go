@@ -42,8 +42,8 @@ const (
 
 // Mux 在一个 io.ReadWriteCloser 上复用多个 MuxStream。
 // 支持并发读写，并通过 MuxStream ID 区分不同逻辑流。
-type Mux struct {
-	parent io.ReadWriteCloser
+type Mux[T io.ReadWriteCloser] struct {
+	parent T
 
 	// 写操作串行化锁，保证多 MuxStream 写入不交叉
 	writeMu sync.Mutex
@@ -57,7 +57,7 @@ type Mux struct {
 	nextID atomic.Uint32
 
 	// 接收远端发起的 MuxStream
-	acceptCh chan *MuxStream
+	acceptCh chan *MuxStream[T]
 
 	// Mux 关闭控制
 	closeOnce sync.Once
@@ -71,10 +71,10 @@ type Mux struct {
 // NewMux 创建一个新的 Mux 并启动后台读取循环（readLoop）。
 // rw：底层 io.ReadWriteCloser
 // chanSize：接收远端 MuxStream 的缓冲通道大小
-func NewMux(client bool, rw io.ReadWriteCloser) *Mux {
-	m := &Mux{
+func NewMux[T io.ReadWriteCloser](client bool, rw T) *Mux[T] {
+	m := &Mux[T]{
 		parent:     rw,
-		acceptCh:   make(chan *MuxStream, 32),
+		acceptCh:   make(chan *MuxStream[T], 32),
 		closedCh:   make(chan struct{}),
 		maxPayload: defaultMaxPayload,
 	}
@@ -86,19 +86,23 @@ func NewMux(client bool, rw io.ReadWriteCloser) *Mux {
 }
 
 // SetMaxPayload 设置帧的最大 payload 大小，用于分片发送。
-func (m *Mux) SetMaxPayload(n int) {
+func (m *Mux[T]) SetMaxPayload(n int) {
 	if n <= 0 {
 		return
 	}
 	m.maxPayload = n
 }
 
+func (m *Mux[T]) Unwrap() T {
+	return m.parent
+}
+
 // Open 创建一个本地发起的 MuxStream。
-func (m *Mux) Open() (*MuxStream, error) {
+func (m *Mux[T]) Open() (*MuxStream[T], error) {
 	return m.OpenWithPayload(nil)
 }
 
-func (m *Mux) OpenWithPayload(payload []byte) (*MuxStream, error) {
+func (m *Mux[T]) OpenWithPayload(payload []byte) (*MuxStream[T], error) {
 	select {
 	case <-m.closedCh:
 		// Mux 已关闭，返回错误
@@ -116,25 +120,24 @@ func (m *Mux) OpenWithPayload(payload []byte) (*MuxStream, error) {
 	id := m.allocID()
 	stream := newMuxStream(m, id, false)
 	stream.hello = payload
-	m.streams.Store(id, stream)
 
 	// 可选：发送 OPEN 帧，让远端提前知道 MuxStream 已创建
 	// 不是必须的，因为第一个 DATA 帧也可以隐式创建 MuxStream
 	// 但发送 OPEN 更清晰地表明意图
 	err := m.writeFrame(id, flagOpen, payload)
 	if err == nil {
+		m.streams.Store(id, stream)
 		return stream, nil
 	}
-	m.streams.Delete(id)
 	return nil, err
 }
 
 // Accept 阻塞等待远端发起的 MuxStream，或者 Mux 被关闭。
-func (m *Mux) Accept() (*MuxStream, error) {
+func (m *Mux[T]) Accept() (*MuxStream[T], error) {
 	return m.AcceptContext(context.Background())
 }
 
-func (m *Mux) AcceptContext(ctx context.Context) (*MuxStream, error) {
+func (m *Mux[T]) AcceptContext(ctx context.Context) (*MuxStream[T], error) {
 	select {
 	case stream := <-m.acceptCh:
 		return stream, nil
@@ -149,17 +152,17 @@ var errMuxClosed = fmt.Errorf("mux %w", xerror.Closed)
 
 // Close 关闭 Mux 及底层 parent 连接。
 // 同时会关闭所有活跃的 MuxStream。
-func (m *Mux) Close() error {
+func (m *Mux[T]) Close() error {
 	return m.doClose(true, io.EOF)
 }
 
-func (m *Mux) Range(fn func(s *MuxStream) bool) {
+func (m *Mux[T]) Range(fn func(s *MuxStream[T]) bool) {
 	m.streams.Range(func(_, v any) bool {
-		return fn(v.(*MuxStream))
+		return fn(v.(*MuxStream[T]))
 	})
 }
 
-func (m *Mux) doClose(notify bool, ce error) error {
+func (m *Mux[T]) doClose(notify bool, ce error) error {
 	var err error
 	m.closeOnce.Do(func() {
 		m.closeAllStreams(ce, notify)
@@ -170,10 +173,10 @@ func (m *Mux) doClose(notify bool, ce error) error {
 	return err
 }
 
-func (m *Mux) closeAllStreams(err error, notify bool) {
-	var all []*MuxStream
+func (m *Mux[T]) closeAllStreams(err error, notify bool) {
+	var all []*MuxStream[T]
 	m.streams.Range(func(_, v any) bool {
-		all = append(all, v.(*MuxStream))
+		all = append(all, v.(*MuxStream[T]))
 		return true
 	})
 	for _, stream := range all {
@@ -183,13 +186,13 @@ func (m *Mux) closeAllStreams(err error, notify bool) {
 
 // allocID 分配下一个 MuxStream ID（自动递增）。
 // 避免返回 0 作为 MuxStream ID。
-func (m *Mux) allocID() uint32 {
+func (m *Mux[T]) allocID() uint32 {
 	return m.nextID.Add(2)
 }
 
 // writeFrame 写入单个帧（包含头部和 payload）。
 // 该方法通过加锁保证写操作的串行化，避免多 MuxStream 写入交错。
-func (m *Mux) writeFrame(id uint32, flags streamFlag, payload []byte) error {
+func (m *Mux[T]) writeFrame(id uint32, flags streamFlag, payload []byte) error {
 	select {
 	case <-m.closedCh:
 		return fmt.Errorf("writeFrame: %w", errMuxClosed)
@@ -223,7 +226,7 @@ func (m *Mux) writeFrame(id uint32, flags streamFlag, payload []byte) error {
 
 // writeData 对大块数据进行分片写入。
 // 将超过 maxPayload 的数据拆分为多个帧发送。
-func (m *Mux) writeData(id uint32, p []byte) error {
+func (m *Mux[T]) writeData(id uint32, p []byte) error {
 	num := m.maxPayload
 	for len(p) > 0 {
 		chunk := p
@@ -239,7 +242,7 @@ func (m *Mux) writeData(id uint32, p []byte) error {
 }
 
 // readLoop 后台循环读取帧，并分发到对应的 MuxStream。
-func (m *Mux) readLoop() {
+func (m *Mux[T]) readLoop() {
 	header := make([]byte, headerSize)
 	for {
 		// 读取帧头
@@ -271,7 +274,7 @@ func (m *Mux) readLoop() {
 			}
 		}
 
-		var stream *MuxStream
+		var stream *MuxStream[T]
 		v, ok := m.streams.Load(id)
 		if ok {
 			if flags == flagOpen {
@@ -279,10 +282,10 @@ func (m *Mux) readLoop() {
 				m.doClose(false, err)
 				return
 			}
-			stream = v.(*MuxStream)
+			stream = v.(*MuxStream[T])
 		} else if flags == flagOpen {
 			// 新的远端发起 MuxStream
-			stream = newMuxStream(m, id, true)
+			stream = newMuxStream[T](m, id, true)
 			stream.hello = payload
 
 			// 存储后再推送到 acceptCh
@@ -321,9 +324,9 @@ func (m *Mux) readLoop() {
 
 // MuxStream 表示一个复用通道（逻辑流），在 Mux 上进行全双工读写。
 // 支持本地或远端发起，读写操作可并发。
-type MuxStream struct {
+type MuxStream[T io.ReadWriteCloser] struct {
 	id       uint32    // MuxStream ID
-	mux      *Mux      // 所属的 Mux
+	mux      *Mux[T]   // 所属的 Mux
 	remote   bool      // 是否由远端发起
 	createAt time.Time // 创建时间
 	hello    []byte    // Open 创建时，携带的数据
@@ -347,8 +350,8 @@ type MuxStream struct {
 // m：所属 Mux
 // id：MuxStream ID
 // remote：是否远端发起
-func newMuxStream(m *Mux, id uint32, remote bool) *MuxStream {
-	return &MuxStream{
+func newMuxStream[T io.ReadWriteCloser](m *Mux[T], id uint32, remote bool) *MuxStream[T] {
+	return &MuxStream[T]{
 		id:       id,
 		mux:      m,
 		remote:   remote,
@@ -358,21 +361,28 @@ func newMuxStream(m *Mux, id uint32, remote bool) *MuxStream {
 	}
 }
 
-// Hello 创建stream 时候，携带的数据
-func (s *MuxStream) Hello() []byte {
+func (s *MuxStream[T]) Parent() *Mux[T] {
+	return s.mux
+}
+
+// Hello 创建 stream 时候，携带的数据
+func (s *MuxStream[T]) Hello() []byte {
 	return s.hello
 }
 
 // ID 返回 MuxStream 的唯一标识
-func (s *MuxStream) ID() uint32 { return s.id }
+func (s *MuxStream[T]) ID() uint32 {
+	return s.id
+}
 
-func (s *MuxStream) CreateAt() time.Time {
+// CreateAt 创建时间
+func (s *MuxStream[T]) CreateAt() time.Time {
 	return s.createAt
 }
 
 // Read 实现 io.Reader 接口。
 // 当 MuxStream 已关闭且没有剩余数据时返回 io.EOF。
-func (s *MuxStream) Read(p []byte) (int, error) {
+func (s *MuxStream[T]) Read(p []byte) (int, error) {
 	// 快路径：如果 pending 缓冲有数据，直接读取
 	s.mu.Lock()
 	if len(s.pending) > 0 {
@@ -417,7 +427,7 @@ func (s *MuxStream) Read(p []byte) (int, error) {
 
 // Write 实现 io.Writer 接口。
 // 如果数据过大，会自动分片通过 Mux 发送。
-func (s *MuxStream) Write(p []byte) (int, error) {
+func (s *MuxStream[T]) Write(p []byte) (int, error) {
 	if s.closed.Load() {
 		return 0, io.EOF
 	}
@@ -429,16 +439,16 @@ func (s *MuxStream) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func (s *MuxStream) Done() <-chan struct{} {
+func (s *MuxStream[T]) Done() <-chan struct{} {
 	return s.closedCh
 }
 
-func (s *MuxStream) Err() error {
+func (s *MuxStream[T]) Err() error {
 	return s.closeErr.Load()
 }
 
 // push 由 Mux.readLoop 调用，用于向 MuxStream 传入数据。
-func (s *MuxStream) push(data []byte) {
+func (s *MuxStream[T]) push(data []byte) {
 	if s.closed.Load() || len(data) == 0 {
 		return
 	}
@@ -450,7 +460,7 @@ func (s *MuxStream) push(data []byte) {
 	}
 }
 
-func (s *MuxStream) doClose(flag streamFlag, notify bool, err error) error {
+func (s *MuxStream[T]) doClose(flag streamFlag, notify bool, err error) error {
 	isCloseFlag := flag&flagClose != 0 || flag&flagReset != 0
 	if !isCloseFlag {
 		panic(fmt.Errorf("invalid flag %v", flag))
@@ -477,6 +487,6 @@ func (s *MuxStream) doClose(flag streamFlag, notify bool, err error) error {
 }
 
 // Close 本地关闭 MuxStream，并发送 CLOSE 帧通知远端。
-func (s *MuxStream) Close() error {
+func (s *MuxStream[T]) Close() error {
 	return s.doClose(flagClose, true, io.EOF)
 }
