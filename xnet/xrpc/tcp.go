@@ -114,7 +114,12 @@ func (c *TCP) Invoke(ctx context.Context, srv any, req Request, resp Response, o
 	attemptTotal := xoption.Retry(opt) + 1
 
 	// 设置整体的超时时间
-	timeout := time.Duration(attemptTotal) * xoption.TotalTimeout(opt)
+	var timeout time.Duration
+	if tv, ok := xoption.Timeout(opt); ok {
+		timeout = tv
+	} else {
+		timeout = time.Duration(attemptTotal) * xoption.TotalTimeout(opt)
+	}
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, timeout)
 	defer cancel()

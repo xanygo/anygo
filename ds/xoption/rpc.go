@@ -17,6 +17,7 @@ var (
 	KeyConnectRetry     = NewKey("ConnectRetry")
 	KeyWriteTimeout     = NewKey("WriteTimeout")
 	KeyReadTimeout      = NewKey("ReadTimeout")
+	KeyTimeout          = NewKey("Timeout")
 	KeyHandshakeTimeout = NewKey("HandshakeTimeout")
 	KeyRetry            = NewKey("Retry")
 	KeyBalancer         = NewKey("Balancer") // 负载均衡策略名称
@@ -39,10 +40,11 @@ var (
 	DefaultReadTimeout            = 5 * time.Second  // 默认网络读超时
 	DefaultHandshakeTimeout       = 5 * time.Second  // 默认 rpc 协议层面握手超时
 	DefaultRetry                  = 1                // RPC 默认重试次数
-	DefaultWorkerCycle            = 5 * time.Second  // 默认的 worker 运行周期
+	DefaultWorkerCycle            = 10 * time.Second // 默认后台 worker 运行间隔/周期
 	DefaultMaxResponseSize  int64 = 64 * 1024 * 1024 // 默认最大响应大小，64 MB
 )
 
+// SetConnectTimeout 设置单次 RPC 请求的网络连接超时时间
 func SetConnectTimeout(opt Writer, timeout time.Duration) {
 	opt.Set(KeyConnectTimeout, timeout)
 }
@@ -59,6 +61,7 @@ func ConnectRetry(opt Reader) int {
 	return Int(opt, KeyConnectRetry, DefaultConnectRetry)
 }
 
+// SetWriteTimeout 设置单次 RPC 请求 socket write 超时时间
 func SetWriteTimeout(opt Writer, timeout time.Duration) {
 	opt.Set(KeyWriteTimeout, timeout)
 }
@@ -67,12 +70,27 @@ func WriteTimeout(opt Reader) time.Duration {
 	return Duration(opt, KeyWriteTimeout, DefaultWriteTimeout)
 }
 
+// SetReadTimeout 设置单次 RPC 请求 socket read 超时时间
 func SetReadTimeout(opt Writer, timeout time.Duration) {
 	opt.Set(KeyReadTimeout, timeout)
 }
 
 func ReadTimeout(opt Reader) time.Duration {
 	return Duration(opt, KeyReadTimeout, DefaultReadTimeout)
+}
+
+// SetTimeout 设置 RPC 整体超时时间
+func SetTimeout(opt Writer, timeout time.Duration) {
+	opt.Set(KeyTimeout, timeout)
+}
+
+// Timeout 获取 RPC 整体超时时间
+func Timeout(opt Reader) (time.Duration, bool) {
+	timeout, ok := GetAs[time.Duration](opt, KeyTimeout)
+	if !ok && timeout > 0 {
+		return timeout, true
+	}
+	return 0, false
 }
 
 func SetHandshakeTimeout(opt Writer, timeout time.Duration) {
@@ -168,24 +186,35 @@ func ConsumeRPCConfig(d Writer, msg xbus.Message) error {
 	}
 
 	switch msg.Key {
+	// 超时
+	case KeyTimeout, KeyTimeout.String():
+		return convertDoSet[time.Duration](d, msg.Payload, SetTimeout)
 	case KeyConnectTimeout, KeyConnectTimeout.Name():
 		return convertDoSet[time.Duration](d, msg.Payload, SetConnectTimeout)
-	case KeyConnectRetry, KeyConnectRetry.Name():
-		return convertDoSet[int](d, msg.Payload, SetConnectRetry)
 	case KeyWriteTimeout, KeyWriteTimeout.Name():
 		return convertDoSet[time.Duration](d, msg.Payload, SetWriteTimeout)
 	case KeyReadTimeout, KeyReadTimeout.Name():
 		return convertDoSet[time.Duration](d, msg.Payload, SetReadTimeout)
+	case KeyHandshakeTimeout, KeyHandshakeTimeout.Name():
+		return convertDoSet[time.Duration](d, msg.Payload, SetHandshakeTimeout)
+
+	// 重试
+	case KeyConnectRetry, KeyConnectRetry.Name():
+		return convertDoSet[int](d, msg.Payload, SetConnectRetry)
 	case KeyRetry, KeyRetry.Name():
 		return convertDoSet[int](d, msg.Payload, SetRetry)
+
 	case KeyBalancer, KeyBalancer.Name():
 		return convertDoSet[string](d, msg.Payload, SetBalancer)
 	case KeyProtocol, KeyProtocol.Name():
 		return convertDoSet[string](d, msg.Payload, SetProtocol)
 	case KeyMaxResponseSize, KeyMaxResponseSize.Name():
 		return convertDoSet[int64](d, msg.Payload, SetMaxResponseSize)
-	case KeyHandshakeTimeout, KeyHandshakeTimeout.Name():
-		return convertDoSet[time.Duration](d, msg.Payload, SetHandshakeTimeout)
+	case KeyUseProxy, KeyUseProxy.Name():
+		return convertDoSet[string](d, msg.Payload, SetUseProxy)
+	case KeyWorkerCycle, KeyWorkerCycle.Name():
+		return convertDoSet[time.Duration](d, msg.Payload, SetWorkerCycle)
+
 	case KeyExtra, KeyExtra.Name():
 		return convertDoSet[KeyValue[string, any]](d, msg.Payload, SetExtraByKV)
 	}
