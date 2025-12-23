@@ -83,7 +83,7 @@ func (fc *File[K, V]) Has(ctx context.Context, key K) (bool, error) {
 
 func (fc *File[K, V]) Get(ctx context.Context, key K) (value V, err error) {
 	fc.readCnt.Add(1)
-	defer fc.autoGC()
+	defer fc.autoCompact()
 
 	select {
 	case <-ctx.Done():
@@ -113,7 +113,7 @@ func (fc *File[K, V]) doGet(key K) (value V, err error) {
 
 func (fc *File[K, V]) MGet(ctx context.Context, keys ...K) (map[K]V, error) {
 	fc.readCnt.Add(uint64(len(keys)))
-	defer fc.autoGC()
+	defer fc.autoCompact()
 
 	result := make(map[K]V, len(keys))
 	var errs []error
@@ -147,7 +147,7 @@ func (fc *File[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration
 	default:
 	}
 
-	defer fc.autoGC()
+	defer fc.autoCompact()
 	return fc.doSet(key, value, ttl)
 }
 
@@ -214,7 +214,7 @@ func (fc *File[K, V]) doSet(key K, value V, ttl time.Duration) error {
 
 func (fc *File[K, V]) MSet(ctx context.Context, values map[K]V, ttl time.Duration) error {
 	fc.writeCnt.Add(uint64(len(values)))
-	defer fc.autoGC()
+	defer fc.autoCompact()
 
 	var errs []error
 	for k, v := range values {
@@ -303,7 +303,7 @@ func (fc *File[K, V]) readByPath(fp string, needData bool) (expired bool, data [
 	return expired, data, err
 }
 
-func (fc *File[K, V]) autoGC() {
+func (fc *File[K, V]) autoCompact() {
 	lastGc := atomic.LoadInt64(&fc.gcTime)
 	newVal := time.Now().UnixNano()
 	if newVal-lastGc < int64(fc.getGC()) {
@@ -328,9 +328,17 @@ type fileCreateTime struct {
 	Ctime int64
 }
 
+func (fc *File[K, V]) Compact() int64 {
+	return fc.doCompact()
+}
+
 func (fc *File[K, V]) gc() {
+	fc.doCompact()
+}
+
+func (fc *File[K, V]) doCompact() int64 {
 	if !fc.gcRunning.CompareAndSwap(false, true) {
-		return
+		return 0
 	}
 	defer fc.gcRunning.Store(false)
 
@@ -338,6 +346,8 @@ func (fc *File[K, V]) gc() {
 	// 所以限制全局并发度为 1
 	zos.GlobalLock()
 	defer zos.GlobalUnlock()
+
+	var deleted int64
 
 	emptyDirs := make(map[string]bool, 10)
 	var fsc []fileCreateTime
@@ -365,6 +375,8 @@ func (fc *File[K, V]) gc() {
 		expired, info, err1 := fc.checkExpire(path)
 		if err1 != nil {
 			fc.fireError("checkExpire", path, err1)
+		} else if expired {
+			deleted++
 		}
 		if !expired && info != nil && fc.Capacity > 0 {
 			fsc = append(fsc, fileCreateTime{
@@ -386,6 +398,7 @@ func (fc *File[K, V]) gc() {
 	// 删除空目录，不需要往上递归，gc 方法每运行一次，会往上查找一层
 	for dir := range emptyDirs {
 		fc.osRemove(dir, "empty dir")
+		deleted++
 	}
 
 	if fc.Capacity > 0 && len(fsc) > fc.Capacity {
@@ -395,10 +408,12 @@ func (fc *File[K, V]) gc() {
 		logAttrs = append(logAttrs, xlog.Int("OutOfCapacity", len(fsc)-fc.Capacity))
 		for _, item := range fsc[:fc.Capacity] {
 			fc.osRemove(item.Path, "by cap")
+			deleted++
 		}
 	}
-	logAttrs = append(logAttrs, xlog.String("TotalCost", time.Since(start).String()))
+	logAttrs = append(logAttrs, xlog.String("TotalCost", time.Since(start).String()), xlog.Int64("deleted", deleted))
 	xlog.Default().Info(context.Background(), "FileCache.GC", logAttrs...)
+	return deleted
 }
 
 func (fc *File[K, V]) fireError(action string, fp string, err error) {

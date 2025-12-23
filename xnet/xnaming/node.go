@@ -62,6 +62,7 @@ func (nw *nodeProducer) genSign(nodes []xnet.AddrNode) string {
 	h := md5.New()
 	for _, node := range nodes {
 		_, _ = h.Write([]byte(node.Addr.String()))
+		_, _ = h.Write([]byte(node.HostPort))
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }

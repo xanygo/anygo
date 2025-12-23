@@ -22,6 +22,10 @@ func NewWorker(idc string, cycle time.Duration, primary []string, fallback []str
 	if len(primary) == 0 && len(fallback) == 0 {
 		return nil, errors.New("no items")
 	}
+	// 不需要动态解析的，则强制将周期调大
+	if !IsDynamicAddress(primary...) && !IsDynamicAddress(fallback...) {
+		cycle = 24 * time.Hour
+	}
 	return &Worker{
 		cycle:         cycle,
 		itemsPrimary:  primary,

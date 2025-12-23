@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/xanygo/anygo/ds/xbus"
 	"github.com/xanygo/anygo/xnet"
@@ -49,4 +50,14 @@ func Lookup(ctx context.Context, scheme string, idc string, name string, param u
 	default:
 	}
 	return n.Lookup(ctx, idc, name, param)
+}
+
+// IsDynamicAddress 是否是需要动态解析的地址列表
+func IsDynamicAddress(names ...string) bool {
+	for _, name := range names {
+		if strings.Contains(name, "://") {
+			return true
+		}
+	}
+	return false
 }

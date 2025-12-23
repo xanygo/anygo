@@ -5,6 +5,7 @@
 package xpp
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -106,7 +107,7 @@ func (it *Interval) Stop() {
 
 // Add 注册回调函数
 //
-//	应确保函数不会 panic。若 fn panic，会自动 recover 同时将 panic 信息丢弃。
+//	若 fn panic，会自动 recover 同时将 panic 信息丢弃。
 //	默认情况下，若 fn 运行时间 > 调度时间间隔，同一个 fn 在同一时间会有多个运行实例
 func (it *Interval) Add(fn func()) {
 	it.fns.Append(fn)
@@ -129,4 +130,50 @@ func (it *Interval) Running() bool {
 func (it *Interval) Done() <-chan struct{} {
 	it.initOnce()
 	return it.closed
+}
+
+// Every 定期运行 fn，会自动对 fn recover，返回取消方法
+func Every[T safely.FnType1](interval time.Duration, fn T) (stop func()) {
+	timer := time.NewTimer(interval)
+	done := make(chan struct{})
+
+	go func() {
+		defer timer.Stop()
+		for {
+			select {
+			case <-timer.C:
+				_ = safely.Run[T](fn)
+				timer.Reset(interval)
+			case <-done:
+				return
+			}
+		}
+	}()
+	return sync.OnceFunc(func() {
+		close(done)
+	})
+}
+
+// EveryCtx 定期运行 fn，会自动对 fn recover，返回取消方法
+func EveryCtx[T safely.FnType2](ctx context.Context, interval time.Duration, fn T) (stop func()) {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+
+	timer := time.NewTimer(interval)
+
+	go func() {
+		defer cancel()
+		defer timer.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-timer.C:
+				_ = safely.RunCtx[T](ctx, fn)
+				timer.Reset(interval)
+			}
+		}
+	}()
+
+	return cancel
 }
