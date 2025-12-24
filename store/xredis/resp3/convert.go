@@ -81,6 +81,21 @@ func ToStringSlice(e Element, err error) ([]string, error) {
 	return list, nil
 }
 
+func ToBool(result Element, err error) (bool, error) {
+	if err != nil {
+		if errors.Is(err, ErrNil) {
+			return false, nil
+		}
+		return false, err
+	}
+	switch dv := result.(type) {
+	case Boolean:
+		return dv.Bool(), nil
+	default:
+		return false, fmt.Errorf("%w: ToOkBool %#v(%T)", ErrInvalidReply, dv, dv)
+	}
+}
+
 func ToOkBool(result Element, err error) (bool, error) {
 	if err != nil {
 		if errors.Is(err, ErrNil) {
@@ -510,6 +525,26 @@ func toAnySlice(vv []Element) ([]any, error) {
 			return nil, err
 		}
 		vs = append(vs, value)
+	}
+	return vs, nil
+}
+
+func ToBoolSlice(e Element, err error) ([]bool, error) {
+	if err != nil {
+		return nil, err
+	}
+	arr, err := elementAsArray(e)
+	if err != nil {
+		return nil, err
+	}
+	vs := make([]bool, 0, len(arr))
+	for idx, item := range arr {
+		switch tv := item.(type) {
+		case Boolean:
+			vs = append(vs, tv.Bool())
+		default:
+			return nil, fmt.Errorf("element[%d] not bool: %#v", idx, item)
+		}
 	}
 	return vs, nil
 }

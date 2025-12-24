@@ -358,3 +358,11 @@ func Rand[S ~[]E, E any](s S) (e E) {
 	n := rand.IntN(len(s))
 	return s[n]
 }
+
+func Append[E any](arr []any, items ...E) []any {
+	arr = slices.Grow(arr, len(items))
+	for _, item := range items {
+		arr = append(arr, item)
+	}
+	return arr
+}

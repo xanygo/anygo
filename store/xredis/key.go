@@ -59,6 +59,9 @@ func (c *Client) PTTL(ctx context.Context, key string) (time.Duration, error) {
 }
 
 func (c *Client) doKeysIntResult(ctx context.Context, method string, keys ...string) (int, error) {
+	if len(keys) == 0 {
+		return 0, errNoKeys
+	}
 	args := make([]any, 1, len(keys)+1)
 	args[0] = method
 	for _, key := range keys {

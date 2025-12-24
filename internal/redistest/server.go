@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 )
 
@@ -19,6 +20,9 @@ const (
 	testURIName = "anygo-ut-redis"
 	utRdsCmd    = "anygo-redis-do"
 )
+
+// 存放 redis modules 的可能的路径
+var moduleDirs = []string{"/usr/lib/redis/modules/"}
 
 func NewServer() (*Server, error) {
 	srv := &Server{}
@@ -103,6 +107,14 @@ func (srv *Server) startCmd() error {
 		"--bind", host,
 		"--port", port,
 	}
+
+	for _, p := range moduleDirs {
+		ms, _ := filepath.Glob(filepath.Join(p, "*.so"))
+		for _, m := range ms {
+			args = append(args, "--loadmodule", m)
+		}
+	}
+
 	cmd := exec.CommandContext(srv.rootCtx, serverCmd, args...)
 	log.Println("exec:", cmd.String())
 	done := make(chan bool)

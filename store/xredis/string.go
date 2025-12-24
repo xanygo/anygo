@@ -111,6 +111,9 @@ func (c *Client) DecrBy(ctx context.Context, key string, n int64) (int64, error)
 
 // MGet 批量读取，若 key 不存在，在返回的 map 里也没有对应的 key
 func (c *Client) MGet(ctx context.Context, keys ...string) (map[string]string, error) {
+	if len(keys) == 0 {
+		return nil, errNoKeys
+	}
 	args := make([]any, len(keys)+1)
 	args[0] = "MGET"
 	for i, key := range keys {
@@ -122,6 +125,9 @@ func (c *Client) MGet(ctx context.Context, keys ...string) (map[string]string, e
 }
 
 func (c *Client) MSet(ctx context.Context, kv map[string]string) error {
+	if len(kv) == 0 {
+		return errNoValues
+	}
 	args := make([]any, 1, 2*len(kv)+1)
 	args[0] = "MSET"
 	for k, v := range kv {
@@ -136,6 +142,9 @@ func (c *Client) MSet(ctx context.Context, kv map[string]string) error {
 }
 
 func (c *Client) MSetNX(ctx context.Context, kv map[string]string) (int, error) {
+	if len(kv) == 0 {
+		return 0, errNoValues
+	}
 	args := make([]any, 1, 2*len(kv)+1)
 	args[0] = "MSETNX"
 	for k, v := range kv {

@@ -18,6 +18,7 @@ import (
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/store/xredis/resp3"
 	"github.com/xanygo/anygo/xattr"
+	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xrpc"
@@ -27,7 +28,14 @@ import (
 
 const Protocol = "RESP3"
 
-var ErrNil = resp3.ErrNil
+var (
+	// ErrNil redis 中不存在此 key
+	ErrNil = resp3.ErrNil
+
+	errNoKeys    = fmt.Errorf("%w: no keys", xerror.InvalidParam)
+	errNoValues  = fmt.Errorf("%w: no values", xerror.InvalidParam)
+	errNoMembers = fmt.Errorf("%w: no members", xerror.InvalidParam)
+)
 
 func NewClient(service any) *Client {
 	c := &Client{

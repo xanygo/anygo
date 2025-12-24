@@ -16,6 +16,9 @@ import (
 // 如果键不存在，会先创建一个新集合，再添加指定成员。
 // 如果键对应的值不是集合类型，则返回错误。
 func (c *Client) SAdd(ctx context.Context, key string, members ...string) (int64, error) {
+	if len(members) == 0 {
+		return 0, errNoMembers
+	}
 	return c.doKeyValuesIntResult(ctx, "SADD", key, members...)
 }
 
@@ -28,6 +31,9 @@ func (c *Client) SCard(ctx context.Context, key string) (int64, error) {
 
 // SDiff 返回第一个集合与所有后续集合的差集所得到的成员
 func (c *Client) SDiff(ctx context.Context, key string, keys ...string) ([]string, error) {
+	if len(keys) == 0 {
+		return nil, errNoKeys
+	}
 	args := make([]any, 2, 2+len(keys))
 	args[0] = "SDIFF"
 	args[1] = key
@@ -42,6 +48,9 @@ func (c *Client) SDiff(ctx context.Context, key string, keys ...string) ([]strin
 // SDiffStore 该命令等同于 SDIFF，但不是返回结果集，而是将结果存储到指定的目标键中。
 // 如果目标键已存在，则会被覆盖
 func (c *Client) SDiffStore(ctx context.Context, destination string, key string, keys ...string) (int64, error) {
+	if len(keys) == 0 {
+		return 0, errNoKeys
+	}
 	args := make([]any, 3, 3+len(keys))
 	args[0] = "SDIFFSTORE"
 	args[1] = destination
@@ -56,6 +65,9 @@ func (c *Client) SDiffStore(ctx context.Context, destination string, key string,
 
 // SInter 返回所有给定集合的交集所得到的成员
 func (c *Client) SInter(ctx context.Context, key string, keys ...string) ([]string, error) {
+	if len(keys) == 0 {
+		return nil, errNoKeys
+	}
 	args := make([]any, 2, 2+len(keys))
 	args[0] = "SINTER"
 	args[1] = key
@@ -91,6 +103,9 @@ func (c *Client) SMembers(ctx context.Context, key string) ([]string, error) {
 //	若 key 类型错误，或者其他错误，会返回 false,error
 //	若 member 存在于 Set 中，返回 true,nil
 func (c *Client) SMIsMember(ctx context.Context, key string, members ...string) ([]bool, error) {
+	if len(members) == 0 {
+		return nil, errNoMembers
+	}
 	args := make([]any, 2, 2+len(members))
 	args[0] = "SMISMEMBER"
 	args[1] = key
@@ -154,6 +169,9 @@ func (c *Client) SRandMember(ctx context.Context, key string, count int) ([]stri
 //	若 key 或者 member 不存在，会返回 0
 //	若对应的值不是集合类型，则返回错误
 func (c *Client) SRem(ctx context.Context, key string, members ...string) (int64, error) {
+	if len(members) == 0 {
+		return 0, errNoMembers
+	}
 	args := make([]any, 2, 2+len(members))
 	args[0] = "SREM"
 	args[1] = key
@@ -167,6 +185,9 @@ func (c *Client) SRem(ctx context.Context, key string, members ...string) (int64
 
 // SUnion 返回所有给定集合的并集所得到的成员
 func (c *Client) SUnion(ctx context.Context, key string, keys ...string) ([]string, error) {
+	if len(keys) == 0 {
+		return nil, errNoKeys
+	}
 	args := make([]any, 2, 2+len(keys))
 	args[0] = "SREM"
 	args[1] = key
@@ -181,6 +202,9 @@ func (c *Client) SUnion(ctx context.Context, key string, keys ...string) ([]stri
 // SUnionStore 该命令等同于 SUNION，但不是返回结果集，而是将结果存储到指定的目标键中。
 // 如果目标键已存在，则会被覆盖。
 func (c *Client) SUnionStore(ctx context.Context, destination string, key string, keys ...string) ([]string, error) {
+	if len(keys) == 0 {
+		return nil, errNoKeys
+	}
 	args := make([]any, 3, 3+len(keys))
 	args[0] = "SUNIONSTORE"
 	args[1] = destination

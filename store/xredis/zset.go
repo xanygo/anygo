@@ -62,6 +62,9 @@ func (c *Client) ZAddOpt(ctx context.Context, key string, opt []string, score fl
 
 // ZAddMap 批量新增、更新有序集合
 func (c *Client) ZAddMap(ctx context.Context, key string, members map[string]float64) (int64, error) {
+	if len(members) == 0 {
+		return 0, errNoMembers
+	}
 	args := make([]any, 2, len(members)*2+2)
 	args[0] = "ZADD"
 	args[1] = key
@@ -74,6 +77,9 @@ func (c *Client) ZAddMap(ctx context.Context, key string, members map[string]flo
 }
 
 func (c *Client) ZAddMapOpt(ctx context.Context, key string, opt []string, members map[string]float64) (int64, error) {
+	if len(members) == 0 {
+		return 0, errNoMembers
+	}
 	args := make([]any, 2, len(members)*2+2)
 	args[0] = "ZADD"
 	args[1] = key
@@ -103,6 +109,9 @@ func (c *Client) ZCount(ctx context.Context, key string, min float64, max float6
 }
 
 func (c *Client) ZDiff(ctx context.Context, key string, keys ...string) ([]string, error) {
+	if len(keys) == 0 {
+		return nil, errNoKeys
+	}
 	args := make([]any, 3, len(key)+3)
 	args[0] = "ZDIFF"
 	args[1] = 1 + len(keys)
@@ -116,6 +125,9 @@ func (c *Client) ZDiff(ctx context.Context, key string, keys ...string) ([]strin
 }
 
 func (c *Client) ZDiffWithScores(ctx context.Context, key string, keys ...string) (map[string]float64, error) {
+	if len(keys) == 0 {
+		return nil, errNoKeys
+	}
 	args := make([]any, 3, len(key)+4)
 	args[0] = "ZDIFF"
 	args[1] = 1 + len(keys)
@@ -133,6 +145,9 @@ func (c *Client) ZDiffWithScores(ctx context.Context, key string, keys ...string
 //
 // 不存在的键会被视为空集合。 如果目标键已存在，则会被覆盖。
 func (c *Client) ZDiffStore(ctx context.Context, destination string, key string, keys ...string) (int, error) {
+	if len(keys) == 0 {
+		return 0, errNoKeys
+	}
 	args := make([]any, 4, 4+len(keys))
 	args[0] = "ZDIFFSTORE"
 	args[1] = destination
@@ -160,6 +175,9 @@ func (c *Client) ZIncrBy(ctx context.Context, key string, increment float64, mem
 
 // ZInter 计算由指定键给出的多个有序集合的交集
 func (c *Client) ZInter(ctx context.Context, key string, keys ...string) ([]string, error) {
+	if len(keys) == 0 {
+		return nil, errNoKeys
+	}
 	args := make([]any, 3, 3+len(keys))
 	args[0] = "ZINTER"
 	args[1] = len(keys) + 1
@@ -173,6 +191,9 @@ func (c *Client) ZInter(ctx context.Context, key string, keys ...string) ([]stri
 }
 
 func (c *Client) ZInterWithScores(ctx context.Context, key string, keys ...string) ([]Z, error) {
+	if len(keys) == 0 {
+		return nil, errNoKeys
+	}
 	args := make([]any, 3, 4+len(keys))
 	args[0] = "ZINTER"
 	args[1] = len(keys) + 1
@@ -188,6 +209,9 @@ func (c *Client) ZInterWithScores(ctx context.Context, key string, keys ...strin
 
 // ZInterStore 计算由指定键给出的多个有序集合的交集,并将结果存储到目标键中
 func (c *Client) ZInterStore(ctx context.Context, destination string, key string, keys ...string) (int64, error) {
+	if len(keys) == 0 {
+		return 0, errNoKeys
+	}
 	args := make([]any, 4, 4+len(keys))
 	args[0] = "ZINTERSTORE"
 	args[1] = destination

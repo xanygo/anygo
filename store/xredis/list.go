@@ -12,6 +12,9 @@ import (
 )
 
 func (c *Client) doKeyValuesIntResult(ctx context.Context, method string, key string, values ...string) (int64, error) {
+	if len(values) == 0 {
+		return 0, errNoValues
+	}
 	args := make([]any, 2, len(values)+2)
 	args[0] = method
 	args[1] = key
@@ -145,6 +148,9 @@ func (c *Client) LTrim(ctx context.Context, key string, start int64, stop int64)
 }
 
 func (c *Client) bxPop(ctx context.Context, method string, timeout time.Duration, keys ...string) ([]string, error) {
+	if len(keys) == 0 {
+		return nil, errNoKeys
+	}
 	args := make([]any, 1, len(keys)+2)
 	args[0] = method
 	for _, key := range keys {
