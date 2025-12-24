@@ -18,6 +18,9 @@ func (c *Client) HSet(ctx context.Context, key string, field, value string) (int
 }
 
 func (c *Client) HSetMap(ctx context.Context, key string, data map[string]string) (int, error) {
+	if len(data) == 0 {
+		return 0, errNoValues
+	}
 	args := make([]any, 2, 2*len(data)+2)
 	args[0] = "HSET"
 	args[1] = key
@@ -45,6 +48,9 @@ func (c *Client) HSetMap(ctx context.Context, key string, data map[string]string
 // 2. 全部 field 写入，返回 true,nil
 // 3. 发生错误，返回  false,error
 func (c *Client) HSetEX(ctx context.Context, key string, opt string, ttl time.Duration, data map[string]string) (bool, error) {
+	if len(data) == 0 {
+		return false, errNoValues
+	}
 	args := make([]any, 2, len(data)+2)
 	args[0] = "HSETEX"
 	args[1] = key
@@ -82,12 +88,20 @@ func (c *Client) HSetNX(ctx context.Context, key string, field string, value str
 	return resp3.ToIntBool(resp.result, resp.err, 1)
 }
 
+// HStrLen 返回哈希表中指定字段的字符串值的长度。
+//
+// 参数 key 为哈希表键，field 为要查询的字段。
+// 对应 Redis 的 HSTRLEN 命令。
 func (c *Client) HStrLen(ctx context.Context, key string, field string) (int64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "HSTRLEN", key, field)
 	resp := c.do(ctx, cmd)
 	return resp3.ToInt64(resp.result, resp.err)
 }
 
+// HDel 删除哈希表中指定的一个或多个字段。
+//
+// 参数 key 为哈希表键，fields 为要删除的字段列表。
+// 对应 Redis 的 HDEL 命令。
 func (c *Client) HDel(ctx context.Context, key string, fields ...string) (int64, error) {
 	args := make([]any, 2, len(fields)+2)
 	args[0] = "HDEL"
@@ -100,6 +114,10 @@ func (c *Client) HDel(ctx context.Context, key string, fields ...string) (int64,
 	return resp3.ToInt64(resp.result, resp.err)
 }
 
+// HExists 检查哈希表中指定字段是否存在。
+//
+// 参数 key 为哈希表键，field 为要检查的字段。
+// 对应 Redis 的 HEXISTS 命令。
 func (c *Client) HExists(ctx context.Context, key string, field string) (bool, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "HEXISTS", key, field)
 	resp := c.do(ctx, cmd)
@@ -142,7 +160,19 @@ func (c *Client) HGetDel(ctx context.Context, key string, fields ...string) (map
 	return resp3.ToStringMapWithKeys(resp.result, resp.err, fields)
 }
 
+// HGetEx 获取哈希表中指定字段的值，并可选择更新键的过期时间。
+//
+// 参数 key 为哈希表键，fields 为要获取的字段列表，必填。
+// 参数 ttl 可指定过期时间：
+//   - ttl > 0：将键的过期时间设置为指定毫秒数（PX）。
+//   - ttl == -1：移除键的过期时间（PERSIST）。
+//
+// 对应 Redis 的 HGETEX 命令。
+// 返回一个 map，包含字段及其对应的值；如果字段不存在，对应值为空字符串。
 func (c *Client) HGetEx(ctx context.Context, key string, ttl time.Duration, fields ...string) (map[string]string, error) {
+	if len(fields) == 0 {
+		return nil, errNoFields
+	}
 	args := make([]any, 2, len(fields)+4)
 	args[0] = "HGETEX"
 	args[1] = key
@@ -175,24 +205,41 @@ func (c *Client) HPersist(ctx context.Context, key string, fields ...string) (in
 	return resp3.ToInt(resp.result, resp.err)
 }
 
+// HIncrBy 将哈希表中指定字段的整数值增加指定增量。
+//
+// 参数 key 为哈希表键，field 为要增加的字段，increment 为增量值（可为负数）。
+// 对应 Redis 的 HINCRBY 命令。
 func (c *Client) HIncrBy(ctx context.Context, key string, field string, increment int) (int64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "HINCRBY", key, field, increment)
 	resp := c.do(ctx, cmd)
 	return resp3.ToInt64(resp.result, resp.err)
 }
 
+// HIncrFloat 将哈希表中指定字段的浮点数值增加指定增量。
+//
+// 参数 key 为哈希表键，field 为要增加的字段，increment 为浮点数增量（可为负数）。
+// 对应 Redis 的 HINCRBYFLOAT 命令。
 func (c *Client) HIncrFloat(ctx context.Context, key string, field string, increment float64) (float64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeBulkString, "HINCRBYFLOAT", key, field, increment)
 	resp := c.do(ctx, cmd)
 	return resp3.ToFloat64(resp.result, resp.err)
 }
 
+// HKeys 返回哈希表中所有字段的名称。
+//
+// 参数 key 为哈希表键。
+// 对应 Redis 的 HKEYS 命令。
 func (c *Client) HKeys(ctx context.Context, key string) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "HKEYS", key)
 	resp := c.do(ctx, cmd)
 	return resp3.ToStringSlice(resp.result, resp.err)
 }
 
+// HLen 返回哈希表中字段的数量。
+//
+// 参数 key 为哈希表键。
+// 对应 Redis 的 HLEN 命令。
+// 如果哈希表为空或 key 不存在，返回 0。
 func (c *Client) HLen(ctx context.Context, key string) (int64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "HLEN", key)
 	resp := c.do(ctx, cmd)
@@ -204,6 +251,9 @@ func (c *Client) HLen(ctx context.Context, key string) (int64, error) {
 //	若 key 不存在，会返回 nil,nil
 //	若 field 不存在，则在返回的 map 中也不存在对应的 key
 func (c *Client) HMGet(ctx context.Context, key string, fields ...string) (map[string]string, error) {
+	if len(fields) == 0 {
+		return nil, errNoFields
+	}
 	args := make([]any, 2, len(fields)+2)
 	args[0] = "HMGET"
 	args[1] = key
@@ -216,6 +266,9 @@ func (c *Client) HMGet(ctx context.Context, key string, fields ...string) (map[s
 }
 
 func (c *Client) HMSet(ctx context.Context, key string, data map[string]string) error {
+	if len(data) == 0 {
+		return errNoValues
+	}
 	args := make([]any, 2, len(data)+2)
 	args[0] = "HMSET"
 	args[1] = key
@@ -227,7 +280,19 @@ func (c *Client) HMSet(ctx context.Context, key string, data map[string]string) 
 	return resp3.ToOkStatus(resp.result, resp.err)
 }
 
+// HPTTL 返回哈希表中一个或多个字段的剩余过期时间（TTL）。
+//
+// 参数 key 为哈希表键，fields 为要查询的字段列表。
+// 对应 Redis 的 HPTTL 命令。
+// 返回一个 time.Duration 切片，表示每个字段的剩余过期时间（毫秒）。
+// 返回值说明：
+//   - 正数：字段剩余过期时间（秒）
+//   - -1：字段存在但未设置过期时间
+//   - -2：字段不存在或 key 不存在
 func (c *Client) HPTTL(ctx context.Context, key string, fields ...string) ([]time.Duration, error) {
+	if len(fields) == 0 {
+		return nil, errNoFields
+	}
 	args := make([]any, 4, len(fields)+2)
 	args[0] = "HPTTL"
 	args[1] = key
@@ -253,7 +318,19 @@ func (c *Client) HPTTL(ctx context.Context, key string, fields ...string) ([]tim
 	return ret, nil
 }
 
+// HTTL 返回哈希表中一个或多个字段的剩余过期时间（TTL），单位为秒。
+//
+// 参数 key 为哈希表键，fields 为要查询的字段列表。
+// 对应 Redis 的 HTTL 命令。
+// 返回一个 time.Duration 切片，表示每个字段的剩余过期时间（秒）。
+// 返回值说明：
+//   - 正数：字段剩余过期时间（秒）
+//   - -1：字段存在但未设置过期时间
+//   - -2：字段不存在或 key 不存在
 func (c *Client) HTTL(ctx context.Context, key string, fields ...string) ([]time.Duration, error) {
+	if len(fields) == 0 {
+		return nil, errNoFields
+	}
 	args := make([]any, 4, len(fields)+2)
 	args[0] = "HTTL"
 	args[1] = key
@@ -279,6 +356,10 @@ func (c *Client) HTTL(ctx context.Context, key string, fields ...string) ([]time
 	return ret, nil
 }
 
+// HVals 返回哈希表中所有字段的值。
+//
+// 参数 key 为哈希表键。
+// 对应 Redis 的 HVALS 命令。
 func (c *Client) HVals(ctx context.Context, key string) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "HVALS", key)
 	resp := c.do(ctx, cmd)

@@ -76,6 +76,8 @@ func (c *Client) ZAddMap(ctx context.Context, key string, members map[string]flo
 	return resp3.ToInt64(resp.result, resp.err)
 }
 
+// ZAddMapOpt 批量新增、更新有序集合, ZAddMap 的增强版本，支持 Option：
+// [NX | XX] [GT | LT] [CH] [INCR], 具体含义详见 ZAddOpt
 func (c *Client) ZAddMapOpt(ctx context.Context, key string, opt []string, members map[string]float64) (int64, error) {
 	if len(members) == 0 {
 		return 0, errNoMembers
@@ -108,6 +110,9 @@ func (c *Client) ZCount(ctx context.Context, key string, min float64, max float6
 	return resp3.ToInt64(resp.result, resp.err)
 }
 
+// ZDiff 计算有序集合的差集，返回只存在于 key 中、但不存在于 keys 中的成员。
+//
+// 当未提供 keys 参数时返回错误
 func (c *Client) ZDiff(ctx context.Context, key string, keys ...string) ([]string, error) {
 	if len(keys) == 0 {
 		return nil, errNoKeys
@@ -124,6 +129,11 @@ func (c *Client) ZDiff(ctx context.Context, key string, keys ...string) ([]strin
 	return resp3.ToStringSlice(resp.result, resp.err)
 }
 
+// ZDiffWithScores 计算有序集合的差集，并返回成员及其对应的 score。
+//
+// 该方法对应 Redis 的 ZDIFF 命令（WITHSCORES）。
+// 返回结果仅包含存在于 key 中、但不存在于 keys 中的成员。
+// 当未提供 keys 参数时返回错误。
 func (c *Client) ZDiffWithScores(ctx context.Context, key string, keys ...string) (map[string]float64, error) {
 	if len(keys) == 0 {
 		return nil, errNoKeys
@@ -175,13 +185,10 @@ func (c *Client) ZIncrBy(ctx context.Context, key string, increment float64, mem
 
 // ZInter 计算由指定键给出的多个有序集合的交集
 func (c *Client) ZInter(ctx context.Context, key string, keys ...string) ([]string, error) {
-	if len(keys) == 0 {
-		return nil, errNoKeys
-	}
 	args := make([]any, 3, 3+len(keys))
 	args[0] = "ZINTER"
 	args[1] = len(keys) + 1
-	args[1] = key
+	args[2] = key
 	for _, k := range keys {
 		args = append(args, k)
 	}
@@ -190,14 +197,26 @@ func (c *Client) ZInter(ctx context.Context, key string, keys ...string) ([]stri
 	return resp3.ToStringSlice(resp.result, resp.err)
 }
 
+// ZInterWithScores 计算多个有序集合（Sorted Set）的交集，并返回结果成员及其分值（score）。
+//
+// 该方法等价于执行 Redis 命令：
+//
+//	ZINTER key key1 key2 ... WITHSCORES
+//
+// 参数说明：
+//   - key：第一个参与交集运算的有序集合键
+//   - keys：其余参与交集运算的有序集合键
+//
+// 只有同时存在于所有指定有序集合中的成员才会出现在结果中。
+// 返回结果按 score 升序排列。
+//
+// 如果指定的 key 不存在，则返回空结果。
+// 当命令执行失败或返回结果解析失败时，返回错误。
 func (c *Client) ZInterWithScores(ctx context.Context, key string, keys ...string) ([]Z, error) {
-	if len(keys) == 0 {
-		return nil, errNoKeys
-	}
 	args := make([]any, 3, 4+len(keys))
 	args[0] = "ZINTER"
 	args[1] = len(keys) + 1
-	args[1] = key
+	args[2] = key
 	for _, k := range keys {
 		args = append(args, k)
 	}
@@ -209,9 +228,6 @@ func (c *Client) ZInterWithScores(ctx context.Context, key string, keys ...strin
 
 // ZInterStore 计算由指定键给出的多个有序集合的交集,并将结果存储到目标键中
 func (c *Client) ZInterStore(ctx context.Context, destination string, key string, keys ...string) (int64, error) {
-	if len(keys) == 0 {
-		return 0, errNoKeys
-	}
 	args := make([]any, 4, 4+len(keys))
 	args[0] = "ZINTERSTORE"
 	args[1] = destination
@@ -273,6 +289,9 @@ func (c *Client) ZMPop(ctx context.Context, key string, keys []string, min bool,
 //
 // 对于不存在于有序集合中的成员，返回 nil。
 func (c *Client) ZMScore(ctx context.Context, key string, members ...string) (map[string]float64, error) {
+	if len(members) == 0 {
+		return nil, errNoMembers
+	}
 	args := make([]any, 2, 2+len(members))
 	args[0] = "ZMSCORE"
 	args[1] = key
@@ -284,6 +303,11 @@ func (c *Client) ZMScore(ctx context.Context, key string, members ...string) (ma
 	return resp3.ToMapFloat64WithKeys(resp.result, resp.err, members)
 }
 
+// ZPopMax 从有序集合中弹出分值最大的成员。
+// 返回值包含成员及其对应的 score，按分值从大到小排序。
+//
+// 参数 count 可指定弹出成员的数量，若 count <= 0，则只弹出一个成员。
+// 对应 Redis 的 ZPOPMAX 命令。
 func (c *Client) ZPopMax(ctx context.Context, key string, count int) ([]Z, error) {
 	args := make([]any, 2, 4)
 	args[0] = "ZPOPMAX"
@@ -297,6 +321,11 @@ func (c *Client) ZPopMax(ctx context.Context, key string, count int) ([]Z, error
 	return resp3.ToZSlice(resp.result, resp.err)
 }
 
+// ZPopMin 从有序集合中弹出分值最小的成员。
+// 返回值包含成员及其对应的 score，按分值从小到大排序。
+//
+// 参数 count 可指定弹出成员的数量，若 count <= 0，则只弹出一个成员。
+// 对应 Redis 的 ZPOPMIN 命令。
 func (c *Client) ZPopMin(ctx context.Context, key string, count int) ([]Z, error) {
 	args := make([]any, 2, 4)
 	args[0] = "ZPOPMIN"
@@ -310,18 +339,31 @@ func (c *Client) ZPopMin(ctx context.Context, key string, count int) ([]Z, error
 	return resp3.ToZSlice(resp.result, resp.err)
 }
 
+// ZRandMember 从有序集合中随机返回一个成员（不包含 score）。
+//
+// 对应 Redis 的 ZRANDMEMBER 命令。
+// 如果集合为空或 key 不存在，返回空字符串。
 func (c *Client) ZRandMember(ctx context.Context, key string) (string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANDMEMBER", key)
 	resp := c.do(ctx, cmd)
 	return resp3.ToString(resp.result, resp.err)
 }
 
+// ZRandMemberN 从有序集合中随机返回指定数量的成员（不包含 score）。
+//
+// 参数 count 指定返回的成员数量。
+// 对应 Redis 的 ZRANDMEMBER 命令，如果集合为空或 key 不存在，返回空切片。
 func (c *Client) ZRandMemberN(ctx context.Context, key string, count int) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANDMEMBER", key, count)
 	resp := c.do(ctx, cmd)
 	return resp3.ToStringSlice(resp.result, resp.err)
 }
 
+// ZRandMemberWithScores 从有序集合中随机返回指定数量的成员及其 score。
+//
+// 参数 count 指定返回的成员数量。
+// 对应 Redis 的 ZRANDMEMBER 命令（WITHSCORES）。
+// 返回结果包含成员及其分值，如果集合为空或 key 不存在，返回空切片。
 func (c *Client) ZRandMemberWithScores(ctx context.Context, key string, count int) ([]Z, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANDMEMBER", key, count, "WITHSCORES")
 	resp := c.do(ctx, cmd)
@@ -335,66 +377,110 @@ func (c *Client) ZRange(ctx context.Context, key string, start int64, stop int64
 	return resp3.ToStringSlice(resp.result, resp.err)
 }
 
+// ZRangeRev 返回有序集合中指定区间的成员（按 score 降序排列）。
+//
+// 参数 start 和 stop 指定区间索引（包含 start 和 stop）。
+// 对应 Redis 的 ZRANGE 命令（REV）。
 func (c *Client) ZRangeRev(ctx context.Context, key string, start int64, stop int64) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "REV")
 	resp := c.do(ctx, cmd)
 	return resp3.ToStringSlice(resp.result, resp.err)
 }
 
+// ZRangeByScore 返回有序集合中指定分值区间的成员（按分值升序排列）。
+//
+// 参数 start 和 stop 指定分值区间（包含 start 和 stop）。
+// 对应 Redis 的 ZRANGE 命令（BYSCORE）。
 func (c *Client) ZRangeByScore(ctx context.Context, key string, start int64, stop int64) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "BYSCORE")
 	resp := c.do(ctx, cmd)
 	return resp3.ToStringSlice(resp.result, resp.err)
 }
 
+// ZRangeRevByScore 返回有序集合中指定分值区间的成员（按分值降序排列）。
+//
+// 参数 start 和 stop 指定分值区间（包含 start 和 stop）。
+// 对应 Redis 的 ZRANGE 命令（BYSCORE REV）。
 func (c *Client) ZRangeRevByScore(ctx context.Context, key string, start int64, stop int64) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "BYSCORE", "REV")
 	resp := c.do(ctx, cmd)
 	return resp3.ToStringSlice(resp.result, resp.err)
 }
 
+// ZRangeByLex 返回有序集合中按字典序（Lexicographical order）指定区间的成员。
+//
+// 参数 start 和 stop 指定字典序区间（包含 start 和 stop）。
+// 对应 Redis 的 ZRANGE 命令（BYLEX）。
 func (c *Client) ZRangeByLex(ctx context.Context, key string, start int64, stop int64) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "BYLEX")
 	resp := c.do(ctx, cmd)
 	return resp3.ToStringSlice(resp.result, resp.err)
 }
 
+// ZRangeRevByLex 返回有序集合中按字典序（Lexicographical order）指定区间的成员，按字典序降序排列。
+//
+// 参数 start 和 stop 指定字典序区间（包含 start 和 stop）。
+// 对应 Redis 的 ZRANGE 命令（BYLEX REV）。
 func (c *Client) ZRangeRevByLex(ctx context.Context, key string, start int64, stop int64) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "BYLEX", "REV")
 	resp := c.do(ctx, cmd)
 	return resp3.ToStringSlice(resp.result, resp.err)
 }
 
+// ZRangeWithScore 返回有序集合中指定区间的成员及其分值（score）。
+//
+// 参数 start 和 stop 指定成员索引区间（包含 start 和 stop）。
+// 对应 Redis 的 ZRANGE 命令（WITHSCORES）。
 func (c *Client) ZRangeWithScore(ctx context.Context, key string, start int64, stop int64) ([]Z, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "WITHSCORES")
 	resp := c.do(ctx, cmd)
 	return resp3.ToZSlice(resp.result, resp.err)
 }
 
+// ZRangeRevWithScore 返回有序集合中指定区间的成员及其分值（score），按分值降序排列。
+//
+// 参数 start 和 stop 指定成员索引区间（包含 start 和 stop）。
+// 对应 Redis 的 ZRANGE 命令（REV WITHSCORES）。
 func (c *Client) ZRangeRevWithScore(ctx context.Context, key string, start int64, stop int64) ([]Z, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "REV", "WITHSCORES")
 	resp := c.do(ctx, cmd)
 	return resp3.ToZSlice(resp.result, resp.err)
 }
 
+// ZRangeByScoreWithScore 返回有序集合中指定分值区间的成员及其分值（score），按分值升序排列。
+//
+// 参数 start 和 stop 指定分值区间（包含 start 和 stop）。
+// 对应 Redis 的 ZRANGE 命令（BYSCORE WITHSCORES）。
 func (c *Client) ZRangeByScoreWithScore(ctx context.Context, key string, start int64, stop int64) ([]Z, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "BYSCORE", "WITHSCORES")
 	resp := c.do(ctx, cmd)
 	return resp3.ToZSlice(resp.result, resp.err)
 }
 
+// ZRangeRevByScoreWithScore 返回有序集合中指定分值区间的成员及其分值（score），按分值降序排列。
+//
+// 参数 start 和 stop 指定分值区间（包含 start 和 stop）。
+// 对应 Redis 的 ZRANGE 命令（BYSCORE REV WITHSCORES）。
 func (c *Client) ZRangeRevByScoreWithScore(ctx context.Context, key string, start int64, stop int64) ([]Z, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "BYSCORE", "REV", "WITHSCORES")
 	resp := c.do(ctx, cmd)
 	return resp3.ToZSlice(resp.result, resp.err)
 }
 
+// ZRangeByLexWithScore 返回有序集合中按字典序（Lexicographical order）指定区间的成员及其分值（score）。
+//
+// 参数 start 和 stop 指定字典序区间（包含 start 和 stop）。
+// 对应 Redis 的 ZRANGE 命令（BYLEX WITHSCORES）。
 func (c *Client) ZRangeByLexWithScore(ctx context.Context, key string, start int64, stop int64) ([]Z, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "BYLEX", "WITHSCORES")
 	resp := c.do(ctx, cmd)
 	return resp3.ToZSlice(resp.result, resp.err)
 }
 
+// ZRangeRevByLexWithScore 返回有序集合中按字典序（Lexicographical order）指定区间的成员及其分值（score），按字典序降序排列。
+//
+// 参数 start 和 stop 指定字典序区间（包含 start 和 stop）。
+// 对应 Redis 的 ZRANGE 命令（BYLEX REV WITHSCORES）。
 func (c *Client) ZRangeRevByLexWithScore(ctx context.Context, key string, start int64, stop int64) ([]Z, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "BYLEX", "REV", "WITHSCORES")
 	resp := c.do(ctx, cmd)
@@ -410,12 +496,21 @@ func (c *Client) ZRank(ctx context.Context, key string, member string) (int64, e
 	return resp3.ToInt64(resp.result, resp.err)
 }
 
+// ZRevRank 返回有序集合中指定成员的排名（按分值降序排列，0 为最高分）。
+//
+// 参数 key 为有序集合的键，member 为要查询的成员。
+// 对应 Redis 的 ZREVRANK 命令。
 func (c *Client) ZRevRank(ctx context.Context, key string, member string) (int64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "ZREVRANK", key, member)
 	resp := c.do(ctx, cmd)
 	return resp3.ToInt64(resp.result, resp.err)
 }
 
+// ZRankWithScore 返回有序集合中指定成员的排名和分值（score）。
+//
+// 排名按分值升序计算，0 表示分值最高的成员。
+// 参数 key 为有序集合键，member 为要查询的成员。
+// 对应 Redis 的 ZRANK 命令（WITHSCORES）。
 func (c *Client) ZRankWithScore(ctx context.Context, key string, member string) (int64, float64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANK", key, member, "WITHSCORE")
 	resp := c.do(ctx, cmd)
@@ -485,6 +580,10 @@ func (c *Client) ZRemRangeByRank(ctx context.Context, key string, start int64, s
 	return resp3.ToInt64(resp.result, resp.err)
 }
 
+// ZRemRangeByScore 删除有序集合中指定分值区间的成员。
+//
+// 参数 key 为有序集合键，min 和 max 指定分值区间（包含 min 和 max）。
+// 对应 Redis 的 ZREMRANGEBYSCORE 命令。
 func (c *Client) ZRemRangeByScore(ctx context.Context, key string, min string, max string) (int64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "ZREMRANGEBYSCORE", key, min, max)
 	resp := c.do(ctx, cmd)

@@ -31,9 +31,6 @@ func (c *Client) SCard(ctx context.Context, key string) (int64, error) {
 
 // SDiff 返回第一个集合与所有后续集合的差集所得到的成员
 func (c *Client) SDiff(ctx context.Context, key string, keys ...string) ([]string, error) {
-	if len(keys) == 0 {
-		return nil, errNoKeys
-	}
 	args := make([]any, 2, 2+len(keys))
 	args[0] = "SDIFF"
 	args[1] = key
@@ -48,9 +45,6 @@ func (c *Client) SDiff(ctx context.Context, key string, keys ...string) ([]strin
 // SDiffStore 该命令等同于 SDIFF，但不是返回结果集，而是将结果存储到指定的目标键中。
 // 如果目标键已存在，则会被覆盖
 func (c *Client) SDiffStore(ctx context.Context, destination string, key string, keys ...string) (int64, error) {
-	if len(keys) == 0 {
-		return 0, errNoKeys
-	}
 	args := make([]any, 3, 3+len(keys))
 	args[0] = "SDIFFSTORE"
 	args[1] = destination
@@ -65,9 +59,6 @@ func (c *Client) SDiffStore(ctx context.Context, destination string, key string,
 
 // SInter 返回所有给定集合的交集所得到的成员
 func (c *Client) SInter(ctx context.Context, key string, keys ...string) ([]string, error) {
-	if len(keys) == 0 {
-		return nil, errNoKeys
-	}
 	args := make([]any, 2, 2+len(keys))
 	args[0] = "SINTER"
 	args[1] = key
@@ -185,9 +176,6 @@ func (c *Client) SRem(ctx context.Context, key string, members ...string) (int64
 
 // SUnion 返回所有给定集合的并集所得到的成员
 func (c *Client) SUnion(ctx context.Context, key string, keys ...string) ([]string, error) {
-	if len(keys) == 0 {
-		return nil, errNoKeys
-	}
 	args := make([]any, 2, 2+len(keys))
 	args[0] = "SREM"
 	args[1] = key
@@ -202,9 +190,6 @@ func (c *Client) SUnion(ctx context.Context, key string, keys ...string) ([]stri
 // SUnionStore 该命令等同于 SUNION，但不是返回结果集，而是将结果存储到指定的目标键中。
 // 如果目标键已存在，则会被覆盖。
 func (c *Client) SUnionStore(ctx context.Context, destination string, key string, keys ...string) ([]string, error) {
-	if len(keys) == 0 {
-		return nil, errNoKeys
-	}
 	args := make([]any, 3, 3+len(keys))
 	args[0] = "SUNIONSTORE"
 	args[1] = destination

@@ -38,7 +38,7 @@ func (c *Client) BFMAdd(ctx context.Context, key string, items ...string) ([]boo
 	args = xslice.Append(args, items...)
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToBoolSlice(resp.result, resp.err)
+	return resp3.ToBoolSlice(resp.result, resp.err, len(items))
 }
 
 // BFCard 返回布隆过滤器的基数：即被添加到布隆过滤器中并被判定为唯一的元素数量（指那些在至少一个子过滤器中至少设置了一个位的元素）
@@ -70,9 +70,12 @@ func (c *Client) BFMExists(ctx context.Context, key string, items ...string) ([]
 	args = xslice.Append(args, items...)
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToBoolSlice(resp.result, resp.err)
+	return resp3.ToBoolSlice(resp.result, resp.err, len(items))
 }
 
+// BFInfo 返回有关 Bloom 过滤器的信息。
+//
+// 若 key 类型错误、不存在，均会返回 error
 func (c *Client) BFInfo(ctx context.Context, key string) (BFInfo, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeMap, "BF.INFO", key)
 	resp := c.do(ctx, cmd)
@@ -127,6 +130,8 @@ type BFInfo struct {
 //
 //	key：要向其添加元素的布隆过滤器的名称。如果该 key 不存在，将创建一个新的布隆过滤器。
 //	返回值：如果元素成功添加到过滤器中，则返回 true；如果元素很可能已存在于过滤器中，则返回 false
+//
+// opt: 可选配置
 func (c *Client) BFInsert(ctx context.Context, key string, items []string, opt *BFInsertOption) ([]bool, error) {
 	if len(items) == 0 {
 		return nil, errNoValues
@@ -141,7 +146,7 @@ func (c *Client) BFInsert(ctx context.Context, key string, items []string, opt *
 
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToBoolSlice(resp.result, resp.err)
+	return resp3.ToBoolSlice(resp.result, resp.err, len(items))
 }
 
 type BFInsertOption struct {
@@ -240,7 +245,18 @@ func (c *Client) BFScanDump(ctx context.Context, key string, iterator int64) (ne
 //	1% 误差率需要 7 个哈希函数，每个元素 9.585 位
 //	0.1% 误差率需要 10 个哈希函数，每个元素 14.378 位
 //	0.01% 误差率需要 14 个哈希函数，每个元素 19.170 位
-func (c *Client) BFReserve(ctx context.Context, key string, errorRate int64, capacity int64, opt *BFReserveOption) error {
+//
+// 参数：
+//
+//	 errorRate: 期望的误判（假阳性）概率。该比率是一个介于 0 和 1 之间的小数值。例如，若期望的误判率为 0.1%（即 1000 次中有 1 次），则应将 error_rate 设置为 0.001。
+//	 capacity: 计划添加到过滤器中的条目数量。如果你的过滤器支持自动扩展（scaling），当添加的条目数超过该数量后，性能将开始下降。
+//			实际的性能下降程度取决于超过该上限的幅度；性能会随着子过滤器数量的增加而线性下降
+//	 opt: 可选配置
+//
+// 返回值：
+// 创建成功：返回 nil
+// 创建失败：返回 error，包括参数异常、key 已存在
+func (c *Client) BFReserve(ctx context.Context, key string, errorRate float64, capacity int64, opt *BFReserveOption) error {
 	args := []any{"BF.RESERVE", key, errorRate, capacity}
 	if opt != nil {
 		args = opt.argsAppend(args)
@@ -258,7 +274,10 @@ type BFReserveOption struct {
 	//  默认值为 2。
 	Expansion int
 
-	//  NonScaling 当达到初始容量时，禁止过滤器创建额外的子过滤器。非可扩展（Non-scaling）过滤器所需内存略少于可扩展过滤器。当容量达到上限时，过滤器会返回错误。
+	//  NonScaling 当达到初始容量时，禁止过滤器创建额外的子过滤器。
+	// 非可扩展（Non-scaling）过滤器所需内存略少于可扩展过滤器。当容量达到上限时，过滤器会返回错误。
+	//
+	// Expansion 和  NonScaling 两者不能同时设置
 	NonScaling bool
 }
 

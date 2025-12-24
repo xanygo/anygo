@@ -529,13 +529,16 @@ func toAnySlice(vv []Element) ([]any, error) {
 	return vs, nil
 }
 
-func ToBoolSlice(e Element, err error) ([]bool, error) {
+func ToBoolSlice(e Element, err error, expectLen int) ([]bool, error) {
 	if err != nil {
 		return nil, err
 	}
 	arr, err := elementAsArray(e)
 	if err != nil {
 		return nil, err
+	}
+	if expectLen > 0 && len(arr) != expectLen {
+		return nil, fmt.Errorf("expect %d elements, but got %d", expectLen, len(arr))
 	}
 	vs := make([]bool, 0, len(arr))
 	for idx, item := range arr {

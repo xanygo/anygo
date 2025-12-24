@@ -123,24 +123,40 @@ func (c *Client) LIndex(ctx context.Context, key string, index int64) (string, e
 	return resp3.ToString(resp.result, resp.err)
 }
 
+// LInsertBefore 在列表中指定元素 pivot 之前插入新的元素 element。
+//
+// 参数 key 为列表键，pivot 为参考元素，element 为要插入的新元素。
+// 对应 Redis 的 LINSERT 命令（BEFORE）。
 func (c *Client) LInsertBefore(ctx context.Context, key string, pivot string, element string) (int64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "LINSERT", key, "BEFORE", pivot, element)
 	resp := c.do(ctx, cmd)
 	return resp3.ToInt64(resp.result, resp.err)
 }
 
+// LInsertAfter 在列表中指定元素 pivot 之后插入新的元素 element。
+//
+// 参数 key 为列表键，pivot 为参考元素，element 为要插入的新元素。
+// 对应 Redis 的 LINSERT 命令（AFTER）。
 func (c *Client) LInsertAfter(ctx context.Context, key string, pivot string, element string) (int64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "LINSERT", key, "AFTER", pivot, element)
 	resp := c.do(ctx, cmd)
 	return resp3.ToInt64(resp.result, resp.err)
 }
 
+// LSet 设置列表中指定索引位置的元素值。
+//
+// 参数 key 为列表键，index 为要修改的索引（0 为列表头部），element 为新元素值。
+// 对应 Redis 的 LSET 命令。
 func (c *Client) LSet(ctx context.Context, key string, index int64, element string) error {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "LSET", key, index, element)
 	resp := c.do(ctx, cmd)
 	return resp.err
 }
 
+// LTrim 对列表进行修剪，只保留指定区间内的元素，其余元素将被删除。
+//
+// 参数 key 为列表键，start 和 stop 指定要保留的索引区间（包含 start 和 stop）。
+// 对应 Redis 的 LTRIM 命令。
 func (c *Client) LTrim(ctx context.Context, key string, start int64, stop int64) error {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "LTRIM", key, start, stop)
 	resp := c.do(ctx, cmd)

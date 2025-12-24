@@ -35,6 +35,7 @@ var (
 	errNoKeys    = fmt.Errorf("%w: no keys", xerror.InvalidParam)
 	errNoValues  = fmt.Errorf("%w: no values", xerror.InvalidParam)
 	errNoMembers = fmt.Errorf("%w: no members", xerror.InvalidParam)
+	errNoFields  = fmt.Errorf("%w: no fields", xerror.InvalidParam)
 )
 
 func NewClient(service any) *Client {
@@ -173,11 +174,12 @@ const (
 )
 
 // NewClientByURI 使用 uri 创建一个 client
-// Server URI on format redis://user:password@host:port/dbnum
 //
-//	User, password and dbnum are optional. For authentication
-//	without a username, use username 'default'. For TLS, use
-//	the scheme 'rediss'
+// 服务器 URI 的格式为： redis://user:password@host:port/dbnum
+//
+// user、password 和 dbnum 均为可选项。
+// 如果需要在不指定用户名的情况下进行认证，请使用用户名 “default”。
+// 如果使用 TLS，请使用 “rediss”
 func NewClientByURI(name string, uri string) (xservice.Service, *Client, error) {
 	uu, err := url.Parse(uri)
 	if err != nil {
