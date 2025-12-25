@@ -313,21 +313,33 @@ func NotContains[T StringByte](t Testing, s T, substr T) {
 	t.Fatalf("%#v should not substr %#v", s, substr)
 }
 
-func SliceContains[S ~[]E, E comparable](t Testing, values S, item E) {
+// SliceContains 检查 values 是否包含 items
+func SliceContains[S ~[]E, E comparable](t Testing, values S, items ...E) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
-	if !slices.Contains(values, item) {
-		t.Fatalf("%#v does not contains %#v", values, item)
+	if len(items) == 0 {
+		t.Fatalf("empty items")
+	}
+	for _, item := range items {
+		if !slices.Contains(values, item) {
+			t.Fatalf("%#v does not contains %#v", values, item)
+		}
 	}
 }
 
-func SliceNotContains[S ~[]E, E comparable](t Testing, values S, item E) {
+// SliceNotContains 检查 values 没哟包含 items
+func SliceNotContains[S ~[]E, E comparable](t Testing, values S, items ...E) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
-	if slices.Contains(values, item) {
-		t.Fatalf("%#v should not contains %#v", values, item)
+	if len(items) == 0 {
+		t.Fatalf("empty items")
+	}
+	for _, item := range items {
+		if slices.Contains(values, item) {
+			t.Fatalf("%#v should not contains %#v", values, item)
+		}
 	}
 }
 

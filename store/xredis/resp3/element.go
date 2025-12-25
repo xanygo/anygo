@@ -142,24 +142,38 @@ func (a Array) DataType() DataType {
 	return DataTypeArray
 }
 
+func (a Array) ToZ() (Z, error) {
+	if len(a) != 2 {
+		return Z{}, fmt.Errorf("expect 2 element got %d", len(a))
+	}
+	member, err1 := ToString(a[0], nil)
+	if err1 != nil {
+		return Z{}, err1
+	}
+	score, err2 := ToFloat64(a[1], nil)
+	if err2 != nil {
+		return Z{}, err2
+	}
+	return Z{
+		Member: member,
+		Score:  score,
+	}, nil
+}
+
 // ToZSlice 返回 Sorted zet 的结果列表
 func (a Array) ToZSlice() ([]Z, error) {
-	if len(a)%2 != 0 {
-		return nil, fmt.Errorf("expected even number of keys, got %d", len(a))
+	if len(a) == 0 {
+		return nil, nil
 	}
-	result := make([]Z, 0, len(a)/2)
-	for i := 0; i < len(a); i += 2 {
-		member, err1 := ToString(a[i], nil)
-		if err1 != nil {
-			return nil, err1
+	result := make([]Z, 0, len(a))
+	for i := 0; i < len(a); i++ {
+		itemArr, ok := a[i].(Array)
+		if !ok {
+			return nil, fmt.Errorf("expect Array got %T", a[i])
 		}
-		score, err2 := ToFloat64(a[i+1], nil)
-		if err2 != nil {
-			return nil, err2
-		}
-		item := Z{
-			Member: member,
-			Score:  score,
+		item, err := itemArr.ToZ()
+		if err != nil {
+			return nil, err
 		}
 		result = append(result, item)
 	}

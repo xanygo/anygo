@@ -54,11 +54,11 @@ type FileStore struct {
 	runner xpp.CooldownRunner
 }
 
-func (f *FileStore) autoGC() {
-	f.runner.Run(f.GC, f.doGC)
+func (f *FileStore) autoCompact() {
+	f.runner.Run(f.GC, f.doCompact)
 }
 
-func (f *FileStore) doGC() {
+func (f *FileStore) doCompact() {
 	zos.GlobalLock()
 	defer zos.GlobalUnlock()
 
@@ -95,7 +95,7 @@ func (f *FileStore) Delete(ctx context.Context, keys ...string) error {
 	if len(errs) == 0 {
 		return nil
 	}
-	f.autoGC()
+	f.autoCompact()
 	return errors.Join(errs...)
 }
 
@@ -281,7 +281,7 @@ func (f fileList) pop(ctx context.Context, left bool) (string, bool, error) {
 	if fileName == "" {
 		return "", false, nil
 	}
-	f.fss.autoGC()
+	f.fss.autoCompact()
 	return f.ReadFile(fileName, true)
 }
 
@@ -493,7 +493,7 @@ func (f fileHash) HDel(ctx context.Context, fields ...string) error {
 	if len(errs) == 0 {
 		return nil
 	}
-	f.fss.autoGC()
+	f.fss.autoCompact()
 	return errors.Join(errs...)
 }
 
@@ -562,7 +562,7 @@ func (f fileSet) SRem(ctx context.Context, members ...string) error {
 	if len(errs) == 0 {
 		return nil
 	}
-	f.fss.autoGC()
+	f.fss.autoCompact()
 	return errors.Join(errs...)
 }
 
@@ -668,7 +668,7 @@ func (f fileZSet) ZRem(ctx context.Context, members ...string) error {
 	if len(errs) == 0 {
 		return nil
 	}
-	f.fss.autoGC()
+	f.fss.autoCompact()
 	return errors.Join(errs...)
 }
 

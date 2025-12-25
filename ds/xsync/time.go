@@ -51,4 +51,38 @@ func (at *TimeStamp) After(n time.Time) bool {
 	return v > n.UnixNano()
 }
 
+func (at *TimeStamp) CompareAndSwap(old time.Time, new time.Time) bool {
+	var n1 int64
+	if !old.IsZero() {
+		n1 = old.UnixNano()
+	}
+	return atomic.CompareAndSwapInt64((*int64)(at), n1, new.UnixNano())
+}
+
 type TimeDuration = Int64[time.Duration]
+
+// Interval 控制某个操作的最小间隔时间。
+// 它记录上一次操作的时间戳，并提供线程安全的方法判断操作是否允许。
+type Interval struct {
+	last int64
+}
+
+// Allow 判断是否可以执行操作。
+// 如果距离上一次允许操作的时间已经超过指定的 dur，则返回 true 并更新 last 为当前时间。
+// 否则返回 false，不更新 last。
+//
+// 参数:
+//   - dur: 最小允许的时间间隔
+//
+// 返回值:
+//   - bool: 当前操作是否被允许
+//
+// 注意:
+//   - 该方法线程安全，适用于并发环境。
+//   - 如果 dur 为零或负值，Allow 总是返回 true。
+func (it *Interval) Allow(dur time.Duration) bool {
+	old := atomic.LoadInt64(&it.last)
+	expire := old + dur.Nanoseconds()
+	now := time.Now().UnixNano()
+	return expire < now && atomic.CompareAndSwapInt64(&it.last, old, now)
+}

@@ -6,6 +6,7 @@ package xsync
 
 import (
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/xanygo/anygo/xt"
@@ -40,4 +41,14 @@ func BenchmarkTimeStamp_Load(b *testing.B) {
 		tm = a.Load()
 	}
 	_ = tm
+}
+
+func TestInterval_Allow(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var it Interval
+		xt.True(t, it.Allow(time.Minute))
+		xt.False(t, it.Allow(time.Minute))
+		time.Sleep(time.Minute + 1)
+		xt.True(t, it.Allow(time.Minute))
+	})
 }

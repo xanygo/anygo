@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/ds/xbus"
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/internal/fctime"
 	"github.com/xanygo/anygo/internal/zos"
 	"github.com/xanygo/anygo/safely"
@@ -52,7 +53,7 @@ type File[K comparable, V any] struct {
 	// 每次 GC 时，若数量超限，会按照缓存的创建时间排序，删除创建时间更靠前的
 	Capacity int
 
-	gcTime int64
+	compactTime xsync.Interval // 存储上一次清理的时间
 
 	gcRunning atomic.Bool
 
@@ -304,13 +305,7 @@ func (fc *File[K, V]) readByPath(fp string, needData bool) (expired bool, data [
 }
 
 func (fc *File[K, V]) autoCompact() {
-	lastGc := atomic.LoadInt64(&fc.gcTime)
-	newVal := time.Now().UnixNano()
-	if newVal-lastGc < int64(fc.getGC()) {
-		return
-	}
-
-	if !atomic.CompareAndSwapInt64(&fc.gcTime, lastGc, newVal) {
+	if !fc.compactTime.Allow(fc.getGC()) {
 		return
 	}
 	go safely.Run(fc.gc)
