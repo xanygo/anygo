@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/internal/redistest"
 	"github.com/xanygo/anygo/xt"
 )
@@ -258,5 +259,53 @@ func TestClientHash(t *testing.T) {
 		xt.NoError(t, err)
 		slices.Sort(vals)
 		xt.Equal(t, []string{"v1", "v2"}, vals)
+	})
+
+	t.Run("HScan", func(t *testing.T) {
+		next, vals, err := client.HScan(ctx, "HScan-1", 0, "", 10)
+		xt.NoError(t, err)
+		xt.Empty(t, vals)
+		xt.Equal(t, 0, next)
+
+		data := map[string]string{"f1": "v1", "f2": "v2"}
+		_, err = client.HSetMap(ctx, "HScan-1", data)
+		xt.NoError(t, err)
+
+		next, vals, err = client.HScan(ctx, "HScan-1", 0, "", 10)
+		xt.NoError(t, err)
+		xt.Equal(t, data, vals)
+		xt.Equal(t, 0, next)
+
+		var count int
+		err = client.HScanWalk(ctx, "HScan-1", 0, "", 10, func(cursor uint64, data map[string]string) error {
+			count += len(data)
+			return nil
+		})
+		xt.NoError(t, err)
+		xt.Equal(t, len(vals), count)
+	})
+
+	t.Run("HScanNoValues", func(t *testing.T) {
+		next, vals, err := client.HScanNoValues(ctx, "HScanNoValues-1", 0, "", 10)
+		xt.NoError(t, err)
+		xt.Empty(t, vals)
+		xt.Equal(t, 0, next)
+
+		data := map[string]string{"f1": "v1", "f2": "v2"}
+		_, err = client.HSetMap(ctx, "HScanNoValues-1", data)
+		xt.NoError(t, err)
+
+		next, vals, err = client.HScanNoValues(ctx, "HScanNoValues-1", 0, "", 10)
+		xt.NoError(t, err)
+		xt.SliceSortEqual(t, xmap.Keys(data), vals)
+		xt.Equal(t, 0, next)
+
+		var count int
+		err = client.HScanNoValuesWalk(ctx, "HScan-1", 0, "", 10, func(cursor uint64, data []string) error {
+			count += len(data)
+			return nil
+		})
+		xt.NoError(t, err)
+		xt.Equal(t, len(vals), count)
 	})
 }

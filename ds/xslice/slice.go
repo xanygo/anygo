@@ -44,7 +44,7 @@ func ContainsAny[E comparable](all []E, values ...E) bool {
 	return false
 }
 
-// ToMap 转换为 map，map 的 key 是 slice 的值， map 的 value 是传入的 value
+// ToMap 转换为 map，map 的 key 是 slice 的值， map 的 value 是传入的 value。
 // 总是返回不为 nil 的 map
 func ToMap[E comparable, V any](s []E, value V) map[E]V {
 	result := make(map[E]V, len(s))
@@ -52,6 +52,22 @@ func ToMap[E comparable, V any](s []E, value V) map[E]V {
 		result[s[i]] = value
 	}
 	return result
+}
+
+// FlatToMap 将 [k1,v1,k2,v2] 这种扁平的 map slice 转换为 map。
+// 若元素个数为奇数，会返回错误
+func FlatToMap[E comparable](arr []E) (map[E]E, error) {
+	if len(arr) == 0 {
+		return nil, nil
+	}
+	if len(arr)%2 != 0 {
+		return nil, fmt.Errorf("len(arr)=%d must be even", len(arr))
+	}
+	result := make(map[E]E, len(arr)/2)
+	for i := 0; i < len(arr); i += 2 {
+		result[arr[i]] = arr[i+1]
+	}
+	return result, nil
 }
 
 // ToMapFunc 使用回调函数，将 slice 转换为 map

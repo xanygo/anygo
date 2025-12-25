@@ -6,6 +6,8 @@ package xredis
 
 import (
 	"context"
+	"errors"
+	"io"
 	"time"
 
 	"github.com/xanygo/anygo/ds/xslice"
@@ -230,6 +232,8 @@ func (c *Client) HIncrFloat(ctx context.Context, key string, field string, incre
 //
 // 参数 key 为哈希表键。
 // 对应 Redis 的 HKEYS 命令。
+//
+// 若 key 不存在，会返回 nil,nil
 func (c *Client) HKeys(ctx context.Context, key string) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "HKEYS", key)
 	resp := c.do(ctx, cmd)
@@ -240,7 +244,8 @@ func (c *Client) HKeys(ctx context.Context, key string) ([]string, error) {
 //
 // 参数 key 为哈希表键。
 // 对应 Redis 的 HLEN 命令。
-// 如果哈希表为空或 key 不存在，返回 0。
+//
+// 若 key 不存在，返回 0,nil
 func (c *Client) HLen(ctx context.Context, key string) (int64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "HLEN", key)
 	resp := c.do(ctx, cmd)
@@ -318,7 +323,7 @@ func (c *Client) HExpireAt(ctx context.Context, key string, at time.Time, opt st
 // 对应 Redis 的 HPTTL 命令。
 // 返回一个 time.Duration 切片，表示每个字段的剩余过期时间（毫秒）。
 // 返回值说明：
-//   - 正数：字段剩余过期时间（秒）
+//   - 正数：字段剩余过期时间
 //   - -1：字段存在但未设置过期时间
 //   - -2：字段不存在或 key 不存在
 func (c *Client) HPTTL(ctx context.Context, key string, fields ...string) ([]time.Duration, error) {
@@ -356,7 +361,7 @@ func (c *Client) HPTTL(ctx context.Context, key string, fields ...string) ([]tim
 // 对应 Redis 的 HTTL 命令。
 // 返回一个 time.Duration 切片，表示每个字段的剩余过期时间（秒）。
 // 返回值说明：
-//   - 正数：字段剩余过期时间（秒）
+//   - 正数：字段剩余过期时间
 //   - -1：字段存在但未设置过期时间
 //   - -2：字段不存在或 key 不存在
 func (c *Client) HTTL(ctx context.Context, key string, fields ...string) ([]time.Duration, error) {
@@ -398,4 +403,117 @@ func (c *Client) HVals(ctx context.Context, key string) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "HVALS", key)
 	resp := c.do(ctx, cmd)
 	return resp3.ToStringSlice(resp.result, resp.err)
+}
+
+// HScan 对指定的哈希表进行增量迭代扫描。
+//
+// 使用游标(cursor)方式遍历哈希表的字段和值。调用时传入当前游标，
+// 返回下一次扫描的游标和一部分字段-值对。当返回的游标为 0 时，表示迭代完成。
+//
+// 参数:
+//   - key: 哈希表的键名。
+//   - cursor: 扫描游标，首次扫描传 0。
+//   - pattern: 可选，匹配字段名的 glob 模式。
+//   - count: 每次扫描返回的元素数量提示（非严格限制）。
+//
+// 返回值:
+//   - nextCursor: 下一次扫描使用的游标，若为 0 表示迭代完成，没有更多了。
+//   - values: 返回的字段及对应值的映射。
+//   - 若 key 不存在，会返回 0，nil，nil
+func (c *Client) HScan(ctx context.Context, key string, cursor uint64, pattern string, count int) (uint64, map[string]string, error) {
+	args := []any{"HSCAN", key, cursor}
+	if pattern != "" {
+		args = append(args, "MATCH", pattern)
+	}
+	if count > 0 {
+		args = append(args, "COUNT", count)
+	}
+	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
+	resp := c.do(ctx, cmd)
+	arr, err := resp.asResp3Array(2)
+	if err != nil {
+		return 0, nil, err
+	}
+	nextCursor, err := resp3.ToUint64(arr[0], nil)
+	kvArr, err2 := resp3.ToStringSlice(arr[1], err)
+	if err2 != nil {
+		return 0, nil, err2
+	}
+	result, err3 := xslice.FlatToMap(kvArr)
+	return nextCursor, result, err3
+}
+
+// HScanWalk 使用 HScan 迭代遍历指定的哈希表
+func (c *Client) HScanWalk(ctx context.Context, key string, cursor uint64, pattern string, count int, walk func(cursor uint64, data map[string]string) error) error {
+	for {
+		next, items, err := c.HScan(ctx, key, cursor, pattern, count)
+		if err != nil {
+			return err
+		}
+		if err = walk(next, items); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
+		}
+		if next == 0 {
+			return nil
+		}
+		cursor = next
+	}
+}
+
+// HScanNoValues 对指定的哈希表进行增量迭代扫描，返回 field 列表
+//
+// 使用游标(cursor)方式遍历哈希表的字段和值。调用时传入当前游标，
+// 返回下一次扫描的游标和一部分字段-值对。当返回的游标为 0 时，表示迭代完成。
+//
+// 参数:
+//   - key: 哈希表的键名。
+//   - cursor: 扫描游标，首次扫描传 0。
+//   - pattern: 可选，匹配字段名的 glob 模式。
+//   - count: 每次扫描返回的元素数量提示（非严格限制）。
+//
+// 返回值:
+//   - nextCursor: 下一次扫描使用的游标，若为 0 表示迭代完成，没有更多了。
+//   - fields: 返回的字段的列表。
+//   - 若 key 不存在，会返回 0，nil，nil
+func (c *Client) HScanNoValues(ctx context.Context, key string, cursor uint64, pattern string, count int) (uint64, []string, error) {
+	args := []any{"HSCAN", key, cursor}
+	if pattern != "" {
+		args = append(args, "MATCH", pattern)
+	}
+	if count > 0 {
+		args = append(args, "COUNT", count)
+	}
+	args = append(args, "NOVALUES")
+	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
+	resp := c.do(ctx, cmd)
+	arr, err := resp.asResp3Array(2)
+	if err != nil {
+		return 0, nil, err
+	}
+	nextCursor, err := resp3.ToUint64(arr[0], nil)
+	fields, err2 := resp3.ToStringSlice(arr[1], err)
+	return nextCursor, fields, err2
+}
+
+// HScanNoValuesWalk 使用 HScanNoValues 迭代遍历指定的哈希表
+func (c *Client) HScanNoValuesWalk(ctx context.Context, key string, cursor uint64, pattern string, count int, walk func(cursor uint64, fields []string) error) error {
+	for {
+		next, fields, err := c.HScanNoValues(ctx, key, cursor, pattern, count)
+		if err != nil {
+			return err
+		}
+		if err = walk(next, fields); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
+		}
+		if next == 0 {
+			return nil
+		}
+		cursor = next
+	}
 }

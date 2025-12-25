@@ -144,12 +144,12 @@ func (c *Client) Expire(ctx context.Context, key string, ttl time.Duration) (boo
 
 // ExpireOpt 为键设置超时 (时间精度：秒)
 //
-//	EXPIRE key seconds [NX | XX | GT | LT]
+// opt 可以为空字符串，或者是下列值：
 //
-// NX —— 仅在键没有过期时间时才设置过期时间
-// XX —— 仅在键已有过期时间时才设置过期时间
-// GT —— 仅在新过期时间大于当前过期时间时才设置过期时间
-// LT —— 仅在新过期时间小于当前过期时间时才设置过期时间
+//	NX —— 仅在键没有过期时间时才设置过期时间
+//	XX —— 仅在键已有过期时间时才设置过期时间
+//	GT —— 仅在新过期时间大于当前过期时间时才设置过期时间
+//	LT —— 仅在新过期时间小于当前过期时间时才设置过期时间
 func (c *Client) ExpireOpt(ctx context.Context, key string, ttl time.Duration, opt string) (bool, error) {
 	var args []any
 	if opt == "" {
@@ -175,6 +175,8 @@ func (c *Client) ExpireAt(ctx context.Context, key string, at time.Time) (bool, 
 
 // ExpireAtOpt 给 key 设置过期截止时间 (时间精度：秒)
 //
+// opt 可以为空字符串，或者是下列值：
+//
 //	NX —— 仅在键没有过期时间时才设置过期时间
 //	XX —— 仅在键已有过期时间时才设置过期时间
 //	GT —— 仅在新过期时间大于当前过期时间时才设置过期时间
@@ -191,10 +193,10 @@ func (c *Client) ExpireAtOpt(ctx context.Context, key string, at time.Time, opt 
 
 // ExpireTime 返回指定键的过期时间 (时间精度：秒)
 //
-// 1. 当 key 不存在时，返回 time.Time{},ErrNil
-// 2. 当 key 存在，当无过期时间时，返回 time.Time{}(空的),nil
-// 3. 当 key 存在，并且有过期时间，返回  time,nil
-// 4. 当发生错误时，返回 time.Time{},error
+//  1. 当 key 不存在时，返回 time.Time{},ErrNil
+//  2. 当 key 存在，当无过期时间时，返回 time.Time{}(空的),nil
+//  3. 当 key 存在，并且有过期时间，返回  time,nil
+//  4. 当发生错误时，返回 time.Time{},error
 func (c *Client) ExpireTime(ctx context.Context, key string) (time.Time, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "EXPIRETIME", key)
 	resp := c.do(ctx, cmd)
@@ -216,10 +218,10 @@ func (c *Client) ExpireTime(ctx context.Context, key string) (time.Time, error) 
 
 // PExpireTime 返回指定键的过期时间 (时间精度：毫秒)
 //
-// 1. 当 key 不存在时，返回 time.Time{},ErrNil
-// 2. 当 key 存在，当无过期时间时，返回 time.Time{}(空的),nil
-// 3. 当 key 存在，并且有过期时间，返回  time,nil
-// 4. 当发生错误时，返回 time.Time{},error
+//  1. 当 key 不存在时，返回 time.Time{},ErrNil
+//  2. 当 key 存在，当无过期时间时，返回 time.Time{}(空的),nil
+//  3. 当 key 存在，并且有过期时间，返回  time,nil
+//  4. 当发生错误时，返回 time.Time{},error
 func (c *Client) PExpireTime(ctx context.Context, key string) (time.Time, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "PEXPIRETIME", key)
 	resp := c.do(ctx, cmd)

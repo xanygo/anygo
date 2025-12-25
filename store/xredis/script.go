@@ -71,7 +71,7 @@ func (c *Client) FunctionDelete(ctx context.Context, libraryName string) error {
 }
 
 // FunctionDump 返回已加载函数库的序列化数据(二进制序列化格式，仅能被 FUNCTION RESTORE 识别和使用)。
-// 你可以稍后使用 FUNCTION RESTORE 命令恢复这些序列化的数据。
+// 之后可以使用 FUNCTION RESTORE 命令恢复这些序列化的数据。
 func (c *Client) FunctionDump(ctx context.Context) (string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeBulkString, "FUNCTION", "DUMP")
 	resp := c.do(ctx, cmd)
@@ -119,9 +119,10 @@ func (c *Client) FunctionLoad(ctx context.Context, replace bool, code string) (s
 // FunctionReStore 从序列化的负载中恢复库
 //
 // 你可以使用可选的 policy 参数来指定处理已存在库的策略。允许的策略如下：
-// APPEND：将恢复的库追加到现有库中，遇到名称冲突时中止操作。这是默认策略。
-// FLUSH：在恢复负载之前删除所有现有库。
-// REPLACE：将恢复的库追加到现有库中，如果发生名称冲突则替换已有库。需要注意的是，此策略不会防止函数名冲突，仅针对库名。
+//
+//	APPEND： 将恢复的库追加到现有库中，遇到名称冲突时中止操作。这是默认策略。
+//	FLUSH：  在恢复负载之前删除所有现有库。
+//	REPLACE：将恢复的库追加到现有库中，如果发生名称冲突则替换已有库。需要注意的是，此策略不会防止函数名冲突，仅针对库名。
 func (c *Client) FunctionReStore(ctx context.Context, serializedValue string, policy string) error {
 	var args []any
 	if policy != "" {
@@ -219,13 +220,15 @@ type FunctionStatsRunning struct {
 }
 
 // ScriptDebug 为之后使用 EVAL 执行的脚本设置调试模式。
+//
 // Redis 内置了一个完整的 Lua 调试器，代号 LDB，它可以让编写复杂脚本的工作变得更加简单。
 // 在调试模式下，Redis 充当远程调试服务器，而客户端（如 redis-cli）可以逐步执行脚本、设置断点、检查变量等
 //
-//	 支持如下模式（mode）：
-//		  YES： 启用 Lua 脚本的非阻塞异步调试（更改不会保存）。
-//		  SYNC：启用 Lua 脚本的阻塞同步调试（更改会保存到数据中）。
-//		  NO：  禁用脚本调试模式。
+// 支持如下模式（mode）：
+//
+//	YES： 启用 Lua 脚本的非阻塞异步调试（更改不会保存）。
+//	SYNC：启用 Lua 脚本的阻塞同步调试（更改会保存到数据中）。
+//	NO：  禁用脚本调试模式。
 func (c *Client) ScriptDebug(ctx context.Context, mode string) error {
 	cmd := resp3.NewRequest(resp3.DataTypeSimpleString, "SCRIPT", "DEBUG", mode)
 	resp := c.do(ctx, cmd)
