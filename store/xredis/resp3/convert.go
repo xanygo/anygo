@@ -185,6 +185,24 @@ func ToInt64(result Element, err error) (int64, error) {
 	}
 }
 
+func ToUint64(result Element, err error) (uint64, error) {
+	if err != nil {
+		return 0, err
+	}
+	switch dv := result.(type) {
+	case Integer:
+		return uint64(dv.Int64()), nil
+	case BigNumber:
+		return dv.BigInt().Uint64(), nil
+	case SimpleString:
+		return dv.ToUint64()
+	case BulkString:
+		return dv.ToUint64()
+	default:
+		return 0, fmt.Errorf("%w: ToUint64 %#v(%T)", ErrInvalidReply, result, result)
+	}
+}
+
 func ToInt64Slice(e Element, err error) ([]int64, error) {
 	if err != nil {
 		return nil, err
@@ -312,32 +330,31 @@ func ToStringAnyMap(e Element, err error) (map[string]any, error) {
 	return mapToStringAnyMap(mp)
 }
 
-func ToMapFloat64(e Element, err error) (map[string]float64, error) {
-	if err != nil {
-		return nil, err
-	}
-	arr, err := elementAsArray(e)
-	if err != nil {
-		return nil, fmt.Errorf("%w: ToMapFloat64", err)
-	}
-	if len(arr)%2 != 0 {
-		return nil, fmt.Errorf("expected even number of keys, got %d", len(arr))
-	}
-	ret := make(map[string]float64, len(arr)/2)
-	for i := 0; i < len(arr); i += 2 {
-		member, err1 := ToString(arr[i], nil)
-		if err1 != nil {
-			return nil, err1
-		}
-		score, err2 := ToFloat64(arr[i+1], nil)
-		if err2 != nil {
-			return nil, err2
-		}
-		ret[member] = score
-	}
-	return ret, nil
-}
-
+//	func ToMapFloat64(e Element, err error) (map[string]float64, error) {
+//		if err != nil {
+//			return nil, err
+//		}
+//		arr, err := elementAsArray(e)
+//		if err != nil {
+//			return nil, fmt.Errorf("%w: ToMapFloat64", err)
+//		}
+//		if len(arr)%2 != 0 {
+//			return nil, fmt.Errorf("expected even number of keys, got %d", len(arr))
+//		}
+//		ret := make(map[string]float64, len(arr)/2)
+//		for i := 0; i < len(arr); i += 2 {
+//			member, err1 := ToString(arr[i], nil)
+//			if err1 != nil {
+//				return nil, err1
+//			}
+//			score, err2 := ToFloat64(arr[i+1], nil)
+//			if err2 != nil {
+//				return nil, err2
+//			}
+//			ret[member] = score
+//		}
+//		return ret, nil
+//	}
 func ToMapFloat64WithKeys(e Element, err error, keys []string) (map[string]float64, error) {
 	if err != nil {
 		return nil, err

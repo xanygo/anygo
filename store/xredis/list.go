@@ -11,6 +11,8 @@ import (
 	"github.com/xanygo/anygo/store/xredis/resp3"
 )
 
+// https://redis.io/docs/latest/commands/lpush/
+
 func (c *Client) doKeyValuesIntResult(ctx context.Context, method string, key string, values ...string) (int64, error) {
 	if len(values) == 0 {
 		return 0, errNoValues
@@ -98,18 +100,24 @@ func (c *Client) RPopN(ctx context.Context, key string, count int64) ([]string, 
 	return resp3.ToStringSlice(resp.result, resp.err)
 }
 
+// LLen 返回列表的长度
+//
+// 若 key 不存在，会返回 0，nil
 func (c *Client) LLen(ctx context.Context, key string) (int64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "LLEN", key)
 	resp := c.do(ctx, cmd)
 	return resp3.ToInt64(resp.result, resp.err)
 }
 
-// LRem 从存储在键（key）的列表中删除等于元素（element）的前count个元素。count参数以以下方式影响操作：
-// count > 0: 从头部到尾部移除等于element的元素。
-// count < 0: 从尾部到头部移除等于element的元素。
-// count = 0: 移除所有等于 element 的元素。
+// LRem 从存储在键（key）的列表中删除等于元素（element）的前count个元素。
+//
+// count参数以以下方式影响操作：
+//   - count > 0: 从头部到尾部移除等于 element 的元素。
+//   - count < 0: 从尾部到头部移除等于 element 的元素。
+//   - count = 0: 移除所有等于 element 的元素。
+//
 // 例如，LREM list -2 "hello" 将从存储在 list 中的列表中删除 "hello" 的最后两个出现。
-// 请注意，不存在的键被视为空列表，因此当键不存在时，命令将始终返回0
+// 若 key 不存在的键被视为空列表，将始终返回 0
 func (c *Client) LRem(ctx context.Context, key string, count int64, element string) (int64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "LREM", key, count, element)
 	resp := c.do(ctx, cmd)
@@ -198,8 +206,8 @@ func (c *Client) BLPop(ctx context.Context, timeout time.Duration, keys ...strin
 
 // LRange 返回存储在指定键中的列表的指定元素。
 //
-//	参数 start 和 stop 表示偏移量（索引），它们是从零开始计数的：0 表示列表的第一个元素（表头），1 表示下一个元素，以此类推。
-//	这些偏移量也可以是负数，表示从列表末尾开始的偏移。例如，-1 表示列表的最后一个元素，-2 表示倒数第二个元素，依此类推。
+//	参数 start 和 stop 表示偏移量（索引），从零开始计数：0 表示列表的第一个元素（表头），1 表示下一个元素，以此类推。
+//	偏移量也可以是负数，表示从列表末尾开始的偏移。例如，-1 表示列表的最后一个元素，-2 表示倒数第二个元素，依此类推。
 func (c *Client) LRange(ctx context.Context, key string, start int64, stop int64) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "LRANGE", key, start, stop)
 	resp := c.do(ctx, cmd)

@@ -7,7 +7,7 @@ package xkvx
 import (
 	"context"
 	"errors"
-	"strconv"
+	"io"
 
 	"github.com/xanygo/anygo/store/xkv"
 	"github.com/xanygo/anygo/store/xredis"
@@ -272,22 +272,14 @@ func (kvz *kvZSet) ZScore(ctx context.Context, member string) (float64, bool, er
 }
 
 func (kvz *kvZSet) ZRange(ctx context.Context, fn func(member string, score float64) bool) error {
-	for start := int64(0); ; start += 10 {
-		stop := start + 9
-		// todo: 重新实现
-		values, err := kvz.client.ZRangeWithScore(ctx, kvz.key, strconv.FormatInt(start, 10), "("+strconv.FormatInt(stop, 10))
-		if errors.Is(err, xredis.ErrNil) || len(values) == 0 {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		for _, item := range values {
+	return kvz.client.ZScanWalk(ctx, kvz.key, 0, "", 10, func(cursor uint64, items []xredis.Z) error {
+		for _, item := range items {
 			if !fn(item.Member, item.Score) {
-				return nil
+				return io.EOF
 			}
 		}
-	}
+		return nil
+	})
 }
 
 func (kvz *kvZSet) ZRem(ctx context.Context, members ...string) error {

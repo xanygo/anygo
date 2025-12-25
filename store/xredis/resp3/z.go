@@ -21,3 +21,14 @@ func ToZSlice(ret Element, err error) ([]Z, error) {
 	}
 	return arr.ToZSlice()
 }
+
+func ToZSliceFlat(ret Element, err error) ([]Z, error) {
+	if err != nil {
+		return nil, err
+	}
+	arr, ok := ret.(Array)
+	if !ok {
+		return nil, fmt.Errorf("unexpected response type: %T", ret)
+	}
+	return arr.ToZSliceFlat()
+}

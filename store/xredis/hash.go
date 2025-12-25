@@ -8,6 +8,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xredis/resp3"
 )
 
@@ -280,6 +281,37 @@ func (c *Client) HMSet(ctx context.Context, key string, data map[string]string) 
 	return resp3.ToOkStatus(resp.result, resp.err)
 }
 
+// HExpireAt 给 fields 设置过期时间
+//
+// opt 为可选配置参数,可以为空或者为下列值：
+//   - NX —— 对每个指定的字段，仅当该字段尚未设置过期时间时，才设置过期时间。
+//   - XX —— 对每个指定的字段，仅当该字段已经存在过期时间时，才设置过期时间。
+//   - GT —— 对每个指定的字段，仅当新的过期时间大于当前过期时间时，才进行设置。
+//   - LT —— 对每个指定的字段，仅当新的过期时间小于当前过期时间时，才进行设置。
+//
+// 返回值：数组为每个 field 的设置状态：
+//
+//	-2：指定的哈希 key 中不存在该字段，或者 key 本身不存在。
+//	 0：指定的 NX、XX、GT 或 LT 条件 未满足，因此未设置过期时间。
+//	 1：字段的过期时间 已成功设置或更新。
+//	 2：在以下情况下返回：
+//	   调用 HEXPIRE / HPEXPIRE 时，过期时间指定为 0 秒或 0 毫秒；
+//	   调用 HEXPIREAT / HPEXPIREAT 时，指定的 Unix 时间（秒或毫秒）为过去时间。
+func (c *Client) HExpireAt(ctx context.Context, key string, at time.Time, opt string, fields ...string) ([]int64, error) {
+	if len(fields) == 0 {
+		return nil, errNoFields
+	}
+	args := []any{"HEXPIREAT", key, at.Unix()}
+	if opt != "" {
+		args = append(args, opt)
+	}
+	args = append(args, "FIELDS", len(fields))
+	args = xslice.Append(args, fields...)
+	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
+	resp := c.do(ctx, cmd)
+	return resp3.ToInt64Slice(resp.result, resp.err)
+}
+
 // HPTTL 返回哈希表中一个或多个字段的剩余过期时间（TTL）。
 //
 // 参数 key 为哈希表键，fields 为要查询的字段列表。
@@ -299,7 +331,7 @@ func (c *Client) HPTTL(ctx context.Context, key string, fields ...string) ([]tim
 	args[2] = "FIELDS"
 	args[3] = len(fields)
 	for _, field := range fields {
-		args = append(args, field, fields)
+		args = append(args, field)
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
@@ -337,7 +369,7 @@ func (c *Client) HTTL(ctx context.Context, key string, fields ...string) ([]time
 	args[2] = "FIELDS"
 	args[3] = len(fields)
 	for _, field := range fields {
-		args = append(args, field, fields)
+		args = append(args, field)
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
@@ -360,6 +392,8 @@ func (c *Client) HTTL(ctx context.Context, key string, fields ...string) ([]time
 //
 // 参数 key 为哈希表键。
 // 对应 Redis 的 HVALS 命令。
+//
+// 若 key 不存在，返回 nil, nil
 func (c *Client) HVals(ctx context.Context, key string) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "HVALS", key)
 	resp := c.do(ctx, cmd)

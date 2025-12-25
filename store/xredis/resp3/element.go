@@ -180,6 +180,33 @@ func (a Array) ToZSlice() ([]Z, error) {
 	return result, nil
 }
 
+// ToZSliceFlat 处理 zscan 得的的这种扁平的结构
+// 1) "0"
+// 2) 1) "m1"
+//  2. "1"
+//  3. "m2"
+//  4. "2"
+//  5. "m3"
+//  6. "3"
+func (a Array) ToZSliceFlat() ([]Z, error) {
+	if len(a) == 0 {
+		return nil, nil
+	}
+	if len(a)%2 != 0 {
+		return nil, fmt.Errorf("expect an even number of elements got %d", len(a))
+	}
+	result := make([]Z, 0, len(a))
+	for i := 0; i < len(a); i += 2 {
+		member, err1 := ToString(a[i], nil)
+		score, err2 := ToFloat64(a[i+1], err1)
+		if err2 != nil {
+			return nil, err2
+		}
+		result = append(result, Z{Score: score, Member: member})
+	}
+	return result, nil
+}
+
 var _ Element = Null{}
 
 type Null struct{}

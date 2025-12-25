@@ -331,7 +331,7 @@ func TestClientZSet(t *testing.T) {
 	})
 
 	t.Run("ZRange", func(t *testing.T) {
-		got, err := client.ZRange(ctx, "ZRange-1", "0", "-1")
+		got, err := client.ZRange(ctx, "ZRange-1", ZRangeBy{Start: "0", Stop: "-1"})
 		xt.NoError(t, err)
 		xt.Empty(t, got)
 
@@ -339,8 +339,147 @@ func TestClientZSet(t *testing.T) {
 		xt.NoError(t, err)
 		xt.Equal(t, 3, num)
 
-		got, err = client.ZRange(ctx, "ZRange-1", "0", "-1")
+		got, err = client.ZRange(ctx, "ZRange-1", ZRangeBy{Start: "0", Stop: "-1"})
 		xt.NoError(t, err)
 		xt.Equal(t, []string{"m1", "m2", "m3"}, got)
+
+		got1, err := client.ZRangeWithScore(ctx, "ZRange-1", ZRangeBy{Start: "0", Stop: "-1"})
+		xt.NoError(t, err)
+		want1 := []Z{
+			{Member: "m1", Score: 1},
+			{Member: "m2", Score: 2},
+			{Member: "m3", Score: 3},
+		}
+		xt.Equal(t, want1, got1)
+	})
+
+	t.Run("ZRank", func(t *testing.T) {
+		got, err := client.ZRank(ctx, "ZRank-1", "m1")
+		xt.ErrorIs(t, err, ErrNil)
+		xt.Equal(t, 0, got)
+
+		num, err := client.ZAddMap(ctx, "ZRank-1", map[string]float64{"m1": 1, "m2": 2, "m3": 3})
+		xt.NoError(t, err)
+		xt.Equal(t, 3, num)
+
+		got, err = client.ZRank(ctx, "ZRank-1", "m1")
+		xt.NoError(t, err)
+		xt.Equal(t, 0, got)
+
+		got, err = client.ZRank(ctx, "ZRank-1", "m2")
+		xt.NoError(t, err)
+		xt.Equal(t, 1, got)
+
+		got, err = client.ZRank(ctx, "ZRank-1", "m1000-not-found")
+		xt.ErrorIs(t, err, ErrNil)
+		xt.Equal(t, 0, got)
+
+		got, err = client.ZRevRank(ctx, "ZRank-1", "m1")
+		xt.NoError(t, err)
+		xt.Equal(t, 2, got)
+
+		rank, score, err := client.ZRankWithScore(ctx, "ZRank-1", "m1")
+		xt.NoError(t, err)
+		xt.Equal(t, 0, rank)
+		xt.Equal(t, 1, score)
+
+		rank, score, err = client.ZRevRankWithScore(ctx, "ZRank-1", "m1")
+		xt.NoError(t, err)
+		xt.Equal(t, 2, rank)
+		xt.Equal(t, 1, score)
+	})
+
+	t.Run("ZRem", func(t *testing.T) {
+		got, err := client.ZRem(ctx, "ZRem-1", "m1")
+		xt.NoError(t, err)
+		xt.Equal(t, 0, got)
+
+		num, err := client.ZAddMap(ctx, "ZRem-1", map[string]float64{"m1": 1, "m2": 2, "m3": 3})
+		xt.NoError(t, err)
+		xt.Equal(t, 3, num)
+
+		got, err = client.ZRem(ctx, "ZRem-1", "m1", "m1000")
+		xt.NoError(t, err)
+		xt.Equal(t, 1, got)
+	})
+
+	t.Run("ZRemRangeByLex", func(t *testing.T) {
+		got, err := client.ZRemRangeByLex(ctx, "ZRemRangeByLex-1", "-", "+")
+		xt.NoError(t, err)
+		xt.Equal(t, 0, got)
+
+		num, err := client.ZAddMap(ctx, "ZRemRangeByLex-1", map[string]float64{"m1": 1, "m2": 2, "m3": 3})
+		xt.NoError(t, err)
+		xt.Equal(t, 3, num)
+
+		got, err = client.ZRemRangeByLex(ctx, "ZRemRangeByLex-1", "-", "+")
+		xt.NoError(t, err)
+		xt.Equal(t, 3, got)
+	})
+
+	t.Run("ZRemRangeByRank", func(t *testing.T) {
+		got, err := client.ZRemRangeByRank(ctx, "ZRemRangeByRank-1", 0, 1)
+		xt.NoError(t, err)
+		xt.Equal(t, 0, got)
+
+		num, err := client.ZAddMap(ctx, "ZRemRangeByRank-1", map[string]float64{"m1": 1, "m2": 2, "m3": 3})
+		xt.NoError(t, err)
+		xt.Equal(t, 3, num)
+
+		got, err = client.ZRemRangeByRank(ctx, "ZRemRangeByRank-1", 0, 1)
+		xt.NoError(t, err)
+		xt.Equal(t, 2, got)
+	})
+
+	t.Run("ZRemRangeByScore", func(t *testing.T) {
+		got, err := client.ZRemRangeByScore(ctx, "ZRemRangeByScore-1", "-inf", "+inf")
+		xt.NoError(t, err)
+		xt.Equal(t, 0, got)
+
+		num, err := client.ZAddMap(ctx, "ZRemRangeByScore-1", map[string]float64{"m1": 1, "m2": 2, "m3": 3})
+		xt.NoError(t, err)
+		xt.Equal(t, 3, num)
+
+		got, err = client.ZRemRangeByScore(ctx, "ZRemRangeByScore-1", "-inf", "+inf")
+		xt.NoError(t, err)
+		xt.Equal(t, 3, got)
+	})
+
+	t.Run("ZScore", func(t *testing.T) {
+		got, err := client.ZScore(ctx, "ZScore-1", "m1")
+		xt.ErrorIs(t, err, ErrNil)
+		xt.Equal(t, 0, got)
+
+		num, err := client.ZAddMap(ctx, "ZScore-1", map[string]float64{"m1": 1, "m2": 2, "m3": 3})
+		xt.NoError(t, err)
+		xt.Equal(t, 3, num)
+
+		got, err = client.ZScore(ctx, "ZScore-1", "m1")
+		xt.NoError(t, err)
+		xt.Equal(t, 1, got)
+	})
+
+	t.Run("ZScan", func(t *testing.T) {
+		next, got, err := client.ZScan(ctx, "ZScan-1", 0, "", 0)
+		xt.NoError(t, err)
+		xt.Empty(t, got)
+		xt.Equal(t, 0, next)
+
+		num, err := client.ZAddMap(ctx, "ZScan-1", map[string]float64{"m1": 1, "m2": 2, "m3": 3})
+		xt.NoError(t, err)
+		xt.Equal(t, 3, num)
+
+		next, got, err = client.ZScan(ctx, "ZScan-1", 0, "", 2)
+		xt.NoError(t, err)
+		xt.GreaterOrEqual(t, len(got), 2)
+		xt.GreaterOrEqual(t, next, 0)
+
+		var total int
+		err = client.ZScanWalk(ctx, "ZScan-1", 0, "", 2, func(cursor uint64, m []Z) error {
+			total += len(m)
+			return nil
+		})
+		xt.NoError(t, err)
+		xt.Equal(t, len(got), total)
 	})
 }

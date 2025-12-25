@@ -220,6 +220,21 @@ func TestClientKey(t *testing.T) {
 		xt.Error(t, err)
 		xt.False(t, ok)
 	})
+
+	t.Run("Scan", func(t *testing.T) {
+		next, keys, err := client.Scan(ctx, 0, "", 10, "")
+		xt.NoError(t, err)
+		xt.GreaterOrEqual(t, next, 0)
+		xt.Greater(t, len(keys), 0)
+
+		var num int
+		err = client.ScanWalk(ctx, 0, "", 10, "", func(cursor uint64, keys []string) error {
+			num += len(keys)
+			return nil
+		})
+		xt.NoError(t, err)
+		xt.Equal(t, len(keys), num)
+	})
 }
 
 func testDelKeys(t *testing.T, client *Client, keys ...string) {

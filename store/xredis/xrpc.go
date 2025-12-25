@@ -108,3 +108,17 @@ func (resp *rpcResponse) ErrMsg() string {
 func (resp *rpcResponse) Unwrap() any {
 	return resp.result
 }
+
+func (resp *rpcResponse) asResp3Array(count int) (resp3.Array, error) {
+	if resp.err != nil {
+		return nil, resp.err
+	}
+	arr, ok := resp.result.(resp3.Array)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type %T", resp.result)
+	}
+	if count > 0 && len(arr) != count {
+		return nil, fmt.Errorf("expected %d arrays, got %d", count, len(arr))
+	}
+	return arr, nil
+}

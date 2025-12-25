@@ -7,7 +7,7 @@ package xredis
 import (
 	"context"
 	"errors"
-	"fmt"
+	"io"
 
 	"github.com/xanygo/anygo/store/xredis/resp3"
 )
@@ -311,9 +311,9 @@ func (c *Client) ZMPop(ctx context.Context, key string, keys []string, min bool,
 		}
 		return "", nil, resp.err
 	}
-	arr, ok := resp.result.(resp3.Array)
-	if !ok || len(arr) != 2 {
-		return "", nil, errors.New("not ZMPOP reply")
+	arr, err := resp.asResp3Array(2)
+	if err != nil {
+		return "", nil, err
 	}
 	fromKey, err = resp3.ToString(arr[0], nil)
 	members, err = resp3.ToZSlice(arr[1], err)
@@ -415,149 +415,113 @@ func (c *Client) ZRandMemberWithScores(ctx context.Context, key string, count in
 }
 
 // ZRange 返回存储在指定键中的有序集合中指定范围的元素。
+func (c *Client) ZRange(ctx context.Context, key string, opt ZRangeBy) ([]string, error) {
+	return opt.zRange(ctx, c, key, "")
+}
+
+// ZRangeBy ZRANGEXXX 命令的配置参数
 //
-// 参数说明：
-//   - start 和 stop 可以取 -inf 和 +inf，分别表示负无穷和正无穷。
-//   - 默认情况下，start 和 stop 指定的分数区间是闭区间（包含边界），即 score >= start and score <= stop。
-//   - 如果希望使用开区间（不包含边界），可以在分数前加上字符 "("，如 start="(5", stop=10 ->  score > 5 and score <= 10
-func (c *Client) ZRange(ctx context.Context, key string, start string, stop string) ([]string, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop)
-	resp := c.do(ctx, cmd)
+// 使用不同的算法，Start 和 Stop 赋值时有区别的：
+//
+// 1.使用 BYLEX 作为排序算法时：
+//   - 合法的 Start 和 Stop 必须以 ( 或 [ 开头，用于指定范围边界是开区间还是闭区间。
+//   - Start 和 Stop 可以使用特殊值 + 或 -，分别表示正无穷和负无穷的字符串。
+//
+// 2. 使用 非 BYLEX 排序算法时：
+//   - Start 和 Stop 可以取 -inf 和 +inf，分别表示负无穷和正无穷。
+//   - 默认情况下，Start 和 Stop 指定的分数区间是闭区间（包含边界），即 score >= Start and score <= Stop。
+//   - 如果希望使用开区间（不包含边界），可以在分数前加上字符 "("，如 Start="(5", stop=10 ->  score > 5 and score <= 10
+type ZRangeBy struct {
+	Start   string // 必填, 起始分数
+	Stop    string // 必填，截止分数
+	Reverse bool   // 可选，按 score 降序排列
+	Offset  int64  // 可选
+	Count   int64  // 可选
+}
+
+// ZRANGE key start stop [BYSCORE | BYLEX] [REV] [LIMIT offset count] [WITHSCORES]
+func (zb ZRangeBy) zRange(ctx context.Context, client *Client, key string, by string) ([]string, error) {
+	args := []any{"ZRANGE", key, zb.Start, zb.Stop}
+	if by != "" {
+		args = append(args, by)
+	}
+	if zb.Reverse {
+		args = append(args, "REV")
+	}
+	if zb.Count > 0 {
+		args = append(args, "LIMIT", zb.Offset, zb.Count)
+	}
+	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
+	resp := client.do(ctx, cmd)
 	return resp3.ToStringSlice(resp.result, resp.err)
 }
 
-// ZRangeRev 返回有序集合中指定区间的成员（按 score 降序排列）。
-//
-// 参数 start 和 stop 指定区间索引（包含 start 和 stop）。
-// 对应 Redis 的 ZRANGE 命令（REV）。
-func (c *Client) ZRangeRev(ctx context.Context, key string, start string, stop string) ([]string, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "REV")
-	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+func (zb ZRangeBy) zRangeWithScore(ctx context.Context, client *Client, key string, by string) ([]Z, error) {
+	args := []any{"ZRANGE", key, zb.Start, zb.Stop}
+	if by != "" {
+		args = append(args, by)
+	}
+	if zb.Reverse {
+		args = append(args, "REV")
+	}
+	if zb.Count > 0 {
+		args = append(args, "LIMIT", zb.Offset, zb.Count)
+	}
+	args = append(args, "WITHSCORES")
+	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
+	resp := client.do(ctx, cmd)
+	return resp3.ToZSlice(resp.result, resp.err)
 }
 
 // ZRangeByScore 返回有序集合中指定分值区间的成员（按分值升序排列）。
 //
-// 参数 start 和 stop 指定分值区间（包含 start 和 stop）。
 // 对应 Redis 的 ZRANGE 命令（BYSCORE）。
-func (c *Client) ZRangeByScore(ctx context.Context, key string, start string, stop string) ([]string, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "BYSCORE")
-	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
-}
-
-// ZRangeRevByScore 返回有序集合中指定分值区间的成员（按分值降序排列）。
-//
-// 参数 start 和 stop 指定分值区间（包含 start 和 stop）。
-// 对应 Redis 的 ZRANGE 命令（BYSCORE REV）。
-func (c *Client) ZRangeRevByScore(ctx context.Context, key string, start string, stop string) ([]string, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "BYSCORE", "REV")
-	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+func (c *Client) ZRangeByScore(ctx context.Context, key string, opt ZRangeBy) ([]string, error) {
+	return opt.zRange(ctx, c, key, "BYSCORE")
 }
 
 // ZRangeByLex 返回有序集合中按字典序（Lexicographical order）指定区间的成员。
 //
-// 参数 start 和 stop 指定字典序区间（包含 start 和 stop）。
 // 对应 Redis 的 ZRANGE 命令（BYLEX）。
-//
-//   - 合法的 start 和 stop 必须以 ( 或 [ 开头，用于指定范围边界是开区间还是闭区间。
-//   - start 和 stop 可以使用特殊值 + 或 -，分别表示正无穷和负无穷的字符串。
-func (c *Client) ZRangeByLex(ctx context.Context, key string, start string, stop string) ([]string, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "BYLEX")
-	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
-}
-
-// ZRangeRevByLex 返回有序集合中按字典序（Lexicographical order）指定区间的成员，按字典序降序排列。
-//
-// 参数 start 和 stop 指定字典序区间（包含 start 和 stop）。
-// 对应 Redis 的 ZRANGE 命令（BYLEX REV）。
-//
-//   - 合法的 start 和 stop 必须以 ( 或 [ 开头，用于指定范围边界是开区间还是闭区间。
-//   - start 和 stop 可以使用特殊值 + 或 -，分别表示正无穷和负无穷的字符串。
-func (c *Client) ZRangeRevByLex(ctx context.Context, key string, start string, stop string) ([]string, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "BYLEX", "REV")
-	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+func (c *Client) ZRangeByLex(ctx context.Context, key string, opt ZRangeBy) ([]string, error) {
+	return opt.zRange(ctx, c, key, "BYLEX")
 }
 
 // ZRangeWithScore 返回有序集合中指定区间的成员及其分值（score）。
 //
-// 参数 start 和 stop 指定成员索引区间（包含 start 和 stop）。
 // 对应 Redis 的 ZRANGE 命令（WITHSCORES）。
-func (c *Client) ZRangeWithScore(ctx context.Context, key string, start string, stop string) ([]Z, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "WITHSCORES")
-	resp := c.do(ctx, cmd)
-	return resp3.ToZSlice(resp.result, resp.err)
-}
-
-// ZRangeRevWithScore 返回有序集合中指定区间的成员及其分值（score），按分值降序排列。
-//
-// 参数 start 和 stop 指定成员索引区间（包含 start 和 stop）。
-// 对应 Redis 的 ZRANGE 命令（REV WITHSCORES）。
-func (c *Client) ZRangeRevWithScore(ctx context.Context, key string, start string, stop string) ([]Z, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "REV", "WITHSCORES")
-	resp := c.do(ctx, cmd)
-	return resp3.ToZSlice(resp.result, resp.err)
+func (c *Client) ZRangeWithScore(ctx context.Context, key string, opt ZRangeBy) ([]Z, error) {
+	return opt.zRangeWithScore(ctx, c, key, "")
 }
 
 // ZRangeByScoreWithScore 返回有序集合中指定分值区间的成员及其分值（score），按分值升序排列。
 //
-// 参数 start 和 stop 指定分值区间（包含 start 和 stop）。
 // 对应 Redis 的 ZRANGE 命令（BYSCORE WITHSCORES）。
-func (c *Client) ZRangeByScoreWithScore(ctx context.Context, key string, start string, stop string) ([]Z, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "BYSCORE", "WITHSCORES")
-	resp := c.do(ctx, cmd)
-	return resp3.ToZSlice(resp.result, resp.err)
-}
-
-// ZRangeRevByScoreWithScore 返回有序集合中指定分值区间的成员及其分值（score），按分值降序排列。
-//
-// 参数 start 和 stop 指定分值区间（包含 start 和 stop）。
-// 对应 Redis 的 ZRANGE 命令（BYSCORE REV WITHSCORES）。
-func (c *Client) ZRangeRevByScoreWithScore(ctx context.Context, key string, start string, stop string) ([]Z, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "BYSCORE", "REV", "WITHSCORES")
-	resp := c.do(ctx, cmd)
-	return resp3.ToZSlice(resp.result, resp.err)
+func (c *Client) ZRangeByScoreWithScore(ctx context.Context, key string, opt ZRangeBy) ([]Z, error) {
+	return opt.zRangeWithScore(ctx, c, key, "BYSCORE")
 }
 
 // ZRangeByLexWithScore 返回有序集合中按字典序（Lexicographical order）指定区间的成员及其分值（score）。
 //
-// 参数 start 和 stop 指定字典序区间（包含 start 和 stop）。
 // 对应 Redis 的 ZRANGE 命令（BYLEX WITHSCORES）。
-//
-//   - 合法的 start 和 stop 必须以 ( 或 [ 开头，用于指定范围边界是开区间还是闭区间。
-//   - start 和 stop 可以使用特殊值 + 或 -，分别表示正无穷和负无穷的字符串。
-func (c *Client) ZRangeByLexWithScore(ctx context.Context, key string, start string, stop string) ([]Z, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "BYLEX", "WITHSCORES")
-	resp := c.do(ctx, cmd)
-	return resp3.ToZSlice(resp.result, resp.err)
-}
-
-// ZRangeRevByLexWithScore 返回有序集合中按字典序（Lexicographical order）指定区间的成员及其分值（score），按字典序降序排列。
-//
-// 参数 start 和 stop 指定字典序区间（包含 start 和 stop）。
-// 对应 Redis 的 ZRANGE 命令（BYLEX REV WITHSCORES）。
-func (c *Client) ZRangeRevByLexWithScore(ctx context.Context, key string, start string, stop string) ([]Z, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANGE", key, start, stop, "BYLEX", "REV", "WITHSCORES")
-	resp := c.do(ctx, cmd)
-	return resp3.ToZSlice(resp.result, resp.err)
+func (c *Client) ZRangeByLexWithScore(ctx context.Context, key string, opt ZRangeBy) ([]Z, error) {
+	return opt.zRangeWithScore(ctx, c, key, "BYLEX")
 }
 
 // ZRank 返回键所存储有序集合中指定成员的排名，按分数从低到高排序
 //
 // 排名（索引）从 0 开始，即分数最低的成员排名为 0。
+// 若 key 或者 member 不存在，会返回 ErrNil
 func (c *Client) ZRank(ctx context.Context, key string, member string) (int64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "ZRANK", key, member)
 	resp := c.do(ctx, cmd)
 	return resp3.ToInt64(resp.result, resp.err)
 }
 
-// ZRevRank 返回有序集合中指定成员的排名（按分值降序排列，0 为最高分）。
+// ZRevRank 返回有序集合中指定成员的排名（按分值降序排列）。
 //
-// 参数 key 为有序集合的键，member 为要查询的成员。
 // 对应 Redis 的 ZREVRANK 命令。
+// 若 key 或者 member 不存在，会返回 ErrNil
 func (c *Client) ZRevRank(ctx context.Context, key string, member string) (int64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "ZREVRANK", key, member)
 	resp := c.do(ctx, cmd)
@@ -572,12 +536,9 @@ func (c *Client) ZRevRank(ctx context.Context, key string, member string) (int64
 func (c *Client) ZRankWithScore(ctx context.Context, key string, member string) (int64, float64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANK", key, member, "WITHSCORE")
 	resp := c.do(ctx, cmd)
-	if resp.err != nil {
-		return 0, 0, resp.err
-	}
-	arr, _ := resp.result.(resp3.Array)
-	if len(arr) != 2 {
-		return 0, 0, fmt.Errorf("expected 2 arrays, got %d", len(arr))
+	arr, err := resp.asResp3Array(2)
+	if err != nil {
+		return 0, 0, err
 	}
 	rank, err1 := resp3.ToInt64(arr[0], nil)
 	score, err2 := resp3.ToFloat64(arr[1], err1)
@@ -590,12 +551,9 @@ func (c *Client) ZRankWithScore(ctx context.Context, key string, member string) 
 func (c *Client) ZRevRankWithScore(ctx context.Context, key string, member string) (int64, float64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZREVRANK", key, member, "WITHSCORE")
 	resp := c.do(ctx, cmd)
-	if resp.err != nil {
-		return 0, 0, resp.err
-	}
-	arr, _ := resp.result.(resp3.Array)
-	if len(arr) != 2 {
-		return 0, 0, fmt.Errorf("expected 2 arrays, got %d", len(arr))
+	arr, err := resp.asResp3Array(2)
+	if err != nil {
+		return 0, 0, err
 	}
 	rank, err1 := resp3.ToInt64(arr[0], nil)
 	score, err2 := resp3.ToFloat64(arr[1], err1)
@@ -604,9 +562,12 @@ func (c *Client) ZRevRankWithScore(ctx context.Context, key string, member strin
 
 // ZRem 从键所存储的有序集合中移除指定成员。
 //
-// 不存在的成员会被忽略。
+// 若 key 不存在 或者 member 不存在，会忽略掉，即返回 0，nil。
 // 如果键存在但不是有序集合类型，则返回错误。
 func (c *Client) ZRem(ctx context.Context, key string, members ...string) (int64, error) {
+	if len(members) == 0 {
+		return 0, errNoMembers
+	}
 	args := make([]any, 2, 2+len(members))
 	args[0] = "ZREM"
 	args[1] = key
@@ -620,21 +581,25 @@ func (c *Client) ZRem(ctx context.Context, key string, members ...string) (int64
 
 // ZRemRangeByLex 删除值在 min 与 max 之间的所有元素
 //
-//   - 合法的 start 和 stop 必须以 ( 或 [ 开头，用于指定范围边界是开区间还是闭区间。
-//   - start 和 stop 可以使用特殊值 + 或 -，分别表示正无穷和负无穷的字符串。
+//   - 合法的 min 和 max 必须以 ( 或 [ 开头，用于指定范围边界是开区间还是闭区间。
+//   - min 和 max 可以使用特殊值 + 或 -，分别表示正无穷和负无穷的字符串。
+//   - 若 key 不存在，会返回 0, nil
 func (c *Client) ZRemRangeByLex(ctx context.Context, key string, min string, max string) (int64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "ZREMRANGEBYLEX", key, min, max)
 	resp := c.do(ctx, cmd)
 	return resp3.ToInt64(resp.result, resp.err)
 }
 
-// ZRemRangeByRank 移除键所存储有序集合中，排名在 start 与 stop 之间的所有元素
+// ZRemRangeByRank 移除键所存储有序集合中，排名在 [start 与 stop] 之间的所有元素
 //
-// start 和 stop 是 0 为起始索引 的排名，其中 0 表示分数最低的元素。
-// 这两个索引可以为负数，表示从分数最高的元素开始的偏移。例如：
-// -1 表示分数最高的元素
-// -2 表示分数第二高的元素
-// 依此类推。
+// start 和 stop 是 0 为起始索引的排名，是闭区间，包含 start 和 stop 本身，其中 0 表示分数最低的元素。
+//
+// 使用负数，表示从分数最高的元素开始的偏移, 例如：
+//   - -1 表示分数最高的元素
+//   - -2 表示分数第二高的元素
+//   - 依此类推。
+//
+// 若 key 不存在，会返回 0, nil
 func (c *Client) ZRemRangeByRank(ctx context.Context, key string, start int64, stop int64) (int64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "ZREMRANGEBYRANK", key, start, stop)
 	resp := c.do(ctx, cmd)
@@ -653,9 +618,53 @@ func (c *Client) ZRemRangeByScore(ctx context.Context, key string, min string, m
 
 // ZScore 返回键所存储有序集合中指定成员的分数。
 //
-// 如果成员不存在于有序集合中，或者键不存在，则返回 nil
+// 如果成员不存在于有序集合中，或者键不存在，则返回 ErrNil
 func (c *Client) ZScore(ctx context.Context, key string, member string) (float64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeDouble, "ZSCORE", key, member)
 	resp := c.do(ctx, cmd)
 	return resp3.ToFloat64(resp.result, resp.err)
+}
+
+// ZScan 遍历集合
+//
+// 若 key 不存在，会返回 0，nil,nil
+func (c *Client) ZScan(ctx context.Context, key string, cursor uint64, pattern string, count int64) (uint64, []Z, error) {
+	args := []any{"ZSCAN", key, cursor}
+	if pattern != "" {
+		args = append(args, "MATCH", pattern)
+	}
+	if count > 0 {
+		args = append(args, "COUNT", count)
+	}
+	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
+	resp := c.do(ctx, cmd)
+	arr, err := resp.asResp3Array(2)
+	if err != nil {
+		return 0, nil, err
+	}
+	nextCursor, err := resp3.ToUint64(arr[0], nil)
+	result, err2 := resp3.ToZSliceFlat(arr[1], err)
+	return nextCursor, result, err2
+}
+
+// ZScanWalk 使用 ZScan 遍历该 key 满足条件的所有的值
+//
+// 回调方法 walk 返回 err = io.EOF 表示正常提前终止, 返回其他 error 表示提前异常终止
+func (c *Client) ZScanWalk(ctx context.Context, key string, cursor uint64, pattern string, count int64, walk func(cursor uint64, m []Z) error) error {
+	for {
+		next, items, err := c.ZScan(ctx, key, cursor, pattern, count)
+		if err != nil {
+			return err
+		}
+		if err = walk(next, items); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
+		}
+		if next == 0 {
+			return nil
+		}
+		cursor = next
+	}
 }

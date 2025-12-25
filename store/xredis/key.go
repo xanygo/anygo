@@ -6,7 +6,8 @@ package xredis
 
 import (
 	"context"
-	"fmt"
+	"errors"
+	"io"
 	"time"
 
 	"github.com/xanygo/anygo/store/xredis/resp3"
@@ -275,72 +276,62 @@ func (c *Client) RenameNX(ctx context.Context, key string, newKey string) (bool,
 	return resp3.ToIntBool(resp.result, resp.err, 1)
 }
 
-func (c *Client) Scan(ctx context.Context, cursor uint64, match string, count int64, typ string) (*ScanResult, error) {
-	sc := &ScanResult{
-		cursor: cursor,
-		match:  match,
-		count:  count,
-		typ:    typ,
-		c:      c,
+// Scan 执行 Redis 的 SCAN 命令，用于遍历所有的满足条件的 key。
+//
+// 该方法基于游标（cursor）进行扫描，适合在 key 数量较多时使用，
+// 可避免一次性返回大量数据而阻塞 Redis。
+// 返回结果不保证顺序，且在遍历过程中可能存在弱一致性。
+//
+// 参数说明：
+//   - cursor: 游标位置，首次调用应传 0，后续传入上一次返回的游标
+//   - pattern: 匹配模式（MATCH），为空表示不过滤
+//   - count: 扫描数量提示（COUNT），大于 0 时生效，仅为建议值
+//   - typ: key 类型过滤（TYPE），如 "string"、"hash"、"set" 等，为空表示不过滤
+//
+// 返回值：
+//   - nextCursor: 下一次扫描应使用的游标；当为 0 时表示扫描结束
+//   - keys: 本次扫描返回的 key 列表
+//   - err: 执行过程中的错误信息
+func (c *Client) Scan(ctx context.Context, cursor uint64, pattern string, count int64, typ string) (uint64, []string, error) {
+	args := []any{"SCAN", cursor}
+	if pattern != "" {
+		args = append(args, "MATCH", pattern)
 	}
-	err := sc.Next(ctx)
-	return sc, err
-}
-
-type ScanResult struct {
-	cursor uint64
-	match  string
-	count  int64
-	typ    string
-	c      *Client
-
-	resultKeys []string
-}
-
-func (sr *ScanResult) Next(ctx context.Context) error {
-	args := make([]any, 2)
-	args[0] = "SCAN"
-	args[1] = sr.cursor
-	if sr.match != "" {
-		args = append(args, "MATCH", sr.match)
+	if count > 0 {
+		args = append(args, "COUNT", count)
 	}
-	if sr.count > 0 {
-		args = append(args, "COUNT", sr.count)
-	}
-	if sr.typ != "" {
-		args = append(args, "TYPE", sr.typ)
+	if typ != "" {
+		args = append(args, "TYPE", typ)
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
-	resp := sr.c.do(ctx, cmd)
-	if resp.err != nil {
-		return resp.err
+	resp := c.do(ctx, cmd)
+	arr, err := resp.asResp3Array(2)
+	if err != nil {
+		return 0, nil, err
 	}
-	arr, ok := resp.result.(resp3.Array)
-	if !ok || len(arr) != 2 {
-		return fmt.Errorf("invalid result type: %T", resp.result)
-	}
-	first, err0 := resp3.ToInt64(arr[0], nil)
-	if err0 != nil {
-		return err0
-	}
-
-	elements, err1 := resp3.ToStringSlice(arr[1], nil)
-	if err1 != nil {
-		return err1
-	}
-	sr.cursor = uint64(first)
-	sr.resultKeys = elements
-	return nil
+	nextCursor, err0 := resp3.ToUint64(arr[0], nil)
+	keys, err1 := resp3.ToStringSlice(arr[1], err0)
+	return nextCursor, keys, err1
 }
 
-func (sr *ScanResult) Cursor() uint64 {
-	return sr.cursor
-}
-
-func (sr *ScanResult) Keys() []string {
-	return sr.resultKeys
-}
-
-func (sr *ScanResult) HasMore() bool {
-	return sr.cursor > 0
+// ScanWalk 使用 Scan 遍历所有的满足条件的 key。
+//
+// 回调方法 walk 返回 err = io.EOF 表示正常提前终止, 返回其他 error 表示提前异常终止
+func (c *Client) ScanWalk(ctx context.Context, cursor uint64, pattern string, count int64, typ string, walk func(cursor uint64, keys []string) error) error {
+	for {
+		next, keys, err := c.Scan(ctx, cursor, pattern, count, typ)
+		if err != nil {
+			return err
+		}
+		if err = walk(next, keys); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
+		}
+		if next == 0 {
+			return nil
+		}
+		cursor = next
+	}
 }

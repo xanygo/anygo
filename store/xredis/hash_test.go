@@ -122,10 +122,10 @@ func TestClientHash(t *testing.T) {
 
 	t.Run("HGetAll", func(t *testing.T) {
 		data := map[string]string{"f1": "v1", "f2": "v2"}
-		_, err := client.HSetMap(ctx, "h6", data)
+		_, err := client.HSetMap(ctx, "HGetAll-1", data)
 		xt.NoError(t, err)
 
-		val, err := client.HGetAll(ctx, "h6")
+		val, err := client.HGetAll(ctx, "HGetAll-1")
 		xt.NoError(t, err)
 		xt.Equal(t, data, val)
 
@@ -133,9 +133,9 @@ func TestClientHash(t *testing.T) {
 		xt.NoError(t, err)
 		xt.Empty(t, val)
 
-		testSetKeyString(t, client, "h6")
+		testSetKeyString(t, client, "HGetAll-1")
 
-		val, err = client.HGetAll(ctx, "h6")
+		val, err = client.HGetAll(ctx, "HGetAll-1")
 		xt.Error(t, err)
 		xt.Empty(t, val)
 	})
@@ -218,12 +218,43 @@ func TestClientHash(t *testing.T) {
 		xt.Empty(t, val)
 	})
 
-	t.Run("HVals", func(t *testing.T) {
+	t.Run("HTTL", func(t *testing.T) {
+		got, err := client.HTTL(ctx, "HTTL-1", "f1", "f2")
+		xt.NoError(t, err)
+		xt.Len(t, got, 2)
+		xt.Equal(t, []time.Duration{-2, -2}, got)
+
 		data := map[string]string{"f1": "v1", "f2": "v2"}
-		_, err := client.HSetMap(ctx, "h12", data)
+		_, err = client.HSetMap(ctx, "HTTL-1", data)
 		xt.NoError(t, err)
 
-		vals, err := client.HVals(ctx, "h12")
+		got, err = client.HTTL(ctx, "HTTL-1", "f1", "f2")
+		xt.NoError(t, err)
+		xt.Len(t, got, 2)
+		xt.Equal(t, []time.Duration{-1, -1}, got)
+
+		nums, err := client.HExpireAt(ctx, "HTTL-1", time.Now().Add(time.Hour), "", "f1")
+		xt.NoError(t, err)
+		xt.Len(t, nums, 1)
+		xt.Equal(t, 1, nums[0])
+
+		got, err = client.HTTL(ctx, "HTTL-1", "f1", "f2")
+		xt.NoError(t, err)
+		xt.Len(t, got, 2)
+		xt.Greater(t, got[0], 50*time.Minute)
+		xt.Equal(t, time.Duration(-1), got[1])
+	})
+
+	t.Run("HVals", func(t *testing.T) {
+		vals, err := client.HVals(ctx, "HVals-1")
+		xt.NoError(t, err)
+		xt.Empty(t, vals)
+
+		data := map[string]string{"f1": "v1", "f2": "v2"}
+		_, err = client.HSetMap(ctx, "HVals-1", data)
+		xt.NoError(t, err)
+
+		vals, err = client.HVals(ctx, "HVals-1")
 		xt.NoError(t, err)
 		slices.Sort(vals)
 		xt.Equal(t, []string{"v1", "v2"}, vals)
