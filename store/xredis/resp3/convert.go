@@ -237,6 +237,45 @@ func ToInt64Slice(e Element, err error) ([]int64, error) {
 	return list, nil
 }
 
+// ToPtrInt64Slice 解析出允许 null 值的 []*int64 结果
+func ToPtrInt64Slice(e Element, err error) ([]*int64, error) {
+	if err != nil {
+		return nil, err
+	}
+	arr, err := elementAsArray(e)
+	if err != nil {
+		return nil, err
+	}
+	list := make([]*int64, 0, len(arr))
+	for _, item := range arr {
+		switch dv := item.(type) {
+		case Integer:
+			num := dv.Int64()
+			list = append(list, &num)
+		case BigNumber:
+			num := dv.Int64()
+			list = append(list, &num)
+		case SimpleString:
+			num, err1 := dv.ToInt64()
+			if err1 != nil {
+				return nil, err1
+			}
+			list = append(list, &num)
+		case BulkString:
+			num, err1 := dv.ToInt64()
+			if err1 != nil {
+				return nil, err1
+			}
+			list = append(list, &num)
+		case Null:
+			list = append(list, nil)
+		default:
+			return nil, fmt.Errorf("%w: ToInt64Slice_1 %#v(%T)", ErrInvalidReply, e, e)
+		}
+	}
+	return list, nil
+}
+
 func ToFloat64(result Element, err error) (float64, error) {
 	if err != nil {
 		return 0, err

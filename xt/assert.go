@@ -20,7 +20,8 @@ func Equal[T any](t Testing, expected T, actual T) {
 		h.Helper()
 	}
 	if !equal(expected, actual) {
-		t.Fatalf("Not equal: \n%s", sprintfDiff(expected, actual))
+		var zero T
+		t.Fatalf("Not equal (%T): \n%s", zero, sprintfDiff(expected, actual))
 	}
 }
 
@@ -30,7 +31,8 @@ func NotEqual[T any](t Testing, expected T, actual T) {
 	}
 	if equal(expected, actual) {
 		str := zreflect.DumpString(actual)
-		t.Fatalf("Should not equal: %s", str)
+		var zero T
+		t.Fatalf("Should not equal (%T): %s", zero, str)
 	}
 }
 
