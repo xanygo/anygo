@@ -257,7 +257,7 @@ func (c *Client) ScriptExistsMany(ctx context.Context, sha1 ...string) ([]bool, 
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	nums, err := resp3.ToInt64Slice(resp.result, resp.err)
+	nums, err := resp3.ToInt64Slice(resp.result, resp.err, len(sha1))
 	if err != nil {
 		return nil, err
 	}

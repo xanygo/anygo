@@ -43,7 +43,7 @@ func (c *Client) SDiff(ctx context.Context, key string, keys ...string) ([]strin
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+	return resp3.ToStringSlice(resp.result, resp.err, 0)
 }
 
 // SDiffStore 该命令等同于 SDIFF，但不是返回结果集，而是将结果存储到指定的目标键中。
@@ -71,7 +71,7 @@ func (c *Client) SInter(ctx context.Context, key string, keys ...string) ([]stri
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+	return resp3.ToStringSlice(resp.result, resp.err, 0)
 }
 
 // SIsMember 返回给定的成员是否存在于键所存储的集合中
@@ -89,7 +89,7 @@ func (c *Client) SIsMember(ctx context.Context, key string, member string) (bool
 func (c *Client) SMembers(ctx context.Context, key string) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "SMEMBERS", key)
 	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+	return resp3.ToStringSlice(resp.result, resp.err, 0)
 }
 
 // SMIsMember 返回给定的成员是否存在于键所存储的集合中
@@ -153,7 +153,7 @@ func (c *Client) SPop(ctx context.Context, key string) (string, bool, error) {
 func (c *Client) SPopN(ctx context.Context, key string, count int) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "SPOP", key, count)
 	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+	return resp3.ToStringSlice(resp.result, resp.err, 0)
 }
 
 // SRandMember 随机返回该键所存储集合中的最多 count 个元素
@@ -166,7 +166,7 @@ func (c *Client) SPopN(ctx context.Context, key string, count int) ([]string, er
 func (c *Client) SRandMember(ctx context.Context, key string, count int) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "SRANDMEMBER", key, count)
 	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+	return resp3.ToStringSlice(resp.result, resp.err, 0)
 }
 
 // SRem 从键所存储的集合中移除指定成员。
@@ -202,7 +202,7 @@ func (c *Client) SUnion(ctx context.Context, key string, keys ...string) ([]stri
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeSet, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+	return resp3.ToStringSlice(resp.result, resp.err, 0)
 }
 
 // SUnionStore 该命令等同于 SUNION，但不是返回结果集，而是将结果存储到指定的目标键中。

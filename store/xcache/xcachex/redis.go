@@ -64,7 +64,7 @@ func (r *Redis) MGet(ctx context.Context, keys ...string) (result map[string]str
 
 func (r *Redis) Set(ctx context.Context, key string, value string, ttl time.Duration) error {
 	r.writeCnt.Add(1)
-	return r.Client.Set(ctx, r.KeyPrefix+key, value, ttl)
+	return r.Client.SetTTL(ctx, r.KeyPrefix+key, value, ttl)
 }
 
 const mSetScript = `

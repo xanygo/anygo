@@ -34,7 +34,7 @@ func TestClientString(t *testing.T) {
 	})
 
 	t.Run("set", func(t *testing.T) {
-		err := client.Set(ctx, "k1", "v1", 0)
+		err := client.Set(ctx, "k1", "v1")
 		xt.NoError(t, err)
 		value, err := client.Get(ctx, "k1")
 		xt.NoError(t, err)
@@ -48,7 +48,7 @@ func TestClientString(t *testing.T) {
 		xt.ErrorIs(t, err, ErrNil)
 		xt.Empty(t, value)
 
-		err = client.Set(ctx, "k1", "v1", time.Millisecond)
+		err = client.SetTTL(ctx, "k1", "v1", time.Millisecond)
 		xt.NoError(t, err)
 		time.Sleep(2 * time.Millisecond)
 
@@ -75,7 +75,7 @@ func TestClientString(t *testing.T) {
 		_, err = client.Get(ctx, "k3")
 		xt.ErrorIs(t, err, ErrNil)
 
-		err = client.Set(ctx, "k3", "v3", 0)
+		err = client.Set(ctx, "k3", "v3")
 		xt.NoError(t, err)
 
 		ok, err = client.SetXX(ctx, "k3", "v3", 0)
@@ -134,7 +134,7 @@ func TestClientString(t *testing.T) {
 		xt.NoError(t, err)
 		xt.Equal(t, "", val)
 
-		xt.NoError(t, client.Set(ctx, "k6", "hello-world", 0))
+		xt.NoError(t, client.Set(ctx, "k6", "hello-world"))
 
 		val, err = client.GetRange(ctx, "k6", 0, 4)
 		xt.NoError(t, err)
@@ -157,6 +157,6 @@ func testSetKeyString(t *testing.T, client *Client, key string) {
 	defer cancel()
 	_, err := client.Del(ctx, key)
 	xt.NoError(t, err)
-	err = client.Set(ctx, key, "str", 0)
+	err = client.Set(ctx, key, "str")
 	xt.NoError(t, err)
 }

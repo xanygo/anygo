@@ -19,9 +19,15 @@ func (c *Client) Get(ctx context.Context, key string) (string, error) {
 
 // Set 将键（key）设置为保存一个字符串值。如果该键已经持有某个值，则无论其类型是什么，都会被覆盖。
 // 在 SET 操作成功后，之前与该键关联的任何生存时间（TTL）都会被清除。
+func (c *Client) Set(ctx context.Context, key string, value any) error {
+	return c.SetTTL(ctx, key, value, 0)
+}
+
+// SetTTL 将键（key）设置为保存一个字符串值。如果该键已经持有某个值，则无论其类型是什么，都会被覆盖。
+// 在 SET 操作成功后，之前与该键关联的任何生存时间（TTL）都会被清除。
 //
 // 若不想设置 ttl，可以设置 ttl=0
-func (c *Client) Set(ctx context.Context, key string, value any, ttl time.Duration) error {
+func (c *Client) SetTTL(ctx context.Context, key string, value any, ttl time.Duration) error {
 	var args []any
 	if ttl > 0 {
 		args = []any{"SET", key, value, "PX", ttl.Milliseconds()}

@@ -99,28 +99,28 @@ func TestClientCF(t *testing.T) {
 	})
 
 	t.Run("CFInsert", func(t *testing.T) {
-		got, err := client.CFInsert(ctx, "CFInsert-1", 0, false, "k1", "k2")
+		got, err := client.CFInsert(ctx, "CFInsert-1", "k1", "k2")
 		xt.NoError(t, err)
 		xt.Equal(t, []bool{true, true}, got)
 
 		// 重复添加一次
-		got, err = client.CFInsert(ctx, "CFInsert-1", 0, false, "k1", "k2")
+		got, err = client.CFInsertWithOption(ctx, "CFInsert-1", nil, "k1", "k2")
 		xt.NoError(t, err)
 		xt.Equal(t, []bool{true, true}, got)
 	})
 
 	t.Run("CFInsertNX", func(t *testing.T) {
-		got, err := client.CFInsertNX(ctx, "CFInsertNX-1", 0, false, "k1", "k2")
+		got, err := client.CFInsertNX(ctx, "CFInsertNX-1", "k1", "k2")
 		xt.NoError(t, err)
 		xt.Equal(t, []bool{true, true}, got)
 
 		// 重复添加一次: 全部失败
-		got, err = client.CFInsertNX(ctx, "CFInsertNX-1", 0, false, "k1", "k2")
+		got, err = client.CFInsertNXWithOption(ctx, "CFInsertNX-1", nil, "k1", "k2")
 		xt.NoError(t, err)
 		xt.Equal(t, []bool{false, false}, got)
 
 		// 重复添加一次: 部分成功
-		got, err = client.CFInsertNX(ctx, "CFInsertNX-1", 0, false, "k1", "k2", "k3")
+		got, err = client.CFInsertNXWithOption(ctx, "CFInsertNX-1", nil, "k1", "k2", "k3")
 		xt.NoError(t, err)
 		xt.Equal(t, []bool{false, false, true}, got)
 	})

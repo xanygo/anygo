@@ -173,29 +173,56 @@ type CFInfo struct {
 //
 // 参数：
 //   - key: Cuckoo Filter 的名称
-//   - capacity: 当 Filter 不存在且需要创建时，指定初始容量, >0 时有效，默认传 0
-//   - noCreat: 如果为 true，则在 Filter 不存在时不创建，默认传 false
 //   - items: 要插入的元素列表
 //
 // 返回值：
 //   - []int64: 每个元素插入结果列表
 //   - true 表示元素成功插入
 //   - false 表示元素未插入（如已存在或 Filter 满）
-func (c *Client) CFInsert(ctx context.Context, key string, capacity int64, noCreate bool, items ...string) ([]bool, error) {
-	return c.doCFInsert(ctx, "CF.INSERT", key, capacity, noCreate, items...)
+func (c *Client) CFInsert(ctx context.Context, key string, items ...string) ([]bool, error) {
+	return c.CFInsertWithOption(ctx, key, nil, items...)
 }
 
-func (c *Client) doCFInsert(ctx context.Context, command string, key string, capacity int64, noCreate bool, items ...string) ([]bool, error) {
+// CFInsertWithOption 向 Cuckoo Filter 批量插入元素。
+//
+// 该方法对应 RedisBloom 模块的 CF.INSERT 命令，可以一次插入多个元素。
+// 根据参数，可以控制是否在 Filter 不存在时创建，以及 Filter 的初始容量。
+// 返回值为每个元素插入的结果，顺序与 items 一致。
+//
+// 参数：
+//   - key: Cuckoo Filter 的名称
+//   - items: 要插入的元素列表
+//
+// 返回值：
+//   - []int64: 每个元素插入结果列表
+//   - true 表示元素成功插入
+//   - false 表示元素未插入（如已存在或 Filter 满）
+func (c *Client) CFInsertWithOption(ctx context.Context, key string, opt *CFInsertOption, items ...string) ([]bool, error) {
+	return c.doCFInsert(ctx, "CF.INSERT", key, opt, items...)
+}
+
+type CFInsertOption struct {
+	// Capacity 当 Filter 不存在且需要创建时，指定初始容量,默认填写 0
+	Capacity int64
+
+	// NoCreate 如果为 true，则在 Filter 不存在时不创建，默认传 false
+	NoCreate bool
+}
+
+func (c *Client) doCFInsert(ctx context.Context, command string, key string, opt *CFInsertOption, items ...string) ([]bool, error) {
 	if len(items) == 0 {
 		return nil, errNoMembers
 	}
 	args := []any{command, key}
-	if capacity > 0 {
-		args = append(args, "CAPACITY", capacity)
+	if opt != nil {
+		if opt.Capacity > 0 {
+			args = append(args, "CAPACITY", opt.Capacity)
+		}
+		if opt.NoCreate {
+			args = append(args, "NOCREATE")
+		}
 	}
-	if noCreate {
-		args = append(args, "NOCREATE")
-	}
+
 	args = append(args, "ITEMS")
 	args = xslice.Append(args, items...)
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
@@ -229,16 +256,33 @@ func (c *Client) doCFInsert(ctx context.Context, command string, key string, cap
 //
 // 参数：
 //   - key: Cuckoo Filter 的名称
-//   - capacity: 当 Filter 不存在且需要创建时，指定初始容量,默认填写 0
-//   - noCreat: 如果为 true，则在 Filter 不存在时不创建，默认填写 false
 //   - items: 要插入的元素列表
 //
 // 返回值：
 //   - []bool: 每个元素插入结果列表
 //   - true 表示元素成功插入
 //   - false 表示元素未插入（已存在或 Filter 已满）
-func (c *Client) CFInsertNX(ctx context.Context, key string, capacity int64, noCreate bool, items ...string) ([]bool, error) {
-	return c.doCFInsert(ctx, "CF.INSERTNX", key, capacity, noCreate, items...)
+func (c *Client) CFInsertNX(ctx context.Context, key string, items ...string) ([]bool, error) {
+	return c.CFInsertNXWithOption(ctx, key, nil, items...)
+}
+
+// CFInsertNXWithOption 向 Redis 的 Cuckoo Filter 批量插入元素，仅在元素不存在时才插入。
+//
+// 该方法对应 RedisBloom 模块的 CF.INSERT 命令，并自动加上 NX 选项。
+// 返回值为每个元素插入结果，顺序与 items 一致。
+// 如果 Filter 已满或元素已存在，返回 false。
+// 如果指定 NOCREATE 且 Filter 不存在，则返回错误。
+//
+// 参数：
+//   - key: Cuckoo Filter 的名称
+//   - items: 要插入的元素列表
+//
+// 返回值：
+//   - []bool: 每个元素插入结果列表
+//   - true 表示元素成功插入
+//   - false 表示元素未插入（已存在或 Filter 已满）
+func (c *Client) CFInsertNXWithOption(ctx context.Context, key string, opt *CFInsertOption, items ...string) ([]bool, error) {
+	return c.doCFInsert(ctx, "CF.INSERTNX", key, opt, items...)
 }
 
 // CFLoadChunk 将 Cuckoo Filter 的序列化数据块加载到 Redis 中。

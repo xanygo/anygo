@@ -75,13 +75,16 @@ func elementAsArray(e Element) ([]Element, error) {
 	}
 }
 
-func ToStringSlice(e Element, err error) ([]string, error) {
+func ToStringSlice(e Element, err error, expectLen int) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
 	arr, err := elementAsArray(e)
 	if err != nil {
 		return nil, err
+	}
+	if expectLen > 0 && len(arr) != expectLen {
+		return nil, fmt.Errorf("array expect %d elements, got %d", expectLen, len(arr))
 	}
 	list := make([]string, 0, len(arr))
 	for _, item := range arr {
@@ -90,6 +93,35 @@ func ToStringSlice(e Element, err error) ([]string, error) {
 			list = append(list, dv.String())
 		case BulkString:
 			list = append(list, dv.String())
+		default:
+			return nil, fmt.Errorf("%w: ToStringSlice %#v(%T)", ErrInvalidReply, dv, dv)
+		}
+	}
+	return list, nil
+}
+
+func ToPtrStringSlice(e Element, err error, expectLen int) ([]*string, error) {
+	if err != nil {
+		return nil, err
+	}
+	arr, err := elementAsArray(e)
+	if err != nil {
+		return nil, err
+	}
+	if expectLen > 0 && len(arr) != expectLen {
+		return nil, fmt.Errorf("array expect %d elements, got %d", expectLen, len(arr))
+	}
+	list := make([]*string, 0, len(arr))
+	for _, item := range arr {
+		switch dv := item.(type) {
+		case SimpleString:
+			val := dv.String()
+			list = append(list, &val)
+		case BulkString:
+			val := dv.String()
+			list = append(list, &val)
+		case Null:
+			list = append(list, nil)
 		default:
 			return nil, fmt.Errorf("%w: ToStringSlice %#v(%T)", ErrInvalidReply, dv, dv)
 		}
@@ -144,7 +176,7 @@ func ToIntBool(result Element, err error, ok int) (bool, error) {
 	}
 }
 
-func ToIntBools(e Element, err error, length int, ok int) ([]bool, error) {
+func ToIntBools(e Element, err error, expectLen int, ok int) ([]bool, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -152,11 +184,11 @@ func ToIntBools(e Element, err error, length int, ok int) ([]bool, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(arr) != length {
-		return nil, fmt.Errorf("%w: ToIntBools, expect array length %d, got %d", ErrInvalidReply, length, len(arr))
+	if expectLen > 0 && len(arr) != expectLen {
+		return nil, fmt.Errorf("array expect %d elements, got %d", expectLen, len(arr))
 	}
-	result := make([]bool, length)
-	for i := 0; i < length; i++ {
+	result := make([]bool, expectLen)
+	for i := 0; i < expectLen; i++ {
 		result[i], err = ToIntBool(arr[i], nil, ok)
 		if err != nil {
 			return nil, err
@@ -219,13 +251,16 @@ func ToUint64(result Element, err error) (uint64, error) {
 	}
 }
 
-func ToInt64Slice(e Element, err error) ([]int64, error) {
+func ToInt64Slice(e Element, err error, expectLen int) ([]int64, error) {
 	if err != nil {
 		return nil, err
 	}
 	arr, err := elementAsArray(e)
 	if err != nil {
 		return nil, err
+	}
+	if expectLen > 0 && len(arr) != expectLen {
+		return nil, fmt.Errorf("array expect %d elements, got %d", expectLen, len(arr))
 	}
 	list := make([]int64, 0, len(arr))
 	for _, item := range arr {
@@ -308,13 +343,16 @@ func ToFloat64(result Element, err error) (float64, error) {
 	}
 }
 
-func ToFloat64Slice(e Element, err error) ([]float64, error) {
+func ToFloat64Slice(e Element, err error, expectLen int) ([]float64, error) {
 	if err != nil {
 		return nil, err
 	}
 	arr, err := elementAsArray(e)
 	if err != nil {
 		return nil, fmt.Errorf("%w: ToFloat64Slice_0", err)
+	}
+	if expectLen > 0 && len(arr) != expectLen {
+		return nil, fmt.Errorf("array expect %d elements, got %d", expectLen, len(arr))
 	}
 	list := make([]float64, 0, len(arr))
 	for _, item := range arr {

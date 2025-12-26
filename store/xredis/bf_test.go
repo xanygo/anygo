@@ -41,7 +41,7 @@ func TestClientBF(t *testing.T) {
 		xt.NoError(t, err)
 		xt.False(t, got)
 
-		xt.NoError(t, client.Set(ctx, "bf1", "v", 0))
+		xt.NoError(t, client.Set(ctx, "bf1", "v"))
 
 		got, err = client.BFAdd(ctx, "bf1", "v2")
 		xt.Error(t, err)

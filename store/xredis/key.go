@@ -106,7 +106,7 @@ func (c *Client) Touch(ctx context.Context, keys ...string) (int, error) {
 func (c *Client) Keys(ctx context.Context, pattern string) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "KEYS", pattern)
 	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+	return resp3.ToStringSlice(resp.result, resp.err, 0)
 }
 
 // Move 将键从当前选定的数据库移动到指定的目标数据库。
@@ -312,7 +312,7 @@ func (c *Client) Scan(ctx context.Context, cursor uint64, pattern string, count 
 		return 0, nil, err
 	}
 	nextCursor, err0 := resp3.ToUint64(arr[0], nil)
-	keys, err1 := resp3.ToStringSlice(arr[1], err0)
+	keys, err1 := resp3.ToStringSlice(arr[1], err0, 0)
 	return nextCursor, keys, err1
 }
 

@@ -316,7 +316,7 @@ func (c *Client) BitFieldRo(ctx context.Context, key string, ops ...BitFieldOpti
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToInt64Slice(resp.result, resp.err)
+	return resp3.ToInt64Slice(resp.result, resp.err, 0)
 }
 
 // BitOP 对一个或多个 key 的字符串值执行按位运算，并将结果存储到目标 key 中。

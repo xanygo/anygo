@@ -77,7 +77,7 @@ func (c *Client) LPop(ctx context.Context, key string) (string, error) {
 func (c *Client) LPopN(ctx context.Context, key string, count int64) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "LPOP", key, count)
 	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+	return resp3.ToStringSlice(resp.result, resp.err, 0)
 }
 
 // RPop 移除并返回存储在给定键的列表的尾部元素。
@@ -97,7 +97,7 @@ func (c *Client) RPop(ctx context.Context, key string) (string, error) {
 func (c *Client) RPopN(ctx context.Context, key string, count int64) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "RPOP", key, count)
 	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+	return resp3.ToStringSlice(resp.result, resp.err, 0)
 }
 
 // LLen 返回列表的长度
@@ -181,9 +181,9 @@ func (c *Client) bxPop(ctx context.Context, method string, timeout time.Duration
 		args = append(args, key)
 	}
 	args = append(args, timeout.Seconds())
-	cmd := resp3.NewRequest(resp3.DataTypeInteger, args...)
+	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+	return resp3.ToStringSlice(resp.result, resp.err, 0)
 }
 
 // BRPop 是一个阻塞式的列表弹出原语。 它是 RPOP 的阻塞版本：当给定的任意列表都没有可弹出的元素时，连接会被阻塞。
@@ -211,5 +211,5 @@ func (c *Client) BLPop(ctx context.Context, timeout time.Duration, keys ...strin
 func (c *Client) LRange(ctx context.Context, key string, start int64, stop int64) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "LRANGE", key, start, stop)
 	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+	return resp3.ToStringSlice(resp.result, resp.err, 0)
 }

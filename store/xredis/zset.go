@@ -139,7 +139,7 @@ func (c *Client) ZDiff(ctx context.Context, key string, keys ...string) ([]strin
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+	return resp3.ToStringSlice(resp.result, resp.err, 0)
 }
 
 // ZDiffWithScores 计算有序集合的差集，并返回成员及其对应的 score。
@@ -210,7 +210,7 @@ func (c *Client) ZInter(ctx context.Context, key string, keys ...string) ([]stri
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+	return resp3.ToStringSlice(resp.result, resp.err, 0)
 }
 
 // ZInterWithScores 计算多个有序集合（Sorted Set）的交集，并返回结果成员及其分值（score）。
@@ -398,7 +398,7 @@ func (c *Client) ZRandMember(ctx context.Context, key string) (string, bool, err
 func (c *Client) ZRandMemberN(ctx context.Context, key string, count int) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "ZRANDMEMBER", key, count)
 	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+	return resp3.ToStringSlice(resp.result, resp.err, 0)
 }
 
 // ZRandMemberWithScores 从有序集合中随机返回指定数量的成员及其 score。
@@ -453,7 +453,7 @@ func (zb ZRangeBy) zRange(ctx context.Context, client *Client, key string, by st
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := client.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+	return resp3.ToStringSlice(resp.result, resp.err, 0)
 }
 
 func (zb ZRangeBy) zRangeWithScore(ctx context.Context, client *Client, key string, by string) ([]Z, error) {

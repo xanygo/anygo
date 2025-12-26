@@ -120,7 +120,7 @@ func (ac *Result) Float64() (float64, error) {
 }
 
 func (ac *Result) Float64Slice() ([]float64, error) {
-	return resp3.ToFloat64Slice(ac.reply, ac.err)
+	return resp3.ToFloat64Slice(ac.reply, ac.err, 0)
 }
 
 func (ac *Result) String() (string, error) {
@@ -128,7 +128,7 @@ func (ac *Result) String() (string, error) {
 }
 
 func (ac *Result) StringSlice() ([]string, error) {
-	return resp3.ToStringSlice(ac.reply, ac.err)
+	return resp3.ToStringSlice(ac.reply, ac.err, 0)
 }
 
 func (ac *Result) OKStatus() error {

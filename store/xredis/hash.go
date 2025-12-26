@@ -237,7 +237,7 @@ func (c *Client) HIncrFloat(ctx context.Context, key string, field string, incre
 func (c *Client) HKeys(ctx context.Context, key string) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "HKEYS", key)
 	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+	return resp3.ToStringSlice(resp.result, resp.err, 0)
 }
 
 // HLen 返回哈希表中字段的数量。
@@ -314,7 +314,7 @@ func (c *Client) HExpireAt(ctx context.Context, key string, at time.Time, opt st
 	args = xslice.Append(args, fields...)
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToInt64Slice(resp.result, resp.err)
+	return resp3.ToInt64Slice(resp.result, resp.err, len(fields))
 }
 
 // HPTTL 返回哈希表中一个或多个字段的剩余过期时间（TTL）。
@@ -340,7 +340,7 @@ func (c *Client) HPTTL(ctx context.Context, key string, fields ...string) ([]tim
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	list, err := resp3.ToInt64Slice(resp.result, resp.err)
+	list, err := resp3.ToInt64Slice(resp.result, resp.err, len(fields))
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +378,7 @@ func (c *Client) HTTL(ctx context.Context, key string, fields ...string) ([]time
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	list, err := resp3.ToInt64Slice(resp.result, resp.err)
+	list, err := resp3.ToInt64Slice(resp.result, resp.err, len(fields))
 	if err != nil {
 		return nil, err
 	}
@@ -402,7 +402,7 @@ func (c *Client) HTTL(ctx context.Context, key string, fields ...string) ([]time
 func (c *Client) HVals(ctx context.Context, key string) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "HVALS", key)
 	resp := c.do(ctx, cmd)
-	return resp3.ToStringSlice(resp.result, resp.err)
+	return resp3.ToStringSlice(resp.result, resp.err, 0)
 }
 
 // HScan 对指定的哈希表进行增量迭代扫描。
@@ -435,7 +435,7 @@ func (c *Client) HScan(ctx context.Context, key string, cursor uint64, pattern s
 		return 0, nil, err
 	}
 	nextCursor, err := resp3.ToUint64(arr[0], nil)
-	kvArr, err2 := resp3.ToStringSlice(arr[1], err)
+	kvArr, err2 := resp3.ToStringSlice(arr[1], err, 0)
 	if err2 != nil {
 		return 0, nil, err2
 	}
@@ -494,7 +494,7 @@ func (c *Client) HScanNoValues(ctx context.Context, key string, cursor uint64, p
 		return 0, nil, err
 	}
 	nextCursor, err := resp3.ToUint64(arr[0], nil)
-	fields, err2 := resp3.ToStringSlice(arr[1], err)
+	fields, err2 := resp3.ToStringSlice(arr[1], err, 0)
 	return nextCursor, fields, err2
 }
 

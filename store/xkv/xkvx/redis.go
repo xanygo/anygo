@@ -36,7 +36,7 @@ type kvString struct {
 }
 
 func (kvs *kvString) Set(ctx context.Context, value string) error {
-	return kvs.client.Set(ctx, kvs.key, value, 0)
+	return kvs.client.Set(ctx, kvs.key, value)
 }
 
 func (kvs *kvString) Get(ctx context.Context) (string, bool, error) {
