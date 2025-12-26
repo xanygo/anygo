@@ -46,6 +46,22 @@ func ToString(result Element, err error) (string, error) {
 	}
 }
 
+func ToBytes(result Element, err error) ([]byte, error) {
+	if err != nil {
+		return nil, err
+	}
+	switch dv := result.(type) {
+	case Null:
+		return nil, nil
+	case SimpleString:
+		return dv.ToBytes(), nil
+	case BulkString:
+		return dv.ToBytes(), nil
+	default:
+		return nil, fmt.Errorf("%w: ToString %#v(%T)", ErrInvalidReply, dv, dv)
+	}
+}
+
 func elementAsArray(e Element) ([]Element, error) {
 	switch dv := e.(type) {
 	case Array:

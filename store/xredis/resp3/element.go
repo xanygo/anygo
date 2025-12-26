@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"unsafe"
 
 	"github.com/xanygo/anygo/ds/xsync"
 )
@@ -55,6 +56,10 @@ func (s SimpleString) ToInt64() (int64, error) {
 
 func (s SimpleString) ToUint64() (uint64, error) {
 	return strconv.ParseUint(string(s), 10, 64)
+}
+
+func (s SimpleString) ToBytes() []byte {
+	return unsafe.Slice(unsafe.StringData(string(s)), len(string(s)))
 }
 
 var _ Element = Integer(0)
@@ -104,6 +109,10 @@ func (b BulkString) DataType() DataType {
 
 func (b BulkString) String() string {
 	return string(b)
+}
+
+func (b BulkString) ToBytes() []byte {
+	return unsafe.Slice(unsafe.StringData(string(b)), len(string(b)))
 }
 
 func (b BulkString) ToFloat64() (float64, error) {
