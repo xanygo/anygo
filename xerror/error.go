@@ -6,6 +6,7 @@ package xerror
 
 import (
 	"errors"
+	"io/fs"
 	"strconv"
 	"strings"
 )
@@ -17,24 +18,23 @@ type TraceError interface {
 
 const (
 	CodeNotFound = iota + 1000
+	CodeAlreadyExist
 	CodeInvalidParam
 	CodeDuplicateKey
 	CodeClosed
 )
 
 var (
-	// NotFound 错误：数据找不到
-	NotFound = NewCodeError(CodeNotFound, "not found")
-	Closed   = NewCodeError(CodeClosed, "closed")
-
-	// InvalidParam 错误：无效的请求参数
-	InvalidParam = NewCodeError(CodeInvalidParam, "invalid param")
-	DuplicateKey = NewCodeError(CodeDuplicateKey, "duplicate primary key")
+	NotFound     = NewCodeError(CodeNotFound, "not found")                 // 错误：数据找不到
+	Closed       = NewCodeError(CodeClosed, "closed")                      // 错误：已关闭
+	AlreadyExist = NewCodeError(CodeAlreadyExist, "already exists")        // 错误：已存在
+	InvalidParam = NewCodeError(CodeInvalidParam, "invalid param")         // 错误：无效的请求参数
+	DuplicateKey = NewCodeError(CodeDuplicateKey, "duplicate primary key") // 错误：重复的主键
 )
 
 // IsNotFound 判断是否资源不存在错误
 func IsNotFound(err error) bool {
-	if errors.Is(err, NotFound) {
+	if errors.Is(err, NotFound) || errors.Is(err, fs.ErrNotExist) {
 		return true
 	}
 	var ae NotExistsError
@@ -43,7 +43,17 @@ func IsNotFound(err error) bool {
 	}
 	txt := err.Error()
 	// 其他的情况，比如 gorm.ErrRecordNotFound
-	return strings.Contains(txt, "not found")
+	return strings.Contains(txt, "not found") || strings.Contains(txt, "does not exist")
+}
+
+// IsAlreadyExists 判断是否已存在错误
+func IsAlreadyExists(err error) bool {
+	if errors.Is(err, AlreadyExist) || errors.Is(err, fs.ErrExist) {
+		return true
+	}
+	txt := err.Error()
+	// 其他的情况，比如 TopK: key already exists
+	return strings.Contains(txt, "already exists")
 }
 
 type NotExistsError interface {

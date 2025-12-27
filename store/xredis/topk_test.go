@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/internal/redistest"
+	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xt"
 )
 
@@ -37,6 +38,7 @@ func TestTopK(t *testing.T) {
 		got, err := client.TopKAdd(ctx, "TopKAdd-1", "f1")
 		xt.Error(t, err)
 		xt.ErrorContains(t, err, "TopK: key does not exist")
+		xt.True(t, xerror.IsNotFound(err))
 		xt.Nil(t, got)
 
 		err = client.TopKReserve(ctx, "TopKAdd-1", 10, &TopKReserveOption{Width: 8, Depth: 7, Decay: 0.925})
@@ -46,5 +48,55 @@ func TestTopK(t *testing.T) {
 
 		_, err = client.TopKAdd(ctx, "TopKAdd-1", "f1")
 		xt.NoError(t, err)
+
+		ct, err := client.TopKCount(ctx, "TopKAdd-1", "f1")
+		xt.NoError(t, err)
+		xt.Equal(t, 1, ct)
+
+		info, err := client.TopKInfo(ctx, "TopKAdd-1")
+		xt.NoError(t, err)
+		xt.Equal(t, TopKInfo{K: 10, Width: 8, Depth: 7, Decay: 0.925}, info)
+	})
+
+	t.Run("TopKCount", func(t *testing.T) {
+		got, err := client.TopKCount(ctx, "TopKCount-1", "f1")
+		xt.ErrorContains(t, err, "TopK: key does not exist")
+		xt.True(t, xerror.IsNotFound(err))
+		xt.Equal(t, 0, got)
+	})
+
+	t.Run("TopKIncrBy", func(t *testing.T) {
+		got, err := client.TopKIncrBy(ctx, "TopKIncrBy-1", "f1", 1)
+		xt.ErrorContains(t, err, "TopK: key does not exist")
+		xt.True(t, xerror.IsNotFound(err))
+		xt.Nil(t, got)
+	})
+
+	t.Run("TopKInfo", func(t *testing.T) {
+		info, err := client.TopKInfo(ctx, "TopKInfo-1")
+		xt.ErrorContains(t, err, "TopK: key does not exist")
+		xt.True(t, xerror.IsNotFound(err))
+		xt.Empty(t, info)
+	})
+
+	t.Run("TopKList", func(t *testing.T) {
+		got, err := client.TopKList(ctx, "TopKList-1")
+		xt.ErrorContains(t, err, "TopK: key does not exist")
+		xt.True(t, xerror.IsNotFound(err))
+		xt.Empty(t, got)
+	})
+
+	t.Run("TopKListWithCount", func(t *testing.T) {
+		got, err := client.TopKListWithCount(ctx, "TopKListWithCount-1")
+		xt.ErrorContains(t, err, "TopK: key does not exist")
+		xt.True(t, xerror.IsNotFound(err))
+		xt.Empty(t, got)
+	})
+
+	t.Run("TopKQuery", func(t *testing.T) {
+		got, err := client.TopKQuery(ctx, "TopKQuery-1", "f1")
+		xt.ErrorContains(t, err, "TopK: key does not exist")
+		xt.True(t, xerror.IsNotFound(err))
+		xt.Empty(t, got)
 	})
 }

@@ -6,6 +6,7 @@ package xredis
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/xanygo/anygo/ds/xslice"
@@ -40,9 +41,10 @@ func (c *Client) TopKAdd(ctx context.Context, key string, item string) (*string,
 // 返回值：
 //   - []*string: 被淘汰的元素名称，顺序与输入 items 对应。
 //     如果某个元素未被淘汰，对应位置为 nil。
+//   - 若 key 不存在，会返回 nil,error("TopK: key does not exist")
 func (c *Client) TopKAddN(ctx context.Context, key string, items ...string) ([]*string, error) {
 	if len(items) == 0 {
-		return nil, errNoValues
+		return nil, errNoFields
 	}
 	args := []any{"TOPK.ADD", key}
 	args = xslice.Append(args, items...)
@@ -59,6 +61,7 @@ func (c *Client) TopKAddN(ctx context.Context, key string, items ...string) ([]*
 //
 // 返回值：
 //   - int64: 元素在 TopK 中的计数，如果元素不存在，则返回 0
+//   - 若 key 不存在，会返回 0,error("TopK: key does not exist")
 func (c *Client) TopKCount(ctx context.Context, key string, item string) (int64, error) {
 	list, err := c.TopKCountN(ctx, key, item)
 	if err != nil {
@@ -75,10 +78,10 @@ func (c *Client) TopKCount(ctx context.Context, key string, item string) (int64,
 //
 // 返回值：
 //   - []int64: 与输入元素顺序一一对应，返回每个元素在 TopK 中的计数。
-//     如果元素不存在，则返回 0。
+//   - 若 key 不存在，会返回 nil,error("TopK: key does not exist")
 func (c *Client) TopKCountN(ctx context.Context, key string, items ...string) ([]int64, error) {
 	if len(items) == 0 {
-		return nil, errNoValues
+		return nil, errNoFields
 	}
 	args := []any{"TOPK.COUNT", key}
 	args = xslice.Append(args, items...)
@@ -97,6 +100,7 @@ func (c *Client) TopKCountN(ctx context.Context, key string, items ...string) ([
 // 返回值：
 //   - *string: 如果递增操作导致某个元素被 TopK 淘汰，则返回被淘汰元素的名称；
 //     如果没有元素被淘汰，返回 nil。
+//   - 若 key 不存在，会返回 nil,error("TopK: key does not exist")
 func (c *Client) TopKIncrBy(ctx context.Context, key string, item string, increment int64) (*string, error) {
 	args := []any{"TOPK.INCRBY", key, item, increment}
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
@@ -117,9 +121,10 @@ func (c *Client) TopKIncrBy(ctx context.Context, key string, item string, increm
 // 返回值：
 //   - []*string: 返回每个递增操作可能被 TopK 丢弃的元素名称，顺序与输入 items 对应。
 //     如果某个元素未被丢弃，对应位置为 nil。
+//   - 若 key 不存在，会返回 nil,error("TopK: key does not exist")
 func (c *Client) TopKIncrByN(ctx context.Context, key string, items ...TopKItemIncr) ([]*string, error) {
 	if len(items) == 0 {
-		return nil, errNoValues
+		return nil, errNoFields
 	}
 	args := []any{"TOPK.INCRBY", key}
 	for _, item := range items {
@@ -144,44 +149,31 @@ type TopKItemIncr struct {
 //
 // 返回值：
 //   - TopKInfo: 返回 TopK 计数器的详细信息
+//   - 若 key 不存在，会返回 nil,error("TopK: key does not exist")
 func (c *Client) TopKInfo(ctx context.Context, key string) (TopKInfo, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeArray, "TOPK.INFO", key)
+	cmd := resp3.NewRequest(resp3.DataTypeMap, "TOPK.INFO", key)
 	resp := c.do(ctx, cmd)
-	arr, err := resp.asResp3Array(0)
+	data, err := resp3.ToStringAnyMap(resp.result, resp.err)
 	if err != nil {
 		return TopKInfo{}, err
 	}
-	if len(arr)%2 != 0 {
-		return TopKInfo{}, fmt.Errorf("invalid TOPK.INFO reply: expected even number of elements, got %d", len(arr))
-	}
 	info := TopKInfo{}
-
-	// > TOPK.INFO topk
-	// 1# k => (integer) 50
-	// 2# width => (integer) 2000
-	// 3# depth => (integer) 7
-	// 4# decay => (double) 0.925
-	for i := 0; i < len(arr); i += 2 {
-		name, err1 := resp3.ToString(arr[i], nil)
-		if err1 != nil {
-			return TopKInfo{}, err1
-		}
-		var err2 error
-		switch name {
+	for k, v := range data {
+		var ok bool
+		switch k {
 		case "k":
-			info.K, err2 = resp3.ToInt64(arr[i+1], nil)
+			info.K, ok = v.(int64)
 		case "width":
-			info.Width, err2 = resp3.ToInt64(arr[i+1], nil)
+			info.Width, ok = v.(int64)
 		case "depth":
-			info.Depth, err2 = resp3.ToInt64(arr[i+1], nil)
+			info.Depth, ok = v.(int64)
 		case "decay":
-			info.Decay, err2 = resp3.ToFloat64(arr[i+1], nil)
+			info.Decay, ok = v.(float64)
 		}
-		if err2 != nil {
-			return info, err2
+		if !ok {
+			return info, errors.New("")
 		}
 	}
-
 	return info, nil
 }
 
@@ -199,6 +191,7 @@ type TopKInfo struct {
 //
 // 返回值：
 //   - []string: 返回 TopK 元素的名称列表，顺序为从高到低频率。
+//   - 若 key 不存在，会返回 nil,error("TopK: key does not exist")
 func (c *Client) TopKList(ctx context.Context, key string) ([]string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "TOPK.LIST", key)
 	resp := c.do(ctx, cmd)
@@ -212,6 +205,7 @@ func (c *Client) TopKList(ctx context.Context, key string) ([]string, error) {
 //
 // 返回值：
 //   - []TopKItemCount: 返回 TopK 元素及其对应的计数，顺序为从高到低频率。
+//   - 若 key 不存在，会返回 nil,error("TopK: key does not exist")
 func (c *Client) TopKListWithCount(ctx context.Context, key string) ([]TopKItemCount, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeArray, "TOPK.LIST", key, "WITHCOUNT")
 	resp := c.do(ctx, cmd)
@@ -247,7 +241,8 @@ type TopKItemCount struct {
 //
 // 返回值：
 //
-//	-bool: true 表示该元素在 TopK 中，false 表示该元素不在 TopK 中。
+//		-bool: true 表示该元素在 TopK 中，false 表示该元素不在 TopK 中。
+//	  - 若 key 不存在，会返回 nil,error("TopK: key does not exist")
 func (c *Client) TopKQuery(ctx context.Context, key string, item string) (bool, error) {
 	result, err := c.TopKQueryN(ctx, key, item)
 	if err != nil {
@@ -264,9 +259,10 @@ func (c *Client) TopKQuery(ctx context.Context, key string, item string) (bool, 
 //
 // 返回值：
 //   - []bool: 与输入元素顺序一一对应，true 表示该元素在 TopK 中，false 表示该元素不在 TopK 中。
+//   - 若 key 不存在，会返回 nil,error("TopK: key does not exist")
 func (c *Client) TopKQueryN(ctx context.Context, key string, items ...string) ([]bool, error) {
 	if len(items) == 0 {
-		return nil, errNoValues
+		return nil, errNoFields
 	}
 	args := []any{"TOPK.QUERY", key}
 	args = xslice.Append(args, items...)
