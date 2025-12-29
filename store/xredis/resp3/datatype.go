@@ -43,6 +43,45 @@ const (
 	DataTypeAny DataType = ' ' // 任意类型，用于构建 Request 数据使用
 )
 
+func (dt DataType) String() string {
+	switch dt {
+	case DataTypeSimpleString:
+		return "SimpleString(+)"
+	case DataTypeSimpleError:
+		return "SimpleError(-)"
+	case DataTypeInteger:
+		return "Integer(:)"
+	case DataTypeBulkString:
+		return "BulkString($)"
+	case DataTypeArray:
+		return "Array(*)"
+	case DataTypeNull:
+		return "Null(_)"
+	case DataTypeBoolean:
+		return "Boolean(#)"
+	case DataTypeDouble:
+		return "Double(,)"
+	case DataTypeBigNumber:
+		return "BigNumber(()"
+	case DataTypeBulkError:
+		return "BulkError(!)"
+	case DataTypeVerbatimString:
+		return "VerbatimString(=)"
+	case DataTypeMap:
+		return "Map(%)"
+	case DataTypeAttribute:
+		return "Attribute(|)"
+	case DataTypeSet:
+		return "Set(~)"
+	case DataTypePush:
+		return "Push(>)"
+	case DataTypeAny:
+		return "Any()"
+	default:
+		return "Unknown(" + string(dt) + ")"
+	}
+}
+
 func (dt DataType) Valid() error {
 	switch dt {
 	case DataTypeSimpleString,

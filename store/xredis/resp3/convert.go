@@ -46,6 +46,24 @@ func ToString(result Element, err error) (string, error) {
 	}
 }
 
+func ToPtrString(result Element, err error) (*string, error) {
+	if err != nil {
+		return nil, err
+	}
+	switch dv := result.(type) {
+	case Null:
+		return nil, nil
+	case SimpleString:
+		str := dv.String()
+		return &str, nil
+	case BulkString:
+		str := dv.String()
+		return &str, nil
+	default:
+		return nil, fmt.Errorf("%w: ToPtrString %#v(%T)", ErrInvalidReply, dv, dv)
+	}
+}
+
 func ToBytes(result Element, err error) ([]byte, error) {
 	if err != nil {
 		return nil, err
@@ -71,7 +89,7 @@ func elementAsArray(e Element) ([]Element, error) {
 	case Push:
 		return dv, nil
 	default:
-		return nil, fmt.Errorf("%w,not array reply: %T", ErrInvalidReply, e)
+		return nil, fmt.Errorf("%w, not array reply: %T", ErrInvalidReply, e)
 	}
 }
 
@@ -414,6 +432,10 @@ func ToStringMap(e Element, err error) (map[string]string, error) {
 	return mapToStringMap(mp)
 }
 
+func ToMap(e Element, err error) (map[Element]Element, error) {
+	return asMap(e, err)
+}
+
 func ToStringAnyMap(e Element, err error) (map[string]any, error) {
 	mp, err := asMap(e, err)
 	if err != nil {
@@ -614,6 +636,13 @@ func ToAny(v Element, err error) (any, error) {
 	default:
 		return nil, fmt.Errorf("unknown element %#v", vv)
 	}
+}
+
+func ToSlice(e Element, err error) ([]Element, error) {
+	if err != nil {
+		return nil, err
+	}
+	return elementAsArray(e)
 }
 
 func ToAnySlice(e Element, err error) ([]any, error) {

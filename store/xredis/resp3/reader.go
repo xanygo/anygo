@@ -30,7 +30,7 @@ func ReadByType(rd Reader, dt DataType) (Element, error) {
 		if ok {
 			return el, err1
 		}
-		return nil, fmt.Errorf("invalid data type %q, expect %q", tp, dt)
+		return nil, fmt.Errorf("invalid data type %s, expect %s", DataType(tp), dt)
 	}
 	return dt1.Load(rd)
 }

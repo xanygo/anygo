@@ -12,11 +12,13 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xredis"
 )
 
 var uri = flag.String("uri", "redis://127.0.0.1:6379", "redis URI")
 var cmds = flag.String("c", "ping", "commands")
+var dump = flag.Bool("d", false, "dump")
 
 func main() {
 	flag.Parse()
@@ -39,7 +41,12 @@ func main() {
 		cmd := xredis.NewAnyCmd(arr...)
 		err = client.Do(ctx, cmd)
 		if err == nil {
-			log.Printf("result  : %#v\n", cmd.Value())
+			val := cmd.Value()
+			if *dump {
+				log.Printf("result  :\n %s\n", zreflect.DumpString(val))
+			} else {
+				log.Printf("result  : %#v\n", val)
+			}
 		} else {
 			log.Fatalln("err=", err)
 		}

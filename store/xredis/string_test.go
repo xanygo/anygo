@@ -48,7 +48,7 @@ func TestClientString(t *testing.T) {
 		xt.ErrorIs(t, err, ErrNil)
 		xt.Empty(t, value)
 
-		err = client.SetTTL(ctx, "k1", "v1", time.Millisecond)
+		err = client.SetWithTTL(ctx, "k1", "v1", time.Millisecond)
 		xt.NoError(t, err)
 		time.Sleep(2 * time.Millisecond)
 

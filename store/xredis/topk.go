@@ -6,7 +6,6 @@ package xredis
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/xanygo/anygo/ds/xslice"
@@ -169,9 +168,11 @@ func (c *Client) TopKInfo(ctx context.Context, key string) (TopKInfo, error) {
 			info.Depth, ok = v.(int64)
 		case "decay":
 			info.Decay, ok = v.(float64)
+		default:
+			ok = true
 		}
 		if !ok {
-			return info, errors.New("")
+			return info, fmt.Errorf("invalid value %q=%#v", k, v)
 		}
 	}
 	return info, nil
