@@ -29,7 +29,7 @@ import (
 const Protocol = "RESP3"
 
 var (
-	// ErrNil redis 中不存在此 key
+	// ErrNil redis 的 null reply (一般是 key 不存在或者 指定的 path 不存在或者类型不匹配的时候返回的)
 	ErrNil = resp3.ErrNil
 
 	errNoKeys    = fmt.Errorf("%w: no keys", xerror.InvalidParam)

@@ -115,6 +115,10 @@ func (ac *Result) Int64() (int64, error) {
 	return resp3.ToInt64(ac.reply, ac.err)
 }
 
+func (ac *Result) Int64Slice() ([]int64, error) {
+	return resp3.ToInt64Slice(ac.reply, ac.err, 0)
+}
+
 func (ac *Result) Float64() (float64, error) {
 	return resp3.ToFloat64(ac.reply, ac.err)
 }

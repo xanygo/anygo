@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	ErrNil          = errors.New("redis nil value") // redis 中无此 key
-	ErrInvalidReply = errors.New("invalid reply")   // 错误的响应
+	ErrNil          = errors.New("redis null reply") // redis 中无此 key
+	ErrInvalidReply = errors.New("invalid reply")    // 错误的响应
 )
 
 // RespError redis server 返回的错误类型（Element）

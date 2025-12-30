@@ -337,3 +337,19 @@ func (c *Client) ScanWalk(ctx context.Context, cursor uint64, pattern string, co
 		cursor = next
 	}
 }
+
+func (c *Client) Dump(ctx context.Context, key string) ([]byte, error) {
+	cmd := resp3.NewRequest(resp3.DataTypeBulkString, "DUMP", key)
+	resp := c.do(ctx, cmd)
+	return resp3.ToBytes(resp.result, resp.err)
+}
+
+func (c *Client) Copy(ctx context.Context, source, destination string, replace bool) (bool, error) {
+	args := []any{"COPY", source, destination}
+	if replace {
+		args = append(args, "REPLACE")
+	}
+	cmd := resp3.NewRequest(resp3.DataTypeInteger, args...)
+	resp := c.do(ctx, cmd)
+	return resp3.ToIntBool(resp.result, resp.err, 1)
+}

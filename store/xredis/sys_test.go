@@ -48,4 +48,61 @@ func TestClientSys(t *testing.T) {
 		sub := time.Since(tm)
 		xt.Less(t, sub, time.Hour)
 	})
+
+	t.Run("ModuleList", func(t *testing.T) {
+		got, err := client.ModuleList(ctx)
+		xt.NoError(t, err)
+		xt.NotEmpty(t, got)
+		xt.NotEmpty(t, got[0])
+		xt.NotEmpty(t, got[0].Name)
+		xt.NotEmpty(t, got[0].Version)
+	})
+
+	t.Run("MemoryUsage", func(t *testing.T) {
+		got, err := client.MemoryUsage(ctx, "MemoryUsage-1")
+		xt.ErrorIs(t, err, ErrNil)
+		xt.Empty(t, got)
+
+		xt.NoError(t, client.Set(ctx, "MemoryUsage-1", "a"))
+		got, err = client.MemoryUsage(ctx, "MemoryUsage-1")
+		xt.NoError(t, err)
+		xt.Equal(t, 40, got)
+	})
+
+	t.Run("MemoryStats", func(t *testing.T) {
+		got, err := client.MemoryStats(ctx)
+		xt.NoError(t, err)
+		xt.NotEmpty(t, got)
+	})
+
+	t.Run("MemoryPurge", func(t *testing.T) {
+		xt.NoError(t, client.MemoryPurge(ctx))
+	})
+
+	t.Run("Info", func(t *testing.T) {
+		got, err := client.Info(ctx)
+		xt.NoError(t, err)
+		xt.NotEmpty(t, got)
+	})
+
+	t.Run("ConfigGet", func(t *testing.T) {
+		got, err := client.ConfigGet(ctx)
+		xt.NoError(t, err)
+		xt.NotEmpty(t, got)
+	})
+
+	t.Run("ConfigSet", func(t *testing.T) {
+		got, err := client.ConfigGet(ctx, "appendonly")
+		xt.NoError(t, err)
+		xt.NotEmpty(t, got)
+
+		err = client.ConfigSet(ctx, "appendonly", got["appendonly"])
+		xt.NoError(t, err)
+	})
+
+	t.Run("CommandList", func(t *testing.T) {
+		got, err := client.CommandList(ctx, nil)
+		xt.NoError(t, err)
+		xt.NotEmpty(t, got)
+	})
 }

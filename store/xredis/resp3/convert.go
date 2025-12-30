@@ -20,6 +20,8 @@ func ToString(result Element, err error) (string, error) {
 		return dv.String(), nil
 	case BulkString:
 		return dv.String(), nil
+	case VerbatimString:
+		return dv.Data, nil
 	default:
 		return "", fmt.Errorf("%w: ToString %#v(%T)", ErrInvalidReply, dv, dv)
 	}

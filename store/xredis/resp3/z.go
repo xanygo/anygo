@@ -15,6 +15,9 @@ func ToZSlice(ret Element, err error) ([]Z, error) {
 	if err != nil {
 		return nil, err
 	}
+	if ret.DataType() == DataTypeNull {
+		return nil, ErrNil
+	}
 	arr, ok := ret.(Array)
 	if !ok {
 		return nil, fmt.Errorf("unexpected response type: %T", ret)
@@ -25,6 +28,9 @@ func ToZSlice(ret Element, err error) ([]Z, error) {
 func ToZSliceFlat(ret Element, err error) ([]Z, error) {
 	if err != nil {
 		return nil, err
+	}
+	if ret.DataType() == DataTypeNull {
+		return nil, ErrNil
 	}
 	arr, ok := ret.(Array)
 	if !ok {
