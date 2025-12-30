@@ -23,7 +23,7 @@ func ReadByType(rd Reader, dt DataType) (Element, error) {
 	}
 	dt1 := DataType(tp)
 	if dt1 == DataTypeNull {
-		return Null{}, ErrNil
+		return Null{}, nil
 	}
 	if !dt1.Equal(dt) {
 		el, ok, err1 := asErrorType(dt1, rd)

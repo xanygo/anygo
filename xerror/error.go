@@ -43,7 +43,9 @@ func IsNotFound(err error) bool {
 	}
 	txt := err.Error()
 	// 其他的情况，比如 gorm.ErrRecordNotFound
-	return strings.Contains(txt, "not found") || strings.Contains(txt, "does not exist")
+	return strings.Contains(txt, "not found") ||
+		strings.Contains(txt, "does not exist") ||
+		strings.Contains(txt, "doesn't exist")
 }
 
 // IsAlreadyExists 判断是否已存在错误

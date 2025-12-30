@@ -63,13 +63,13 @@ func TestClientString(t *testing.T) {
 		xt.True(t, ok)
 
 		ok, err = client.SetNX(ctx, "k2", "v2-1", 0)
-		xt.NoError(t, err)
+		xt.ErrorIs(t, err, ErrNil)
 		xt.False(t, ok)
 	})
 
 	t.Run("setxx", func(t *testing.T) {
 		ok, err := client.SetXX(ctx, "k3", "v3", 0)
-		xt.NoError(t, err)
+		xt.ErrorIs(t, err, ErrNil)
 		xt.False(t, ok)
 
 		_, err = client.Get(ctx, "k3")
@@ -84,38 +84,44 @@ func TestClientString(t *testing.T) {
 	})
 
 	t.Run("incr_decr", func(t *testing.T) {
-		num, err := client.Incr(ctx, "k3") // invalid type
+		err := client.Set(ctx, "incr-1", "v3")
+		xt.NoError(t, err)
+
+		num, err := client.Incr(ctx, "incr-1") // invalid type
 		xt.Error(t, err)
 		xt.Equal(t, 0, num)
 
-		num, err = client.Incr(ctx, "k4")
+		num, err = client.Incr(ctx, "incr-2")
 		xt.NoError(t, err)
 		xt.Equal(t, 1, num)
 
-		num, err = client.IncrBy(ctx, "k4", 3)
+		num, err = client.IncrBy(ctx, "incr-2", 3)
 		xt.NoError(t, err)
 		xt.Equal(t, 4, num)
 
-		num, err = client.Decr(ctx, "k4")
+		num, err = client.Decr(ctx, "incr-2")
 		xt.NoError(t, err)
 		xt.Equal(t, 3, num)
 
-		num, err = client.DecrBy(ctx, "k4", 2)
+		num, err = client.DecrBy(ctx, "incr-2", 2)
 		xt.NoError(t, err)
 		xt.Equal(t, 1, num)
 	})
 
-	t.Run("getdel", func(t *testing.T) {
-		val, err := client.GetDel(ctx, "k4")
+	t.Run("GetDel", func(t *testing.T) {
+		err := client.Set(ctx, "GetDel-1", "v3")
 		xt.NoError(t, err)
-		xt.Equal(t, "1", val)
 
-		val, err = client.GetDel(ctx, "k4")
+		val, err := client.GetDel(ctx, "GetDel-1")
+		xt.NoError(t, err)
+		xt.Equal(t, "v3", val)
+
+		val, err = client.GetDel(ctx, "GetDel-1")
 		xt.ErrorIs(t, err, ErrNil)
 		xt.Equal(t, "", val)
 	})
 
-	t.Run("getset", func(t *testing.T) {
+	t.Run("GetSet", func(t *testing.T) {
 		val, err := client.GetSet(ctx, "k5", "v5")
 		xt.ErrorIs(t, err, ErrNil)
 		xt.Equal(t, "", val)

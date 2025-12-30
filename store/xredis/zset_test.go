@@ -228,7 +228,7 @@ func TestClientZSet(t *testing.T) {
 
 	t.Run("ZMPop", func(t *testing.T) {
 		gotFrom, gotMem, err := client.ZMPop(ctx, "ZMPop-1", nil, true, 0)
-		xt.NoError(t, err)
+		xt.ErrorIs(t, err, ErrNil)
 		xt.Empty(t, gotFrom)
 		xt.Empty(t, gotMem)
 

@@ -34,7 +34,7 @@ func TestClient_Script(t *testing.T) {
 		xt.Equal(t, "hello", result.Value())
 
 		result = client.Eval(ctx, `return ARGV[1]`, nil) // 缺少参数
-		xt.Error(t, result.Err())
+		xt.NoError(t, result.Err())
 		xt.Empty(t, result.Value())
 	})
 

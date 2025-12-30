@@ -5,30 +5,9 @@
 package resp3
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 )
-
-func ToInt(result Element, err error) (int, error) {
-	if err != nil {
-		return 0, err
-	}
-	switch dv := result.(type) {
-	case Integer:
-		return dv.Int(), nil
-	case BigNumber:
-		return int(dv.BigInt().Int64()), nil
-	case Null:
-		return 0, nil
-	case SimpleString:
-		return strconv.Atoi(dv.String())
-	case BulkString:
-		return strconv.Atoi(dv.String())
-	default:
-		return 0, fmt.Errorf("%w: ToInt %#v(%T)", ErrInvalidReply, dv, dv)
-	}
-}
 
 func ToString(result Element, err error) (string, error) {
 	if err != nil {
@@ -36,7 +15,7 @@ func ToString(result Element, err error) (string, error) {
 	}
 	switch dv := result.(type) {
 	case Null:
-		return "", nil
+		return "", ErrNil
 	case SimpleString:
 		return dv.String(), nil
 	case BulkString:
@@ -64,13 +43,36 @@ func ToPtrString(result Element, err error) (*string, error) {
 	}
 }
 
+func ToPtrStringSlice(e Element, err error, expectLen int) ([]*string, error) {
+	if err != nil {
+		return nil, err
+	}
+	var arr []Element
+	arr, err = elementAsArray(e)
+	if err != nil {
+		return nil, err
+	}
+	if expectLen > 0 && len(arr) != expectLen {
+		return nil, fmt.Errorf("array expect %d elements, got %d", expectLen, len(arr))
+	}
+	list := make([]*string, 0, len(arr))
+	for _, item := range arr {
+		ptr, err := ToPtrString(item, nil)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, ptr)
+	}
+	return list, nil
+}
+
 func ToBytes(result Element, err error) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
 	switch dv := result.(type) {
 	case Null:
-		return nil, nil
+		return nil, ErrNil
 	case SimpleString:
 		return dv.ToBytes(), nil
 	case BulkString:
@@ -82,6 +84,8 @@ func ToBytes(result Element, err error) ([]byte, error) {
 
 func elementAsArray(e Element) ([]Element, error) {
 	switch dv := e.(type) {
+	case Null:
+		return nil, ErrNil
 	case Array:
 		return dv, nil
 	case Set:
@@ -118,7 +122,7 @@ func ToStringSlice(e Element, err error, expectLen int) ([]string, error) {
 	return list, nil
 }
 
-func ToPtrStringSlice(e Element, err error, expectLen int) ([]*string, error) {
+func ToStringAnySlice(e Element, err error, expectLen int) ([]any, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -129,32 +133,49 @@ func ToPtrStringSlice(e Element, err error, expectLen int) ([]*string, error) {
 	if expectLen > 0 && len(arr) != expectLen {
 		return nil, fmt.Errorf("array expect %d elements, got %d", expectLen, len(arr))
 	}
-	list := make([]*string, 0, len(arr))
+	list := make([]any, 0, len(arr))
 	for _, item := range arr {
 		switch dv := item.(type) {
 		case SimpleString:
-			val := dv.String()
-			list = append(list, &val)
+			list = append(list, dv.String())
 		case BulkString:
-			val := dv.String()
-			list = append(list, &val)
+			list = append(list, dv.String())
 		case Null:
 			list = append(list, nil)
 		default:
-			return nil, fmt.Errorf("%w: ToStringSlice %#v(%T)", ErrInvalidReply, dv, dv)
+			return nil, fmt.Errorf("%w: ToStringAnySlice %#v(%T)", ErrInvalidReply, item, item)
 		}
 	}
 	return list, nil
 }
 
+func ToInt(result Element, err error) (int, error) {
+	if err != nil {
+		return 0, err
+	}
+	switch dv := result.(type) {
+	case Integer:
+		return dv.Int(), nil
+	case BigNumber:
+		return int(dv.BigInt().Int64()), nil
+	case Null:
+		return 0, ErrNil
+	case SimpleString:
+		return strconv.Atoi(dv.String())
+	case BulkString:
+		return strconv.Atoi(dv.String())
+	default:
+		return 0, fmt.Errorf("%w: ToInt %#v(%T)", ErrInvalidReply, dv, dv)
+	}
+}
+
 func ToBool(result Element, err error) (bool, error) {
 	if err != nil {
-		if errors.Is(err, ErrNil) {
-			return false, nil
-		}
 		return false, err
 	}
 	switch dv := result.(type) {
+	case Null:
+		return false, ErrNil
 	case Boolean:
 		return dv.Bool(), nil
 	default:
@@ -162,14 +183,80 @@ func ToBool(result Element, err error) (bool, error) {
 	}
 }
 
+func ToPtrBool(result Element, err error) (*bool, error) {
+	if err != nil {
+		return nil, err
+	}
+	switch dv := result.(type) {
+	case Null:
+		return nil, nil
+	case Boolean:
+		v := dv.Bool()
+		return &v, nil
+	case BulkString:
+		return strToPtrBool(dv.String())
+	case Integer:
+		return intToPtrBool(dv.Int())
+	default:
+		return nil, fmt.Errorf("%w: ToPtrBool %#v(%T)", ErrInvalidReply, dv, dv)
+	}
+}
+
+func ToPtrBoolSlice(e Element, err error, expectLen int) ([]*bool, error) {
+	if err != nil {
+		return nil, err
+	}
+	arr, err := elementAsArray(e)
+	if err != nil {
+		return nil, err
+	}
+	if expectLen > 0 && len(arr) != expectLen {
+		return nil, fmt.Errorf("array expect %d elements, got %d", expectLen, len(arr))
+	}
+	list := make([]*bool, 0, len(arr))
+	for _, item := range arr {
+		ptr, err := ToPtrBool(item, nil)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, ptr)
+	}
+	return list, nil
+}
+
+func strToPtrBool(str string) (*bool, error) {
+	switch str {
+	case "true":
+		ok := true
+		return &ok, nil
+	case "false":
+		ok := false
+		return &ok, nil
+	default:
+		return nil, fmt.Errorf("%w: strToPtrBool not bool value %q", ErrInvalidReply, str)
+	}
+}
+
+func intToPtrBool(num int) (*bool, error) {
+	switch num {
+	case 1:
+		ok := true
+		return &ok, nil
+	case 0:
+		ok := false
+		return &ok, nil
+	default:
+		return nil, fmt.Errorf("%w: intToPtrBool not bool value %q", ErrInvalidReply, num)
+	}
+}
+
 func ToOkBool(result Element, err error) (bool, error) {
 	if err != nil {
-		if errors.Is(err, ErrNil) {
-			return false, nil
-		}
 		return false, err
 	}
 	switch dv := result.(type) {
+	case Null:
+		return false, ErrNil
 	case SimpleString:
 		return dv.String() == "OK", nil
 	case BulkString:
@@ -220,6 +307,8 @@ func ToOkStatus(result Element, err error) error {
 		return err
 	}
 	switch dv := result.(type) {
+	case Null:
+		return ErrNil
 	case SimpleString:
 		if dv.String() == "OK" {
 			return nil
@@ -238,6 +327,8 @@ func ToInt64(result Element, err error) (int64, error) {
 		return 0, err
 	}
 	switch dv := result.(type) {
+	case Null:
+		return 0, ErrNil
 	case Integer:
 		return dv.Int64(), nil
 	case BigNumber:
@@ -248,24 +339,6 @@ func ToInt64(result Element, err error) (int64, error) {
 		return dv.ToInt64()
 	default:
 		return 0, fmt.Errorf("%w: ToInt64 %#v(%T)", ErrInvalidReply, result, result)
-	}
-}
-
-func ToUint64(result Element, err error) (uint64, error) {
-	if err != nil {
-		return 0, err
-	}
-	switch dv := result.(type) {
-	case Integer:
-		return uint64(dv.Int64()), nil
-	case BigNumber:
-		return dv.BigInt().Uint64(), nil
-	case SimpleString:
-		return dv.ToUint64()
-	case BulkString:
-		return dv.ToUint64()
-	default:
-		return 0, fmt.Errorf("%w: ToUint64 %#v(%T)", ErrInvalidReply, result, result)
 	}
 }
 
@@ -282,28 +355,43 @@ func ToInt64Slice(e Element, err error, expectLen int) ([]int64, error) {
 	}
 	list := make([]int64, 0, len(arr))
 	for _, item := range arr {
-		switch dv := item.(type) {
-		case Integer:
-			list = append(list, dv.Int64())
-		case BigNumber:
-			list = append(list, dv.Int64())
-		case SimpleString:
-			num, err1 := dv.ToInt64()
-			if err1 != nil {
-				return nil, err1
-			}
-			list = append(list, num)
-		case BulkString:
-			num, err1 := dv.ToInt64()
-			if err1 != nil {
-				return nil, err1
-			}
-			list = append(list, num)
-		default:
-			return nil, fmt.Errorf("%w: ToInt64Slice_1 %#v(%T)", ErrInvalidReply, e, e)
+		num, err := ToInt64(item, nil)
+		if err != nil {
+			return nil, err
 		}
+		list = append(list, num)
 	}
 	return list, nil
+}
+
+func ToPtrInt64(result Element, err error) (*int64, error) {
+	if err != nil {
+		return nil, err
+	}
+	switch dv := result.(type) {
+	case Null:
+		return nil, nil
+	case Integer:
+		num := dv.Int64()
+		return &num, nil
+	case BigNumber:
+		num := dv.BigInt().Int64()
+		return &num, nil
+	case SimpleString:
+		num, err := dv.ToInt64()
+		if err != nil {
+			return nil, err
+		}
+		return &num, nil
+	case BulkString:
+		num, err := dv.ToInt64()
+		if err != nil {
+			return nil, err
+		}
+		return &num, nil
+	default:
+		return nil, fmt.Errorf("%w: ToPtrInt64 %#v(%T)", ErrInvalidReply, result, result)
+	}
 }
 
 // ToPtrInt64Slice 解析出允许 null 值的 []*int64 结果
@@ -317,32 +405,33 @@ func ToPtrInt64Slice(e Element, err error) ([]*int64, error) {
 	}
 	list := make([]*int64, 0, len(arr))
 	for _, item := range arr {
-		switch dv := item.(type) {
-		case Integer:
-			num := dv.Int64()
-			list = append(list, &num)
-		case BigNumber:
-			num := dv.Int64()
-			list = append(list, &num)
-		case SimpleString:
-			num, err1 := dv.ToInt64()
-			if err1 != nil {
-				return nil, err1
-			}
-			list = append(list, &num)
-		case BulkString:
-			num, err1 := dv.ToInt64()
-			if err1 != nil {
-				return nil, err1
-			}
-			list = append(list, &num)
-		case Null:
-			list = append(list, nil)
-		default:
-			return nil, fmt.Errorf("%w: ToInt64Slice_1 %#v(%T)", ErrInvalidReply, e, e)
+		ptr, err := ToPtrInt64(item, nil)
+		if err != nil {
+			return nil, err
 		}
+		list = append(list, ptr)
 	}
 	return list, nil
+}
+
+func ToUint64(result Element, err error) (uint64, error) {
+	if err != nil {
+		return 0, err
+	}
+	switch dv := result.(type) {
+	case Null:
+		return 0, ErrNil
+	case Integer:
+		return uint64(dv.Int64()), nil
+	case BigNumber:
+		return dv.BigInt().Uint64(), nil
+	case SimpleString:
+		return dv.ToUint64()
+	case BulkString:
+		return dv.ToUint64()
+	default:
+		return 0, fmt.Errorf("%w: ToUint64 %#v(%T)", ErrInvalidReply, result, result)
+	}
 }
 
 func ToFloat64(result Element, err error) (float64, error) {
@@ -350,6 +439,8 @@ func ToFloat64(result Element, err error) (float64, error) {
 		return 0, err
 	}
 	switch dv := result.(type) {
+	case Null:
+		return 0, ErrNil
 	case SimpleString:
 		return dv.ToFloat64()
 	case BulkString:
@@ -374,12 +465,11 @@ func ToFloat64Slice(e Element, err error, expectLen int) ([]float64, error) {
 	}
 	list := make([]float64, 0, len(arr))
 	for _, item := range arr {
-		switch dv := item.(type) {
-		case Double:
-			list = append(list, dv.Float64())
-		default:
-			return nil, fmt.Errorf("%w: ToFloat64Slice_1 %#v(%T)", ErrInvalidReply, item, item)
+		num, err := ToFloat64(item, nil)
+		if err != nil {
+			return nil, err
 		}
+		list = append(list, num)
 	}
 	return list, nil
 }
@@ -415,6 +505,8 @@ func asMap(e Element, err error) (map[Element]Element, error) {
 		return nil, err
 	}
 	switch rv := e.(type) {
+	case Null:
+		return nil, ErrNil
 	case Map:
 		return rv, nil
 	case Attribute:
@@ -445,31 +537,6 @@ func ToStringAnyMap(e Element, err error) (map[string]any, error) {
 	return mapToStringAnyMap(mp)
 }
 
-//	func ToMapFloat64(e Element, err error) (map[string]float64, error) {
-//		if err != nil {
-//			return nil, err
-//		}
-//		arr, err := elementAsArray(e)
-//		if err != nil {
-//			return nil, fmt.Errorf("%w: ToMapFloat64", err)
-//		}
-//		if len(arr)%2 != 0 {
-//			return nil, fmt.Errorf("expected even number of keys, got %d", len(arr))
-//		}
-//		ret := make(map[string]float64, len(arr)/2)
-//		for i := 0; i < len(arr); i += 2 {
-//			member, err1 := ToString(arr[i], nil)
-//			if err1 != nil {
-//				return nil, err1
-//			}
-//			score, err2 := ToFloat64(arr[i+1], nil)
-//			if err2 != nil {
-//				return nil, err2
-//			}
-//			ret[member] = score
-//		}
-//		return ret, nil
-//	}
 func ToMapFloat64WithKeys(e Element, err error, keys []string) (map[string]float64, error) {
 	if err != nil {
 		return nil, err
@@ -680,13 +747,12 @@ func ToBoolSlice(e Element, err error, expectLen int) ([]bool, error) {
 		return nil, fmt.Errorf("expect %d elements, but got %d", expectLen, len(arr))
 	}
 	vs := make([]bool, 0, len(arr))
-	for idx, item := range arr {
-		switch tv := item.(type) {
-		case Boolean:
-			vs = append(vs, tv.Bool())
-		default:
-			return nil, fmt.Errorf("element[%d] not bool: %#v", idx, item)
+	for _, item := range arr {
+		ok, err := ToBool(item, nil)
+		if err != nil {
+			return nil, err
 		}
+		vs = append(vs, ok)
 	}
 	return vs, nil
 }
@@ -696,6 +762,8 @@ func ToAnyMap(e Element, err error) (map[any]any, error) {
 		return nil, err
 	}
 	switch m := e.(type) {
+	case Null:
+		return nil, ErrNil
 	case Map:
 		return toAnyMay(m)
 	case Attribute:

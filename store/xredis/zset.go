@@ -285,7 +285,7 @@ func (c *Client) ZLexCount(ctx context.Context, key string, min string, max stri
 //   - members: pop 的元素
 //   - err: 错误
 //
-// 若 key 不存在，会返回 “”, nil, nil
+// 若 key 不存在，会返回 “”, nil, ErrNil
 func (c *Client) ZMPop(ctx context.Context, key string, keys []string, min bool, count int) (fromKey string, members []Z, err error) {
 	args := make([]any, 3, 6+len(keys))
 	args[0] = "ZMPOP"
@@ -305,12 +305,6 @@ func (c *Client) ZMPop(ctx context.Context, key string, keys []string, min bool,
 
 	cmd := resp3.NewRequest(resp3.DataTypeArray, args...)
 	resp := c.do(ctx, cmd)
-	if resp.err != nil {
-		if errors.Is(resp.err, ErrNil) {
-			return "", nil, nil
-		}
-		return "", nil, resp.err
-	}
 	arr, err := resp.asResp3Array(2)
 	if err != nil {
 		return "", nil, err

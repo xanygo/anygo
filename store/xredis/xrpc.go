@@ -113,6 +113,9 @@ func (resp *rpcResponse) asResp3Array(count int) (resp3.Array, error) {
 	if resp.err != nil {
 		return nil, resp.err
 	}
+	if resp.result.DataType() == resp3.DataTypeNull {
+		return nil, ErrNil
+	}
 	arr, ok := resp.result.(resp3.Array)
 	if !ok {
 		return nil, fmt.Errorf("unexpected type %T", resp.result)

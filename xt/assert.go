@@ -175,7 +175,7 @@ func Nil(t Testing, got any) {
 		h.Helper()
 	}
 	if !isNil(got) {
-		t.Fatalf("Expected nil, but got: %#v", got)
+		t.Fatalf("Expected nil, but got: %#v\n dump:\n%s", got, zreflect.DumpString(got))
 	}
 }
 
@@ -194,7 +194,7 @@ func Empty(t Testing, got any) {
 	}
 
 	if !isEmpty(got) {
-		t.Fatalf("Should be empty, but was %v", got)
+		t.Fatalf("Should be empty, but was %#v\n dump:\n%s", got, zreflect.DumpString(got))
 	}
 }
 
