@@ -9,7 +9,7 @@ import "testing"
 func TestNewServer(t *testing.T) {
 	ts, err := NewServer()
 	if err != nil {
-		t.Logf("create redis fail: %v", err)
+		t.Skipf("create redis-server skipped: %v", err)
 		return
 	}
 	defer ts.Stop()

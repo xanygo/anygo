@@ -18,7 +18,7 @@ import (
 func TestClientHash(t *testing.T) {
 	ts, errTs := redistest.NewServer()
 	if errTs != nil {
-		t.Logf("create redis fail: %v", errTs)
+		t.Skipf("create redis-server skipped: %v", errTs)
 		return
 	}
 	defer ts.Stop()
