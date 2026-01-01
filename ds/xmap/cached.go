@@ -4,7 +4,9 @@
 
 package xmap
 
-import "sync"
+import (
+	"sync"
+)
 
 type Cached[K comparable, v any] struct {
 	db  map[K]v
@@ -37,4 +39,16 @@ func (c *Cached[K, V]) Delete(keys ...K) {
 	for _, key := range keys {
 		delete(c.db, key)
 	}
+}
+
+func (c *Cached[K, V]) Count() int {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	return len(c.db)
+}
+
+func (c *Cached[K, V]) Clear() {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	c.db = nil
 }
