@@ -36,6 +36,7 @@ var (
 	errNoValues  = fmt.Errorf("%w: no values", xerror.InvalidParam)
 	errNoMembers = fmt.Errorf("%w: no members", xerror.InvalidParam)
 	errNoFields  = fmt.Errorf("%w: no fields", xerror.InvalidParam)
+	errNoItems   = fmt.Errorf("%w: no items", xerror.InvalidParam)
 )
 
 func NewClient(service any) *Client {

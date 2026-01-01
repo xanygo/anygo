@@ -156,6 +156,22 @@ func TestClientString(t *testing.T) {
 		xt.NoError(t, err)
 		xt.Equal(t, "hello", val)
 	})
+
+	t.Run("IncrBy", func(t *testing.T) {
+		got, err := client.IncrBy(ctx, "IncrBy-1", 2)
+		xt.NoError(t, err)
+		xt.Equal(t, 2, got)
+
+		got, err = client.DecrBy(ctx, "IncrBy-1", 1)
+		xt.NoError(t, err)
+		xt.Equal(t, 1, got)
+	})
+
+	t.Run("IncrByFloat", func(t *testing.T) {
+		got, err := client.IncrByFloat(ctx, "IncrByFloat-1", 1.2)
+		xt.NoError(t, err)
+		xt.Equal(t, 1.2, got)
+	})
 }
 
 func testSetKeyString(t *testing.T, client *Client, key string) {

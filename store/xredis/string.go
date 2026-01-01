@@ -102,7 +102,7 @@ func (c *Client) IncrBy(ctx context.Context, key string, n int64) (int64, error)
 }
 
 func (c *Client) IncrByFloat(ctx context.Context, key string, f float64) (float64, error) {
-	cmd := resp3.NewRequest(resp3.DataTypeInteger, "INCRBYFLOAT", key, f)
+	cmd := resp3.NewRequest(resp3.DataTypeBulkString, "INCRBYFLOAT", key, f)
 	resp := c.do(ctx, cmd)
 	return resp3.ToFloat64(resp.result, resp.err)
 }
@@ -145,10 +145,7 @@ func (c *Client) MSet(ctx context.Context, kv map[string]string) error {
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeSimpleString, args...)
 	resp := c.do(ctx, cmd)
-	if resp.err != nil {
-		return resp.err
-	}
-	return nil
+	return resp3.ToOkStatus(resp.result, resp.err)
 }
 
 func (c *Client) MSetNX(ctx context.Context, kv map[string]string) (int, error) {
