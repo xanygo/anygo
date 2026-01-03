@@ -36,7 +36,7 @@ func c4(w http.ResponseWriter, r *http.Request) {
 func index(w http.ResponseWriter, r *http.Request) {
 	code := `<html>
 <head>
-<title>anygo Caption</title>
+<title>anygo Capacity</title>
 </head>
 <body>
 <p><img src='/c1'></p>

@@ -44,7 +44,7 @@ func NewBytesBufferPool(maxCap int) *BytesBufferPool {
 }
 
 // BytesBufferPool  *bytes.Buffer 的对象池，
-// 若 buffer 的 caption > maxCap 时，该对象会被丢弃，以避免占用过多内存
+// 若 buffer 的 capacity > maxCap 时，该对象会被丢弃，以避免占用过多内存
 type BytesBufferPool struct {
 	maxCap int
 	pool   *sync.Pool

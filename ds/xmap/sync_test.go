@@ -21,7 +21,7 @@ func TestSync(t *testing.T) {
 
 		m1.Store(key1, "world")
 		xt.Equal(t, map[string]string{"hello": "world"}, m1.ToMap())
-		xt.Equal(t, 1, m1.Count())
+		xt.Equal(t, 1, m1.Len())
 
 		v1, ok1 = m1.Load(key1)
 		xt.Equal(t, "world", v1)

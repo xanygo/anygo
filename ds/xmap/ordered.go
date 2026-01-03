@@ -14,8 +14,8 @@ import (
 
 // Ordered 按照写入顺序排序的 Sync, 非并发安全的
 type Ordered[K comparable, V any] struct {
-	// Caption 初始化 map 时，默认的容量，可选，默认值为 4
-	Caption int
+	// Capacity 初始化 map 时，默认的容量，可选，默认值为 4
+	Capacity int
 
 	keys []K
 	db   map[K]V
@@ -23,7 +23,7 @@ type Ordered[K comparable, V any] struct {
 
 func (s *Ordered[K, V]) Set(key K, value V) {
 	if s.db == nil {
-		s.db = make(map[K]V, max(4, s.Caption))
+		s.db = make(map[K]V, max(4, s.Capacity))
 	}
 	_, has := s.db[key]
 	s.db[key] = value
@@ -156,12 +156,38 @@ func (s *Ordered[K, V]) Clone() *Ordered[K, V] {
 	}
 }
 
+func (s *Ordered[K, V]) LoadOrStore(key K, v V) (actual any, loaded bool) {
+	actual, loaded = s.Get(key)
+	if loaded {
+		return actual, true
+	}
+	s.Set(key, v)
+	return v, false
+}
+
+// Head 返回头部第一的 key 和 value
+func (s *Ordered[K, V]) Head() (key K, value V, ok bool) {
+	if len(s.keys) == 0 {
+		return key, value, false
+	}
+	key = s.keys[0]
+	return key, s.db[key], true
+}
+
+func (s *Ordered[K, V]) Tail() (key K, value V, ok bool) {
+	if len(s.keys) == 0 {
+		return key, value, false
+	}
+	key = s.keys[len(s.keys)-1]
+	return key, s.db[key], true
+}
+
 // ----------------------------------
 
 // OrderedSync 按照写入顺序排序的 Sync, 并发安全的
 type OrderedSync[K comparable, V any] struct {
-	// Caption 初始化 map 时，默认的容量，可选，默认值为 4
-	Caption int
+	// Capacity 初始化 map 时，默认的容量，可选，默认值为 4
+	Capacity int
 
 	keys []K
 	db   map[K]V
@@ -172,7 +198,7 @@ func (s *OrderedSync[K, V]) Set(key K, value V) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	if s.db == nil {
-		s.db = make(map[K]V, max(4, s.Caption))
+		s.db = make(map[K]V, max(4, s.Capacity))
 	}
 	_, has := s.db[key]
 	s.db[key] = value
@@ -259,9 +285,12 @@ func (s *OrderedSync[K, V]) HasAny(keys ...K) bool {
 
 func (s *OrderedSync[K, V]) Range(fn func(key K, value V) bool) {
 	s.mux.RLock()
-	defer s.mux.RUnlock()
-	for _, k := range s.keys {
-		if !fn(k, s.db[k]) {
+	keys := slices.Clone(s.keys)
+	s.mux.RUnlock()
+
+	for _, key := range keys {
+		value, ok := s.Get(key)
+		if ok && !fn(key, value) {
 			return
 		}
 	}
@@ -330,4 +359,41 @@ func (s *OrderedSync[K, V]) Clone() *OrderedSync[K, V] {
 		keys: keys,
 		db:   values,
 	}
+}
+
+func (s *OrderedSync[K, V]) LoadOrStore(key K, v V) (actual any, loaded bool) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	if s.db == nil {
+		s.db = make(map[K]V, max(4, s.Capacity))
+	}
+	actual, loaded = s.db[key]
+	if loaded {
+		return actual, true
+	}
+	s.db[key] = v
+	s.keys = append(s.keys, key)
+	return v, false
+}
+
+func (s *OrderedSync[K, V]) Head() (key K, value V, ok bool) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	if len(s.keys) == 0 {
+		return key, value, false
+	}
+	key = s.keys[0]
+	return key, s.db[key], true
+}
+
+func (s *OrderedSync[K, V]) Tail() (key K, value V, ok bool) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	if len(s.keys) == 0 {
+		return key, value, false
+	}
+	key = s.keys[len(s.keys)-1]
+	return key, s.db[key], true
 }

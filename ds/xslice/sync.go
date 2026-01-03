@@ -67,6 +67,12 @@ func (s *Sync[T]) Clear() {
 	s.mux.Unlock()
 }
 
+func (s *Sync[T]) Len() int {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	return len(s.items)
+}
+
 // Store 用传入的 slice 替换原有所有的值
 func (s *Sync[T]) Store(all []T) {
 	s.mux.Lock()

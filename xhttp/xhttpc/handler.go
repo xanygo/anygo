@@ -83,9 +83,14 @@ func JSONBody(a any) HandlerFunc {
 }
 
 func TeeReader(sr *StoredResponse) HandlerFunc {
+	start := time.Now()
+	if sr.CreateAt == 0 {
+		sr.CreateAt = start.Unix()
+	}
 	return func(ctx context.Context, resp *http.Response) error {
 		sr.StatusCode = resp.StatusCode
 		sr.Header = resp.Header.Clone()
+		sr.Cost = time.Since(start)
 		if resp.Request != nil {
 			sr.URL = resp.Request.URL.String()
 		}

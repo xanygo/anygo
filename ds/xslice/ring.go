@@ -12,23 +12,23 @@ import (
 	"sync"
 )
 
-// NewRing 创建新的 Ring，caption-容量，应 > 0
-func NewRing[T any](caption int) *Ring[T] {
-	if caption <= 0 {
-		panic(fmt.Errorf("invalid Ring caption %d", caption))
+// NewRing 创建新的 Ring，capacity-容量，应 > 0
+func NewRing[T any](capacity int) *Ring[T] {
+	if capacity <= 0 {
+		panic(fmt.Errorf("invalid Ring capacity %d", capacity))
 	}
 	return &Ring[T]{
-		caption: caption,
-		values:  make([]T, caption),
+		capacity: capacity,
+		values:   make([]T, capacity),
 	}
 }
 
 // Ring 具有指定最大容量的，环形结构的 slice，容量满的情况下，新元素会覆盖老元素，非并发安全的
 type Ring[T any] struct {
-	values  []T
-	caption int // 容量
-	length  int // 长度
-	index   int
+	values   []T
+	capacity int // 容量
+	length   int // 长度
+	index    int
 }
 
 // Add 添加新的元素，容量满的情况下，会覆盖老的值
@@ -39,10 +39,10 @@ func (r *Ring[T]) Add(values ...T) {
 	for _, v := range values {
 		r.values[r.index] = v
 		r.index++
-		if r.index == r.caption {
+		if r.index == r.capacity {
 			r.index = 0
 		}
-		if r.length < r.caption {
+		if r.length < r.capacity {
 			r.length++
 		}
 	}
@@ -56,10 +56,10 @@ func (r *Ring[T]) AddSwap(v T) (old T, swapped bool) {
 	}
 	r.values[r.index] = v
 	r.index++
-	if r.index == r.caption {
+	if r.index == r.capacity {
 		r.index = 0
 	}
-	if r.length < r.caption {
+	if r.length < r.capacity {
 		r.length++
 	}
 	return old, swapped
@@ -75,7 +75,7 @@ func (r *Ring[T]) Range(fn func(v T) bool) {
 		return
 	}
 
-	if r.length != r.caption {
+	if r.length != r.capacity {
 		for i := 0; i < r.length; i++ {
 			if !fn(r.values[i]) {
 				return
@@ -85,7 +85,7 @@ func (r *Ring[T]) Range(fn func(v T) bool) {
 	}
 
 	// 容量满的情况下
-	for i := r.index; i < r.caption; i++ {
+	for i := r.index; i < r.capacity; i++ {
 		if !fn(r.values[i]) {
 			return
 		}
@@ -111,7 +111,7 @@ func (r *Ring[T]) Values() []T {
 		return nil
 	}
 	vs := make([]T, 0, length)
-	if length != r.caption {
+	if length != r.capacity {
 		vs = append(vs, r.values[:length]...)
 		return vs
 	}
@@ -127,25 +127,25 @@ func (r *Ring[T]) Clear() {
 	clear(r.values)
 }
 
-// NewSyncRing 创建新的 SyncRing，caption-容量，应 > 0
-func NewSyncRing[T any](caption int) *SyncRing[T] {
-	if caption <= 0 {
-		panic(fmt.Errorf("invalid SyncRing caption %d", caption))
+// NewSyncRing 创建新的 SyncRing，capacity-容量，应 > 0
+func NewSyncRing[T any](capacity int) *SyncRing[T] {
+	if capacity <= 0 {
+		panic(fmt.Errorf("invalid SyncRing capacity %d", capacity))
 	}
 	return &SyncRing[T]{
-		caption: caption,
-		values:  make([]T, caption),
-		mux:     &sync.RWMutex{},
+		capacity: capacity,
+		values:   make([]T, capacity),
+		mux:      &sync.RWMutex{},
 	}
 }
 
 // SyncRing 具有指定最大容量的，环形结构的 slice，容量满的情况下，新元素会覆盖老元素，是并发安全的
 type SyncRing[T any] struct {
-	values  []T
-	caption int
-	length  int
-	index   int
-	mux     *sync.RWMutex
+	values   []T
+	capacity int
+	length   int
+	index    int
+	mux      *sync.RWMutex
 }
 
 // Add 添加新的元素，容量满的情况下，会覆盖老的值
@@ -157,10 +157,10 @@ func (r *SyncRing[T]) Add(values ...T) {
 	for _, v := range values {
 		r.values[r.index] = v
 		r.index++
-		if r.index == r.caption {
+		if r.index == r.capacity {
 			r.index = 0
 		}
-		if r.length < r.caption {
+		if r.length < r.capacity {
 			r.length++
 		}
 	}
@@ -176,10 +176,10 @@ func (r *SyncRing[T]) AddSwap(v T) (old T, swapped bool) {
 	}
 	r.values[r.index] = v
 	r.index++
-	if r.index == r.caption {
+	if r.index == r.capacity {
 		r.index = 0
 	}
-	if r.length < r.caption {
+	if r.length < r.capacity {
 		r.length++
 	}
 	r.mux.Unlock()
@@ -201,7 +201,7 @@ func (r *SyncRing[T]) Range(fn func(v T) bool) {
 		return
 	}
 
-	if r.length != r.caption {
+	if r.length != r.capacity {
 		for i := 0; i < r.length; i++ {
 			if !fn(r.values[i]) {
 				return
@@ -212,7 +212,7 @@ func (r *SyncRing[T]) Range(fn func(v T) bool) {
 
 	// 容量满的情况下
 
-	for i := r.index; i < r.caption; i++ {
+	for i := r.index; i < r.capacity; i++ {
 		if !fn(r.values[i]) {
 			return
 		}
@@ -240,7 +240,7 @@ func (r *SyncRing[T]) Values() []T {
 		return nil
 	}
 	vs := make([]T, 0, length)
-	if length != r.caption {
+	if length != r.capacity {
 		vs = append(vs, r.values[:length]...)
 		return vs
 	}
@@ -258,14 +258,14 @@ func (r *SyncRing[T]) Clear() {
 	r.mux.Unlock()
 }
 
-func NewUniqRing[T comparable](caption int) *UniqRing[T] {
-	if caption <= 0 {
-		panic(fmt.Errorf("invalid SyncRing caption %d", caption))
+func NewUniqRing[T comparable](capacity int) *UniqRing[T] {
+	if capacity <= 0 {
+		panic(fmt.Errorf("invalid SyncRing capacity %d", capacity))
 	}
 	return &UniqRing[T]{
-		caption:    caption,
-		values:     make([]T, caption),
-		valueIndex: make(map[T]int, caption),
+		capacity:   capacity,
+		values:     make([]T, capacity),
+		valueIndex: make(map[T]int, capacity),
 	}
 }
 
@@ -273,7 +273,7 @@ func NewUniqRing[T comparable](caption int) *UniqRing[T] {
 type UniqRing[T comparable] struct {
 	values     []T
 	valueIndex map[T]int
-	caption    int
+	capacity   int
 	length     int
 	index      int
 }
@@ -290,10 +290,10 @@ func (r *UniqRing[T]) Add(values ...T) {
 		r.values[r.index] = v
 		r.valueIndex[v] = r.index
 		r.index++
-		if r.index == r.caption {
+		if r.index == r.capacity {
 			r.index = 0
 		}
-		if r.length < r.caption {
+		if r.length < r.capacity {
 			r.length++
 		}
 	}
@@ -315,10 +315,10 @@ func (r *UniqRing[T]) AddSwap(v T) (old T, swapped bool) {
 	r.values[r.index] = v
 	r.valueIndex[v] = r.index
 	r.index++
-	if r.index == r.caption {
+	if r.index == r.capacity {
 		r.index = 0
 	}
-	if r.length < r.caption {
+	if r.length < r.capacity {
 		r.length++
 	}
 
@@ -335,7 +335,7 @@ func (r *UniqRing[T]) Range(fn func(v T) bool) {
 		return
 	}
 
-	if r.length != r.caption {
+	if r.length != r.capacity {
 		for i := 0; i < r.length; i++ {
 			if !fn(r.values[i]) {
 				return
@@ -346,7 +346,7 @@ func (r *UniqRing[T]) Range(fn func(v T) bool) {
 
 	// 容量满的情况下
 
-	for i := r.index; i < r.caption; i++ {
+	for i := r.index; i < r.capacity; i++ {
 		if !fn(r.values[i]) {
 			return
 		}
@@ -372,7 +372,7 @@ func (r *UniqRing[T]) Values() []T {
 		return nil
 	}
 	vs := make([]T, 0, length)
-	if length != r.caption {
+	if length != r.capacity {
 		vs = append(vs, r.values[:length]...)
 		return vs
 	}
@@ -389,14 +389,14 @@ func (r *UniqRing[T]) Clear() {
 	clear(r.valueIndex)
 }
 
-func NewSyncUniqRing[T comparable](caption int) *SyncUniqRing[T] {
-	if caption <= 0 {
-		panic(fmt.Errorf("invalid SyncRing caption %d", caption))
+func NewSyncUniqRing[T comparable](capacity int) *SyncUniqRing[T] {
+	if capacity <= 0 {
+		panic(fmt.Errorf("invalid SyncRing capacity %d", capacity))
 	}
 	return &SyncUniqRing[T]{
-		caption:    caption,
-		values:     make([]T, caption),
-		valueIndex: make(map[T]int, caption),
+		capacity:   capacity,
+		values:     make([]T, capacity),
+		valueIndex: make(map[T]int, capacity),
 		mux:        new(sync.RWMutex),
 	}
 }
@@ -405,7 +405,7 @@ func NewSyncUniqRing[T comparable](caption int) *SyncUniqRing[T] {
 type SyncUniqRing[T comparable] struct {
 	values     []T
 	valueIndex map[T]int
-	caption    int
+	capacity   int
 	length     int
 	index      int
 	mux        *sync.RWMutex
@@ -425,10 +425,10 @@ func (r *SyncUniqRing[T]) Add(values ...T) {
 		r.values[r.index] = v
 		r.valueIndex[v] = r.index
 		r.index++
-		if r.index == r.caption {
+		if r.index == r.capacity {
 			r.index = 0
 		}
-		if r.length < r.caption {
+		if r.length < r.capacity {
 			r.length++
 		}
 	}
@@ -453,10 +453,10 @@ func (r *SyncUniqRing[T]) AddSwap(v T) (old T, swapped bool) {
 	r.values[r.index] = v
 	r.valueIndex[v] = r.index
 	r.index++
-	if r.index == r.caption {
+	if r.index == r.capacity {
 		r.index = 0
 	}
-	if r.length < r.caption {
+	if r.length < r.capacity {
 		r.length++
 	}
 
@@ -478,7 +478,7 @@ func (r *SyncUniqRing[T]) Range(fn func(v T) bool) {
 		return
 	}
 
-	if r.length != r.caption {
+	if r.length != r.capacity {
 		for i := 0; i < r.length; i++ {
 			if !fn(r.values[i]) {
 				return
@@ -489,7 +489,7 @@ func (r *SyncUniqRing[T]) Range(fn func(v T) bool) {
 
 	// 容量满的情况下
 
-	for i := r.index; i < r.caption; i++ {
+	for i := r.index; i < r.capacity; i++ {
 		if !fn(r.values[i]) {
 			return
 		}
@@ -517,7 +517,7 @@ func (r *SyncUniqRing[T]) Values() []T {
 		return nil
 	}
 	vs := make([]T, 0, length)
-	if length != r.caption {
+	if length != r.capacity {
 		vs = append(vs, r.values[:length]...)
 		return vs
 	}
@@ -536,9 +536,9 @@ func (r *SyncUniqRing[T]) Clear() {
 	r.mux.Unlock()
 }
 
-func NewSyncRingWriter(caption int) *SyncRingWriter {
+func NewSyncRingWriter(capacity int) *SyncRingWriter {
 	return &SyncRingWriter{
-		sr: NewSyncRing[string](caption),
+		sr: NewSyncRing[string](capacity),
 	}
 }
 

@@ -10,9 +10,9 @@ import (
 	"github.com/xanygo/anygo/store/xcache"
 )
 
-func NewMemoryStore(caption int, ttl time.Duration) *CacheStore {
+func NewMemoryStore(capacity int, ttl time.Duration) *CacheStore {
 	return &CacheStore{
 		TTL:   ttl,
-		Cache: xcache.NewLRU[string, string](caption),
+		Cache: xcache.NewLRU[string, string](capacity),
 	}
 }

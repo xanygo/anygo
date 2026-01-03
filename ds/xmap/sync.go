@@ -83,7 +83,7 @@ func (m *Sync[K, V]) Iter() iter.Seq2[K, V] {
 	}
 }
 
-func (m *Sync[K, V]) Count() int {
+func (m *Sync[K, V]) Len() int {
 	var c int
 	m.storage.Range(func(_, _ any) bool {
 		c++

@@ -116,6 +116,10 @@ func (s *SliceValue[K, V]) Iter() iter.Seq2[K, []V] {
 	}
 }
 
+func (s *SliceValue[K, V]) Len() int {
+	return len(s.data)
+}
+
 // -----
 
 // SliceValueSync 值为 slice 的 并发安全的 map ( map[K][]V )
@@ -209,7 +213,7 @@ func (s *SliceValueSync[K, V]) HasValue(key K, values ...V) bool {
 	}
 	s.mux.RLock()
 	defer s.mux.RUnlock()
-	if len(s.data) == 0 {
+	if len(s.data) == 0 || len(s.data[key]) == 0 {
 		return false
 	}
 
@@ -234,6 +238,7 @@ func (s *SliceValueSync[K, V]) Map(clone bool) (result map[K][]V) {
 	return result
 }
 
+// Iter 用于遍历，在遍历期间会锁住整个对象
 func (s *SliceValueSync[K, V]) Iter() iter.Seq2[K, []V] {
 	return func(yield func(K, []V) bool) {
 		s.mux.RLock()
@@ -244,4 +249,20 @@ func (s *SliceValueSync[K, V]) Iter() iter.Seq2[K, []V] {
 			}
 		}
 	}
+}
+
+// Rand 随机返回一个
+func (s *SliceValueSync[K, V]) Rand() (key K, value []V, ok bool) {
+	s.mux.RLock()
+	defer s.mux.RUnlock()
+	for k, v := range s.data {
+		return k, v, true
+	}
+	return key, nil, false
+}
+
+func (s *SliceValueSync[K, V]) Len() int {
+	s.mux.RLock()
+	defer s.mux.RUnlock()
+	return len(s.data)
 }
