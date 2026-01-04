@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
@@ -22,6 +23,20 @@ import (
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
 )
+
+var defaultUa = &xsync.OnceInit[string]{
+	New: func() string {
+		return xnet.UserAgent
+	},
+}
+
+func SetDefaultUserAgent(userAgent string) {
+	defaultUa.Store(userAgent)
+}
+
+func DefaultUserAgent() string {
+	return defaultUa.Load()
+}
 
 var _ xrpc.Request = (*Request)(nil)
 
@@ -248,7 +263,7 @@ func setHeader(ctx context.Context, req *http.Request, opt xoption.Reader) {
 		req.Header[k] = v
 	}
 	if req.UserAgent() == "" {
-		req.Header.Set("User-Agent", xnet.UserAgent)
+		req.Header.Set("User-Agent", DefaultUserAgent())
 	}
 	logID := xlog.FindLogID(ctx)
 	if logID != "" {

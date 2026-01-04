@@ -81,3 +81,7 @@ func (st *SoloTask) run(do func(), life time.Duration, cycle time.Duration) {
 		}
 	}
 }
+
+func (st *SoloTask) Running() bool {
+	return st.running.Load()
+}

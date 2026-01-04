@@ -13,7 +13,7 @@ import (
 
 var defaultClientLogger = &xsync.OnceInit[Logger]{
 	New: func() Logger {
-		return stderrLogger
+		return Default()
 	},
 }
 

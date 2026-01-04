@@ -1,0 +1,386 @@
+//  Copyright(C) 2024 github.com/hidu  All Rights Reserved.
+//  Author: hidu <duv123+git@gmail.com>
+//  Date: 2024-09-02
+
+package xcache
+
+import (
+	"container/list"
+	"context"
+	"errors"
+	"fmt"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/xanygo/anygo/xerror"
+)
+
+var _ Cache[string, string] = (*LRU[string, string])(nil)
+var _ MCache[string, string] = (*LRU[string, string])(nil)
+var _ HasStats = (*LRU[string, string])(nil)
+
+func NewLRU[K comparable, V any](capacity int) *LRU[K, V] {
+	if capacity <= 0 {
+		panic(fmt.Sprintf("NewLRU with invalid capacity %d", capacity))
+	}
+	return &LRU[K, V]{
+		capacity: capacity,
+		data:     make(map[K]*list.Element, capacity),
+		list:     list.New(),
+		mux:      &sync.Mutex{},
+	}
+}
+
+// LRU 最近最少使用( Least Recently Used ) 全内存缓存组件。
+type LRU[K comparable, V any] struct {
+	capacity int // 容量
+	data     map[K]*list.Element
+	list     *list.List
+	mux      *sync.Mutex
+
+	readCnt   atomic.Uint64
+	writeCnt  atomic.Uint64
+	deleteCnt atomic.Uint64
+	hitCnt    atomic.Uint64
+}
+
+func (lru *LRU[K, V]) Has(ctx context.Context, key K) (bool, error) {
+	_, err := lru.Get(ctx, key)
+	if err != nil {
+		if errors.Is(err, xerror.NotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (lru *LRU[K, V]) Get(_ context.Context, key K) (v V, err error) {
+	lru.readCnt.Add(1)
+
+	lru.mux.Lock()
+	defer lru.mux.Unlock()
+	return lru.getLocked(key)
+}
+
+func (lru *LRU[K, V]) getLocked(key K) (v V, rr error) {
+	el, has := lru.data[key]
+	if !has {
+		return v, xerror.NotFound
+	}
+	val := el.Value.(*memValue[K, V])
+
+	if val.Expired() {
+		lru.list.Remove(el)
+		delete(lru.data, key)
+		return v, xerror.NotFound
+	}
+	lru.hitCnt.Add(1)
+	lru.list.MoveToFront(el)
+	return val.Data, nil
+}
+
+func (lru *LRU[K, V]) MGet(_ context.Context, keys ...K) (map[K]V, error) {
+	lru.readCnt.Add(uint64(len(keys)))
+
+	lru.mux.Lock()
+	defer lru.mux.Unlock()
+
+	result := make(map[K]V, len(keys))
+	for _, key := range keys {
+		val, err := lru.getLocked(key)
+		if err != nil {
+			result[key] = val
+		}
+	}
+	return result, nil
+}
+
+func (lru *LRU[K, V]) Set(_ context.Context, key K, value V, ttl time.Duration) error {
+	lru.writeCnt.Add(1)
+	lru.doSet(key, value, ttl)
+	return nil
+}
+
+func (lru *LRU[K, V]) doSet(key K, value V, ttl time.Duration) {
+	cacheVal := &memValue[K, V]{
+		Key:      key,
+		Data:     value,
+		ExpireAt: time.Now().Add(ttl),
+	}
+	lru.mux.Lock()
+	defer lru.mux.Unlock()
+	el, has := lru.data[key]
+	if has {
+		el.Value = cacheVal
+		lru.list.MoveToFront(el)
+		return
+	}
+	elm := lru.list.PushFront(cacheVal)
+	lru.data[key] = elm
+	if lru.list.Len() > lru.capacity {
+		lru.weedOut()
+	}
+}
+
+func (lru *LRU[K, V]) MSet(_ context.Context, values map[K]V, ttl time.Duration) error {
+	lru.writeCnt.Add(uint64(len(values)))
+	for k, v := range values {
+		lru.doSet(k, v, ttl)
+	}
+	return nil
+}
+
+func (lru *LRU[K, V]) weedOut() {
+	el := lru.list.Back()
+	if el == nil {
+		return
+	}
+	v := el.Value.(*memValue[K, V])
+	delete(lru.data, v.Key)
+	lru.list.Remove(el)
+}
+
+func (lru *LRU[K, V]) Delete(ctx context.Context, keys ...K) error {
+	lru.deleteCnt.Add(uint64(len(keys)))
+
+	if len(keys) == 0 {
+		return nil
+	}
+	lru.mux.Lock()
+	defer lru.mux.Unlock()
+	for _, key := range keys {
+		el, has := lru.data[key]
+		if !has {
+			continue
+		}
+		delete(lru.data, key)
+		lru.list.Remove(el)
+	}
+	return nil
+}
+
+// Clear 重置、清空所有缓存
+func (lru *LRU[K, V]) Clear() {
+	lru.mux.Lock()
+	clear(lru.data)
+	lru.data = make(map[K]*list.Element, lru.capacity)
+	lru.list = list.New()
+	lru.mux.Unlock()
+}
+
+func (lru *LRU[K, V]) Keys() []K {
+	lru.mux.Lock()
+	keys := make([]K, 0, len(lru.data))
+	for k := range lru.data {
+		keys = append(keys, k)
+	}
+	lru.mux.Unlock()
+	return keys
+}
+
+func (lru *LRU[K, V]) Count() int64 {
+	lru.mux.Lock()
+	c := len(lru.data)
+	lru.mux.Unlock()
+	return int64(c)
+}
+
+func (lru *LRU[K, V]) Stats() Stats {
+	return Stats{
+		Read:   lru.readCnt.Load(),
+		Write:  lru.writeCnt.Load(),
+		Delete: lru.deleteCnt.Load(),
+		Hit:    lru.hitCnt.Load(),
+	}
+}
+
+type memValue[K comparable, V any] struct {
+	Key      K
+	Data     V
+	ExpireAt time.Time
+}
+
+// Expired 是否已过期
+func (v *memValue[K, V]) Expired() bool {
+	return time.Now().After(v.ExpireAt)
+}
+
+func NewMemoryFIFO[K comparable, V any](capacity int) *MemoryFIFO[K, V] {
+	if capacity <= 0 {
+		panic(fmt.Sprintf("MemoryFIFO with invalid capacity %d", capacity))
+	}
+	return &MemoryFIFO[K, V]{
+		capacity: capacity,
+		data:     make(map[K]*list.Element, capacity),
+		list:     list.New(),
+		mux:      &sync.Mutex{},
+	}
+}
+
+var _ Cache[string, string] = (*MemoryFIFO[string, string])(nil)
+var _ MCache[string, string] = (*MemoryFIFO[string, string])(nil)
+var _ HasStats = (*MemoryFIFO[string, string])(nil)
+
+// MemoryFIFO 容量满之后，过期策略为 FIFO 的 内存缓存
+type MemoryFIFO[K comparable, V any] struct {
+	capacity int // 容量
+	data     map[K]*list.Element
+	list     *list.List
+	mux      *sync.Mutex
+
+	readCnt   atomic.Uint64
+	writeCnt  atomic.Uint64
+	deleteCnt atomic.Uint64
+	hitCnt    atomic.Uint64
+}
+
+func (m *MemoryFIFO[K, V]) Has(ctx context.Context, key K) (bool, error) {
+	_, err := m.Get(ctx, key)
+	if err != nil {
+		if errors.Is(err, xerror.NotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (m *MemoryFIFO[K, V]) Get(ctx context.Context, key K) (value V, err error) {
+	m.readCnt.Add(1)
+
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	return m.getLocked(key)
+}
+
+func (m *MemoryFIFO[K, V]) getLocked(key K) (v V, rr error) {
+	el, has := m.data[key]
+	if !has {
+		return v, xerror.NotFound
+	}
+	val := el.Value.(*memValue[K, V])
+	if val.Expired() {
+		m.list.Remove(el)
+		delete(m.data, key)
+		return v, xerror.NotFound
+	}
+	m.hitCnt.Add(1)
+	return val.Data, nil
+}
+
+func (m *MemoryFIFO[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration) error {
+	m.writeCnt.Add(1)
+	m.doSet(key, value, ttl)
+	return nil
+}
+
+func (m *MemoryFIFO[K, V]) doSet(key K, value V, ttl time.Duration) {
+	cacheVal := &memValue[K, V]{
+		Key:      key,
+		Data:     value,
+		ExpireAt: time.Now().Add(ttl),
+	}
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	el, has := m.data[key]
+	if has {
+		el.Value = cacheVal
+		return
+	}
+	elm := m.list.PushBack(cacheVal)
+	m.data[key] = elm
+	if m.list.Len() > m.capacity {
+		m.weedOut()
+	}
+}
+
+func (m *MemoryFIFO[K, V]) weedOut() {
+	el := m.list.Front()
+	if el == nil {
+		return
+	}
+	v := el.Value.(*memValue[K, V])
+	delete(m.data, v.Key)
+	m.list.Remove(el)
+}
+
+func (m *MemoryFIFO[K, V]) Delete(ctx context.Context, keys ...K) error {
+	m.deleteCnt.Add(uint64(len(keys)))
+
+	if len(keys) == 0 {
+		return nil
+	}
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	for _, key := range keys {
+		el, has := m.data[key]
+		if !has {
+			continue
+		}
+		delete(m.data, key)
+		m.list.Remove(el)
+	}
+	return nil
+}
+
+func (m *MemoryFIFO[K, V]) MSet(ctx context.Context, values map[K]V, ttl time.Duration) error {
+	m.writeCnt.Add(uint64(len(values)))
+	for k, v := range values {
+		m.doSet(k, v, ttl)
+	}
+	return nil
+}
+
+func (m *MemoryFIFO[K, V]) MGet(ctx context.Context, keys ...K) (map[K]V, error) {
+	m.readCnt.Add(uint64(len(keys)))
+
+	m.mux.Lock()
+	defer m.mux.Unlock()
+
+	result := make(map[K]V, len(keys))
+	for _, key := range keys {
+		val, err := m.getLocked(key)
+		if err != nil {
+			result[key] = val
+		}
+	}
+	return result, nil
+}
+
+// Clear 重置、清空所有缓存
+func (m *MemoryFIFO[K, V]) Clear() {
+	m.mux.Lock()
+	clear(m.data)
+	m.data = make(map[K]*list.Element, m.capacity)
+	m.list = list.New()
+	m.mux.Unlock()
+}
+
+func (m *MemoryFIFO[K, V]) Keys() []K {
+	m.mux.Lock()
+	keys := make([]K, 0, len(m.data))
+	for k := range m.data {
+		keys = append(keys, k)
+	}
+	m.mux.Unlock()
+	return keys
+}
+
+func (m *MemoryFIFO[K, V]) Count() int64 {
+	m.mux.Lock()
+	c := len(m.data)
+	m.mux.Unlock()
+	return int64(c)
+}
+
+func (m *MemoryFIFO[K, V]) Stats() Stats {
+	return Stats{
+		Keys:   m.Count(),
+		Read:   m.readCnt.Load(),
+		Write:  m.writeCnt.Load(),
+		Delete: m.deleteCnt.Load(),
+		Hit:    m.hitCnt.Load(),
+	}
+}

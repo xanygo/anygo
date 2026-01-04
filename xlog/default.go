@@ -13,7 +13,11 @@ import (
 	"github.com/xanygo/anygo/xattr"
 )
 
-var defaultLogger xsync.Value[Logger]
+var defaultLogger = &xsync.OnceInit[Logger]{
+	New: func() Logger {
+		return NewSimpleWithLevel(os.Stderr, DefaultLevel)
+	},
+}
 
 // Default 获取默认的 logger，默认日志内容输出到 os.Stderr,并且为 JSON 格式
 func Default() Logger {
@@ -23,12 +27,6 @@ func Default() Logger {
 // SetDefault 替换 Default Logger
 func SetDefault(l Logger) {
 	defaultLogger.Store(l)
-}
-
-var stderrLogger = NewSimple(os.Stderr)
-
-func init() {
-	SetDefault(stderrLogger)
 }
 
 // Info 使用 Default() Logger 打印 Info 日志
@@ -69,8 +67,9 @@ func DefaultLoggerOpt() FileLoggerOpt {
 
 // InitAllDefaultLogger 使用所有的 XXXLoggerOpt 初始化并赋值给对应的默认 Logger
 func InitAllDefaultLogger() {
-	SetDefault(MultiLogger(stderrLogger, DefaultLoggerOpt().MustNewLogger()))
-	SetPanicLogger(MultiLogger(stderrLogger, PanicLoggerOpt().MustNewLogger()))
+	stdLogger := NewSimpleWithLevel(os.Stderr, DefaultLevel)
+	SetDefault(MultiLogger(stdLogger, DefaultLoggerOpt().MustNewLogger()))
+	SetPanicLogger(MultiLogger(stdLogger, PanicLoggerOpt().MustNewLogger()))
 	SetAccessLogger(AccessLoggerOpt().MustNewLogger())
 	SetClientLogger(ClientLoggerOpt().MustNewLogger())
 }

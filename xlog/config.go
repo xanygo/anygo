@@ -169,7 +169,9 @@ type FileLoggerOpt struct {
 func (fo FileLoggerOpt) NewLogger() (Logger, error) {
 	fn := fo.NewHandler
 	if fn == nil {
-		fn = defaultJSONHandler
+		fn = func(w io.Writer) Handler {
+			return defaultJSONHandler(w, DefaultLevel)
+		}
 	}
 	if fo.CfgPath != "" && xcfg.Exists(fo.CfgPath) {
 		return NewFileLogger(fo.CfgPath, fn)
@@ -200,7 +202,9 @@ func NewFileLogger(fp string, fn NewHandlerFunc) (Logger, error) {
 		return nil, err
 	}
 	if fn == nil {
-		fn = defaultJSONHandler
+		fn = func(w io.Writer) Handler {
+			return defaultJSONHandler(w, DefaultLevel)
+		}
 	}
 	return &Simple{
 		Handler: NewDispatchHandler(fc.Writers(), fn),

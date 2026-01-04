@@ -5,9 +5,13 @@
 package xlog
 
 import (
+	"context"
+	"fmt"
 	"path/filepath"
+	"unsafe"
 
 	"github.com/xanygo/anygo/ds/xsync"
+	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xattr"
 )
 
@@ -40,4 +44,25 @@ func PanicLoggerOpt() FileLoggerOpt {
 			MaxFiles: 48,
 		},
 	}
+}
+
+func init() {
+	safely.OnRecovered(func(ctx context.Context, re *safely.PanicErr) {
+		stack := unsafe.String(unsafe.SliceData(re.Stack), len(re.Stack))
+		var reValue any
+		if err, ok := re.Panic.(error); ok {
+			reValue = err.Error()
+		} else {
+			reValue = fmt.Sprintf("%#v", re.Panic)
+		}
+		attrs := []Attr{
+			Any("PanicBy", reValue),
+			String("Stack", stack),
+			Int64("PanicID", re.ID),
+			String("File", re.File),
+			String("Fn", re.Fn),
+			Any("Data", re.Data),
+		}
+		PanicLogger().Error(ctx, "PanicRecovered", GroupAttrs("panic", attrs...))
+	})
 }

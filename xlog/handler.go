@@ -17,6 +17,7 @@ type DispatchWriter interface {
 
 // Handler 日志记录行的处理对象，调用 Handle 方法后会触发日志落盘
 type Handler interface {
+	Enabled(context.Context, Level) bool
 	Handle(context.Context, slog.Record) error
 }
 
@@ -42,6 +43,11 @@ type dispatchHandler struct {
 	levelHandler map[Level]Handler
 }
 
+func (h *dispatchHandler) Enabled(ctx context.Context, level Level) bool {
+	_, ok := h.levelHandler[level]
+	return ok
+}
+
 func (h *dispatchHandler) Handle(ctx context.Context, record slog.Record) error {
 	hd, ok := h.levelHandler[record.Level]
 	if !ok {
@@ -61,7 +67,7 @@ func (h *dispatchHandler) Close() error {
 			errs = append(errs, err)
 		}
 	}
-	if len(errs) > 0 {
+	if len(errs) == 0 {
 		return nil
 	}
 	return errors.Join(errs...)

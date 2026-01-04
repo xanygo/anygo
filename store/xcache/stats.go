@@ -26,6 +26,7 @@ type (
 
 // Stats 统计信息
 type Stats struct {
+	Keys   int64  // 个数
 	Read   uint64 // 读取的 key 的 总数量，包括 GET 和 MGet
 	Write  uint64
 	Delete uint64

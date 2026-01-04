@@ -42,6 +42,17 @@ func (lru *LRU[K, V]) Get(key K) (v V, ok bool) {
 	return val.Data, true
 }
 
+func (lru *LRU[K, V]) Has(key K) bool {
+	lru.mux.Lock()
+	defer lru.mux.Unlock()
+	el, has := lru.data[key]
+	if !has {
+		return false
+	}
+	lru.list.MoveToFront(el)
+	return true
+}
+
 func (lru *LRU[K, V]) Set(key K, value V) {
 	cacheVal := &lruValue[K, V]{
 		Key:  key,

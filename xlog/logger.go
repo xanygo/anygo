@@ -9,11 +9,14 @@ import (
 	"io"
 	"log/slog"
 	"runtime"
+	"strings"
 	"time"
 )
 
 // Level 日志等级
 type Level = slog.Level
+
+var DefaultLevel = LevelInfo
 
 const (
 	LevelDebug Level = slog.LevelDebug
@@ -27,6 +30,22 @@ var allLevels = []Level{
 	LevelInfo,
 	LevelWarn,
 	LevelError,
+}
+
+// ParserLevel 解析日志等级字符串，若解析失败，返回 LevelInfo
+func ParserLevel(str string) Level {
+	switch strings.ToUpper(str) {
+	case "DEBUG":
+		return LevelDebug
+	case "INFO":
+		return LevelInfo
+	case "WARN":
+		return LevelWarn
+	case "ERROR":
+		return LevelError
+	default:
+		return LevelInfo
+	}
 }
 
 // Logger 输出日志的 Logger 接口定义
@@ -73,21 +92,27 @@ func (n NopLogger) Nop() bool {
 }
 
 func NewSimple(w io.Writer) *Simple {
+	return NewSimpleWithLevel(w, LevelDebug)
+}
+
+func NewSimpleWithLevel(w io.Writer, level Level) *Simple {
 	if dw, ok := w.(DispatchWriter); ok {
 		return &Simple{
-			Handler: NewDispatchHandler(dw.Writers(), defaultJSONHandler),
-			w:       w,
+			Handler: NewDispatchHandler(dw.Writers(), func(w io.Writer) Handler {
+				return defaultJSONHandler(w, level)
+			}),
+			w: w,
 		}
 	}
 	return &Simple{
-		Handler: defaultJSONHandler(w),
+		Handler: defaultJSONHandler(w, level),
 		w:       w,
 	}
 }
 
-func defaultJSONHandler(w io.Writer) Handler {
+func defaultJSONHandler(w io.Writer, level Level) Handler {
 	return slog.NewJSONHandler(w, &slog.HandlerOptions{
-		Level:       LevelDebug,
+		Level:       level,
 		AddSource:   true,
 		ReplaceAttr: ReplaceAttr,
 	})
@@ -140,6 +165,9 @@ func (sl *Simple) LevelWriter(level Level) io.Writer {
 }
 
 func handlerOutput(ctx context.Context, handler Handler, level Level, callerSkip int, msg string, attrs ...Attr) error {
+	if !handler.Enabled(ctx, level) {
+		return nil
+	}
 	var pcs [1]uintptr
 	runtime.Callers(callerSkip+2, pcs[:])
 	rec := slog.NewRecord(time.Now(), level, msg, pcs[0])
