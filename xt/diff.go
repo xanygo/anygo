@@ -39,7 +39,7 @@ func sprintfDiff[T any](expected, actual T) string {
 	sb.WriteString("\n")
 
 	// 0x 开头的是指针的地址，这类信息不可直接观察到
-	if strExpected != strActual && !strings.Contains(strActual, "(0x") {
+	if strExpected != strActual && len(strActual) < 60 && !strings.Contains(strActual, "(0x") {
 		return sb.String()
 	}
 

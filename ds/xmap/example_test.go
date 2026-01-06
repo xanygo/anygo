@@ -132,3 +132,33 @@ func ExampleKeysMiss() {
 	// Output:
 	// miss= [c]
 }
+
+func ExampleRange() {
+	mp := map[string]any{"a": 1, "b": int64(2)}
+
+	var count1 int
+
+	// 遍历出所有类型为 int 类型的 k-v 项
+	matched := xmap.Range[string, int](mp, func(key string, val int) bool {
+		count1 += val
+		return true
+	})
+	fmt.Println("matched=", matched, ",count:", count1) // matched= 1 ,count: 1
+
+	count1 = 0
+	// value 使用 any，可以匹配所有类型
+	matched = xmap.Range[string, any](mp, func(key string, val any) bool {
+		switch rv := val.(type) {
+		case int:
+			count1 += rv
+		case int64:
+			count1 += int(rv)
+		}
+		return true
+	})
+	fmt.Println("matched=", matched, ",count:", count1) // matched= 2 ,count: 3
+
+	// Output:
+	// matched= 1 ,count: 1
+	// matched= 2 ,count: 3
+}

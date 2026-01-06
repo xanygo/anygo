@@ -5,8 +5,14 @@
 package xattr
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+
+	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xerror"
 )
 
 // Default (全局)默认的环境信息
@@ -118,18 +124,37 @@ func Get(key any) (any, bool) {
 	return Default.Get(key)
 }
 
-func GetAs[T any](key any) (result T, ok bool) {
+// GetAs 读取值,并将值转换为指定的类型，若 key 不存在，或者 转换失败
+func GetAs[T any](key any) (result T, err error) {
 	val, ok := Get(key)
 	if !ok {
-		return result, false
+		return result, xerror.NotFound
 	}
-	result, ok = val.(T)
-	return result, ok
+	if result, ok = val.(T); ok {
+		return result, nil
+	}
+
+	dst := reflect.TypeOf(result)
+	src := reflect.TypeOf(val)
+
+	if src == nil || dst == nil {
+		return result, errors.New("src and dst are nil type")
+	}
+
+	if src.ConvertibleTo(dst) {
+		v := reflect.ValueOf(val).Convert(dst)
+		return v.Interface().(T), nil
+	}
+
+	if err = xcodec.Convert(val, &result); err == nil {
+		return result, nil
+	}
+	return result, fmt.Errorf("cannot convert %#v to %T", val, result)
 }
 
 func GetDefault[T any](key any, def T) T {
-	val, ok := GetAs[T](key)
-	if !ok {
+	val, err := GetAs[T](key)
+	if err != nil {
 		return def
 	}
 	return val

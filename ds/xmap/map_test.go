@@ -34,37 +34,43 @@ func TestGet(t *testing.T) {
 }
 
 func TestRange(t *testing.T) {
-	mp := map[string]any{
-		"k1": 1,
-		"k2": 2,
-		"k3": []string{"1"},
-		"k4": map[string]string{"1": "2"},
-	}
-	var keys []string
-	num := Range[string, any](mp, func(key string, val any) bool {
-		keys = append(keys, key)
-		return true
-	})
-	wantKeys := Keys(mp)
-	xt.SliceSortEqual(t, wantKeys, keys)
-	xt.Equal(t, 4, num)
+	t.Run("string key map", func(t *testing.T) {
+		mp := map[string]any{
+			"k1": 1,
+			"k2": 2,
+			"k3": []string{"1"},
+			"k4": map[string]string{"1": "2"},
+		}
+		var keys []string
+		num := Range[string, any](mp, func(key string, val any) bool {
+			keys = append(keys, key)
+			return true
+		})
+		wantKeys := Keys(mp)
+		xt.SliceSortEqual(t, wantKeys, keys)
+		xt.Equal(t, 4, num)
 
-	keys = nil
-	num = Range[string, int](mp, func(key string, val int) bool {
-		keys = append(keys, key)
-		return true
+		keys = nil
+		num = Range[string, int](mp, func(key string, val int) bool {
+			keys = append(keys, key)
+			return true
+		})
+		xt.SliceSortEqual(t, []string{"k1", "k2"}, keys)
+		xt.Equal(t, 2, num)
 	})
-	xt.SliceSortEqual(t, []string{"k1", "k2"}, keys)
-	xt.Equal(t, 2, num)
 
-	num = Range[string, any](nil, func(key string, val any) bool {
-		return true
+	t.Run("nil map", func(t *testing.T) {
+		num := Range[string, any](nil, func(key string, val any) bool {
+			return true
+		})
+		xt.Equal(t, 0, num)
 	})
-	xt.Equal(t, 0, num)
 
-	var m map[string]any
-	num = Range[string, any](m, func(key string, val any) bool {
-		return true
+	t.Run("empty map", func(t *testing.T) {
+		var m map[string]any
+		num := Range[string, any](m, func(key string, val any) bool {
+			return true
+		})
+		xt.Equal(t, 0, num)
 	})
-	xt.Equal(t, 0, num)
 }

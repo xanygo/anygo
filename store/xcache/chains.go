@@ -27,6 +27,8 @@ func NewChains[K comparable, V any](caches ...*Chain[K, V]) Cache[K, V] {
 	}
 }
 
+var _ NopType = (*Chain[string, string])(nil)
+
 type Chain[K comparable, V any] struct {
 	// Cache  必填
 	Cache Cache[K, V]
@@ -36,6 +38,10 @@ type Chain[K comparable, V any] struct {
 
 	// WriteTimeout 可选，读取后给未命中缓存的对象，填充缓存的写超时
 	WriteTimeout time.Duration
+}
+
+func (c *Chain[K, V]) Nop() bool {
+	return IsNop(c.Cache)
 }
 
 func (c *Chain[K, V]) set(ctx context.Context, key K, value V) {
@@ -58,9 +64,19 @@ func (c *Chain[K, V]) CacheTTL(ctx context.Context, key K, value V) time.Duratio
 
 var _ StringCache = (*chains[string, string])(nil)
 var _ HasStats = (*chains[string, string])(nil)
+var _ NopType = (*chains[string, string])(nil)
 
 type chains[K comparable, V any] struct {
 	caches []*Chain[K, V]
+}
+
+func (c *chains[K, V]) Nop() bool {
+	for _, item := range c.caches {
+		if !item.Nop() {
+			return false
+		}
+	}
+	return true
 }
 
 func (c *chains[K, V]) Has(ctx context.Context, key K) (has bool, err error) {

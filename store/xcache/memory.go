@@ -207,28 +207,40 @@ func (v *memValue[K, V]) Expired() bool {
 	return time.Now().After(v.ExpireAt)
 }
 
-func NewMemoryFIFO[K comparable, V any](capacity int) *MemoryFIFO[K, V] {
+// NewMemoryFIFO 创建容量满后，淘汰策略为先进先出（FIFO）的内存缓存
+func NewMemoryFIFO[K comparable, V any](capacity int) *MemoryXIFO[K, V] {
+	return newMemoryFIXO[K, V](capacity, true)
+}
+
+// NewMemoryLIFO 创建容量满后，淘汰策略为后进先出（LIFO）的内存缓存
+func NewMemoryLIFO[K comparable, V any](capacity int) *MemoryXIFO[K, V] {
+	return newMemoryFIXO[K, V](capacity, false)
+}
+
+func newMemoryFIXO[K comparable, V any](capacity int, fifo bool) *MemoryXIFO[K, V] {
 	if capacity <= 0 {
-		panic(fmt.Sprintf("MemoryFIFO with invalid capacity %d", capacity))
+		panic(fmt.Sprintf("MemoryFIXO with invalid capacity %d", capacity))
 	}
-	return &MemoryFIFO[K, V]{
+	return &MemoryXIFO[K, V]{
 		capacity: capacity,
 		data:     make(map[K]*list.Element, capacity),
 		list:     list.New(),
 		mux:      &sync.Mutex{},
+		fifo:     fifo,
 	}
 }
 
-var _ Cache[string, string] = (*MemoryFIFO[string, string])(nil)
-var _ MCache[string, string] = (*MemoryFIFO[string, string])(nil)
-var _ HasStats = (*MemoryFIFO[string, string])(nil)
+var _ Cache[string, string] = (*MemoryXIFO[string, string])(nil)
+var _ MCache[string, string] = (*MemoryXIFO[string, string])(nil)
+var _ HasStats = (*MemoryXIFO[string, string])(nil)
 
-// MemoryFIFO 容量满之后，过期策略为 FIFO 的 内存缓存
-type MemoryFIFO[K comparable, V any] struct {
+// MemoryXIFO 容量满之后，过期策略为 FIFO 或者 LIFO 的 内存缓存
+type MemoryXIFO[K comparable, V any] struct {
 	capacity int // 容量
 	data     map[K]*list.Element
 	list     *list.List
 	mux      *sync.Mutex
+	fifo     bool // 当为 true 时，是 FIFO，为 false 时是 LIFO/FILO
 
 	readCnt   atomic.Uint64
 	writeCnt  atomic.Uint64
@@ -236,7 +248,7 @@ type MemoryFIFO[K comparable, V any] struct {
 	hitCnt    atomic.Uint64
 }
 
-func (m *MemoryFIFO[K, V]) Has(ctx context.Context, key K) (bool, error) {
+func (m *MemoryXIFO[K, V]) Has(ctx context.Context, key K) (bool, error) {
 	_, err := m.Get(ctx, key)
 	if err != nil {
 		if errors.Is(err, xerror.NotFound) {
@@ -247,7 +259,7 @@ func (m *MemoryFIFO[K, V]) Has(ctx context.Context, key K) (bool, error) {
 	return true, nil
 }
 
-func (m *MemoryFIFO[K, V]) Get(ctx context.Context, key K) (value V, err error) {
+func (m *MemoryXIFO[K, V]) Get(ctx context.Context, key K) (value V, err error) {
 	m.readCnt.Add(1)
 
 	m.mux.Lock()
@@ -255,7 +267,7 @@ func (m *MemoryFIFO[K, V]) Get(ctx context.Context, key K) (value V, err error) 
 	return m.getLocked(key)
 }
 
-func (m *MemoryFIFO[K, V]) getLocked(key K) (v V, rr error) {
+func (m *MemoryXIFO[K, V]) getLocked(key K) (v V, rr error) {
 	el, has := m.data[key]
 	if !has {
 		return v, xerror.NotFound
@@ -270,13 +282,13 @@ func (m *MemoryFIFO[K, V]) getLocked(key K) (v V, rr error) {
 	return val.Data, nil
 }
 
-func (m *MemoryFIFO[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration) error {
+func (m *MemoryXIFO[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration) error {
 	m.writeCnt.Add(1)
 	m.doSet(key, value, ttl)
 	return nil
 }
 
-func (m *MemoryFIFO[K, V]) doSet(key K, value V, ttl time.Duration) {
+func (m *MemoryXIFO[K, V]) doSet(key K, value V, ttl time.Duration) {
 	cacheVal := &memValue[K, V]{
 		Key:      key,
 		Data:     value,
@@ -296,8 +308,13 @@ func (m *MemoryFIFO[K, V]) doSet(key K, value V, ttl time.Duration) {
 	}
 }
 
-func (m *MemoryFIFO[K, V]) weedOut() {
-	el := m.list.Front()
+func (m *MemoryXIFO[K, V]) weedOut() {
+	var el *list.Element
+	if m.fifo {
+		el = m.list.Front()
+	} else {
+		el = m.list.Back()
+	}
 	if el == nil {
 		return
 	}
@@ -306,12 +323,13 @@ func (m *MemoryFIFO[K, V]) weedOut() {
 	m.list.Remove(el)
 }
 
-func (m *MemoryFIFO[K, V]) Delete(ctx context.Context, keys ...K) error {
-	m.deleteCnt.Add(uint64(len(keys)))
-
+func (m *MemoryXIFO[K, V]) Delete(ctx context.Context, keys ...K) error {
 	if len(keys) == 0 {
 		return nil
 	}
+
+	m.deleteCnt.Add(uint64(len(keys)))
+
 	m.mux.Lock()
 	defer m.mux.Unlock()
 	for _, key := range keys {
@@ -325,7 +343,7 @@ func (m *MemoryFIFO[K, V]) Delete(ctx context.Context, keys ...K) error {
 	return nil
 }
 
-func (m *MemoryFIFO[K, V]) MSet(ctx context.Context, values map[K]V, ttl time.Duration) error {
+func (m *MemoryXIFO[K, V]) MSet(ctx context.Context, values map[K]V, ttl time.Duration) error {
 	m.writeCnt.Add(uint64(len(values)))
 	for k, v := range values {
 		m.doSet(k, v, ttl)
@@ -333,7 +351,7 @@ func (m *MemoryFIFO[K, V]) MSet(ctx context.Context, values map[K]V, ttl time.Du
 	return nil
 }
 
-func (m *MemoryFIFO[K, V]) MGet(ctx context.Context, keys ...K) (map[K]V, error) {
+func (m *MemoryXIFO[K, V]) MGet(ctx context.Context, keys ...K) (map[K]V, error) {
 	m.readCnt.Add(uint64(len(keys)))
 
 	m.mux.Lock()
@@ -350,7 +368,7 @@ func (m *MemoryFIFO[K, V]) MGet(ctx context.Context, keys ...K) (map[K]V, error)
 }
 
 // Clear 重置、清空所有缓存
-func (m *MemoryFIFO[K, V]) Clear() {
+func (m *MemoryXIFO[K, V]) Clear() {
 	m.mux.Lock()
 	clear(m.data)
 	m.data = make(map[K]*list.Element, m.capacity)
@@ -358,7 +376,7 @@ func (m *MemoryFIFO[K, V]) Clear() {
 	m.mux.Unlock()
 }
 
-func (m *MemoryFIFO[K, V]) Keys() []K {
+func (m *MemoryXIFO[K, V]) Keys() []K {
 	m.mux.Lock()
 	keys := make([]K, 0, len(m.data))
 	for k := range m.data {
@@ -368,14 +386,14 @@ func (m *MemoryFIFO[K, V]) Keys() []K {
 	return keys
 }
 
-func (m *MemoryFIFO[K, V]) Count() int64 {
+func (m *MemoryXIFO[K, V]) Count() int64 {
 	m.mux.Lock()
 	c := len(m.data)
 	m.mux.Unlock()
 	return int64(c)
 }
 
-func (m *MemoryFIFO[K, V]) Stats() Stats {
+func (m *MemoryXIFO[K, V]) Stats() Stats {
 	return Stats{
 		Keys:   m.Count(),
 		Read:   m.readCnt.Load(),

@@ -305,6 +305,11 @@ func CountFunc[S ~[]E, E any](arr S, fn func(index int, item E) bool) int64 {
 }
 
 // Range 遍历任意类型的 slice 、Array，返回 value 满足条件且被 fn 接收的个数
+//
+//   - 只有 slice 数据的实际类型和 传入的类型完全匹配，才会触发回调
+//   - 使用 rv,ok := value.(Type) 方式断言
+//   - 不确定的类型，可以使用 any 代替
+//   - 传入的数据可以是任意类型；使用了反射
 func Range[T any](obj any, fn func(item T) bool) int {
 	if obj == nil {
 		return 0
@@ -364,6 +369,7 @@ func AllContains[S ~[]E, E comparable](big S, small S) (miss E, ok bool) {
 	return miss, true
 }
 
+// Rand 随机返回一个
 func Rand[S ~[]E, E any](s S) (e E) {
 	switch len(s) {
 	case 0:

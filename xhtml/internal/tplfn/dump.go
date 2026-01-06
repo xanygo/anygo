@@ -27,11 +27,11 @@ func Dump(value any) template.HTML {
 
 func varDump(v any) string {
 	bf := &bytes.Buffer{}
-	printValue(reflect.ValueOf(v), bf, 0)
+	printValue(reflect.ValueOf(v), bf, 0, "")
 	return bf.String()
 }
 
-func printValue(v reflect.Value, w io.Writer, indent int) {
+func printValue(v reflect.Value, w io.Writer, indent int, prefix string) {
 	indentation := strings.Repeat(" ", indent)
 
 	kindStr := v.Kind().String()
@@ -39,7 +39,7 @@ func printValue(v reflect.Value, w io.Writer, indent int) {
 		kindStr = "any"
 	}
 	kindStr = fmt.Sprintf("%-10s", kindStr)
-	_, _ = fmt.Fprint(w, indentation+"<span style='color:blue'>"+kindStr+"</span>")
+	_, _ = fmt.Fprint(w, indentation+prefix+"<span style='color:blue'>"+kindStr+"</span>")
 	switch v.Kind() {
 	case reflect.Invalid:
 		_, _ = fmt.Fprintln(w, indentation+"nil")
@@ -54,7 +54,7 @@ func printValue(v reflect.Value, w io.Writer, indent int) {
 		}
 	case reflect.String:
 		str := v.String()
-		_, _ = fmt.Fprintf(w, "\t<span style='color:gray'>(len=%d)</span><span style='color:green'>%q</span>\n", len(str), str)
+		_, _ = fmt.Fprintf(w, "\t<span style='color:gray'>(%d)</span><span style='color:green'>%q</span>\n", len(str), str)
 	case reflect.Struct:
 		_, _ = fmt.Fprintf(w, "\t<span style='color:blue'>%s</span>\n", v.Type().String())
 		if v.Type() == reflect.TypeOf(time.Time{}) {
@@ -70,36 +70,36 @@ func printValue(v reflect.Value, w io.Writer, indent int) {
 		}
 		nameFmt := fmt.Sprintf("%%-%ds", maxLen+3)
 		for i := 0; i < v.NumField(); i++ {
-			_, _ = fmt.Fprintf(w, "%s  <span style='color:red'>"+nameFmt+"</span>", indentation, v.Type().Field(i).Name)
-			printValue(v.Field(i), w, 4+indent+maxLen)
+			pp := fmt.Sprintf("<span style='color:gray'>[%d]</span><span style='color:red'>"+nameFmt+"</span>", i, v.Type().Field(i).Name)
+			printValue(v.Field(i), w, indent, pp)
 		}
 	case reflect.Array, reflect.Slice:
 		_, _ = fmt.Fprintf(w, "\t(len=%d)\n", v.Len())
 		for i := 0; i < v.Len(); i++ {
-			printValue(v.Index(i), w, indent+1)
-			w.Write([]byte("\n"))
+			printValue(v.Index(i), w, indent+1, fmt.Sprintf("<span style='color:gray'>[%d]</span>", i))
 		}
 	case reflect.Map:
-		_, _ = fmt.Fprintf(w, "\t<span style='color:gray'>(len=%d)</span>\n", v.Len())
+		tt := "<span style='color:blue'>" + strings.ReplaceAll(v.Type().String(), "interface {}", "any") + "</span>"
+		_, _ = fmt.Fprintf(w, tt+"&nbsp;<span style='color:gray'>(len=%d)</span>\n", v.Len())
 		subIndentation := indentation[:len(indentation)*4/5]
 		for idx, key := range v.MapKeys() {
 			_, _ = fmt.Fprintf(w, "%s  [%d]key  ", subIndentation, idx)
-			printValue(key, w, indent+1)
+			printValue(key, w, 2, "")
 			_, _ = fmt.Fprintf(w, "%s  [%d]value", subIndentation, idx)
-			printValue(v.MapIndex(key), w, indent+1)
+			printValue(v.MapIndex(key), w, 2, "")
 			w.Write([]byte("\n"))
 		}
 	case reflect.Ptr:
 		if v.IsNil() {
-			_, _ = fmt.Fprintln(w, indentation+"nil pointer")
+			_, _ = fmt.Fprintln(w, "\tnil pointer")
 		} else {
-			_, _ = fmt.Fprintln(w, indentation+"pointer to:")
-			printValue(v.Elem(), w, indent+4)
+			_, _ = fmt.Fprintf(w, "\t%s\n", v.Type().String())
+			printValue(v.Elem(), w, indent+2, "")
 		}
 	default:
 		if v.CanInterface() {
 			vvr := reflect.ValueOf(v.Interface())
-			printValue(vvr, w, indent+4)
+			printValue(vvr, w, indent+4, "")
 		} else {
 			_, _ = fmt.Fprintf(w, "\t<span f=d>%v</span>\n", v)
 		}

@@ -305,6 +305,11 @@ func KeysMiss[K comparable, V any](mp map[K]V, keys []K) []K {
 }
 
 // Range 遍历任意类型的 map，返回 key、value 满足条件而且被 fn 接收的个数
+//
+//   - 只有 map 数据的 key  和 value 的实际类型和 传入的类型完全匹配，才会触发回调
+//   - 使用 rv,ok := value.(Type) 方式断言 key 和 value
+//   - 不确定的类型，可以使用 any 代替，如只关注 key 的类型是 string，可以使用:Range[string,any](m,func(key string,value any)bool)
+//   - 传入的数据可以是任意类型；使用了反射
 func Range[K comparable, V any](m any, fn func(key K, val V) bool) int {
 	if m == nil {
 		return 0

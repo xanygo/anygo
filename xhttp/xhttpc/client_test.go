@@ -7,11 +7,13 @@ package xhttpc_test
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"sync/atomic"
 	"testing"
+	"testing/iotest"
 	"testing/synctest"
 	"time"
 
@@ -70,5 +72,46 @@ func TestCacheClient(t *testing.T) {
 		xt.Greater(t, resp1.CreateAt, 1)
 		xt.Equal(t, 200, resp1.StatusCode)
 		xt.True(t, resp1.FromCache)
+	})
+}
+
+func TestClient(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Ok", "Ok")
+		defer r.Body.Close()
+		io.Copy(w, r.Body)
+	}))
+	defer ts.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	t.Run("Get", func(t *testing.T) {
+		resp := &xhttpc.StoredResponse{}
+		err := xhttpc.Get(ctx, xservice.Dummy, ts.URL, xhttpc.TeeReader(resp))
+		xt.NoError(t, err)
+		xt.Equal(t, "Ok", resp.Header.Get("X-Ok"))
+	})
+
+	t.Run("PostJSON", func(t *testing.T) {
+		resp := &xhttpc.StoredResponse{}
+		data := map[string]any{
+			"k1": "v1",
+		}
+		err := xhttpc.PostJSON(ctx, xservice.Dummy, ts.URL, data, xhttpc.TeeReader(resp))
+		xt.NoError(t, err)
+		xt.Equal(t, "Ok", resp.Header.Get("X-Ok"))
+		xt.Equal(t, `{"k1":"v1"}`, string(resp.Body))
+	})
+
+	t.Run("Client.PostJSON", func(t *testing.T) {
+		data := map[string]any{
+			"k1": "v1",
+		}
+		c1 := &xhttpc.Client{}
+		resp, err := c1.PostJSON(ctx, ts.URL, data)
+		xt.NoError(t, err)
+		xt.Equal(t, "Ok", resp.Header.Get("X-Ok"))
+		defer resp.Body.Close()
+		xt.NoError(t, iotest.TestReader(resp.Body, []byte(`{"k1":"v1"}`)))
 	})
 }

@@ -53,3 +53,14 @@ func TestDefault(t *testing.T) {
 	SetLogDir("temp/log")
 	xt.Equal(t, filepath.Join(root, "temp", "log"), LogDir())
 }
+
+func TestGetAs(t *testing.T) {
+	Set("TestGetAs-1", 123)
+	got1, ok1 := Get("TestGetAs-1")
+	xt.Equal(t, 123, got1)
+	xt.True(t, ok1)
+
+	got2, err2 := GetAs[int64]("TestGetAs-1")
+	xt.Equal(t, 123, got2)
+	xt.NoError(t, err2)
+}
