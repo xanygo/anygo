@@ -7,6 +7,7 @@ package xcmp_test
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/xanygo/anygo/ds/xcmp"
 )
@@ -32,9 +33,9 @@ func ExampleChain() {
 	}
 	slices.SortFunc(users, xcmp.Chain[User](
 		// Name 中包含 "tom" 的排在前面
-		xcmp.StrContains(func(t User) string { return t.Name }, "tom", true),
+		xcmp.TrueFront(func(t User) bool { return strings.Contains(t.Name, "tom") }),
 		// 再按照 Age 大小降序
-		xcmp.Compare(func(t User) int { return t.Age }, false),
+		xcmp.OrderDesc(func(t User) int { return t.Age }),
 	))
 	fmt.Println(users)
 	// Output:

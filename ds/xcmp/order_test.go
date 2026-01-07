@@ -6,23 +6,25 @@ package xcmp_test
 
 import (
 	"slices"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/xanygo/anygo/ds/xcmp"
 	"github.com/xanygo/anygo/xt"
 )
 
 func TestChain(t *testing.T) {
-	var users1 = []user{user1, user2, user3, user4, user5}
-	slices.SortFunc(users1, xcmp.Chain(
+	var users = []user{user1, user2, user3, user4, user5}
+	slices.SortFunc(users, xcmp.Chain(
 		// name 包含 han 的排在前面
-		xcmp.StrContains[user](func(u user) string { return u.Name }, "han", true),
+		xcmp.TrueFront[user](func(u user) bool { return strings.Contains(u.Name, "han") }),
 
 		// 大的排在前面
-		xcmp.Compare[user, int](func(t user) int { return t.Age }, false),
+		xcmp.OrderDesc[user, int](func(t user) int { return t.Age }),
 	))
 	want := []user{user2, user1, user4, user3, user5}
-	xt.Equal(t, want, users1)
+	xt.Equal(t, want, users)
 }
 
 var user1 = user{
@@ -62,4 +64,5 @@ type user struct {
 	Age   int
 	Grade int
 	Class int
+	Ctime time.Time
 }
