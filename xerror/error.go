@@ -94,3 +94,42 @@ func (s *StatusError) Error() string {
 func (s *StatusError) ErrCode() int64 {
 	return s.Code
 }
+
+type TemporaryFailure interface {
+	Temporary() bool
+}
+
+func IsTemporary(err error) bool {
+	var ae TemporaryFailure
+	if errors.As(err, &ae) {
+		return ae.Temporary()
+	}
+	return false
+}
+
+func WithTemporary(err error, temp bool) error {
+	return &temporaryError{
+		err:  err,
+		temp: temp,
+	}
+}
+
+var _ TemporaryFailure = (*temporaryError)(nil)
+var _ error = (*temporaryError)(nil)
+
+type temporaryError struct {
+	err  error
+	temp bool
+}
+
+func (t *temporaryError) Temporary() bool {
+	return t.temp
+}
+
+func (t *temporaryError) Error() string {
+	return t.err.Error()
+}
+
+func (t *temporaryError) Unwrap() error {
+	return t.err
+}

@@ -11,12 +11,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xctx"
 	"github.com/xanygo/anygo/ds/xmetric"
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xdial"
+	"github.com/xanygo/anygo/xnet/xpolicy"
 	"github.com/xanygo/anygo/xnet/xservice"
 )
 
@@ -126,13 +128,18 @@ func (c *TCP) Invoke(ctx context.Context, srv any, req Request, resp Response, o
 
 	rootSpan.SetAttemptCount(attemptTotal)
 
-	for attemptNo := 0; attemptNo < attemptTotal; attemptNo++ {
+	var retryPolicy *xpolicy.Retry
+	if attemptTotal > 1 {
+		retryPolicy = xoption.RetryPolicy(opt)
+	}
+
+	for attempt := 0; attempt < attemptTotal; attempt++ {
 		result = c.tryOnce(ctx, cfg, req, resp, serviceName, service, its, opt)
-		if result == nil {
-			break
+		if result == nil || attempt >= attemptTotal-1 || ctx.Err() != nil || !retryPolicy.IsRetryable(ctx, attempt, result) {
+			return result
 		}
-		if err1 := ctx.Err(); err1 != nil {
-			break
+		if backoff := retryPolicy.GetBackoff(attempt); backoff > 0 {
+			xctx.Sleep(ctx, backoff)
 		}
 	}
 	return result

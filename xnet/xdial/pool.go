@@ -160,5 +160,10 @@ func GroupPoolGet(ctx context.Context, p ConnGroupPool, addr xnet.AddrNode) (ent
 		span.RecordError(err)
 		span.End()
 	}()
+	select {
+	case <-ctx1.Done():
+		return nil, context.Cause(ctx1)
+	default:
+	}
 	return p.Get(ctx1, addr)
 }

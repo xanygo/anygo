@@ -16,6 +16,7 @@ import (
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xdial"
+	"github.com/xanygo/anygo/xnet/xpolicy"
 	"github.com/xanygo/anygo/xnet/xservice"
 )
 
@@ -89,27 +90,46 @@ func OptConnectTimeout(t time.Duration) Option {
 	})
 }
 
+// OptConnectRetry 设置单次创建 Socket 超时时间
 func OptConnectRetry(n int) Option {
 	return optionFunc(func(o *config) {
 		xoption.SetConnectRetry(o.opt, n)
 	})
 }
 
+// OptWriteTimeout 设置单次 Socket 读超时时间
 func OptWriteTimeout(t time.Duration) Option {
 	return optionFunc(func(o *config) {
 		xoption.SetWriteTimeout(o.opt, t)
 	})
 }
 
+// OptReadTimeout 设置单次 Socket 读超时时间
 func OptReadTimeout(t time.Duration) Option {
 	return optionFunc(func(o *config) {
 		xoption.SetReadTimeout(o.opt, t)
 	})
 }
 
+// OptTimeout 设置调用 Invoke 方法的整体超时时间
+//
+//	其他的 OptConnectRetry、OptWriteTimeout、OptReadTimeout 都是针对单次尝试而言的，
+//	而调用一此 Invoke 方法，会有 Retry+1 次尝试，实际耗时时间会是 ( Retry + 1 ) * ( ConnectCost + WriteCost + ReadCost )
+func OptTimeout(t time.Duration) Option {
+	return optionFunc(func(o *config) {
+		xoption.SetTimeout(o.opt, t)
+	})
+}
+
 func OptRetry(n int) Option {
 	return optionFunc(func(o *config) {
 		xoption.SetRetry(o.opt, n)
+	})
+}
+
+func OptRetryPolicy(p *xpolicy.Retry) Option {
+	return optionFunc(func(o *config) {
+		xoption.SetRetryPolicy(o.opt, p)
 	})
 }
 

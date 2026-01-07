@@ -78,6 +78,10 @@ func (r *Request) APIName() string {
 	return r.Path
 }
 
+func (r *Request) GetMethod() string {
+	return r.getMethod()
+}
+
 func (r *Request) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.Reader) error {
 	api, err := r.getURL(opt, node.Addr.HostPort)
 	if err != nil {
@@ -199,6 +203,10 @@ func (h *NativeRequest) APIName() string {
 		return h.API
 	}
 	return h.Request.URL.Path
+}
+
+func (h *NativeRequest) GetMethod() string {
+	return h.Request.Method
 }
 
 func (h *NativeRequest) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.Reader) error {

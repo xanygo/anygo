@@ -145,5 +145,10 @@ func Pick(ctx context.Context, ap Reader) (addr *xnet.AddrNode, err error) {
 		span.RecordError(err)
 		span.End()
 	}()
+	select {
+	case <-ctx.Done():
+		return nil, context.Cause(ctx)
+	default:
+	}
 	return ap.Pick(ctx1)
 }

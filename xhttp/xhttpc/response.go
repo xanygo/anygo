@@ -7,6 +7,7 @@ package xhttpc
 import (
 	"bufio"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -47,12 +48,30 @@ func (resp *Response) LoadFrom(ctx context.Context, req xrpc.Request, node *xnet
 		return resp.readErr
 	}
 	resp.readErr = resp.Handler(ctx, resp.resp)
+	if resp.readErr == nil {
+		return nil
+	}
+	// 包裹错误，让 rpc client 的 retryPolicy 可以依据 error 来判断是否能重试
+	// 只有特定的请求 Method 和 StatusCode 才允许重试
+	// 如 GET 请求，响应为 500，则标记为临时错误，允许重试
+	var te xerror.TemporaryFailure
+	if !errors.As(resp.readErr, &te) {
+		temp := retryableStatus(resp.resp.StatusCode)
+		if temp {
+			if hm, ok := req.(interface{ GetMethod() string }); ok {
+				temp = retryableMethod(hm.GetMethod())
+			} else {
+				temp = false
+			}
+		}
+		return xerror.WithTemporary(resp.readErr, temp)
+	}
 	return resp.readErr
 }
 
 func (resp *Response) ErrCode() int64 {
 	if resp.readErr != nil {
-		return xerror.ErrCode(resp.readErr, 255)
+		return xerror.ErrCode(resp.readErr, 500)
 	}
 	if resp.resp != nil {
 		return int64(resp.resp.StatusCode)

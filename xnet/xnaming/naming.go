@@ -46,7 +46,7 @@ func Lookup(ctx context.Context, scheme string, idc string, name string, param u
 	}
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, context.Cause(ctx)
 	default:
 	}
 	return n.Lookup(ctx, idc, name, param)

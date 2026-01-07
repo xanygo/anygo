@@ -13,18 +13,21 @@ import (
 )
 
 var (
+	KeyTimeout          = NewKey("Timeout")
 	KeyConnectTimeout   = NewKey("ConnectTimeout")
 	KeyConnectRetry     = NewKey("ConnectRetry")
 	KeyWriteTimeout     = NewKey("WriteTimeout")
 	KeyReadTimeout      = NewKey("ReadTimeout")
-	KeyTimeout          = NewKey("Timeout")
 	KeyHandshakeTimeout = NewKey("HandshakeTimeout")
-	KeyRetry            = NewKey("Retry")
-	KeyBalancer         = NewKey("Balancer") // 负载均衡策略名称
-	KeyMaxResponseSize  = NewKey("MaxResponseSize")
-	KeyUseProxy         = NewKey("UseProxy")
-	KeyProtocol         = NewKey("Protocol")
-	KeyWorkerCycle      = NewKey("WorkerCycle")
+
+	KeyRetry       = NewKey("Retry")       // 重试次数
+	KeyRetryPolicy = NewKey("RetryPolicy") // 重试策略
+
+	KeyBalancer        = NewKey("Balancer") // 负载均衡策略名称
+	KeyMaxResponseSize = NewKey("MaxResponseSize")
+	KeyUseProxy        = NewKey("UseProxy")
+	KeyProtocol        = NewKey("Protocol")
+	KeyWorkerCycle     = NewKey("WorkerCycle")
 
 	keyExtraPrefix = "Extra:"
 
@@ -99,15 +102,6 @@ func SetHandshakeTimeout(opt Writer, timeout time.Duration) {
 
 func HandshakeTimeout(opt Reader) time.Duration {
 	return Duration(opt, KeyHandshakeTimeout, DefaultHandshakeTimeout)
-}
-
-func SetRetry(opt Writer, retry int) {
-	retry = max(0, retry)
-	opt.Set(KeyRetry, retry)
-}
-
-func Retry(opt Reader) int {
-	return Int(opt, KeyRetry, DefaultRetry)
 }
 
 func SetMaxResponseSize(opt Writer, maxSize int64) {

@@ -26,25 +26,25 @@ import (
 type Config struct {
 	Name string `json:"Name" yaml:"Name" validator:"required"`
 
+	Timeout          int64  `json:"Timeout"   yaml:"Timeout"`                 // 整体超时时间,可选，单位毫秒
+	Retry            int    `json:"Retry"             yaml:"Retry"`           // 重试次数，可选，默认 0
 	ConnectTimeout   int64  `json:"ConnectTimeout"   yaml:"ConnectTimeout"`   // 连接超时,可选，单位毫秒
 	ConnectRetry     int    `json:"ConnectRetry"     yaml:"ConnectRetry"`     // 连接重试次数，默认为 1
 	WriteTimeout     int64  `json:"WriteTimeout"     yaml:"WriteTimeout"`     // 写超时时间，单位毫秒
 	ReadTimeout      int64  `json:"ReadTimeout"      yaml:"ReadTimeout"`      // 读超时时间，单位毫秒
 	HandshakeTimeout int64  `json:"HandshakeTimeout" yaml:"HandshakeTimeout"` // 握手超时时间，单位毫秒
 	Protocol         string `json:"Protocol"         yaml:"Protocol"`         // 交互协议
-	WorkerCycle      string `json:"WorkerCycle"         yaml:"WorkerCycle"`   // 后台任务运行周期
+	MaxResponseSize  int64  `json:"MaxResponseSize"   yaml:"MaxResponseSize"` // 响应最大限制，可选
+	UseProxy         string `json:"UseProxy" yaml:"UseProxy"`                 // 将另外一个service 当做代理
+	WorkerCycle      string `json:"WorkerCycle"         yaml:"WorkerCycle"`   // 后台任务运行周期，可选，如 "3s"
 
-	UseProxy string         `json:"UseProxy" yaml:"UseProxy"`       // 将另外一个service 当做代理
-	Proxy    *xproxy.Config `json:"Proxy"             yaml:"Proxy"` // 当子服务是代理时使用
+	Proxy      *xproxy.Config     `json:"Proxy"             yaml:"Proxy"`                                         // 当子服务是代理时使用，可选
+	HTTP       *HTTPPart          `json:"HTTP"              yaml:"HTTP"`                                          // HTTP 下游特有配置，可选
+	ConnPool   *ConnPoolPart      `json:"ConnPool"          yaml:"ConnPool"`                                      // 网络连接池配置，可选
+	TLS        *xoption.TLSConfig `json:"TLS"               yaml:"TLS"`                                           // TLS 加密配置，可选
+	DownStream DownStreamPart     `json:"DownStream"        yaml:"DownStream" validator:"required,dive,required"` // 下游地址，必填
 
-	Retry           int                `json:"Retry"             yaml:"Retry"`
-	MaxResponseSize int64              `json:"MaxResponseSize"   yaml:"MaxResponseSize"`
-	HTTP            *HTTPPart          `json:"HTTP"              yaml:"HTTP"`
-	ConnPool        *ConnPoolPart      `json:"ConnPool"          yaml:"ConnPool"`
-	TLS             *xoption.TLSConfig `json:"TLS"               yaml:"TLS"`
-	DownStream      DownStreamPart     `json:"DownStream"        yaml:"DownStream" validator:"required,dive,required"`
-
-	Extra map[string]any // 其他字段
+	Extra map[string]any // 其他字段，配置里配置了，但是在此 Config 里没有定义的字段会解析到此处
 }
 
 var _ xcodec.DecodeExtra = (*Config)(nil)
@@ -119,6 +119,10 @@ func (c *Config) Parser(idc string) (Service, error) {
 		return nil, errors.New("name is empty")
 	}
 	opt := xoption.NewDynamic()
+	if c.Timeout > 0 {
+		xoption.SetTimeout(opt, time.Duration(c.Timeout)*time.Millisecond)
+	}
+
 	if c.ConnectTimeout > 0 {
 		xoption.SetConnectTimeout(opt, time.Duration(c.ConnectTimeout)*time.Millisecond)
 	}
