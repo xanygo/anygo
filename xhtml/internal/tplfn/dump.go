@@ -12,6 +12,9 @@ import (
 	"reflect"
 	"strings"
 	"time"
+	"unicode"
+
+	"github.com/xanygo/anygo/ds/xsync"
 )
 
 func Dump(value any) template.HTML {
@@ -26,7 +29,8 @@ func Dump(value any) template.HTML {
 }
 
 func varDump(v any) string {
-	bf := &bytes.Buffer{}
+	bf := xsync.GetBytesBuffer()
+	defer xsync.PutBytesBuffer(bf)
 	printValue(reflect.ValueOf(v), bf, 0, "")
 	return bf.String()
 }
@@ -38,7 +42,7 @@ func printValue(v reflect.Value, w io.Writer, indent int, prefix string) {
 	if kindStr == "interface" {
 		kindStr = "any"
 	}
-	kindStr = fmt.Sprintf("%-10s", kindStr)
+	kindStr += "  "
 	_, _ = fmt.Fprint(w, indentation+prefix+"<span style='color:blue'>"+kindStr+"</span>")
 	switch v.Kind() {
 	case reflect.Invalid:
@@ -82,11 +86,22 @@ func printValue(v reflect.Value, w io.Writer, indent int, prefix string) {
 		tt := "<span style='color:blue'>" + strings.ReplaceAll(v.Type().String(), "interface {}", "any") + "</span>"
 		_, _ = fmt.Fprintf(w, tt+"&nbsp;<span style='color:gray'>(len=%d)</span>\n", v.Len())
 		subIndentation := indentation[:len(indentation)*4/5]
+
+		bw := xsync.GetBytesBuffer()
+		defer xsync.PutBytesBuffer(bw)
+
 		for idx, key := range v.MapKeys() {
-			_, _ = fmt.Fprintf(w, "%s  [%d]key  ", subIndentation, idx)
-			printValue(key, w, 2, "")
-			_, _ = fmt.Fprintf(w, "%s  [%d]value", subIndentation, idx)
-			printValue(v.MapIndex(key), w, 2, "")
+			_, _ = fmt.Fprintf(w, "%s  [%d]key    ", subIndentation, idx)
+			bw.Reset()
+			printValue(key, bw, 2+indent, "")
+			w.Write(bytes.TrimLeftFunc(bw.Bytes(), unicode.IsSpace))
+
+			_, _ = fmt.Fprintf(w, "%s  [%d]value  ", subIndentation, idx)
+
+			bw.Reset()
+			printValue(v.MapIndex(key), bw, 2+indent, "")
+			w.Write(bytes.TrimLeftFunc(bw.Bytes(), unicode.IsSpace))
+
 			w.Write([]byte("\n"))
 		}
 	case reflect.Ptr:

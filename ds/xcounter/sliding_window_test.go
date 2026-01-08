@@ -14,23 +14,23 @@ import (
 
 func TestSliding_Incr(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		ct := NewSliding(time.Hour, time.Second)
+		ct := NewSlidingWindow(time.Hour, time.Second)
 		for i := 0; i < 10; i++ {
 			ct.Incr()
 		}
 		xt.Equal(t, 10, ct.Count(time.Second))
 		xt.Equal(t, 10, ct.Count(10*time.Second))
-		xt.Equal(t, 10, ct.Total())
+		xt.Equal(t, 10, ct.WindowTotal())
 
 		time.Sleep(2 * time.Second)
 		xt.Equal(t, 0, ct.Count(time.Second))
-		xt.Equal(t, 10, ct.Total())
+		xt.Equal(t, 10, ct.WindowTotal())
 		time.Sleep(time.Hour)
 		xt.Equal(t, 0, ct.CountWindow())
-		xt.Equal(t, 0, ct.Total())
+		xt.Equal(t, 0, ct.WindowTotal())
 
 		ct.Incr()
 		xt.Equal(t, 1, ct.Count(time.Second))
-		xt.Equal(t, 1, ct.Total())
+		xt.Equal(t, 1, ct.WindowTotal())
 	})
 }

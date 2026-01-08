@@ -66,9 +66,9 @@ func Registry() StatsRegistry {
 func NewLatencyObserver[K comparable, V any](cache Cache[K, V], window, resolution time.Duration) *LatencyObserver[K, V] {
 	return &LatencyObserver[K, V]{
 		next: cache,
-		get:  xcounter.NewSlidingTriple(window, resolution),
-		set:  xcounter.NewSlidingTriple(window, resolution),
-		del:  xcounter.NewSlidingTriple(window, resolution),
+		get:  xcounter.NewSlidingWindowTriple(window, resolution),
+		set:  xcounter.NewSlidingWindowTriple(window, resolution),
+		del:  xcounter.NewSlidingWindowTriple(window, resolution),
 	}
 }
 
@@ -78,9 +78,9 @@ var _ HasStats = (*LatencyObserver[string, any])(nil)
 // LatencyObserver 封装，以统计周期范围内各项指标的执行次数和耗时
 type LatencyObserver[K comparable, V any] struct {
 	next Cache[K, V]
-	get  *xcounter.SlidingTriple
-	set  *xcounter.SlidingTriple
-	del  *xcounter.SlidingTriple
+	get  *xcounter.SlidingWindowTriple
+	set  *xcounter.SlidingWindowTriple
+	del  *xcounter.SlidingWindowTriple
 }
 
 func (lo *LatencyObserver[K, V]) Has(ctx context.Context, key K) (bool, error) {

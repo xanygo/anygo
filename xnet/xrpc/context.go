@@ -10,11 +10,7 @@ import (
 	"github.com/xanygo/anygo/ds/xctx"
 )
 
-var (
-	ctxTCPITKey   = xctx.NewKey()
-	ctxOptionKey  = xctx.NewKey()
-	ctxRetryCount = xctx.NewKey()
-)
+var ctxTCPITKey = xctx.NewKey()
 
 func ContextWithTCPIT(ctx context.Context, its ...TCPInterceptor) context.Context {
 	return xctx.WithValues(ctx, ctxTCPITKey, its...)
@@ -23,6 +19,8 @@ func ContextWithTCPIT(ctx context.Context, its ...TCPInterceptor) context.Contex
 func TCPITFromContext(ctx context.Context) []TCPInterceptor {
 	return xctx.Values[*xctx.Key, TCPInterceptor](ctx, ctxTCPITKey, true)
 }
+
+var ctxOptionKey = xctx.NewKey()
 
 // ContextWithOption 将 Options 临时存储到 context 中去。
 // 支持调用多次，最终使用 OptionsFromContext 或读取到所有的 options。
@@ -46,12 +44,14 @@ func OptionsFromContext(ctx context.Context) []Option {
 	return xctx.Values[*xctx.Key, Option](ctx, ctxOptionKey, true)
 }
 
+var ctxRetryCount = xctx.NewKey()
+
 // ContextWithRetryCount 在 ctx 中携带上当前尝试的次数，attempt =0 表示第一次尝试
 func ContextWithRetryCount(ctx context.Context, attempt int) context.Context {
-	return context.WithValue(ctx, ctxOptionKey, attempt)
+	return context.WithValue(ctx, ctxRetryCount, attempt)
 }
 
 func RetryCountFromContext(ctx context.Context) int {
-	attempt, _ := ctx.Value(ctxOptionKey).(int)
+	attempt, _ := ctx.Value(ctxRetryCount).(int)
 	return attempt
 }
