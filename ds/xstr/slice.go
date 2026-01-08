@@ -97,8 +97,8 @@ func ToUint64s(str string, sep string) ([]uint64, error) {
 // ToBools 将字符串 str 解析为 []bool
 //
 //	使用 sep 拆分后的子串会 trim space，若子串为空则会跳过。
-//	子字符串  "1", "t", "T", "true", "TRUE", "True" 将解析为 true。
-//	子字符串 "0", "f", "F", "false", "FALSE", "False" 将解析为 false。
+//	子字符串  "1", "t", "T", "true", "TRUE", "IsTrue" 将解析为 true。
+//	子字符串 "0", "f", "F", "false", "FALSE", "IsFalse" 将解析为 false。
 //	其他子串会导致解析失败
 func ToBools(str string, sep string) ([]bool, error) {
 	return ToSliceFunc[bool](str, sep, strconv.ParseBool)

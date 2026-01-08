@@ -126,91 +126,53 @@ func (c *Conn) Close() (err error) {
 }
 
 func (c *Conn) LocalAddr() net.Addr {
-	idx := -1
-	for i := 0; i < len(c.allIts); i++ {
-		if c.allIts[i].LocalAddr != nil {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
-		return c.raw.LocalAddr()
-	}
-	return c.allIts.CallLocalAddr(c.raw, c.raw.LocalAddr, idx)
+	return c.raw.LocalAddr()
 }
 
 func (c *Conn) RemoteAddr() net.Addr {
-	idx := -1
-	for i := 0; i < len(c.allIts); i++ {
-		if c.allIts[i].RemoteAddr != nil {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
-		return c.raw.RemoteAddr()
-	}
-	return c.allIts.CallRemoteAddr(c.raw, c.raw.RemoteAddr, idx)
+	return c.raw.RemoteAddr()
 }
 
-func (c *Conn) SetDeadline(t time.Time) (err error) {
-	idx := -1
+func (c *Conn) SetDeadline(dl time.Time) (err error) {
 	for i := 0; i < len(c.allIts); i++ {
-		if c.allIts[i].SetDeadline != nil {
-			idx = i
-			break
+		if it := c.allIts[i]; it.SetDeadline != nil {
+			it.SetDeadline(c.raw, dl)
 		}
 	}
-	if idx == -1 {
-		err = c.raw.SetDeadline(t)
-	} else {
-		err = c.allIts.CallSetDeadline(c.raw, t, c.raw.SetDeadline, idx)
-	}
+	err = c.raw.SetDeadline(dl)
 	for i := 0; i < len(c.allIts); i++ {
-		if c.allIts[i].AfterSetDeadline != nil {
-			c.allIts[i].AfterSetDeadline(c.raw, t, err)
+		if it := c.allIts[i]; it.AfterSetDeadline != nil {
+			it.AfterSetDeadline(c.raw, dl, err)
 		}
 	}
 	return err
 }
 
-func (c *Conn) SetReadDeadline(t time.Time) (err error) {
-	idx := -1
+func (c *Conn) SetReadDeadline(dl time.Time) (err error) {
 	for i := 0; i < len(c.allIts); i++ {
-		if c.allIts[i].SetReadDeadline != nil {
-			idx = i
-			break
+		if it := c.allIts[i]; it.SetReadDeadline != nil {
+			it.SetReadDeadline(c.raw, dl)
 		}
 	}
-	if idx == -1 {
-		err = c.raw.SetReadDeadline(t)
-	} else {
-		err = c.allIts.CallSetReadDeadline(c.raw, t, c.raw.SetReadDeadline, idx)
-	}
+	err = c.raw.SetReadDeadline(dl)
 	for i := 0; i < len(c.allIts); i++ {
-		if c.allIts[i].AfterSetReadDeadline != nil {
-			c.allIts[i].AfterSetReadDeadline(c.raw, t, err)
+		if it := c.allIts[i]; it.AfterSetReadDeadline != nil {
+			it.AfterSetReadDeadline(c.raw, dl, err)
 		}
 	}
 	return err
 }
 
-func (c *Conn) SetWriteDeadline(t time.Time) (err error) {
-	idx := -1
+func (c *Conn) SetWriteDeadline(dl time.Time) (err error) {
 	for i := 0; i < len(c.allIts); i++ {
-		if c.allIts[i].SetWriteDeadline != nil {
-			idx = i
-			break
+		if it := c.allIts[i]; it.SetWriteDeadline != nil {
+			it.SetWriteDeadline(c.raw, dl)
 		}
 	}
-	if idx == -1 {
-		err = c.raw.SetWriteDeadline(t)
-	} else {
-		err = c.allIts.CallSetWriteDeadline(c.raw, t, c.raw.SetWriteDeadline, idx)
-	}
+	err = c.raw.SetWriteDeadline(dl)
 	for i := 0; i < len(c.allIts); i++ {
-		if c.allIts[i].AfterSetWriteDeadline != nil {
-			c.allIts[i].AfterSetWriteDeadline(c.raw, t, err)
+		if it := c.allIts[i]; it.AfterSetWriteDeadline != nil {
+			it.AfterSetWriteDeadline(c.raw, dl, err)
 		}
 	}
 	return err
@@ -229,16 +191,13 @@ type ConnInterceptor struct {
 	Close      func(info ConnInfo, invoker func() error) error
 	AfterClose func(info ConnInfo, err error)
 
-	LocalAddr  func(info ConnInfo, invoker func() net.Addr) net.Addr
-	RemoteAddr func(info ConnInfo, invoker func() net.Addr) net.Addr
-
-	SetDeadline      func(info ConnInfo, tm time.Time, invoker func(tm time.Time) error) error
+	SetDeadline      func(info ConnInfo, tm time.Time)
 	AfterSetDeadline func(info ConnInfo, tm time.Time, err error)
 
-	SetReadDeadline      func(info ConnInfo, tm time.Time, invoker func(tm time.Time) error) error
+	SetReadDeadline      func(info ConnInfo, tm time.Time)
 	AfterSetReadDeadline func(info ConnInfo, tm time.Time, err error)
 
-	SetWriteDeadline      func(info ConnInfo, tm time.Time, invoker func(tm time.Time) error) error
+	SetWriteDeadline      func(info ConnInfo, tm time.Time)
 	AfterSetWriteDeadline func(info ConnInfo, tm time.Time, err error)
 }
 
@@ -295,76 +254,6 @@ func (chs connInterceptors) CallClose(info ConnInfo, invoker func() error, idx i
 	}
 	return chs[idx].Close(info, func() error {
 		return chs.CallClose(info, invoker, idx+1)
-	})
-}
-
-func (chs connInterceptors) CallLocalAddr(info ConnInfo, invoker func() net.Addr, idx int) net.Addr {
-	for ; idx < len(chs); idx++ {
-		if chs[idx].LocalAddr != nil {
-			break
-		}
-	}
-	if len(chs) == 0 || idx >= len(chs) {
-		return invoker()
-	}
-	return chs[idx].LocalAddr(info, func() net.Addr {
-		return chs.CallLocalAddr(info, invoker, idx+1)
-	})
-}
-
-func (chs connInterceptors) CallRemoteAddr(info ConnInfo, invoker func() net.Addr, idx int) net.Addr {
-	for ; idx < len(chs); idx++ {
-		if chs[idx].RemoteAddr != nil {
-			break
-		}
-	}
-	if len(chs) == 0 || idx >= len(chs) {
-		return invoker()
-	}
-	return chs[idx].RemoteAddr(info, func() net.Addr {
-		return chs.CallRemoteAddr(info, invoker, idx+1)
-	})
-}
-
-func (chs connInterceptors) CallSetDeadline(info ConnInfo, dl time.Time, invoker func(time.Time) error, idx int) (err error) {
-	for ; idx < len(chs); idx++ {
-		if chs[idx].SetDeadline != nil {
-			break
-		}
-	}
-	if len(chs) == 0 || idx >= len(chs) {
-		return invoker(dl)
-	}
-	return chs[idx].SetDeadline(info, dl, func(dl time.Time) error {
-		return chs.CallSetDeadline(info, dl, invoker, idx+1)
-	})
-}
-
-func (chs connInterceptors) CallSetReadDeadline(info ConnInfo, dl time.Time, invoker func(time.Time) error, idx int) (err error) {
-	for ; idx < len(chs); idx++ {
-		if chs[idx].SetReadDeadline != nil {
-			break
-		}
-	}
-	if len(chs) == 0 || idx >= len(chs) {
-		return invoker(dl)
-	}
-	return chs[idx].SetReadDeadline(info, dl, func(dl time.Time) error {
-		return chs.CallSetReadDeadline(info, dl, invoker, idx+1)
-	})
-}
-
-func (chs connInterceptors) CallSetWriteDeadline(info ConnInfo, dl time.Time, invoker func(time.Time) error, idx int) (err error) {
-	for ; idx < len(chs); idx++ {
-		if chs[idx].SetWriteDeadline != nil {
-			break
-		}
-	}
-	if len(chs) == 0 || idx >= len(chs) {
-		return invoker(dl)
-	}
-	return chs[idx].SetWriteDeadline(info, dl, func(dl time.Time) error {
-		return chs.CallSetWriteDeadline(info, dl, invoker, idx+1)
 	})
 }
 

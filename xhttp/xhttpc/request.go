@@ -7,18 +7,23 @@ package xhttpc
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xsync"
+	"github.com/xanygo/anygo/ds/xtype"
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
+	"github.com/xanygo/anygo/xnet/xpolicy"
 	"github.com/xanygo/anygo/xnet/xproxy"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
@@ -41,13 +46,45 @@ func DefaultUserAgent() string {
 var _ xrpc.Request = (*Request)(nil)
 
 type Request struct {
-	API    string // APIName
-	Method string // 请求方法，可选，默认为 http.MethodGet
-	Path   string
-	HTTPS  bool
-	Query  url.Values
-	Header http.Header
-	Body   io.Reader
+	API     string // APIName
+	Method  string // 请求方法，可选，默认为 http.MethodGet
+	Path    string
+	HTTPS   bool
+	Query   url.Values
+	Header  http.Header
+	GetBody func() (io.ReadCloser, error)
+
+	// Idempotency 多次发送该请求，Server 端的结果是否幂等，可选
+	// 当不设置的时候，会依据 Method 判断
+	Idempotency xtype.TriState
+}
+
+var _ xpolicy.Idempotent = (*Request)(nil)
+
+func (r *Request) Idempotent() bool {
+	if r == nil {
+		return false
+	}
+	if r.Idempotency.NotNull() {
+		return r.Idempotency.IsTrue()
+	}
+	return retryableMethod(r.Method)
+}
+
+func retryableMethod(method string) bool {
+	method = strings.ToUpper(method)
+	switch method {
+	case "", // 空等于 GET
+		http.MethodGet,
+		http.MethodHead,
+		http.MethodPut,
+		http.MethodDelete,
+		http.MethodOptions,
+		http.MethodTrace:
+		return true
+	default:
+		return false
+	}
 }
 
 func (r *Request) Protocol() string {
@@ -96,16 +133,27 @@ func (r *Request) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.
 	}
 	defer node.SetDeadline(time.Time{})
 
-	req, err := http.NewRequestWithContext(ctx, r.getMethod(), api, r.Body)
+	req, err := http.NewRequestWithContext(ctx, r.getMethod(), api, nil)
 	if err != nil {
 		return err
+	}
+	if r.GetBody != nil {
+		req.GetBody = r.GetBody
+		bd, err := r.GetBody()
+		if err != nil {
+			return err
+		}
+		req.Body = bd
 	}
 	if req.Host == xnet.Dummy {
 		req.Host = ""
 	}
 	setHeader(ctx, req, opt)
-
-	return req.Write(node.Outer())
+	err = req.Write(node.Outer())
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("request.Write: %w", err)
 }
 
 func (r *Request) getURL(so xoption.Reader, address string) (string, error) {
@@ -183,10 +231,26 @@ var _ xrpc.Request = (*NativeRequest)(nil)
 type NativeRequest struct {
 	API     string
 	Request *http.Request // 必填
+
+	// Idempotency 多次发送该请求，Server 端的结果是否幂等，可选
+	// 当不设置的时候，会依据 Method 判断
+	Idempotency xtype.TriState
 }
 
 func (h *NativeRequest) Protocol() string {
 	return "HTTP"
+}
+
+var _ xpolicy.Idempotent = (*NativeRequest)(nil)
+
+func (h *NativeRequest) Idempotent() bool {
+	if h == nil || h.Request == nil {
+		return false
+	}
+	if h.Idempotency.NotNull() {
+		return h.Idempotency.IsTrue()
+	}
+	return retryableMethod(h.Request.Method)
 }
 
 func (h *NativeRequest) String() string {
@@ -218,15 +282,26 @@ func (h *NativeRequest) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xo
 	}
 	defer node.SetDeadline(time.Time{})
 
-	req := h.Request.WithContext(ctx)
+	req := h.Request.Clone(ctx)
 	if req.Host == xnet.Dummy {
 		req.Host = ""
 	}
 	if req.Host == "" {
 		req.Host = node.Addr.Host()
 	}
+	if req.GetBody != nil {
+		bd, err := req.GetBody()
+		if err != nil {
+			return err
+		}
+		req.Body = bd
+	}
 	setHeader(ctx, req, opt)
-	return req.Write(node.Outer())
+	err := req.Write(node.Outer())
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("nativeRequest.Write: %w", err)
 }
 
 func (h *NativeRequest) balancer(opt xoption.Reader) xbalance.Reader {
@@ -268,7 +343,7 @@ func setHeader(ctx context.Context, req *http.Request, opt xoption.Reader) {
 		req.Host = hc.Host
 	}
 	for k, v := range hc.Header {
-		req.Header[k] = v
+		req.Header[k] = slices.Clone(v)
 	}
 	if req.UserAgent() == "" {
 		req.Header.Set("User-Agent", DefaultUserAgent())
@@ -276,6 +351,9 @@ func setHeader(ctx context.Context, req *http.Request, opt xoption.Reader) {
 	logID := xlog.FindLogID(ctx)
 	if logID != "" {
 		req.Header.Set("X-Log-ID", logID)
+	}
+	if attempt := xrpc.RetryCountFromContext(ctx); attempt > 0 {
+		req.Header.Set("X-Retry-Count", strconv.Itoa(attempt))
 	}
 }
 

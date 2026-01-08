@@ -134,12 +134,16 @@ func (c *TCP) Invoke(ctx context.Context, srv any, req Request, resp Response, o
 	}
 
 	for attempt := 0; attempt < attemptTotal; attempt++ {
-		result = c.tryOnce(ctx, cfg, req, resp, serviceName, service, its, opt)
-		if result == nil || attempt >= attemptTotal-1 || ctx.Err() != nil || !retryPolicy.IsRetryable(ctx, attempt, result) {
+		ctxTry := ctx
+		if attempt > 0 {
+			ctxTry = ContextWithRetryCount(ctx, attempt)
+		}
+		result = c.tryOnce(ctxTry, cfg, req, resp, serviceName, service, its, opt)
+		if result == nil || attempt >= attemptTotal-1 || ctxTry.Err() != nil || !retryPolicy.IsRetryable(ctxTry, req, attempt, result) {
 			return result
 		}
 		if backoff := retryPolicy.GetBackoff(attempt); backoff > 0 {
-			xctx.Sleep(ctx, backoff)
+			xctx.Sleep(ctxTry, backoff)
 		}
 	}
 	return result

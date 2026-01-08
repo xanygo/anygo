@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -35,7 +36,40 @@ func (resp *Response) String() string {
 }
 
 func (resp *Response) LoadFrom(ctx context.Context, req xrpc.Request, node *xnet.ConnNode, opt xoption.Reader) error {
-	timeout := xoption.WriteTimeout(opt)
+	resp.resp = nil
+	resp.readErr = resp.doLoadFrom(ctx, req, node, opt)
+	if resp.readErr == nil {
+		return nil
+	}
+
+	// 包裹错误，让 rpc client 的 retryPolicy 可以依据 error 来判断是否能重试
+	// 只有特定的请求 Method 和 StatusCode 才允许重试
+	// 如 GET 请求，响应为 500，则标记为临时错误，允许重试
+	var te xerror.TemporaryFailure
+	if !errors.As(resp.readErr, &te) {
+		temp := retryableStatus(resp.resp.StatusCode)
+		return xerror.WithTemporary(resp.readErr, temp)
+	}
+	return resp.readErr
+}
+
+func retryableStatus(code int) bool {
+	switch code {
+	case http.StatusInternalServerError,
+		http.StatusBadGateway,
+		http.StatusServiceUnavailable,
+		http.StatusGatewayTimeout:
+		return true
+	default:
+		return false
+	}
+}
+
+func (resp *Response) doLoadFrom(ctx context.Context, req xrpc.Request, node *xnet.ConnNode, opt xoption.Reader) error {
+	timeout := xoption.ReadTimeout(opt)
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, timeout)
+	defer cancel()
 	if err := node.SetDeadline(time.Now().Add(timeout)); err != nil {
 		return err
 	}
@@ -43,30 +77,16 @@ func (resp *Response) LoadFrom(ctx context.Context, req xrpc.Request, node *xnet
 
 	maxSize := xoption.MaxResponseSize(opt)
 	bio := bufio.NewReader(io.LimitReader(node, maxSize))
-	resp.resp, resp.readErr = http.ReadResponse(bio, nil)
-	if resp.readErr != nil {
-		return resp.readErr
+	rr, err := http.ReadResponse(bio, nil)
+	if err != nil {
+		return fmt.Errorf("http.ReadResponse %w", err)
 	}
-	resp.readErr = resp.Handler(ctx, resp.resp)
-	if resp.readErr == nil {
+	resp.resp = rr
+	err = resp.Handler(ctx, rr)
+	if err == nil {
 		return nil
 	}
-	// 包裹错误，让 rpc client 的 retryPolicy 可以依据 error 来判断是否能重试
-	// 只有特定的请求 Method 和 StatusCode 才允许重试
-	// 如 GET 请求，响应为 500，则标记为临时错误，允许重试
-	var te xerror.TemporaryFailure
-	if !errors.As(resp.readErr, &te) {
-		temp := retryableStatus(resp.resp.StatusCode)
-		if temp {
-			if hm, ok := req.(interface{ GetMethod() string }); ok {
-				temp = retryableMethod(hm.GetMethod())
-			} else {
-				temp = false
-			}
-		}
-		return xerror.WithTemporary(resp.readErr, temp)
-	}
-	return resp.readErr
+	return fmt.Errorf("resp.Handler %w", err)
 }
 
 func (resp *Response) ErrCode() int64 {

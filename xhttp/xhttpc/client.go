@@ -7,7 +7,7 @@ package xhttpc
 import (
 	"bytes"
 	"context"
-	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -60,21 +60,24 @@ func GetAsJSON[T any](ctx context.Context, service any, url string, opts ...xrpc
 }
 
 func InvokeWithCodec(ctx context.Context, service any, method string, url string, body any, ec xcodec.Encoder, handler HandlerFunc, opts ...xrpc.Option) error {
-	var contentType string
-	if hct, ok := ec.(xcodec.HasContentType); ok {
-		contentType = hct.ContentType()
-	} else {
-		return errors.New("invalid codec: not xcodec.HasContentType")
+	contentType, err := xcodec.ContentType(ec)
+	if err != nil {
+		return err
 	}
 
 	bf, err := ec.Encode(body)
 	if err != nil {
 		return err
 	}
-	rd := bytes.NewBuffer(bf)
-	req, err := http.NewRequestWithContext(ctx, method, url, rd)
+	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("build request: %w", err)
+	}
+	if len(bf) > 0 {
+		// 使用 GetBody 赋值，这样当有重试的时候,才能保证每次都读取到 body
+		req.GetBody = func() (io.ReadCloser, error) {
+			return io.NopCloser(bytes.NewBuffer(bf)), nil
+		}
 	}
 	req.Header.Set("Content-Type", contentType)
 	return Invoke(ctx, service, req, handler, opts...)

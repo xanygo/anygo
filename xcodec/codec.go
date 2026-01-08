@@ -6,6 +6,7 @@ package xcodec
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -288,4 +289,13 @@ func isMapStringAny(t reflect.Type) bool {
 	return t.Kind() == reflect.Map &&
 		t.Key().Kind() == reflect.String &&
 		t.Elem().Kind() == reflect.Interface
+}
+
+var errNoCt = errors.New("invalid codec: not xcodec.HasContentType")
+
+func ContentType(c Encoder) (string, error) {
+	if hct, ok := c.(HasContentType); ok {
+		return hct.ContentType(), nil
+	}
+	return "", errNoCt
 }

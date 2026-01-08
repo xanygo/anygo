@@ -121,15 +121,23 @@ func OptTimeout(t time.Duration) Option {
 	})
 }
 
+// OptRetry 设置重置次数为 n，重试策略为每次均重试
 func OptRetry(n int) Option {
+	return OptRetryWithPolicy(n, xpolicy.AlwaysRetry())
+}
+
+// OptRetryPolicy 单独设置重试策略
+func OptRetryPolicy(policy *xpolicy.Retry) Option {
 	return optionFunc(func(o *config) {
-		xoption.SetRetry(o.opt, n)
+		xoption.SetRetryPolicy(o.opt, policy)
 	})
 }
 
-func OptRetryPolicy(p *xpolicy.Retry) Option {
+// OptRetryWithPolicy 设置重试次数和重试策略，若 policy 为 nil则使用默认策略
+func OptRetryWithPolicy(retry int, policy *xpolicy.Retry) Option {
 	return optionFunc(func(o *config) {
-		xoption.SetRetryPolicy(o.opt, p)
+		xoption.SetRetry(o.opt, retry)
+		xoption.SetRetryPolicy(o.opt, policy)
 	})
 }
 

@@ -17,9 +17,14 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xctx"
+	"github.com/xanygo/anygo/ds/xsync"
+	"github.com/xanygo/anygo/ds/xurl"
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xhttp/xhttpc"
+	"github.com/xanygo/anygo/xlog"
+	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
 	"github.com/xanygo/anygo/xt"
 )
@@ -79,7 +84,8 @@ func TestClient(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Ok", "Ok")
 		defer r.Body.Close()
-		io.Copy(w, r.Body)
+		n, err := io.Copy(w, r.Body)
+		t.Logf("HandlerFunc io.Copy %d,%v", n, err)
 	}))
 	defer ts.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -113,5 +119,99 @@ func TestClient(t *testing.T) {
 		xt.Equal(t, "Ok", resp.Header.Get("X-Ok"))
 		defer resp.Body.Close()
 		xt.NoError(t, iotest.TestReader(resp.Body, []byte(`{"k1":"v1"}`)))
+	})
+}
+
+func TestClientRetry(t *testing.T) {
+	var requestID atomic.Int64
+	var handlerStore xsync.Value[http.HandlerFunc]
+	defaultHandler := func(w http.ResponseWriter, r *http.Request) {
+		rid := requestID.Load()
+		t.Logf("requestID=%d method=%s logID=%s retryCount=%s uri=%s",
+			rid, r.Method, r.Header.Get("X-Log-ID"), r.Header.Get("X-Retry-Count"), r.RequestURI)
+		query := r.URL.Query()
+		if rid == 1 {
+			if query.Has("sleep") {
+				xctx.Sleep(r.Context(), time.Second)
+				return
+			}
+			status := xurl.IntDef(query, "code", 200)
+			w.WriteHeader(status)
+		} else {
+			w.WriteHeader(200)
+		}
+		body := xurl.StringDef(query, "body", "Ok")
+		n, err := w.Write([]byte(body))
+		t.Logf("ResponseWriter, n=%d, err=%v", n, err)
+		xt.NoError(t, err)
+	}
+	handlerStore.Store(defaultHandler)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestID.Add(1)
+		handlerStore.Load().ServeHTTP(w, r)
+	}))
+	defer ts.Close()
+
+	t.Run("get-ok", func(t *testing.T) {
+		requestID.Store(0)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx = xlog.NewContext(ctx)
+		xlog.WithLogID(ctx, xlog.NewLogID())
+		defer cancel()
+		resp := &http.Response{}
+		err := xhttpc.Get(ctx, "dummy", ts.URL, xhttpc.FetchResponse(resp), xrpc.OptRetry(2))
+		xt.NoError(t, err)
+		xt.Equal(t, 200, resp.StatusCode)
+		xt.NoError(t, iotest.TestReader(resp.Body, []byte(`Ok`)))
+		xt.Equal(t, 1, requestID.Load())
+	})
+
+	t.Run("get-timeout-retry", func(t *testing.T) {
+		requestID.Store(0)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx = xlog.NewContext(ctx)
+		xlog.WithLogID(ctx, xlog.NewLogID())
+		defer cancel()
+		resp := &http.Response{}
+		err := xhttpc.Get(ctx, "dummy", ts.URL+"?sleep=get-timeout-retry", xhttpc.FetchResponse(resp),
+			xrpc.OptRetry(2), xrpc.OptReadTimeout(10*time.Millisecond))
+		xt.NoError(t, err)
+		xt.Equal(t, 200, resp.StatusCode)
+		xt.NoError(t, iotest.TestReader(resp.Body, []byte(`Ok`)))
+		xt.Equal(t, 2, requestID.Load()) // 值是 2，说明重试成功
+	})
+
+	t.Run("Post-timeout-always-retry", func(t *testing.T) {
+		requestID.Store(0)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx = xlog.NewContext(ctx)
+		xlog.WithLogID(ctx, xlog.NewLogID())
+		defer cancel()
+		resp := &http.Response{}
+		err := xhttpc.PostJSON(ctx, "dummy", ts.URL+"?sleep=Post-timeout-always-retry", map[string]any{},
+			xhttpc.FetchResponse(resp), xrpc.OptRetry(2), xrpc.OptReadTimeout(20*time.Millisecond))
+		xt.NoError(t, err)
+		xt.Equal(t, 200, resp.StatusCode)
+		xt.NoError(t, iotest.TestReader(resp.Body, []byte(`Ok`)))
+		xt.Equal(t, 2, requestID.Load()) // 值是 2，说明重试成功
+	})
+
+	t.Run("Post-timeout-no-retry", func(t *testing.T) {
+		// 默认重试策略：Post timeout 错误，不能重试
+
+		requestID.Store(0)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx = xlog.NewContext(ctx)
+		xlog.WithLogID(ctx, xlog.NewLogID())
+		defer cancel()
+		resp := &http.Response{}
+		start := time.Now()
+		err := xhttpc.PostJSON(ctx, "dummy", ts.URL+"?sleep=Post-timeout-no-retry", map[string]any{},
+			xhttpc.FetchResponse(resp), xrpc.OptRetryWithPolicy(2, nil), xrpc.OptReadTimeout(10*time.Millisecond))
+		cost := time.Since(start)
+		t.Logf("cost=%s", cost.String())
+		xt.Equal(t, 1, requestID.Load()) // 值是 1，说明没有重试
+		xt.Error(t, err)
+		xt.Equal(t, 0, resp.StatusCode)
 	})
 }

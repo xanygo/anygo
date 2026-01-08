@@ -10,7 +10,6 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/xanygo/anygo/xcodec"
@@ -52,34 +51,6 @@ func StatusIn(codes ...int) HandlerFunc {
 			return xerror.NewStatusError(int64(resp.StatusCode))
 		}
 		return nil
-	}
-}
-
-func retryableStatus(code int) bool {
-	switch code {
-	case http.StatusInternalServerError,
-		http.StatusBadGateway,
-		http.StatusServiceUnavailable,
-		http.StatusGatewayTimeout:
-		return true
-	default:
-		return false
-	}
-}
-
-func retryableMethod(method string) bool {
-	method = strings.ToUpper(method)
-	switch method {
-	case "", // 空等于 GET
-		http.MethodGet,
-		http.MethodHead,
-		http.MethodPut,
-		http.MethodDelete,
-		http.MethodOptions,
-		http.MethodTrace:
-		return true
-	default:
-		return false
 	}
 }
 
