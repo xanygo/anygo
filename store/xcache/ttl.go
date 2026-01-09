@@ -11,7 +11,7 @@ import (
 
 var _ HasTTL[string, string] = (*TTLWrapper[string, string])(nil)
 var _ Cache[string, string] = (*TTLWrapper[string, string])(nil)
-var _ NopType = (*TTLWrapper[string, string])(nil)
+var _ NopCache = (*TTLWrapper[string, string])(nil)
 
 // TTLWrapper 用于对缓存的 TTL 进行动态调整的工具类
 //

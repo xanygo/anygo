@@ -2,18 +2,19 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-09-02
 
-package xcache
+package xcache_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
+	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xt"
 )
 
-func testCache(t *testing.T, c Cache[string, int]) {
+func testCache(t *testing.T, c xcache.Cache[string, int]) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

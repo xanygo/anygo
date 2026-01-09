@@ -16,9 +16,26 @@ import (
 	"github.com/xanygo/anygo/xerror"
 )
 
+// MemoryCache  是否本地内存缓存
+type MemoryCache interface {
+	IsMemory() bool
+}
+
+// IsMemory 判断一个对象是否 全内存缓存
+func IsMemory(c any) bool {
+	if c == nil {
+		return false
+	}
+	if nl, ok := c.(MemoryCache); ok {
+		return nl.IsMemory()
+	}
+	return false
+}
+
 var _ Cache[string, string] = (*LRU[string, string])(nil)
 var _ MCache[string, string] = (*LRU[string, string])(nil)
 var _ HasStats = (*LRU[string, string])(nil)
+var _ MemoryCache = (*LRU[string, string])(nil)
 
 func NewLRU[K comparable, V any](capacity int) *LRU[K, V] {
 	if capacity <= 0 {
@@ -45,6 +62,14 @@ type LRU[K comparable, V any] struct {
 	hitCnt    atomic.Uint64
 }
 
+func (lru *LRU[K, V]) IsMemory() bool {
+	return true
+}
+
+func (lru *LRU[K, V]) Capacity() int {
+	return lru.capacity
+}
+
 func (lru *LRU[K, V]) Has(ctx context.Context, key K) (bool, error) {
 	_, err := lru.Get(ctx, key)
 	if err != nil {
@@ -69,7 +94,7 @@ func (lru *LRU[K, V]) getLocked(key K) (v V, rr error) {
 	if !has {
 		return v, xerror.NotFound
 	}
-	val := el.Value.(*memValue[K, V])
+	val := el.Value.(*MemValue[K, V])
 
 	if val.Expired() {
 		lru.list.Remove(el)
@@ -104,10 +129,12 @@ func (lru *LRU[K, V]) Set(_ context.Context, key K, value V, ttl time.Duration) 
 }
 
 func (lru *LRU[K, V]) doSet(key K, value V, ttl time.Duration) {
-	cacheVal := &memValue[K, V]{
+	now := time.Now()
+	cacheVal := &MemValue[K, V]{
 		Key:      key,
 		Data:     value,
-		ExpireAt: time.Now().Add(ttl),
+		CreateAt: now,
+		ExpireAt: now.Add(ttl),
 	}
 	lru.mux.Lock()
 	defer lru.mux.Unlock()
@@ -137,7 +164,7 @@ func (lru *LRU[K, V]) weedOut() {
 	if el == nil {
 		return
 	}
-	v := el.Value.(*memValue[K, V])
+	v := el.Value.(*MemValue[K, V])
 	delete(lru.data, v.Key)
 	lru.list.Remove(el)
 }
@@ -196,14 +223,36 @@ func (lru *LRU[K, V]) Stats() Stats {
 	}
 }
 
-type memValue[K comparable, V any] struct {
+func (lru *LRU[K, V]) RangeLocked(fn func(item *MemValue[K, V]) (remove bool, goon bool)) {
+	lru.mux.Lock()
+	defer lru.mux.Unlock()
+
+	for e := lru.list.Back(); e != nil; {
+		next := e.Prev()
+
+		kv := e.Value.(*MemValue[K, V])
+		remove, goon := fn(kv)
+		if remove {
+			delete(lru.data, kv.Key)
+			lru.list.Remove(e)
+			lru.deleteCnt.Add(1)
+		}
+		if !goon {
+			return
+		}
+		e = next
+	}
+}
+
+type MemValue[K comparable, V any] struct {
 	Key      K
 	Data     V
+	CreateAt time.Time
 	ExpireAt time.Time
 }
 
 // Expired 是否已过期
-func (v *memValue[K, V]) Expired() bool {
+func (v *MemValue[K, V]) Expired() bool {
 	return time.Now().After(v.ExpireAt)
 }
 
@@ -233,6 +282,7 @@ func newMemoryFIXO[K comparable, V any](capacity int, fifo bool) *MemoryXIFO[K, 
 var _ Cache[string, string] = (*MemoryXIFO[string, string])(nil)
 var _ MCache[string, string] = (*MemoryXIFO[string, string])(nil)
 var _ HasStats = (*MemoryXIFO[string, string])(nil)
+var _ MemoryCache = (*MemoryXIFO[string, string])(nil)
 
 // MemoryXIFO 容量满之后，过期策略为 FIFO 或者 LIFO 的 内存缓存
 type MemoryXIFO[K comparable, V any] struct {
@@ -246,6 +296,14 @@ type MemoryXIFO[K comparable, V any] struct {
 	writeCnt  atomic.Uint64
 	deleteCnt atomic.Uint64
 	hitCnt    atomic.Uint64
+}
+
+func (m *MemoryXIFO[K, V]) IsMemory() bool {
+	return true
+}
+
+func (m *MemoryXIFO[K, V]) Capacity() int {
+	return m.capacity
 }
 
 func (m *MemoryXIFO[K, V]) Has(ctx context.Context, key K) (bool, error) {
@@ -272,7 +330,7 @@ func (m *MemoryXIFO[K, V]) getLocked(key K) (v V, rr error) {
 	if !has {
 		return v, xerror.NotFound
 	}
-	val := el.Value.(*memValue[K, V])
+	val := el.Value.(*MemValue[K, V])
 	if val.Expired() {
 		m.list.Remove(el)
 		delete(m.data, key)
@@ -289,10 +347,12 @@ func (m *MemoryXIFO[K, V]) Set(ctx context.Context, key K, value V, ttl time.Dur
 }
 
 func (m *MemoryXIFO[K, V]) doSet(key K, value V, ttl time.Duration) {
-	cacheVal := &memValue[K, V]{
+	now := time.Now()
+	cacheVal := &MemValue[K, V]{
 		Key:      key,
 		Data:     value,
-		ExpireAt: time.Now().Add(ttl),
+		CreateAt: now,
+		ExpireAt: now.Add(ttl),
 	}
 	m.mux.Lock()
 	defer m.mux.Unlock()
@@ -318,7 +378,7 @@ func (m *MemoryXIFO[K, V]) weedOut() {
 	if el == nil {
 		return
 	}
-	v := el.Value.(*memValue[K, V])
+	v := el.Value.(*MemValue[K, V])
 	delete(m.data, v.Key)
 	m.list.Remove(el)
 }
@@ -400,5 +460,36 @@ func (m *MemoryXIFO[K, V]) Stats() Stats {
 		Write:  m.writeCnt.Load(),
 		Delete: m.deleteCnt.Load(),
 		Hit:    m.hitCnt.Load(),
+	}
+}
+
+func (m *MemoryXIFO[K, V]) RangeLocked(fn func(item *MemValue[K, V]) (remove bool, goon bool)) {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+
+	var e, next *list.Element
+	if m.fifo {
+		e = m.list.Front()
+	} else {
+		e = m.list.Back()
+	}
+
+	for e != nil {
+		if m.fifo {
+			next = e.Next()
+		} else {
+			next = e.Prev()
+		}
+		kv := e.Value.(*MemValue[K, V])
+		remove, goon := fn(kv)
+		if remove {
+			delete(m.data, kv.Key)
+			m.list.Remove(e)
+			m.deleteCnt.Add(1)
+		}
+		if !goon {
+			return
+		}
+		e = next
 	}
 }

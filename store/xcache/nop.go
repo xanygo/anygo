@@ -16,10 +16,10 @@ var _ Cache[string, int] = (*Nop[string, int])(nil)
 var _ MCache[string, int] = (*Nop[string, int])(nil)
 var _ HasStats = (*Nop[string, int])(nil)
 
-// NopType 不会保存数据的缓存接口实现
+// NopCache 不会保存数据的缓存接口实现
 //
 // 当 Cache 对象的 Nop() 返回 true 时，意味着该 cache 对象在写入时总是成功，读取是总是返回 NotFound 错误
-type NopType interface {
+type NopCache interface {
 	Nop() bool
 }
 
@@ -28,13 +28,13 @@ func IsNop(c any) bool {
 	if c == nil {
 		return true
 	}
-	if nl, ok := c.(NopType); ok && nl.Nop() {
+	if nl, ok := c.(NopCache); ok && nl.Nop() {
 		return true
 	}
 	return false
 }
 
-var _ NopType = (*Nop[string, int])(nil)
+var _ NopCache = (*Nop[string, int])(nil)
 var _ Cache[string, int] = (*Nop[string, int])(nil)
 var _ MCache[string, int] = (*Nop[string, int])(nil)
 

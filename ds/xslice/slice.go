@@ -389,10 +389,10 @@ func Append[E any](arr []any, items ...E) []any {
 	return arr
 }
 
-// Take 返回 s 的前 n 个元素。
+// HeadN 返回 s 的前 n 个元素。
 // 如果 n >= len(s)，则返回整个 s。
-// 如果 n <= 0，返回空 slice（与 s 同类型）。
-func Take[S ~[]T, T any](s S, n int) S {
+// 如果 n <= 0，返回 nil。
+func HeadN[S ~[]T, T any](s S, n int) S {
 	if n <= 0 || len(s) == 0 {
 		return nil
 	}
@@ -400,4 +400,17 @@ func Take[S ~[]T, T any](s S, n int) S {
 		return s
 	}
 	return s[:n]
+}
+
+// TailN 返回 s 的后 n 个元素。
+// 如果 n >= len(s)，则返回整个 s。
+// 如果 n <= 0，返回 nil。
+func TailN[S ~[]T, T any](s S, n int) S {
+	if n <= 0 {
+		return nil
+	}
+	if len(s) <= n {
+		return s
+	}
+	return s[len(s)-n:]
 }
