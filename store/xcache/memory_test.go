@@ -7,6 +7,7 @@ package xcache_test
 import (
 	"context"
 	"fmt"
+	"net"
 	"testing"
 	"time"
 
@@ -95,4 +96,71 @@ func TestMemoryFIFO(t *testing.T) {
 		return true, true
 	})
 	xt.Equal(t, 0, c1.Count())
+}
+
+func TestIsMemory(t *testing.T) {
+	t.Run("is memory", func(t *testing.T) {
+		c1 := xcache.NewLRU[string, string](1)
+		xt.True(t, xcache.IsMemory(c1))
+
+		c2 := xcache.NewLatencyObserver[string, string](c1, time.Hour, time.Minute)
+		xt.True(t, xcache.IsMemory(c2))
+
+		c3 := &xcache.Transformer[net.IP]{
+			Cache: c1,
+		}
+		xt.True(t, xcache.IsMemory(c3))
+
+		c4 := &xcache.Transformer[net.IP]{
+			Cache: c2,
+		}
+		xt.True(t, xcache.IsMemory(c4))
+	})
+
+	t.Run("nop not memory", func(t *testing.T) {
+		c1 := &xcache.Nop[string, string]{}
+		xt.False(t, xcache.IsMemory(c1))
+
+		c2 := xcache.NewLatencyObserver[string, string](c1, time.Hour, time.Minute)
+		xt.False(t, xcache.IsMemory(c2))
+
+		c3 := &xcache.Transformer[net.IP]{
+			Cache: c1,
+		}
+		xt.False(t, xcache.IsMemory(c3))
+
+		c4 := &xcache.Transformer[net.IP]{
+			Cache: c2,
+		}
+		xt.False(t, xcache.IsMemory(c4))
+	})
+
+	t.Run("not memory", func(t *testing.T) {
+		c1 := &xcache.File[string, string]{}
+		xt.False(t, xcache.IsMemory(c1))
+
+		c2 := xcache.NewLatencyObserver[string, string](c1, time.Hour, time.Minute)
+		xt.False(t, xcache.IsMemory(c2))
+
+		c3 := &xcache.Transformer[net.IP]{
+			Cache: c1,
+		}
+		xt.False(t, xcache.IsMemory(c3))
+
+		c4 := &xcache.Transformer[net.IP]{
+			Cache: c2,
+		}
+		xt.False(t, xcache.IsMemory(c4))
+	})
+
+	t.Run("chain", func(t *testing.T) {
+		l1 := &xcache.Chain[string, string]{
+			Cache: &xcache.Nop[string, string]{},
+		}
+		l2 := &xcache.Chain[string, string]{
+			Cache: xcache.NewLRU[string, string](10),
+		}
+		chs := xcache.NewChains[string, string](l1, l2)
+		xt.True(t, xcache.IsMemory(chs))
+	})
 }

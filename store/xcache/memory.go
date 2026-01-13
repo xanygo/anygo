@@ -23,13 +23,28 @@ type MemoryCache interface {
 
 // IsMemory 判断一个对象是否 全内存缓存
 func IsMemory(c any) bool {
-	if c == nil {
+	for {
+		if c == nil {
+			return false
+		}
+		if nl, ok := c.(MemoryCache); ok {
+			return nl.IsMemory()
+		}
+
+		if uc, ok := c.(interface{ Unwrap() any }); ok {
+			c = uc.Unwrap()
+			continue
+		}
+
+		if uc, ok := c.(interface{ Unwrap() []any }); ok {
+			for _, c1 := range uc.Unwrap() {
+				if IsMemory(c1) {
+					return true
+				}
+			}
+		}
 		return false
 	}
-	if nl, ok := c.(MemoryCache); ok {
-		return nl.IsMemory()
-	}
-	return false
 }
 
 var _ Cache[string, string] = (*LRU[string, string])(nil)

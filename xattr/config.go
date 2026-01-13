@@ -7,6 +7,8 @@ package xattr
 import (
 	"fmt"
 	"path/filepath"
+
+	"github.com/xanygo/anygo/xcodec"
 )
 
 // FileConfig 应用的主配置文件，一般是 conf/app.yml 或 conf/app.json
@@ -126,6 +128,12 @@ func (c FileConfig) SetTo(attr *Attribute) {
 
 func (c FileConfig) SetToDefault() {
 	c.SetTo(Default)
+}
+
+var _ xcodec.DecodeExtra = FileConfig{}
+
+func (c FileConfig) NeedDecodeExtra() string {
+	return "Other"
 }
 
 func ParserFileConfig(path string, parser func(string, any) error) (*FileConfig, error) {

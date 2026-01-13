@@ -14,21 +14,11 @@ import (
 
 var _ Cache[string, any] = (*Transformer[any])(nil)
 var _ MCache[string, any] = (*Transformer[any])(nil)
-var _ NopCache = (*Transformer[any])(nil)
-var _ MemoryCache = (*Transformer[any])(nil)
 
 // Transformer 使用底层存储 K-V 均为 string 类型的 cache，存储缓存数据
 type Transformer[V any] struct {
 	Cache StringCache
 	Codec xcodec.Codec
-}
-
-func (t *Transformer[V]) IsMemory() bool {
-	return IsMemory(t.Cache)
-}
-
-func (t *Transformer[V]) Nop() bool {
-	return IsNop(t.Cache)
 }
 
 func (t *Transformer[V]) Has(ctx context.Context, key string) (bool, error) {
@@ -147,4 +137,8 @@ func (t *Transformer[V]) AllStats() map[string]Stats {
 		return hs.AllStats()
 	}
 	return nil
+}
+
+func (t *Transformer[V]) Unwrap() any {
+	return t.Cache
 }

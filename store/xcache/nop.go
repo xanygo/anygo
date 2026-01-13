@@ -23,15 +23,30 @@ type NopCache interface {
 	Nop() bool
 }
 
-// IsNop 判断是否是一个空的 Logger
+// IsNop 判断是否是一个空的 Cache,
+// 若是 Chains 这种包含多个子 Cache 对象的，必须则判断是否所有子 Cache 对象都是 Nop
 func IsNop(c any) bool {
-	if c == nil {
-		return true
+	for {
+		if c == nil {
+			return true
+		}
+		if nl, ok := c.(NopCache); ok {
+			return nl.Nop()
+		}
+		if uc, ok := c.(interface{ Unwrap() any }); ok {
+			c = uc.Unwrap()
+			continue
+		}
+		if uc, ok := c.(interface{ Unwrap() []any }); ok {
+			for _, c1 := range uc.Unwrap() {
+				if !IsNop(c1) {
+					return false
+				}
+			}
+			return true
+		}
+		return false
 	}
-	if nl, ok := c.(NopCache); ok && nl.Nop() {
-		return true
-	}
-	return false
 }
 
 var _ NopCache = (*Nop[string, int])(nil)

@@ -119,7 +119,7 @@ func (q *DelayQueue[V]) run() {
 //
 // 返回值：
 //   - true-添加成功
-//   - false-失败,可能是 Queue 已被Stop、容量满
+//   - false-失败,可能是 Queue 已被 Stop、容量满
 func (q *DelayQueue[V]) Push(value V) bool {
 	q.start()
 

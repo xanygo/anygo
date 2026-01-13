@@ -118,6 +118,10 @@ func (lo *LatencyObserver[K, V]) Stats() Stats {
 	return Stats{}
 }
 
+func (lo *LatencyObserver[K, V]) Unwrap() any {
+	return lo.next
+}
+
 type HasLatencyStats interface {
 	LatencyStats() map[string]any
 }

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xerror"
 )
@@ -27,9 +28,6 @@ func NewChains[K comparable, V any](caches ...*Chain[K, V]) Cache[K, V] {
 	}
 }
 
-var _ NopCache = (*Chain[string, string])(nil)
-var _ MemoryCache = (*Chain[string, string])(nil)
-
 type Chain[K comparable, V any] struct {
 	// Cache  必填
 	Cache Cache[K, V]
@@ -39,14 +37,6 @@ type Chain[K comparable, V any] struct {
 
 	// WriteTimeout 可选，读取后给未命中缓存的对象，填充缓存的写超时
 	WriteTimeout time.Duration
-}
-
-func (c *Chain[K, V]) IsMemory() bool {
-	return IsMemory(c.Cache)
-}
-
-func (c *Chain[K, V]) Nop() bool {
-	return IsNop(c.Cache)
 }
 
 func (c *Chain[K, V]) set(ctx context.Context, key K, value V) {
@@ -67,31 +57,19 @@ func (c *Chain[K, V]) CacheTTL(ctx context.Context, key K, value V) time.Duratio
 	return c.DynamicTTL(ctx, key, value)
 }
 
+func (c *Chain[K, V]) Unwrap() any {
+	return c.Cache
+}
+
 var _ StringCache = (*chains[string, string])(nil)
 var _ HasStats = (*chains[string, string])(nil)
-var _ NopCache = (*chains[string, string])(nil)
-var _ MemoryCache = (*chains[string, string])(nil)
 
 type chains[K comparable, V any] struct {
 	caches []*Chain[K, V]
 }
 
-func (c *chains[K, V]) Nop() bool {
-	for _, item := range c.caches {
-		if !item.Nop() {
-			return false
-		}
-	}
-	return true
-}
-
-func (c *chains[K, V]) IsMemory() bool {
-	for _, item := range c.caches {
-		if item.IsMemory() {
-			return true
-		}
-	}
-	return false
+func (c *chains[K, V]) Unwrap() []any {
+	return xslice.ToAnys(c.caches)
 }
 
 func (c *chains[K, V]) Has(ctx context.Context, key K) (has bool, err error) {

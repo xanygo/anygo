@@ -97,6 +97,7 @@ func (s *StatusError) ErrCode() int64 {
 
 type TemporaryFailure interface {
 	Temporary() bool
+	error
 }
 
 func IsTemporary(err error) bool {

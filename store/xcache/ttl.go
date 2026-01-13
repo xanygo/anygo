@@ -10,8 +10,6 @@ import (
 )
 
 var _ HasTTL[string, string] = (*TTLWrapper[string, string])(nil)
-var _ Cache[string, string] = (*TTLWrapper[string, string])(nil)
-var _ NopCache = (*TTLWrapper[string, string])(nil)
 
 // TTLWrapper 用于对缓存的 TTL 进行动态调整的工具类
 //
@@ -31,8 +29,8 @@ type TTLWrapper[K comparable, V any] struct {
 	Dynamic func(ctx context.Context, k K, v V, ttl time.Duration) time.Duration
 }
 
-func (tw *TTLWrapper[K, V]) Nop() bool {
-	return IsNop(tw.Cache)
+func (tw *TTLWrapper[K, V]) Unwrap() any {
+	return tw.Cache
 }
 
 func (tw *TTLWrapper[K, V]) CacheTTL(ctx context.Context, key K, value V) time.Duration {
