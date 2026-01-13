@@ -19,6 +19,13 @@ const (
 	TriFalse                 // 状态：false
 )
 
+func TriStateBool(ok bool) TriState {
+	if ok {
+		return TriTrue
+	}
+	return TriFalse
+}
+
 // TriState 包含 null、true、false 3 个状态
 type TriState int8
 

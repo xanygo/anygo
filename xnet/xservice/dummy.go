@@ -6,9 +6,11 @@ package xservice
 
 import (
 	"context"
+	"time"
 
 	"github.com/xanygo/anygo"
 	"github.com/xanygo/anygo/ds/xsync"
+	"github.com/xanygo/anygo/ds/xtype"
 	"github.com/xanygo/anygo/xnet"
 )
 
@@ -28,11 +30,11 @@ func NewDummyService(name string) Service {
 	cfg := &Config{
 		Name:           name,
 		ConnectRetry:   1,
-		ConnectTimeout: 5000,
-		WriteTimeout:   10000,
-		ReadTimeout:    45000,
+		ConnectTimeout: xtype.Duration(5000 * time.Millisecond),
+		WriteTimeout:   xtype.Duration(10000 * time.Millisecond),
+		ReadTimeout:    xtype.Duration(45000 * time.Millisecond),
 		Retry:          2,
-		WorkerCycle:    "24h",
+		WorkerCycle:    xtype.Duration(24 * time.Hour),
 		DownStream: DownStreamPart{
 			Address: []string{xnet.DummyAddress},
 		},

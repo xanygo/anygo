@@ -22,7 +22,7 @@ var _ xcache.StringCache = (*Redis)(nil)
 var _ xcache.MCache[string, string] = (*Redis)(nil)
 
 type Redis struct {
-	KeyPrefix string
+	KeyPrefix string // 缓存 key 的前缀，可选
 	Client    *xredis.Client
 
 	readCnt   atomic.Uint64
@@ -85,6 +85,7 @@ func (r *Redis) loadScript(ctx context.Context) (string, error) {
 	return ret, err
 }
 
+// MSet 使用 lua 脚本实现的批量 Set 功能
 func (r *Redis) MSet(ctx context.Context, data map[string]string, ttl time.Duration) error {
 	r.writeCnt.Add(uint64(len(data)))
 	tm := time.Now().Add(ttl)

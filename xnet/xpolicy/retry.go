@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xctx"
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/ds/xtype"
@@ -37,6 +38,9 @@ var defaultRetry = &xsync.OnceInit[*Retry]{
 						return xtype.TriTrue
 					}
 					return xtype.TriFalse
+				}
+				if ok, found := IdempotentFromCtx(ctx); found {
+					return xtype.TriStateBool(ok)
 				}
 				return xtype.TriNull
 			},
@@ -141,4 +145,15 @@ func FullJitter(base time.Duration, max time.Duration) func(attempt int) time.Du
 		}
 		return time.Duration(rand.Int64N(int64(exp)))
 	}
+}
+
+var ctxKeyIdempotent = xctx.NewKey()
+
+func ContextWithIdempotent(ctx context.Context, ok bool) context.Context {
+	return context.WithValue(ctx, ctxKeyIdempotent, ok)
+}
+
+func IdempotentFromCtx(ctx context.Context) (idempotent bool, found bool) {
+	val, ok := ctx.Value(ctxKeyIdempotent).(bool)
+	return val, ok
 }

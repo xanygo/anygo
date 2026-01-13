@@ -15,6 +15,7 @@ import (
 	"github.com/xanygo/anygo/ds/xbus"
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xpool"
+	"github.com/xanygo/anygo/ds/xtype"
 	"github.com/xanygo/anygo/xcfg"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xnet/xbalance"
@@ -26,17 +27,17 @@ import (
 type Config struct {
 	Name string `json:"Name" yaml:"Name" validator:"required"`
 
-	Timeout          int64  `json:"Timeout"   yaml:"Timeout"`                 // 整体超时时间,可选，单位毫秒
-	Retry            int    `json:"Retry"             yaml:"Retry"`           // 重试次数，可选，默认 0
-	ConnectTimeout   int64  `json:"ConnectTimeout"   yaml:"ConnectTimeout"`   // 连接超时,可选，单位毫秒
-	ConnectRetry     int    `json:"ConnectRetry"     yaml:"ConnectRetry"`     // 连接重试次数，默认为 1
-	WriteTimeout     int64  `json:"WriteTimeout"     yaml:"WriteTimeout"`     // 写超时时间，单位毫秒
-	ReadTimeout      int64  `json:"ReadTimeout"      yaml:"ReadTimeout"`      // 读超时时间，单位毫秒
-	HandshakeTimeout int64  `json:"HandshakeTimeout" yaml:"HandshakeTimeout"` // 握手超时时间，单位毫秒
-	Protocol         string `json:"Protocol"         yaml:"Protocol"`         // 交互协议
-	MaxResponseSize  int64  `json:"MaxResponseSize"   yaml:"MaxResponseSize"` // 响应最大限制，可选
-	UseProxy         string `json:"UseProxy" yaml:"UseProxy"`                 // 将另外一个service 当做代理
-	WorkerCycle      string `json:"WorkerCycle"         yaml:"WorkerCycle"`   // 后台任务运行周期，可选，如 "3s"
+	Timeout          xtype.Duration  `json:"Timeout"   yaml:"Timeout"`                 // 整体超时时间,可选，单位毫秒
+	ConnectTimeout   xtype.Duration  `json:"ConnectTimeout"   yaml:"ConnectTimeout"`   // 连接超时,可选，单位毫秒
+	ConnectRetry     int             `json:"ConnectRetry"     yaml:"ConnectRetry"`     // 连接重试次数，默认为 1
+	WriteTimeout     xtype.Duration  `json:"WriteTimeout"     yaml:"WriteTimeout"`     // 写超时时间，单位毫秒
+	ReadTimeout      xtype.Duration  `json:"ReadTimeout"      yaml:"ReadTimeout"`      // 读超时时间，单位毫秒
+	HandshakeTimeout xtype.Duration  `json:"HandshakeTimeout" yaml:"HandshakeTimeout"` // 握手超时时间，单位毫秒
+	Retry            int             `json:"Retry"             yaml:"Retry"`           // 重试次数，可选，默认 0
+	Protocol         string          `json:"Protocol"         yaml:"Protocol"`         // 交互协议
+	MaxResponseSize  xtype.ByteCount `json:"MaxResponseSize"   yaml:"MaxResponseSize"` // 响应最大限制，可选
+	UseProxy         string          `json:"UseProxy" yaml:"UseProxy"`                 // 将另外一个service 当做代理
+	WorkerCycle      xtype.Duration  `json:"WorkerCycle"         yaml:"WorkerCycle"`   // 后台任务运行周期，可选，如 "3s"
 
 	Proxy      *xproxy.Config     `json:"Proxy"             yaml:"Proxy"`                                         // 当子服务是代理时使用，可选
 	HTTP       *HTTPPart          `json:"HTTP"              yaml:"HTTP"`                                          // HTTP 下游特有配置，可选
@@ -55,12 +56,12 @@ func (c *Config) NeedDecodeExtra() string {
 
 // ConnPoolPart 连接池配置参数
 type ConnPoolPart struct {
-	Name            string `json:"Name" yaml:"Name"`                       // 连接池名称，可选，默认为 Short,可选 Long
-	MaxOpen         int    `json:"MaxOpen" yaml:"MaxOpen"`                 // 最大打开数量,<= 0 为不限制
-	MaxIdle         int    `json:"MaxIdle" yaml:"MaxIdle"`                 // 最大空闲数，应 <= MaxOpen,<=0 为不允许存在 Idle 元素
-	MaxLifeTime     int    `json:"MaxLifeTime" yaml:"MaxLifeTime"`         // 最大使用时长,单位毫秒，超过后将被销毁, <=0 为不限制
-	MaxIdleTime     int    `json:"MaxIdleTime" yaml:"MaxIdleTime"`         // 最大空闲等待时间,单位毫秒，超过后将被销毁, <=0 为不限制
-	MaxPoolIdleTime int    `json:"MaxPoolIdleTime" yaml:"MaxPoolIdleTime"` // 单位毫秒，当超过此时长未被使用后,关闭并清理对应的 Pool,<=0 时使用默认值 10 minute
+	Name            string         `json:"Name" yaml:"Name"`                       // 连接池名称，可选，默认为 Short,可选 Long
+	MaxOpen         int            `json:"MaxOpen" yaml:"MaxOpen"`                 // 最大打开数量,<= 0 为不限制
+	MaxIdle         int            `json:"MaxIdle" yaml:"MaxIdle"`                 // 最大空闲数，应 <= MaxOpen,<=0 为不允许存在 Idle 元素
+	MaxLifeTime     xtype.Duration `json:"MaxLifeTime" yaml:"MaxLifeTime"`         // 最大使用时长,单位毫秒，超过后将被销毁, <=0 为不限制
+	MaxIdleTime     xtype.Duration `json:"MaxIdleTime" yaml:"MaxIdleTime"`         // 最大空闲等待时间,单位毫秒，超过后将被销毁, <=0 为不限制
+	MaxPoolIdleTime xtype.Duration `json:"MaxPoolIdleTime" yaml:"MaxPoolIdleTime"` // 单位毫秒，当超过此时长未被使用后,关闭并清理对应的 Pool,<=0 时使用默认值 10 minute
 }
 
 func (cp *ConnPoolPart) GetName() string {
@@ -77,9 +78,9 @@ func (cp *ConnPoolPart) GetOption() xpool.Option {
 	return xpool.Option{
 		MaxOpen:         cp.MaxOpen,
 		MaxIdle:         cp.MaxIdle,
-		MaxLifeTime:     time.Duration(cp.MaxLifeTime) * time.Millisecond,
-		MaxIdleTime:     time.Duration(cp.MaxIdleTime) * time.Millisecond,
-		MaxPoolIdleTime: time.Duration(cp.MaxPoolIdleTime) * time.Millisecond,
+		MaxLifeTime:     cp.MaxLifeTime.Duration(),
+		MaxIdleTime:     cp.MaxIdleTime.Duration(),
+		MaxPoolIdleTime: cp.MaxPoolIdleTime.Duration(),
 	}
 }
 
@@ -120,29 +121,29 @@ func (c *Config) Parser(idc string) (Service, error) {
 	}
 	opt := xoption.NewDynamic()
 	if c.Timeout > 0 {
-		xoption.SetTimeout(opt, time.Duration(c.Timeout)*time.Millisecond)
+		xoption.SetTimeout(opt, c.Timeout.Duration())
 	}
 
 	if c.ConnectTimeout > 0 {
-		xoption.SetConnectTimeout(opt, time.Duration(c.ConnectTimeout)*time.Millisecond)
+		xoption.SetConnectTimeout(opt, c.ConnectTimeout.Duration())
 	}
 	if c.ConnectRetry > 0 {
 		xoption.SetConnectRetry(opt, c.ConnectRetry)
 	}
 	if c.WriteTimeout > 0 {
-		xoption.SetWriteTimeout(opt, time.Duration(c.WriteTimeout)*time.Millisecond)
+		xoption.SetWriteTimeout(opt, c.WriteTimeout.Duration())
 	}
 	if c.ReadTimeout > 0 {
-		xoption.SetReadTimeout(opt, time.Duration(c.ReadTimeout)*time.Millisecond)
+		xoption.SetReadTimeout(opt, c.ReadTimeout.Duration())
 	}
 	if c.HandshakeTimeout > 0 {
-		xoption.SetHandshakeTimeout(opt, time.Duration(c.HandshakeTimeout)*time.Millisecond)
+		xoption.SetHandshakeTimeout(opt, c.HandshakeTimeout.Duration())
 	}
 	if c.Retry > 0 {
 		xoption.SetRetry(opt, c.Retry)
 	}
 	if c.MaxResponseSize > 0 {
-		xoption.SetMaxResponseSize(opt, c.MaxResponseSize)
+		xoption.SetMaxResponseSize(opt, int64(c.MaxResponseSize))
 	}
 	if c.ConnPool != nil {
 		SetOptConnPool(opt, c.ConnPool)
@@ -164,11 +165,8 @@ func (c *Config) Parser(idc string) (Service, error) {
 		}
 		xoption.SetUseProxy(opt, c.UseProxy)
 	}
-	if c.WorkerCycle != "" {
-		cycle, err := time.ParseDuration(c.WorkerCycle)
-		if err != nil {
-			return nil, fmt.Errorf("invalid WorkerCycle=%q for service %q", c.WorkerCycle, c.Name)
-		}
+
+	if cycle := c.WorkerCycle.Duration(); cycle > 0 {
 		if cycle < 100*time.Millisecond {
 			return nil, fmt.Errorf("invalid WorkerCycle=%q for service %q", c.WorkerCycle, c.Name)
 		}

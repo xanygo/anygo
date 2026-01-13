@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/ds/xctx"
+	"github.com/xanygo/anygo/ds/xhash"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xcodec"
@@ -245,7 +246,7 @@ func (ci CacheClient) getCacheKey() string {
 	if ci.Key != "" {
 		return ci.getService() + "|" + ci.Request.Method + "|" + ci.Key
 	}
-	return ci.getService() + "|" + ci.Request.Method + "|" + ci.Request.URL.String()
+	return xhash.Md5(ci.getService() + "|" + ci.Request.Method + "|" + ci.Request.URL.String())
 }
 
 // DeleteCache 删除此请求对应的缓存
@@ -296,7 +297,7 @@ func (ci CacheClient) doPreFlush(ctx context.Context, decoder xcodec.Decoder, re
 	}
 
 	// 只需要有一个PreFlush 的操作，避免同时发起多个相同请求
-	if _, loaded := preFlushDB.LoadOrStore(cacheKey, true); loaded {
+	if _, loaded := preFlushDB.LoadOrStore(cacheKey, struct{}{}); loaded {
 		return
 	}
 

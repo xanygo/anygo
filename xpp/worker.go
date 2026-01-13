@@ -112,7 +112,8 @@ type CycleWorker struct {
 	Do         func(ctx context.Context) error // 必填，业务逻辑
 	Cycle      time.Duration                   // 可选，运行周期，默认为 5秒
 	WorkerName string                          // 必填，名称
-	FirstSync  bool                            // 调用 Start 时，是否同步运行并返回结果
+
+	FirstSync bool // 调用 Start 时，是否同步运行并返回结果
 
 	running atomic.Bool
 	cnt     atomic.Int64
@@ -141,7 +142,7 @@ func (c *CycleWorker) Start(ctx context.Context) error {
 	ctx, c.stop = context.WithCancel(ctx)
 	c.mux.Unlock()
 
-	if c.FirstSync {
+	if c.cnt.Load() == 0 && c.FirstSync {
 		err := c.executeDo(ctx)
 		if err != nil {
 			c.running.Store(false)
