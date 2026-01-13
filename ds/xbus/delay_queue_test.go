@@ -17,11 +17,9 @@ func TestDelayQueue(t *testing.T) {
 		var q xbus.DelayQueue[int]
 		defer q.Stop()
 
-		go func() {
-			for i := 1; i < 10; i++ {
-				q.Push(i)
-			}
-		}()
+		for i := 1; i < 10; i++ {
+			q.Push(i)
+		}
 		for i := 1; i < 10; i++ {
 			v, err := q.PopWait()
 			xt.NoError(t, err)
@@ -35,11 +33,9 @@ func TestDelayQueue(t *testing.T) {
 			Delay: 100 * time.Millisecond,
 		}
 		defer q.Stop()
-		go func() {
-			for i := 1; i < 10; i++ {
-				q.Push(i)
-			}
-		}()
+		for i := 1; i < 10; i++ {
+			q.Push(i)
+		}
 		now := time.Now()
 		for i := 1; i < 10; i++ {
 			v, err := q.PopWait()
