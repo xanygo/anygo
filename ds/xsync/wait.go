@@ -83,14 +83,15 @@ func (w *WaitGroup) Wait() error {
 //
 // 所有方法都会安全的运行，会自动捕捉 panic 作为 error 返回
 type WaitFirst struct {
-	sem     chan error
-	once    sync.Once
-	done    chan struct{}
-	fnExist atomic.Bool
+	sem       chan error
+	initOnce  sync.Once
+	closeOnce sync.Once
+	done      chan struct{}
+	fnExist   atomic.Bool
 }
 
 func (w *WaitFirst) init() {
-	w.once.Do(func() {
+	w.initOnce.Do(func() {
 		w.sem = make(chan error, 1)
 		w.done = make(chan struct{})
 	})
@@ -113,7 +114,9 @@ func (w *WaitFirst) Go(f func()) {
 func (w *WaitFirst) fire(err error) {
 	select {
 	case w.sem <- err:
-		close(w.done)
+		w.closeOnce.Do(func() {
+			close(w.done)
+		})
 	default:
 	}
 }
