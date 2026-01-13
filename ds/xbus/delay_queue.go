@@ -16,9 +16,11 @@ import (
 
 // DelayQueue 全内存的延时队列
 type DelayQueue[V any] struct {
-	Delay    time.Duration // 延迟时长，应该是 >=0 的时长
-	Capacity int           // 队列最大长度，可选，默认为 0-不限制
+	Delay     time.Duration // 延迟时长，应该是 >=0 的时长
+	Capacity  int           // 队列最大长度，可选，默认为 0-不限制
+	OutBuffer int           // 出栈队列 buffer 长度，可选
 
+	cnt       atomic.Int64
 	mu        sync.Mutex
 	items     delayItemHeap[V]
 	wakeup    chan struct{}
@@ -32,7 +34,7 @@ type DelayQueue[V any] struct {
 func (q *DelayQueue[V]) start() {
 	q.startOnce.Do(func() {
 		q.wakeup = make(chan struct{}, 1)
-		q.out = make(chan V, 32)
+		q.out = make(chan V, q.OutBuffer)
 		q.closed = make(chan struct{})
 
 		heap.Init(&q.items)
@@ -137,6 +139,7 @@ func (q *DelayQueue[V]) Push(value V) bool {
 		return false
 	}
 	heap.Push(&q.items, item)
+	q.cnt.Add(1)
 	q.mu.Unlock()
 
 	select {
@@ -152,6 +155,7 @@ func (q *DelayQueue[V]) TryPop() (v V, ok bool) {
 
 	select {
 	case v = <-q.out:
+		q.cnt.Add(-1)
 		return v, true
 	default:
 		return v, false
@@ -167,6 +171,7 @@ func (q *DelayQueue[V]) Pop(ctx context.Context) (v V, err error) {
 
 	select {
 	case v = <-q.out:
+		q.cnt.Add(-1)
 		return v, nil
 	case <-ctx.Done():
 		return v, ctx.Err()
@@ -177,9 +182,7 @@ func (q *DelayQueue[V]) Pop(ctx context.Context) (v V, err error) {
 
 // Len 返回队列里总共的元素个数
 func (q *DelayQueue[V]) Len() int {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-	return q.items.Len()
+	return int(q.cnt.Load())
 }
 
 func (q *DelayQueue[V]) Stop() {
@@ -189,15 +192,15 @@ func (q *DelayQueue[V]) Stop() {
 	})
 }
 
-// DeleteByFunc 删除，会整体加锁
-func (q *DelayQueue[V]) DeleteByFunc(f func(v V) bool) int {
+// DeleteByFunc 删除，会整体加锁。若 OutBuffer > 0,在出栈队列里的不会删除
+func (q *DelayQueue[V]) DeleteByFunc(delFn func(v V) bool) int {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	// 先统计删除元素数量
 	var count int
 	for _, it := range q.items {
-		if f(it.value) {
+		if delFn(it.value) {
 			count++
 		}
 	}
@@ -209,7 +212,9 @@ func (q *DelayQueue[V]) DeleteByFunc(f func(v V) bool) int {
 	if count*2 >= len(q.items) {
 		newItems := make(delayItemHeap[V], 0, len(q.items)-count)
 		for _, it := range q.items {
-			if !f(it.value) {
+			if delFn(it.value) {
+				q.cnt.Add(-1)
+			} else {
 				newItems = append(newItems, it)
 			}
 		}
@@ -220,7 +225,8 @@ func (q *DelayQueue[V]) DeleteByFunc(f func(v V) bool) int {
 
 	var i int
 	for i < len(q.items) {
-		if f(q.items[i].value) {
+		if delFn(q.items[i].value) {
+			q.cnt.Add(-1)
 			heap.Remove(&q.items, i)
 			// heap.Remove 会将最后一个元素放到 i 位置，所以 i 不变
 			continue
