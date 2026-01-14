@@ -5,8 +5,8 @@
 package xbus
 
 import (
-	"container/heap"
 	"context"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -22,7 +22,7 @@ type DelayQueue[V any] struct {
 
 	cnt       atomic.Int64
 	mu        sync.Mutex
-	items     delayItemHeap[V]
+	items     []*delayItem[V]
 	wakeup    chan struct{}
 	out       chan V
 	startOnce sync.Once
@@ -36,8 +36,6 @@ func (q *DelayQueue[V]) start() {
 		q.wakeup = make(chan struct{}, 1)
 		q.out = make(chan V, q.OutBuffer)
 		q.closed = make(chan struct{})
-
-		heap.Init(&q.items)
 	})
 	select {
 	case <-q.closed:
@@ -72,7 +70,7 @@ func (q *DelayQueue[V]) run() {
 
 		q.mu.Lock()
 
-		if q.items.Len() == 0 {
+		if len(q.items) == 0 {
 			q.mu.Unlock()
 			select {
 			case <-q.wakeup:
@@ -104,7 +102,15 @@ func (q *DelayQueue[V]) run() {
 			continue
 		}
 
-		heap.Pop(&q.items)
+		q.items = q.items[1:]
+		if cap(q.items) > 1024 {
+			if len(q.items) == 0 {
+				q.items = make([]*delayItem[V], 0, 8)
+			} else if len(q.items)*3 < cap(q.items) {
+				// 使用量明显小于容量，缩容
+				q.items = slices.Clone(q.items)
+			}
+		}
 		q.mu.Unlock()
 
 		select {
@@ -138,7 +144,7 @@ func (q *DelayQueue[V]) Push(value V) bool {
 		q.mu.Unlock()
 		return false
 	}
-	heap.Push(&q.items, item)
+	q.items = append(q.items, item)
 	q.cnt.Add(1)
 	q.mu.Unlock()
 
@@ -197,77 +203,22 @@ func (q *DelayQueue[V]) DeleteByFunc(delFn func(v V) bool) int {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	// 先统计删除元素数量
 	var count int
+
+	newItems := make([]*delayItem[V], 0, len(q.items))
 	for _, it := range q.items {
 		if delFn(it.value) {
 			count++
-		}
-	}
-
-	if count == 0 {
-		return 0
-	}
-
-	if count*2 >= len(q.items) {
-		newItems := make(delayItemHeap[V], 0, len(q.items)-count)
-		for _, it := range q.items {
-			if delFn(it.value) {
-				q.cnt.Add(-1)
-			} else {
-				newItems = append(newItems, it)
-			}
-		}
-		q.items = newItems
-		heap.Init(&q.items)
-		return count
-	}
-
-	var i int
-	for i < len(q.items) {
-		if delFn(q.items[i].value) {
 			q.cnt.Add(-1)
-			heap.Remove(&q.items, i)
-			// heap.Remove 会将最后一个元素放到 i 位置，所以 i 不变
-			continue
+		} else {
+			newItems = append(newItems, it)
 		}
-		i++
 	}
-
+	q.items = newItems
 	return count
 }
 
 type delayItem[V any] struct {
 	value   V
 	readyAt time.Time
-	index   int
-}
-
-type delayItemHeap[V any] []*delayItem[V]
-
-func (h delayItemHeap[V]) Len() int { return len(h) }
-
-func (h delayItemHeap[V]) Less(i, j int) bool {
-	return h[i].readyAt.Before(h[j].readyAt)
-}
-
-func (h delayItemHeap[V]) Swap(i, j int) {
-	h[i], h[j] = h[j], h[i]
-	h[i].index = i
-	h[j].index = j
-}
-
-func (h *delayItemHeap[V]) Push(x any) {
-	it := x.(*delayItem[V])
-	it.index = len(*h)
-	*h = append(*h, it)
-}
-
-func (h *delayItemHeap[V]) Pop() any {
-	old := *h
-	n := len(old)
-	it := old[n-1]
-	old[n-1] = nil
-	*h = old[:n-1]
-	return it
 }

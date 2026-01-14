@@ -38,12 +38,14 @@ func TestDelayQueue(t *testing.T) {
 		defer q.Stop()
 		go func() {
 			for i := 1; i < 10; i++ {
-				q.Push(i)
+				ok := q.Push(i)
+				xt.True(t, ok)
 			}
 		}()
 		now := time.Now()
 		for i := 1; i < 10; i++ {
 			v, err := q.PopWait()
+			// t.Logf("PopWait <%d: %d, %v>", i, v, err)
 			xt.NoError(t, err)
 			xt.Equal(t, i, v)
 			delay := time.Since(now)
