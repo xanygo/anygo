@@ -38,9 +38,9 @@ var (
 // 定义为默认值，方便全局调整
 var (
 	DefaultConnectRetry           = 1                // 默认网络连接次数
-	DefaultConnectTimeout         = 10 * time.Second // 默认连接超时
+	DefaultConnectTimeout         = 5 * time.Second  // 默认连接超时
 	DefaultWriteTimeout           = 5 * time.Second  // 默认网络写超时
-	DefaultReadTimeout            = 5 * time.Second  // 默认网络读超时
+	DefaultReadTimeout            = 10 * time.Second // 默认网络读超时
 	DefaultHandshakeTimeout       = 5 * time.Second  // 默认 rpc 协议层面握手超时
 	DefaultRetry                  = 1                // RPC 默认重试次数
 	DefaultWorkerCycle            = 10 * time.Second // 默认后台 worker 运行间隔/周期

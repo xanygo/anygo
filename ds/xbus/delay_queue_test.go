@@ -18,11 +18,13 @@ func TestDelayQueue(t *testing.T) {
 		defer q.Stop()
 		go func() {
 			for i := 1; i < 10; i++ {
-				q.Push(i)
+				ok := q.Push(i)
+				xt.True(t, ok)
 			}
 		}()
 		for i := 1; i < 10; i++ {
 			v, err := q.PopWait()
+			// t.Logf("PopWait <%d: %d, %v>", i, v, err)
 			xt.NoError(t, err)
 			xt.Equal(t, i, v)
 		}
@@ -60,11 +62,13 @@ func TestDelayQueue(t *testing.T) {
 		deleted := q.DeleteByFunc(func(v int) bool {
 			return v%2 == 0
 		})
-		xt.Equal(t, 5, deleted)
+		xt.LessOrEqual(t, deleted, 5) // 可能有一个元素已经在 out的队列了
 		xt.Less(t, q.Len(), 10)
 		for i := 0; i < 10; i++ {
-			if v, ok := q.TryPop(); ok {
-				xt.False(t, v%5 == 0)
+			v, ok := q.TryPop()
+			// t.Logf("TryPop <%d: %d, %v>", i, v, ok)
+			if ok && v > 0 { // 0 在删除前可能已经在 out 队列
+				xt.False(t, v%2 == 0)
 			}
 		}
 	})
@@ -79,10 +83,12 @@ func TestDelayQueue(t *testing.T) {
 		deleted := q.DeleteByFunc(func(v int) bool {
 			return v%5 == 0
 		})
-		xt.Equal(t, 2, deleted)
+		xt.LessOrEqual(t, deleted, 2) // 可能有一个元素已经在 out 的队列了
 		xt.Less(t, q.Len(), 10)
 		for i := 0; i < 10; i++ {
-			if v, ok := q.TryPop(); ok {
+			v, ok := q.TryPop()
+			// t.Logf("TryPop <%d: %d, %v>", i, v, ok)
+			if ok && v > 0 { // 0 在删除前可能已经在 out 队列
 				xt.False(t, v%5 == 0)
 			}
 		}

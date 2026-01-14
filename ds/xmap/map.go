@@ -335,3 +335,16 @@ func Range[K comparable, V any](m any, fn func(key K, val V) bool) int {
 	}
 	return cnt
 }
+
+// Rekey 使用回调函数处理 map 的 key，并返回新的只有新 key 的 map
+func Rekey[Map ~map[K]V, K comparable, V any](m Map, fn func(key K) K) Map {
+	if m == nil {
+		return nil
+	}
+	m1 := make(Map, len(m))
+	for k, v := range m {
+		k1 := fn(k)
+		m1[k1] = v
+	}
+	return m1
+}

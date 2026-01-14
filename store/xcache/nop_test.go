@@ -48,6 +48,12 @@ func TestIsNop(t *testing.T) {
 			Cache: c2,
 		}
 		xt.False(t, xcache.IsNop(c4))
+
+		c5 := xcache.NewMemoryLIFO[string, string](1)
+		xt.False(t, xcache.IsNop(c5))
+
+		c6 := &xcache.Transformer[net.IP]{}
+		xt.False(t, xcache.IsNop(c6))
 	})
 
 	t.Run("chain", func(t *testing.T) {

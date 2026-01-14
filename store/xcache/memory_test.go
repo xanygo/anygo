@@ -115,6 +115,9 @@ func TestIsMemory(t *testing.T) {
 			Cache: c2,
 		}
 		xt.True(t, xcache.IsMemory(c4))
+
+		c5 := xcache.NewMemoryLIFO[string, string](1)
+		xt.True(t, xcache.IsMemory(c5))
 	})
 
 	t.Run("nop not memory", func(t *testing.T) {
@@ -133,6 +136,9 @@ func TestIsMemory(t *testing.T) {
 			Cache: c2,
 		}
 		xt.False(t, xcache.IsMemory(c4))
+
+		c5 := &xcache.Transformer[net.IP]{}
+		xt.False(t, xcache.IsMemory(c5))
 	})
 
 	t.Run("not memory", func(t *testing.T) {

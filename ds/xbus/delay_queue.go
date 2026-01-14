@@ -51,7 +51,7 @@ func (q *DelayQueue[V]) start() {
 }
 
 func (q *DelayQueue[V]) run() {
-	exitTimer := time.NewTimer(10 * time.Second) // 空值此后台携程的最大运行时长
+	exitTimer := time.NewTimer(10 * time.Second) // 控制此后台携程的最大运行时长
 	var waitTimer *time.Timer
 	defer func() {
 		q.bgRunning.Store(false)
@@ -87,14 +87,14 @@ func (q *DelayQueue[V]) run() {
 		it := q.items[0]
 		now := time.Now()
 
-		if it.readyAt.After(now) { // item 还没有到底延迟的时间
-			d := it.readyAt.Sub(now) // 需要等待此时长，才可以被 POP
+		wait := it.readyAt.Sub(now) // 需要等待此时长，才可以被 POP
+		if wait > 0 {               // item 还没有到底延迟的时间
 			q.mu.Unlock()
 
 			if waitTimer == nil {
-				waitTimer = time.NewTimer(d)
+				waitTimer = time.NewTimer(wait)
 			} else {
-				waitTimer.Reset(d)
+				waitTimer.Reset(wait)
 			}
 
 			select {

@@ -23,12 +23,12 @@ type NopCache interface {
 	Nop() bool
 }
 
-// IsNop 判断是否是一个空的 Cache,
-// 若是 Chains 这种包含多个子 Cache 对象的，必须则判断是否所有子 Cache 对象都是 Nop
+// IsNop 判断是否是一个空的 Cache(实现了 NopCache 并且 Nop() 方法返回 true)。
+// 若是 Chains 这种包含多个子 Cache 对象的，则判断所有子 Cache 对象都是 NopCache
 func IsNop(c any) bool {
 	for {
 		if c == nil {
-			return true
+			return false
 		}
 		if nl, ok := c.(NopCache); ok {
 			return nl.Nop()
