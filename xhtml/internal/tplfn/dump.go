@@ -6,10 +6,12 @@ package tplfn
 
 import (
 	"bytes"
+	"cmp"
 	"fmt"
 	"html/template"
 	"io"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 	"unicode"
@@ -74,12 +76,12 @@ func printValue(v reflect.Value, w io.Writer, indent int, prefix string) {
 		nameFmt := fmt.Sprintf("%%-%ds", maxLen+3)
 		for i := 0; i < v.NumField(); i++ {
 			pp := fmt.Sprintf("<span style='color:gray'>[%d]</span><span style='color:red'>"+nameFmt+"</span>", i, v.Type().Field(i).Name)
-			printValue(v.Field(i), w, indent, pp)
+			printValue(v.Field(i), w, indent+2, pp)
 		}
 	case reflect.Array, reflect.Slice:
 		_, _ = fmt.Fprintf(w, "\t(len=%d)\n", v.Len())
 		for i := 0; i < v.Len(); i++ {
-			printValue(v.Index(i), w, indent+1, fmt.Sprintf("<span style='color:gray'>[%d]</span>", i))
+			printValue(v.Index(i), w, indent, fmt.Sprintf("<span style='color:gray'>[%d]</span>", i))
 		}
 	case reflect.Map:
 		// tt := "<span style='color:blue'>" + strings.ReplaceAll(v.Type().String(), "interface {}", "any") + "</span>"
@@ -87,17 +89,20 @@ func printValue(v reflect.Value, w io.Writer, indent int, prefix string) {
 		subIndentation := indentation[:len(indentation)*4/5]
 
 		bw := xsync.GetBytesBuffer()
-
-		for idx, key := range v.MapKeys() {
-			_, _ = fmt.Fprintf(w, "%s  [%d]key    ", subIndentation, idx)
+		keys := v.MapKeys()
+		slices.SortFunc(keys, func(a, b reflect.Value) int {
+			return cmp.Compare(a.String(), b.String())
+		})
+		for idx, key := range keys {
+			_, _ = fmt.Fprintf(w, "%s  (%d)key    ", subIndentation, idx)
 			bw.Reset()
-			printValue(key, bw, 2+indent, "")
+			printValue(key, bw, indent+2, "")
 			w.Write(bytes.TrimLeftFunc(bw.Bytes(), unicode.IsSpace))
 
-			_, _ = fmt.Fprintf(w, "%s  [%d]value  ", subIndentation, idx)
+			_, _ = fmt.Fprintf(w, "%s  (%d)value  ", subIndentation, idx)
 
 			bw.Reset()
-			printValue(v.MapIndex(key), bw, 2+indent, "")
+			printValue(v.MapIndex(key), bw, indent+2, "")
 			w.Write(bytes.TrimLeftFunc(bw.Bytes(), unicode.IsSpace))
 
 			w.Write([]byte("\n"))
@@ -113,7 +118,7 @@ func printValue(v reflect.Value, w io.Writer, indent int, prefix string) {
 	default:
 		if v.CanInterface() {
 			vvr := reflect.ValueOf(v.Interface())
-			printValue(vvr, w, indent+4, "")
+			printValue(vvr, w, indent+2, "")
 		} else {
 			_, _ = fmt.Fprintf(w, "\t<span>%v</span>\n", v)
 		}

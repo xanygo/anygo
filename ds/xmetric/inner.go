@@ -157,7 +157,7 @@ func (s *span) NewChild(ctx context.Context, name string) (context.Context, Span
 		return ctx, emptySpan
 	}
 	child := newSpan(ctx, name, s.onEnd)
-	s.children.Add(child)
+	s.children.Push(child)
 	ctx = context.WithValue(ctx, keySpan, child)
 	return ctx, child
 }

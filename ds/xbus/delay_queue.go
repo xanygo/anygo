@@ -6,11 +6,11 @@ package xbus
 
 import (
 	"context"
-	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/xerror"
 )
 
@@ -22,7 +22,7 @@ type DelayQueue[V any] struct {
 
 	cnt       atomic.Int64
 	mu        sync.Mutex
-	items     []*delayItem[V]
+	items     *xslice.Queue[*delayItem[V]]
 	wakeup    chan struct{}
 	out       chan V
 	startOnce sync.Once
@@ -36,6 +36,10 @@ func (q *DelayQueue[V]) start() {
 		q.wakeup = make(chan struct{}, 1)
 		q.out = make(chan V, q.OutBuffer)
 		q.closed = make(chan struct{})
+
+		q.items = &xslice.Queue[*delayItem[V]]{
+			Capacity: q.Capacity,
+		}
 	})
 	select {
 	case <-q.closed:
@@ -70,7 +74,8 @@ func (q *DelayQueue[V]) run() {
 
 		q.mu.Lock()
 
-		if len(q.items) == 0 {
+		it, ok := q.items.First()
+		if !ok { // 队列是空的
 			q.mu.Unlock()
 			select {
 			case <-q.wakeup:
@@ -82,7 +87,6 @@ func (q *DelayQueue[V]) run() {
 			}
 		}
 
-		it := q.items[0]
 		now := time.Now()
 
 		wait := it.readyAt.Sub(now) // 需要等待此时长，才可以被 POP
@@ -102,15 +106,8 @@ func (q *DelayQueue[V]) run() {
 			continue
 		}
 
-		q.items = q.items[1:]
-		if cap(q.items) > 1024 {
-			if len(q.items) == 0 {
-				q.items = make([]*delayItem[V], 0, 8)
-			} else if len(q.items)*3 < cap(q.items) {
-				// 使用量明显小于容量，缩容
-				q.items = slices.Clone(q.items)
-			}
-		}
+		q.items.Discard(1)
+
 		q.mu.Unlock()
 
 		select {
@@ -140,11 +137,10 @@ func (q *DelayQueue[V]) Push(value V) bool {
 		readyAt: time.Now().Add(q.Delay),
 	}
 	q.mu.Lock()
-	if q.Capacity > 0 && len(q.items) >= q.Capacity {
+	if !q.items.Push(item) {
 		q.mu.Unlock()
 		return false
 	}
-	q.items = append(q.items, item)
 	q.cnt.Add(1)
 	q.mu.Unlock()
 
@@ -196,26 +192,6 @@ func (q *DelayQueue[V]) Stop() {
 	q.closeOnce.Do(func() {
 		close(q.closed)
 	})
-}
-
-// DeleteByFunc 删除，会整体加锁。若 OutBuffer > 0,在出栈队列里的不会删除
-func (q *DelayQueue[V]) DeleteByFunc(delFn func(v V) bool) int {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
-	var count int
-
-	newItems := make([]*delayItem[V], 0, len(q.items))
-	for _, it := range q.items {
-		if delFn(it.value) {
-			count++
-			q.cnt.Add(-1)
-		} else {
-			newItems = append(newItems, it)
-		}
-	}
-	q.items = newItems
-	return count
 }
 
 type delayItem[V any] struct {

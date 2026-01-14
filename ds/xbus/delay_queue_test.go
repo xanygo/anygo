@@ -53,46 +53,4 @@ func TestDelayQueue(t *testing.T) {
 		}
 		xt.Equal(t, 0, q.Len())
 	})
-
-	t.Run("delete 1", func(t *testing.T) {
-		q := &xbus.DelayQueue[int]{}
-		defer q.Stop()
-		for i := 0; i < 10; i++ {
-			q.Push(i)
-		}
-		xt.Equal(t, 10, q.Len())
-		deleted := q.DeleteByFunc(func(v int) bool {
-			return v%2 == 0
-		})
-		xt.LessOrEqual(t, deleted, 5) // 可能有一个元素已经在 out的队列了
-		xt.Less(t, q.Len(), 10)
-		for i := 0; i < 10; i++ {
-			v, ok := q.TryPop()
-			// t.Logf("TryPop <%d: %d, %v>", i, v, ok)
-			if ok && v > 0 { // 0 在删除前可能已经在 out 队列
-				xt.False(t, v%2 == 0)
-			}
-		}
-	})
-	t.Run("delete 2", func(t *testing.T) {
-		q := &xbus.DelayQueue[int]{}
-		defer q.Stop()
-
-		for i := 0; i < 10; i++ {
-			q.Push(i)
-		}
-		xt.Equal(t, 10, q.Len())
-		deleted := q.DeleteByFunc(func(v int) bool {
-			return v%5 == 0
-		})
-		xt.LessOrEqual(t, deleted, 2) // 可能有一个元素已经在 out 的队列了
-		xt.Less(t, q.Len(), 10)
-		for i := 0; i < 10; i++ {
-			v, ok := q.TryPop()
-			// t.Logf("TryPop <%d: %d, %v>", i, v, ok)
-			if ok && v > 0 { // 0 在删除前可能已经在 out 队列
-				xt.False(t, v%5 == 0)
-			}
-		}
-	})
 }

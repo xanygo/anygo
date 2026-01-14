@@ -94,13 +94,13 @@ func ExampleJoin() {
 func ExampleNewRing() {
 	r := xslice.NewRing[int](3)
 
-	r.Add(1, 2)
+	r.Push(1, 2)
 	fmt.Println("Values=", r.Values(), "Len=", r.Len()) // Values= [1 2] Len= 2
 
-	r.Add(3, 4)
+	r.Push(3, 4)
 	fmt.Println("Values=", r.Values(), "Len=", r.Len()) // Values= [2 3 4] Len= 3
 
-	r.Add(5)
+	r.Push(5)
 	fmt.Println("Values=", r.Values(), "Len=", r.Len()) // Values= [3 4 5] Len= 3
 
 	fmt.Println("---")
