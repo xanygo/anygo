@@ -65,10 +65,6 @@ func StatusRange(begin int, end int) HandlerFunc {
 
 func DecodeBody(dc xcodec.Decoder, a any) HandlerFunc {
 	return func(ctx context.Context, resp *http.Response) error {
-		status := resp.StatusCode
-		if status < 200 || status >= 500 {
-			return xerror.NewStatusError(int64(status))
-		}
 		defer resp.Body.Close()
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
