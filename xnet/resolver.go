@@ -95,7 +95,7 @@ type CachedResolver struct {
 	// 最后被访问的列表
 	lastVisitLRU xsync.OnceDoValue[*xmap.LRU[string, time.Time]]
 
-	flushTask xpp.SoloTask
+	flushTask xpp.SingletonWorker
 
 	cacheOnce xsync.OnceDoValue[*xcache.Reader[string, []net.IP]]
 }

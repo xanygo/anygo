@@ -17,14 +17,50 @@ func ExampleOnceDoValue_Do() {
 		return num
 	}
 	once := &xsync.OnceDoValue[int]{}
+	fmt.Println("Done:", once.Done())
 	for i := 0; i < 3; i++ {
 		got := once.Do(fn)
 		fmt.Println(got)
 	}
+	fmt.Println("Done:", once.Done())
 	// Output:
+	// Done: false
 	// 1
 	// 1
 	// 1
+	// Done: true
+}
+
+func ExampleOnceDoValue2_Done() {
+	once := &xsync.OnceDoValue[int]{}
+	fmt.Println("Done:", once.Done())
+	got := once.Do(func() int {
+		return 1
+	})
+	fmt.Println("Do:", got)
+	fmt.Println("Done:", once.Done())
+
+	// Output:
+	// Done: false
+	// Do: 1
+	// Done: true
+}
+
+func ExampleOnceDoValue2_DoneValue() {
+	once := &xsync.OnceDoValue[int]{}
+	fmt.Print("DoneValue: ")
+	fmt.Println(once.DoneValue())
+	got := once.Do(func() int {
+		return 1
+	})
+	fmt.Println("Do:", got)
+	fmt.Print("DoneValue: ")
+	fmt.Println(once.DoneValue())
+
+	// Output:
+	// DoneValue: false 0
+	// Do: 1
+	// DoneValue: true 1
 }
 
 func ExampleOnceDoValue2_Do() {

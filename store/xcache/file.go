@@ -467,9 +467,10 @@ func (fc *File[K, V]) checkExpire(fp string) (expired bool, info fs.FileInfo, er
 
 func (fc *File[K, V]) Stats() Stats {
 	return Stats{
-		Read:   fc.readCnt.Load(),
-		Write:  fc.writeCnt.Load(),
-		Delete: fc.deleteCnt.Load(),
-		Hit:    fc.hitCnt.Load(),
+		Capacity: fc.Capacity,
+		Read:     fc.readCnt.Load(),
+		Write:    fc.writeCnt.Load(),
+		Delete:   fc.deleteCnt.Load(),
+		Hit:      fc.hitCnt.Load(),
 	}
 }

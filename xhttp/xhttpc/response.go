@@ -6,14 +6,17 @@ package xhttpc
 
 import (
 	"bufio"
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xrpc"
@@ -81,12 +84,57 @@ func (resp *Response) doLoadFrom(ctx context.Context, req xrpc.Request, node *xn
 	if err != nil {
 		return fmt.Errorf("http.ReadResponse %w", err)
 	}
+	resp.decompress(rr)
 	resp.resp = rr
 	err = resp.Handler(ctx, rr)
 	if err == nil {
 		return nil
 	}
 	return fmt.Errorf("resp.Handler %w", err)
+}
+
+func (resp *Response) decompress(rr *http.Response) {
+	if strings.EqualFold(rr.Header.Get("Content-Encoding"), "gzip") {
+		rr.Body = &gzipReader{body: rr.Body}
+		rr.Header.Del("Content-Encoding")
+		rr.Header.Del("Content-Length")
+		rr.ContentLength = -1
+		rr.Uncompressed = true
+	}
+}
+
+type gzipReader struct {
+	body      io.ReadCloser
+	zr        *gzip.Reader
+	zerr      error
+	closeOnce xsync.OnceDoErr
+}
+
+var errReadOnClosedResBody = errors.New("xhttpc: read on closed response body")
+
+func (gz *gzipReader) Read(p []byte) (n int, err error) {
+	if gz.closeOnce.Done() {
+		return 0, errReadOnClosedResBody
+	}
+	if gz.zr == nil {
+		if gz.zerr == nil {
+			gz.zr, gz.zerr = gzip.NewReader(gz.body)
+		}
+		if gz.zerr != nil {
+			return 0, gz.zerr
+		}
+	}
+
+	if err != nil {
+		return 0, err
+	}
+	return gz.zr.Read(p)
+}
+
+func (gz *gzipReader) Close() error {
+	return gz.closeOnce.Do(func() error {
+		return gz.body.Close()
+	})
 }
 
 func (resp *Response) ErrCode() int64 {

@@ -15,6 +15,11 @@ func TestOnceDoErr(t *testing.T) {
 	var once OnceDoErr
 	var num int
 	for i := 0; i < 3; i++ {
+		if i == 0 {
+			xt.False(t, once.Done())
+		} else {
+			xt.True(t, once.Done())
+		}
 		got := once.Do(func() error {
 			num++
 			return errors.New("hello")
@@ -29,6 +34,11 @@ func TestOnceValueErr(t *testing.T) {
 	var once OnceDoValueErr[string]
 	var num int
 	for i := 0; i < 3; i++ {
+		if i == 0 {
+			xt.False(t, once.Done())
+		} else {
+			xt.True(t, once.Done())
+		}
 		got1, got2 := once.Do(func() (string, error) {
 			num++
 			return "ok", errors.New("hello")

@@ -79,7 +79,7 @@ type simpleGroup[K GroupKey[T], T comparable, V io.Closer] struct {
 	lastUsed map[T]time.Time
 	mux      sync.Mutex
 	creator  GroupFactory[K, T, V]
-	solo     xpp.SoloTask
+	solo     xpp.SingletonWorker
 
 	bgCtx context.Context
 	stop  context.CancelFunc

@@ -17,7 +17,7 @@ type CooldownRunner struct {
 	timer   atomic.Pointer[time.Timer]
 }
 
-// Run 尝试执行，若已经在运行在立即返回，否则，间隔 interval 时长运行一次
+// Run 尝试执行，若没有到达运行条件（冷却时间未到）则立即返回
 // 若传入的 interval<=0 则使用默认值 5 minute
 func (c *CooldownRunner) Run(interval time.Duration, fn func()) {
 	if !c.running.CompareAndSwap(false, true) {

@@ -231,10 +231,11 @@ func (lru *LRU[K, V]) Count() int64 {
 
 func (lru *LRU[K, V]) Stats() Stats {
 	return Stats{
-		Read:   lru.readCnt.Load(),
-		Write:  lru.writeCnt.Load(),
-		Delete: lru.deleteCnt.Load(),
-		Hit:    lru.hitCnt.Load(),
+		Capacity: lru.capacity,
+		Read:     lru.readCnt.Load(),
+		Write:    lru.writeCnt.Load(),
+		Delete:   lru.deleteCnt.Load(),
+		Hit:      lru.hitCnt.Load(),
 	}
 }
 
@@ -470,11 +471,12 @@ func (m *MemoryXIFO[K, V]) Count() int64 {
 
 func (m *MemoryXIFO[K, V]) Stats() Stats {
 	return Stats{
-		Keys:   m.Count(),
-		Read:   m.readCnt.Load(),
-		Write:  m.writeCnt.Load(),
-		Delete: m.deleteCnt.Load(),
-		Hit:    m.hitCnt.Load(),
+		Capacity: m.capacity,
+		Keys:     m.Count(),
+		Read:     m.readCnt.Load(),
+		Write:    m.writeCnt.Load(),
+		Delete:   m.deleteCnt.Load(),
+		Hit:      m.hitCnt.Load(),
 	}
 }
 

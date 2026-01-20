@@ -7,13 +7,41 @@ package xsync
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 )
+
+type Once struct {
+	_    noCopy
+	done atomic.Bool
+	m    sync.Mutex
+}
+
+func (o *Once) Do(f func()) {
+	if !o.done.Load() {
+		o.doSlow(f)
+	}
+}
+
+func (o *Once) doSlow(f func()) {
+	o.m.Lock()
+	defer o.m.Unlock()
+	if !o.done.Load() {
+		defer o.done.Store(true)
+		f()
+	}
+}
+
+// Done 返回是否已经执行的状态
+func (o *Once) Done() bool {
+	return o.done.Load()
+}
 
 type OnceDoErr = OnceDoValue[error]
 
 type OnceDoValue[T any] struct {
+	_     noCopy
 	value T
-	once  sync.Once
+	once  Once
 }
 
 func (one *OnceDoValue[T]) Do(fn func() T) T {
@@ -23,10 +51,22 @@ func (one *OnceDoValue[T]) Do(fn func() T) T {
 	return one.value
 }
 
+func (one *OnceDoValue[T]) Done() bool {
+	return one.once.Done()
+}
+
+func (one *OnceDoValue[T]) DoneValue() (ok bool, value T) {
+	if one.once.Done() {
+		return true, one.value
+	}
+	return false, value
+}
+
 type OnceDoValue2[M any, N any] struct {
+	_      noCopy
 	value1 M
 	Value2 N
-	once   sync.Once
+	once   Once
 }
 
 func (one *OnceDoValue2[M, N]) Do(fn func() (M, N)) (M, N) {
@@ -36,10 +76,22 @@ func (one *OnceDoValue2[M, N]) Do(fn func() (M, N)) (M, N) {
 	return one.value1, one.Value2
 }
 
+func (one *OnceDoValue2[M, N]) Done() bool {
+	return one.once.Done()
+}
+
+func (one *OnceDoValue2[M, N]) DoneValue() (ok bool, m M, n N) {
+	if one.once.Done() {
+		return true, one.value1, one.Value2
+	}
+	return false, m, n
+}
+
 type OnceDoValueErr[T any] struct {
+	_     noCopy
 	value T
 	err   error
-	once  sync.Once
+	once  Once
 }
 
 func (one *OnceDoValueErr[T]) Do(fn func() (T, error)) (T, error) {
@@ -49,11 +101,23 @@ func (one *OnceDoValueErr[T]) Do(fn func() (T, error)) (T, error) {
 	return one.value, one.err
 }
 
+func (one *OnceDoValueErr[T]) Done() bool {
+	return one.once.Done()
+}
+
+func (one *OnceDoValueErr[T]) DoneValue() (ok bool, v T, err error) {
+	if one.once.Done() {
+		return true, one.value, one.err
+	}
+	return false, v, nil
+}
+
 type OnceDoValue3[A any, B any, C any] struct {
+	_      noCopy
 	value1 A
 	Value2 B
 	Value3 C
-	once   sync.Once
+	once   Once
 }
 
 func (one *OnceDoValue3[A, B, C]) Do(fn func() (A, B, C)) (A, B, C) {
@@ -63,12 +127,24 @@ func (one *OnceDoValue3[A, B, C]) Do(fn func() (A, B, C)) (A, B, C) {
 	return one.value1, one.Value2, one.Value3
 }
 
+func (one *OnceDoValue3[A, B, C]) Done() bool {
+	return one.once.Done()
+}
+
+func (one *OnceDoValue3[A, B, C]) DoneValue() (ok bool, a A, b B, c C) {
+	if one.once.Done() {
+		return true, one.value1, one.Value2, one.Value3
+	}
+	return false, a, b, c
+}
+
 type OnceDoValue4[A any, B any, C any, D any] struct {
+	_      noCopy
 	value1 A
 	Value2 B
 	Value3 C
 	Value4 D
-	once   sync.Once
+	once   Once
 }
 
 func (one *OnceDoValue4[A, B, C, D]) Do(fn func() (A, B, C, D)) (A, B, C, D) {
@@ -76,6 +152,17 @@ func (one *OnceDoValue4[A, B, C, D]) Do(fn func() (A, B, C, D)) (A, B, C, D) {
 		one.value1, one.Value2, one.Value3, one.Value4 = fn()
 	})
 	return one.value1, one.Value2, one.Value3, one.Value4
+}
+
+func (one *OnceDoValue4[A, B, C, D]) Done() bool {
+	return one.once.Done()
+}
+
+func (one *OnceDoValue4[A, B, C, D]) DoneValue() (ok bool, a A, b B, c C, d D) {
+	if one.once.Done() {
+		return true, one.value1, one.Value2, one.Value3, one.Value4
+	}
+	return false, a, b, c, d
 }
 
 func OnceValue[T any](fn func() T) func() T {

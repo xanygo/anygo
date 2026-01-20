@@ -26,11 +26,12 @@ type (
 
 // Stats 统计信息
 type Stats struct {
-	Keys   int64  // 个数
-	Read   uint64 // 读取的 key 的 总数量，包括 GET 和 MGet
-	Write  uint64
-	Delete uint64
-	Hit    uint64
+	Capacity int    // 最多缓存 keys 个数（近似，实际可能会超出），部分 cache 有
+	Keys     int64  // 个数
+	Read     uint64 // 读取的 key 的 总数量，包括 GET 和 MGet
+	Write    uint64
+	Delete   uint64
+	Hit      uint64
 }
 
 func (s Stats) String() string {
