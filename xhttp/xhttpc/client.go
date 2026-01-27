@@ -103,7 +103,7 @@ func PostJSON(ctx context.Context, service any, url string, body any, handler Ha
 
 var ctxKeySkipCache = xctx.NewKey()
 
-// SkipCache 在 context 里设置让 CacheClient 是否强制跳过缓存
+// SkipCache 在 context 里设置让 CachedClient 是否强制跳过缓存
 func SkipCache(ctx context.Context, skip bool) context.Context {
 	return context.WithValue(ctx, ctxKeySkipCache, skip)
 }
@@ -122,12 +122,12 @@ type Executor interface {
 // ExecutorToInvoker 将 Executor 转换为 Invoker
 //
 // 使用场景：
-// 默认的 Invoker 是不支持 302 跳转的，在使用 CacheClient 的时候，会有诸多限制，所以若需要跳转，则可以这样：
+// 默认的 Invoker 是不支持 302 跳转的，在使用 CachedClient 的时候，会有诸多限制，所以若需要跳转，则可以这样：
 //
 //	 hc := &http.Client{
 //	    Transport: &xhttpc.Client{},
 //	 }
-//	 cc := xhttpc.CacheClient{
+//	 cc := xhttpc.CachedClient{
 //	    Invoker: xhttpc.ExecutorToInvoker(hc),
 //		// ... 其他参数...
 //	 }
@@ -195,43 +195,61 @@ func (c *Client) PostJSON(ctx context.Context, url string, data any) (*http.Resp
 	return r, err
 }
 
-// CacheClient 带有缓存的 HTTP Client
-type CacheClient struct {
+// CachedClient 带有缓存的 HTTP Client,只会成功获取 response 的才会被缓存
+type CachedClient struct {
 	Cache   xcache.Cache[string, *StoredResponse] // 必填，缓存对象
 	Request *http.Request                         // 必填，请求
 	Key     string                                // 可选，缓存的 key，默认为读取 Request.URL 作为 key
 	Invoker Invoker                               // 可选，用于发送请求的实体
 
-	TTL         time.Duration  // 可选，缓存时间，默认 1 小时
-	PreFlush    time.Duration  // 可选，当缓存数据达到此有效期后，提前异步加载数据，默认为 0.8 * TTL
-	Decoder     xcodec.Decoder // 可选，默认为 JSON
-	HandlerFunc HandlerFunc    // 可选，默认为验证 statusCode==200
-	Service     string         // 可选，默认为 dummy
-	Opts        []xrpc.Option  // 可选
+	// 可选，缓存时间，默认 1 小时
+	TTL time.Duration
+
+	// 在cache 设置前，重新调整缓存有效期，可选
+	AdjustTTL func(rs StoredResponse, ttl time.Duration) time.Duration
+
+	// 可选，当缓存数据达到此有效期后，提前异步加载数据，默认为 0.8 * TTL
+	PreFlush time.Duration
+
+	// 可选，默认为 JSON，用于将 []byte 转换为传给 Invoke 的 result any 类型
+	Decoder xcodec.Decoder
+
+	// 可选，若不配置则默认为验证 statusCode==200
+	HandlerFunc HandlerFunc
+
+	Service string        // 可选，默认为 dummy
+	Opts    []xrpc.Option // 可选
 }
 
-func (ci CacheClient) getTTL() time.Duration {
+func (ci CachedClient) getTTL() time.Duration {
 	if ci.TTL > 0 {
 		return ci.TTL
 	}
 	return time.Hour
 }
 
-func (ci CacheClient) getService() string {
+func (ci CachedClient) getAdjustTTL(rd *StoredResponse, ttl time.Duration) time.Duration {
+	if ci.AdjustTTL == nil {
+		return ttl
+	}
+	return ci.AdjustTTL(*rd, ttl)
+}
+
+func (ci CachedClient) getService() string {
 	if ci.Service == "" {
 		return xservice.Dummy
 	}
 	return ci.Service
 }
 
-func (ci CacheClient) getDecoder() xcodec.Decoder {
+func (ci CachedClient) getDecoder() xcodec.Decoder {
 	if ci.Decoder == nil {
 		return xcodec.JSON
 	}
 	return ci.Decoder
 }
 
-func (ci CacheClient) needPreFlush(cacheCreate time.Time) bool {
+func (ci CachedClient) needPreFlush(cacheCreate time.Time) bool {
 	preFlush := ci.PreFlush
 	if preFlush < 0 {
 		return false
@@ -242,7 +260,7 @@ func (ci CacheClient) needPreFlush(cacheCreate time.Time) bool {
 	return time.Since(cacheCreate) > preFlush
 }
 
-func (ci CacheClient) getCacheKey() string {
+func (ci CachedClient) getCacheKey() string {
 	if ci.Key != "" {
 		return ci.getService() + "|" + ci.Request.Method + "|" + ci.Key
 	}
@@ -250,11 +268,11 @@ func (ci CacheClient) getCacheKey() string {
 }
 
 // DeleteCache 删除此请求对应的缓存
-func (ci CacheClient) DeleteCache(ctx context.Context) error {
+func (ci CachedClient) DeleteCache(ctx context.Context) error {
 	return ci.Cache.Delete(ctx, ci.getCacheKey())
 }
 
-func (ci CacheClient) Invoke(ctx context.Context, result any) error {
+func (ci CachedClient) Invoke(ctx context.Context, result any) error {
 	var cachedResponse *StoredResponse
 	var err error
 	key := ci.getCacheKey()
@@ -290,13 +308,13 @@ func (ci CacheClient) Invoke(ctx context.Context, result any) error {
 
 var preFlushDB sync.Map
 
-func (ci CacheClient) doPreFlush(ctx context.Context, decoder xcodec.Decoder, result any, cacheKey string) {
+func (ci CachedClient) doPreFlush(ctx context.Context, decoder xcodec.Decoder, result any, cacheKey string) {
 	t := reflect.TypeOf(result)
 	if t.Kind() != reflect.Ptr {
 		return
 	}
 
-	// 只需要有一个PreFlush 的操作，避免同时发起多个相同请求
+	// 只需要有一个 PreFlush 的操作，避免同时发起多个相同请求
 	if _, loaded := preFlushDB.LoadOrStore(cacheKey, struct{}{}); loaded {
 		return
 	}
@@ -310,7 +328,7 @@ func (ci CacheClient) doPreFlush(ctx context.Context, decoder xcodec.Decoder, re
 	})
 }
 
-func (ci CacheClient) direct(ctx context.Context, decoder xcodec.Decoder, result any, cacheKey string) error {
+func (ci CachedClient) direct(ctx context.Context, decoder xcodec.Decoder, result any, cacheKey string) error {
 	var hs handlerCombine
 	rd := &StoredResponse{
 		CreateAt: time.Now().Unix(),
@@ -352,6 +370,9 @@ func (ci CacheClient) direct(ctx context.Context, decoder xcodec.Decoder, result
 		return err
 	}
 	rd.FromCache = true
-	_ = ci.Cache.Set(ctx, cacheKey, rd, ci.getTTL())
+	ttl := ci.getAdjustTTL(rd, ci.getTTL())
+	if ttl > 0 {
+		_ = ci.Cache.Set(ctx, cacheKey, rd, ttl)
+	}
 	return nil
 }

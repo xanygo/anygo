@@ -40,7 +40,7 @@ func TestCacheClient(t *testing.T) {
 	xservice.DefaultRegistry().Register(xservice.DummyService())
 
 	rc := xcache.NewLRU[string, *xhttpc.StoredResponse](10)
-	hc := xhttpc.CacheClient{
+	hc := xhttpc.CachedClient{
 		Cache:   rc,
 		Request: httptest.NewRequest(http.MethodGet, ts.URL, nil),
 		Decoder: xcodec.Raw,

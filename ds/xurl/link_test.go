@@ -123,3 +123,93 @@ func TestHostPort(t *testing.T) {
 		})
 	}
 }
+
+func TestJoinRel(t *testing.T) {
+	type args struct {
+		base string
+		rel  string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "case 1",
+			args: args{
+				base: "http://example.com",
+				rel:  "hello.html",
+			},
+			want: "http://example.com/hello.html",
+		},
+		{
+			name: "case 2",
+			args: args{
+				base: "http://example.com",
+				rel:  "/hello.html",
+			},
+			want: "http://example.com/hello.html",
+		},
+		{
+			name: "case 3",
+			args: args{
+				base: "http://example.com/",
+				rel:  "/hello.html",
+			},
+			want: "http://example.com/hello.html",
+		},
+		{
+			name: "case 4",
+			args: args{
+				base: "http://example.com/hello/",
+				rel:  "/world.html",
+			},
+			want: "http://example.com/world.html",
+		},
+		{
+			name: "case 5",
+			args: args{
+				base: "http://example.com/hello/",
+				rel:  "world.html",
+			},
+			want: "http://example.com/hello/world.html",
+		},
+		{
+			name: "case 7",
+			args: args{
+				base: "https://example.com/hello/",
+				rel:  "world.html?q=1",
+			},
+			want: "https://example.com/hello/world.html?q=1",
+		},
+		{
+			name: "case 8",
+			args: args{
+				base: "https://example.com/hello/",
+				rel:  "/world.html?q=1",
+			},
+			want: "https://example.com/world.html?q=1",
+		},
+		{
+			name: "case 9",
+			args: args{
+				base: "https://example.com/hello/abc",
+				rel:  "world.html?q=1",
+			},
+			want: "https://example.com/hello/world.html?q=1",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := PathJoin(tt.args.base, tt.args.rel)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("PathJoin() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("PathJoin() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

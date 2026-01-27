@@ -49,7 +49,7 @@ func (resp *Response) LoadFrom(ctx context.Context, req xrpc.Request, node *xnet
 	// 只有特定的请求 Method 和 StatusCode 才允许重试
 	// 如 GET 请求，响应为 500，则标记为临时错误，允许重试
 	var te xerror.TemporaryFailure
-	if !errors.As(resp.readErr, &te) {
+	if resp.resp != nil && !errors.As(resp.readErr, &te) {
 		temp := retryableStatus(resp.resp.StatusCode)
 		return xerror.WithTemporary(resp.readErr, temp)
 	}

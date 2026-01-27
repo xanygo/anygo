@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"html"
 	"html/template"
 	"io"
@@ -60,20 +61,48 @@ func (t *TPLRequest) QueryIn(field string, values []string) bool {
 	return slices.Contains(values, value)
 }
 
-// BaseLink 基于当前 url，生成新的链接
+// WithQuery 基于当前 url，生成新的链接
 //
 // queryPair：url 中的 query 参数，必须成对出现，如 "a",1,"b","2","c",""
 // 同名参数会将当前链接中的同名参数覆盖，值为空的则将其删除
-func (t *TPLRequest) BaseLink(queryPair ...any) template.URL {
-	return template.URL(xurl.BaseLink(t.Request.URL, queryPair...))
+func (t *TPLRequest) WithQuery(queryPair ...any) (template.URL, error) {
+	if len(queryPair) == 0 {
+		return template.URL(t.Request.URL.String()), nil
+	}
+	qs, err := t.toQueries(queryPair...)
+	if err != nil {
+		return "", err
+	}
+	us, err := xurl.WithQuery(t.Request.URL, qs...)
+	return template.URL(us), err
 }
 
-// NewLink 基于当前 url 的 Path，生成新的链接
+func (t *TPLRequest) toQueries(queryPair ...any) ([]string, error) {
+	qs := make([]string, 0, len(queryPair))
+	for _, q := range queryPair {
+		str, ok := zreflect.BaseTypeToString(q)
+		if !ok {
+			return nil, fmt.Errorf("invalid query %#v", q)
+		}
+		qs = append(qs, str)
+	}
+	return qs, nil
+}
+
+// WithNewQuery 基于当前 url 的 Path，生成新的链接
 //
 // queryPair：url 中的 query 参数，必须成对出现，如 "a",1,"b","2","c",""
 // 值为空的会忽略
-func (t *TPLRequest) NewLink(queryPair ...any) template.URL {
-	return template.URL(xurl.NewLink(t.Request.URL, queryPair...))
+func (t *TPLRequest) WithNewQuery(queryPair ...any) (template.URL, error) {
+	if len(queryPair) == 0 {
+		return template.URL(t.Request.URL.String()), nil
+	}
+	qs, err := t.toQueries(queryPair...)
+	if err != nil {
+		return "", err
+	}
+	str, err := xurl.WithNewQuery(t.Request.URL, qs...)
+	return template.URL(str), err
 }
 
 func (t *TPLRequest) EchoQueryEQ(field string, value any, echo any) any {
@@ -87,19 +116,22 @@ func (t *TPLRequest) EchoQueryEQ(field string, value any, echo any) any {
 // QueryEQ 判断 Query 参数是否相等
 // 参数 queryPair 必须是双数，依次为： 字段名，字段值，字段名，字段值
 // 字段名必须是 string 类型
-func (t *TPLRequest) QueryEQ(queryPair ...any) bool {
+func (t *TPLRequest) QueryEQ(queryPair ...any) (bool, error) {
 	if len(queryPair)%2 != 0 {
-		return false
+		return false, fmt.Errorf("invalid query %#v", queryPair)
 	}
 	qs := t.getQuery()
 	for i := 0; i < len(queryPair); i += 2 {
-		key := queryPair[i].(string)
+		key, ok := queryPair[i].(string)
+		if !ok {
+			return false, fmt.Errorf("query name [%d]=%#v not string", i, queryPair[i])
+		}
 		value := zreflect.ToString(queryPair[i+1])
 		if qs.Get(key) != value {
-			return false
+			return false, nil
 		}
 	}
-	return true
+	return true, nil
 }
 
 func (t *TPLRequest) PathHas(sub string) bool {
@@ -274,7 +306,7 @@ var FuncMap = template.FuncMap{
 		return result
 	},
 	"xNewIntsStep": func(start int, end int, step int) []int {
-		result := make([]int, 0, end-start)
+		result := make([]int, 0, (end-start)/step+1)
 		for i := start; i < end; i += step {
 			result = append(result, i)
 		}
