@@ -248,7 +248,7 @@ func intToPtrBool(num int) (*bool, error) {
 		ok := false
 		return &ok, nil
 	default:
-		return nil, fmt.Errorf("%w: intToPtrBool not bool value %q", ErrInvalidReply, num)
+		return nil, fmt.Errorf("%w: intToPtrBool not bool value %v", ErrInvalidReply, num)
 	}
 }
 

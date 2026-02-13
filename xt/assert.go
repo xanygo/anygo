@@ -426,5 +426,5 @@ func Panic(t Testing, fn func()) {
 	if re != nil {
 		return
 	}
-	t.Fatalf("func %#v should panic", fn)
+	t.Fatalf("func should panic")
 }

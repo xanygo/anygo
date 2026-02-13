@@ -179,7 +179,7 @@ func (d SQLite3) ColumnString(fs dbtype.ColumnSchema) string {
 		case dbtype.DefaultValueTypeString:
 			sb.WriteString(d.QuoteIdentifier(fs.Default.Value))
 		default:
-			panic(fmt.Sprintf("unknown default value type: %q", dv.Type))
+			panic(fmt.Sprintf("unknown default value type: %v", dv.Type))
 		}
 	}
 
