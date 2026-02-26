@@ -49,6 +49,7 @@ func TestRangeStructFields(t *testing.T) {
 		Class int
 	}
 	t.Run("user1", func(t *testing.T) {
+		_ = user{age: 0, Name: "", Class: 0}
 		t1 := reflect.TypeFor[user]()
 		var names []string
 		err := zreflect.RangeStructFields(t1, func(f reflect.StructField) error {
