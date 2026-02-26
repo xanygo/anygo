@@ -184,7 +184,7 @@ func EncodeToString(enc Encoder, obj any) (string, error) {
 	for {
 		if rv.Kind() == reflect.String {
 			return rv.String(), nil
-		} else if rv.Kind() == reflect.Ptr {
+		} else if rv.Kind() == reflect.Pointer {
 			if rv.IsNil() {
 				return "", nil
 			}
@@ -265,9 +265,9 @@ func doDecodeExtra(decoder Decoder, content []byte, obj any) error {
 		return err
 	}
 	names := make(map[string]bool, rt.NumField())
-	for i := 0; i < rt.NumField(); i++ {
+	for field := range rt.Fields() {
 		// 在比较字段名时，全部转换为小写。以避免如json、yaml等解析时，tag 定义的名字和字段名不一直的情况
-		fn := strings.ToLower(rt.Field(i).Name)
+		fn := strings.ToLower(field.Name)
 		names[fn] = true
 	}
 

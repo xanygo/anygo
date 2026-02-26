@@ -186,7 +186,7 @@ func (t *TPLRequest) Dir() string {
 
 func (t *TPLRequest) DirN(n int) string {
 	p := t.Request.URL.Path
-	for i := 0; i < n; i++ {
+	for range n {
 		p = path.Dir(p)
 	}
 	return p
@@ -355,7 +355,7 @@ var FuncMap = template.FuncMap{
 	},
 	"xPathDir": path.Dir,
 	"xPathDirN": func(p string, n int) string {
-		for i := 0; i < n; i++ {
+		for range n {
 			p = path.Dir(p)
 		}
 		return p

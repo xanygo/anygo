@@ -72,11 +72,9 @@ func TestOnceGroup_DoDupSuppress(t *testing.T) {
 
 	const n = 10
 	wg1.Add(1)
-	for i := 0; i < n; i++ {
+	for range n {
 		wg1.Add(1)
-		wg2.Add(1)
-		go func() {
-			defer wg2.Done()
+		wg2.Go(func() {
 			wg1.Done()
 			v, err, _ := g.Do("key", fn)
 			if err != nil {
@@ -86,7 +84,7 @@ func TestOnceGroup_DoDupSuppress(t *testing.T) {
 			if s, _ := v.(string); s != "bar" {
 				t.Errorf("Do = %T %v; want %q", v, v, "bar")
 			}
-		}()
+		})
 	}
 	wg1.Wait()
 	// At least one goroutine is in fn now and all of them have at

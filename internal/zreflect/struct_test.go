@@ -19,8 +19,7 @@ func TestRangeStructFields(t *testing.T) {
 
 	zreflect.StructMetaCache.Clear()
 	t.Run("structMeta-ptr", func(t *testing.T) {
-		m1 := &structMeta{}
-		t1 := reflect.TypeOf(m1)
+		t1 := reflect.TypeFor[*structMeta]()
 		var names []string
 		err := zreflect.RangeStructFields(t1, func(f reflect.StructField) error {
 			names = append(names, f.Name)
@@ -32,8 +31,7 @@ func TestRangeStructFields(t *testing.T) {
 	})
 
 	t.Run("structMeta", func(t *testing.T) {
-		m1 := structMeta{}
-		t1 := reflect.TypeOf(m1)
+		t1 := reflect.TypeFor[structMeta]()
 		var names []string
 		err := zreflect.RangeStructFields(t1, func(f reflect.StructField) error {
 			names = append(names, f.Name)
@@ -51,8 +49,7 @@ func TestRangeStructFields(t *testing.T) {
 		Class int
 	}
 	t.Run("user1", func(t *testing.T) {
-		m1 := user{Name: "hello", age: 1, Class: 1}
-		t1 := reflect.TypeOf(m1)
+		t1 := reflect.TypeFor[user]()
 		var names []string
 		err := zreflect.RangeStructFields(t1, func(f reflect.StructField) error {
 			names = append(names, f.Name)
@@ -75,8 +72,7 @@ func BenchmarkRangeStructFields(b *testing.B) {
 	_ = user{Name: "a", age: 1, Class: 5}
 	b.ResetTimer()
 	b.Run("withCache", func(b *testing.B) {
-		u := user{}
-		t := reflect.TypeOf(u)
+		t := reflect.TypeFor[user]()
 		for i := 0; i < b.N; i++ {
 			zreflect.RangeStructFields(t, func(f reflect.StructField) error {
 				return nil
@@ -84,12 +80,11 @@ func BenchmarkRangeStructFields(b *testing.B) {
 		}
 	})
 	b.Run("noCache", func(b *testing.B) {
-		u := user{}
-		t := reflect.TypeOf(u)
+		t := reflect.TypeFor[user]()
 		var tmp reflect.StructField
 		for i := 0; i < b.N; i++ {
-			for z := 0; z < t.NumField(); z++ {
-				tmp = t.Field(z)
+			for field := range t.Fields() {
+				tmp = field
 			}
 		}
 		_ = tmp

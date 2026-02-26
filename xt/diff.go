@@ -88,7 +88,7 @@ func prettyGoValue(v any) string {
 func getDiffIndex(str1, str2 string) int {
 	ml := min(len(str1), len(str2))
 	var index int
-	for i := 0; i < ml; i++ {
+	for i := range ml {
 		if str1[i] != str2[i] {
 			index = i
 			break
@@ -113,7 +113,7 @@ func cutDiffAfter(s string) string {
 		return s
 	}
 
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		next := strings.Index(s[index+1:], "\n")
 		if next == -1 {
 			return s

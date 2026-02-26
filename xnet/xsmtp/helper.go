@@ -37,10 +37,7 @@ func encodeRFC2047(s string) string {
 	// 按长度切割 base64 字符串
 	var encodedWords []string
 	for len(b64) > 0 {
-		n := maxBase64Len
-		if len(b64) < n {
-			n = len(b64)
-		}
+		n := min(len(b64), maxBase64Len)
 		part := b64[:n]
 		b64 = b64[n:]
 		encodedWords = append(encodedWords, prefix+part+suffix)

@@ -259,7 +259,7 @@ func (fc *File[K, V]) Delete(ctx context.Context, keys ...K) error {
 }
 
 func (fc *File[K, V]) cacheFilePath(key K) string {
-	sg := md5.Sum([]byte(fmt.Sprint(key)))
+	sg := md5.Sum(fmt.Append(nil, key))
 	s := hex.EncodeToString(sg[:])
 	fp := filepath.Join(fc.Dir, s[:2], s[2:4], s[4:6], s[6:])
 	return strings.Join([]string{fp, cacheFileExt}, "")

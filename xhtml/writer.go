@@ -29,7 +29,7 @@ func (w *bufWriter) writeWithSep(sep string, values ...any) {
 		return
 	}
 
-	for i := 0; i < len(values); i++ {
+	for i := range values {
 		switch v := values[i].(type) {
 		case []byte:
 			w.writeBytes(sep, v)

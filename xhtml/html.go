@@ -301,7 +301,7 @@ func NewButton(text string) *Any {
 
 func toOptions[T ~string](ss []T) []Element {
 	result := make([]Element, len(ss))
-	for i := 0; i < len(ss); i++ {
+	for i := range ss {
 		opt := &Any{
 			Tag:       "option",
 			SelfClose: true,

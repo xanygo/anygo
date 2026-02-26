@@ -36,7 +36,7 @@ type schemaParser struct {
 
 func (sp schemaParser) Parser(obj any) (*dbtype.TableSchema, error) {
 	rt := reflect.TypeOf(obj)
-	if rt.Kind() == reflect.Ptr {
+	if rt.Kind() == reflect.Pointer {
 		rt = rt.Elem()
 	}
 	if rt.Kind() != reflect.Struct {
@@ -85,7 +85,7 @@ func (sp schemaParser) getSchema(rt reflect.Type) (*dbtype.TableSchema, error) {
 				switch field.Type.Kind() {
 				case reflect.Struct:
 					return scan(field.Type)
-				case reflect.Ptr:
+				case reflect.Pointer:
 					return scan(field.Type.Elem())
 				default:
 					panic(fmt.Sprintf("what Anonymous %s", field.Type.Kind()))

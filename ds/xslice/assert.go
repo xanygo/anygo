@@ -7,6 +7,7 @@ package xslice
 import (
 	"errors"
 	"fmt"
+	"slices"
 )
 
 func CheckLenIn[S ~[]T, T any](s S, err error, lengths ...int) error {
@@ -17,10 +18,8 @@ func CheckLenIn[S ~[]T, T any](s S, err error, lengths ...int) error {
 		return errors.New("expect lengths must not be empty")
 	}
 	l := len(s)
-	for _, expect := range lengths {
-		if l == expect {
-			return nil
-		}
+	if slices.Contains(lengths, l) {
+		return nil
 	}
 	if len(lengths) == 1 {
 		return fmt.Errorf("expected length %d but got %d", lengths[0], l)

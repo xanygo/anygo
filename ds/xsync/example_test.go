@@ -18,7 +18,7 @@ func ExampleOnceDoValue_Do() {
 	}
 	once := &xsync.OnceDoValue[int]{}
 	fmt.Println("Done:", once.Done())
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		got := once.Do(fn)
 		fmt.Println(got)
 	}
@@ -72,7 +72,7 @@ func ExampleOnceDoValue2_Do() {
 		return num1, num2
 	}
 	once := &xsync.OnceDoValue2[int, int]{}
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		v1, v2 := once.Do(fn)
 		fmt.Println(v1, v2)
 	}
@@ -93,7 +93,7 @@ func ExampleOnceDoValue3_Do() {
 		return num1, num2, num3
 	}
 	once := &xsync.OnceDoValue3[int, int, int]{}
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		v1, v2, v3 := once.Do(fn)
 		fmt.Println(v1, v2, v3)
 	}
@@ -116,7 +116,7 @@ func ExampleOnceDoValue4_Do() {
 		return num1, num2, num3, num4
 	}
 	once := &xsync.OnceDoValue4[int, int, int, int]{}
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		v1, v2, v3, v4 := once.Do(fn)
 		fmt.Println(v1, v2, v3, v4)
 	}
@@ -134,7 +134,7 @@ func ExampleOnceValue() {
 	}
 
 	once := xsync.OnceValue[int](fn)
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		fmt.Println(once())
 	}
 	// Output:
@@ -153,7 +153,7 @@ func ExampleOnceValue2() {
 	}
 
 	once := xsync.OnceValue2[int, int](fn)
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		fmt.Println(once())
 	}
 	// Output:

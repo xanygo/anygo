@@ -15,7 +15,7 @@ import (
 func TestSliding_Incr(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		ct := NewSlidingWindow(time.Hour, time.Second)
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			ct.Incr()
 		}
 		xt.Equal(t, 10, ct.Count(time.Second))

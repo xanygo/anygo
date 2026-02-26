@@ -64,7 +64,7 @@ func (it *Interval) runFns() {
 	defer wg.Wait()
 
 	if it.Concurrency < 1 {
-		for i := 0; i < len(allFns); i++ {
+		for i := range allFns {
 			fn := allFns[i]
 			go func() {
 				defer func() {
@@ -81,7 +81,7 @@ func (it *Interval) runFns() {
 
 	limiter := make(chan struct{}, it.Concurrency)
 
-	for i := 0; i < len(allFns); i++ {
+	for i := range allFns {
 		limiter <- struct{}{}
 		fn := allFns[i]
 		go func() {

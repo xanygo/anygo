@@ -257,7 +257,7 @@ func (rhs resolverInterceptors) Execute(ctx context.Context, invoker LookupIPFun
 	}
 	lookIdx := -1
 	afterIdx := -1
-	for i := 0; i < len(rhs); i++ {
+	for i := range rhs {
 		item := rhs[i]
 		if item == nil {
 			continue
@@ -306,7 +306,7 @@ func (rhs resolverInterceptors) CallLookupIP(ctx context.Context, network string
 
 // BlockPrivateResolution 禁止解析出私有和环回地址
 func BlockPrivateResolution(ctx context.Context, network string, host string, ips []net.IP, err error) ([]net.IP, error) {
-	for i := 0; i < len(ips); i++ {
+	for i := range ips {
 		ip := ips[i]
 		if ip.IsPrivate() || ip.IsLoopback() {
 			return ips, fmt.Errorf("blocked private ip: %s", ip.String())

@@ -24,7 +24,7 @@ func TestLRU(t *testing.T) {
 	defer cancel()
 
 	var allKeys []string
-	for i := 0; i < 11; i++ {
+	for i := range 11 {
 		key := fmt.Sprintf("k_%d", i)
 		xt.NoError(t, c1.Set(ctx, key, i, 10*time.Second))
 		allKeys = append(allKeys, key)
@@ -64,7 +64,7 @@ func TestMemoryFIFO(t *testing.T) {
 	defer cancel()
 
 	var allKeys []string
-	for i := 0; i < 11; i++ {
+	for i := range 11 {
 		key := fmt.Sprintf("k_%d", i)
 		xt.NoError(t, c1.Set(ctx, key, i, 10*time.Second))
 		allKeys = append(allKeys, key)

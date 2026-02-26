@@ -177,7 +177,7 @@ func scanRowsAsStruct[T any](rows *sql.Rows, cols []string, schema *dbtype.Table
 				switch field.Type.Kind() {
 				case reflect.Struct:
 					return doScanField(fv)
-				case reflect.Ptr:
+				case reflect.Pointer:
 					if fv.IsNil() {
 						if fv.CanSet() {
 							fv.Set(reflect.New(field.Type.Elem()))

@@ -278,7 +278,7 @@ func (p *simple[V]) newElement(obj V) *element[V] {
 const maxBadEntryRetries = 2
 
 func (p *simple[V]) retry(fn func(strategy connReuseStrategy) error) error {
-	for i := int64(0); i < maxBadEntryRetries; i++ {
+	for range int64(maxBadEntryRetries) {
 		err := fn(cachedOrNewConn)
 		// retry if err is ErrBadEntry
 		if err == nil || !errors.Is(err, ErrBadEntry) {

@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"net/smtp"
+	"slices"
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xcast"
@@ -131,13 +132,7 @@ type loginAuth struct {
 
 func (a *loginAuth) Start(server *smtp.ServerInfo) (string, []byte, error) {
 	if !server.TLS {
-		advertised := false
-		for _, mechanism := range server.Auth {
-			if mechanism == "LOGIN" {
-				advertised = true
-				break
-			}
-		}
+		advertised := slices.Contains(server.Auth, "LOGIN")
 		if !advertised {
 			return "", nil, errors.New("unencrypted connection")
 		}

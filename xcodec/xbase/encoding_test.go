@@ -48,7 +48,7 @@ func TestEncodeToString(t *testing.T) {
 	checkEncodeDecode(t, "hello 你好")
 	checkEncodeDecode(t, "")
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		str := strings.Repeat("i", i)
 		checkEncodeDecode(t, str)
 	}

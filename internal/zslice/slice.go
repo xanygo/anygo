@@ -15,11 +15,11 @@ func Merge[S ~[]T, T any](items ...S) S {
 	}
 
 	var n int
-	for i := 0; i < len(items); i++ {
+	for i := range items {
 		n += len(items[i])
 	}
 	cp := make([]T, 0, n)
-	for i := 0; i < len(items); i++ {
+	for i := range items {
 		cp = append(cp, items[i]...)
 	}
 	return cp

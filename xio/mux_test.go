@@ -53,7 +53,7 @@ func TestNewMux(t *testing.T) {
 	// server side: accept remote streams
 	wg1.Go(func() {
 		var wg3 sync.WaitGroup
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			s, err := muxServer.Accept()
 			if err != nil {
 				t.Logf("muxServer.Accept, err=%v", err)

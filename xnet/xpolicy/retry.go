@@ -139,10 +139,7 @@ func (rp *Retry) IsRetryable(ctx context.Context, req any, attempt int, err erro
 
 func FullJitter(base time.Duration, max time.Duration) func(attempt int) time.Duration {
 	return func(attempt int) time.Duration {
-		exp := base * time.Duration(1<<attempt)
-		if exp > max {
-			exp = max
-		}
+		exp := min(base*time.Duration(1<<attempt), max)
 		return time.Duration(rand.Int64N(int64(exp)))
 	}
 }

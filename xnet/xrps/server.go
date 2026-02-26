@@ -122,11 +122,9 @@ func (as *AnyServer) Serve(l net.Listener) error {
 			}
 			return err
 		}
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			as.handleConn(ctxConn, conn)
-		}()
+		})
 		return nil
 	}
 

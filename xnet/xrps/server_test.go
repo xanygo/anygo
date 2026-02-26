@@ -27,15 +27,13 @@ func TestAnyServer(t *testing.T) {
 		Handler: xrps.HandleFunc(echoHandler),
 	}
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		_ = ser.Serve(l)
-	}()
+	})
 	conn, err := net.DialTimeout("tcp", l.Addr().String(), 100*time.Millisecond)
 	xt.NoError(t, err)
 	rd := bufio.NewReader(conn)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		t.Run(fmt.Sprintf("loop=%d", i), func(t *testing.T) {
 			_, err = conn.Write([]byte("hello\n"))
 			xt.NoError(t, err)

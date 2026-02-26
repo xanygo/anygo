@@ -15,8 +15,8 @@ func Resize(src *image.RGBA, width, height int) *image.RGBA {
 	srcWidth := srcBounds.Dx()
 	srcHeight := srcBounds.Dy()
 
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
+	for y := range height {
+		for x := range width {
 			// 计算对应的源图像位置
 			srcX := float64(x) * float64(srcWidth) / float64(width)
 			srcY := float64(y) * float64(srcHeight) / float64(height)
@@ -65,8 +65,8 @@ func ToGrayImage(img image.Image) *image.Gray {
 	width, height := bounds.Max.X, bounds.Max.Y
 	out := image.NewGray(image.Rect(0, 0, width, height))
 
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
+	for y := range height {
+		for x := range width {
 			gray := ToGrayColor(img.At(x, y))
 			out.SetGray(x, y, gray)
 		}

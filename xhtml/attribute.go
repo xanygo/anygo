@@ -70,7 +70,7 @@ func (a *Attrs) Delete(keys ...string) {
 	if len(a.attrs) == 0 {
 		return
 	}
-	for i := 0; i < len(keys); i++ {
+	for i := range keys {
 		key := keys[i]
 		delete(a.attrs, key)
 		a.keys = xslice.DeleteValue(a.keys, key)
@@ -109,7 +109,7 @@ func attrsHTML(attrs *Attrs, kvSep string, quote func(string) string, sep string
 		return nil, nil
 	}
 	bw := newBufWriter()
-	for i := 0; i < len(keys); i++ {
+	for i := range keys {
 		attrKey := keys[i]
 		vs := attrs.Attr(attrKey).Values
 		if len(vs) == 0 {

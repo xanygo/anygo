@@ -105,7 +105,7 @@ func (c *chains[K, V]) setBefore(ctx context.Context, idx int, k K, v V) {
 	ctx = context.WithoutCancel(ctx)
 	ctx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
-	for i := 0; i < idx; i++ {
+	for i := range idx {
 		c.caches[i].set(ctx, k, v)
 	}
 }

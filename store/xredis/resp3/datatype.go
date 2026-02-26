@@ -287,7 +287,7 @@ func loadArray[T arrayType](rd Reader) (T, error) {
 		return T{}, nil
 	}
 	result := make(T, 0, length)
-	for i := 0; i < length; i++ {
+	for range length {
 		item, err3 := readOne(rd)
 		if err3 != nil {
 			// Null elements in arrays
@@ -399,7 +399,7 @@ func loadMap[T mapsType](rd Reader) (T, error) {
 		return nil, err
 	}
 	result := make(T, num)
-	for i := 0; i < num; i++ {
+	for range num {
 		// read key:
 		key, err3 := readOne(rd)
 		if err3 != nil {

@@ -17,7 +17,7 @@ func PanicCaller(skip int) (file string, line int, fn string) {
 	pc := make([]uintptr, 10)
 	n := runtime.Callers(skip, pc)
 	var foundPanic bool
-	for i := 0; i < n; i++ {
+	for i := range n {
 		fn := runtime.FuncForPC(pc[i])
 		fileName, lineNo := fn.FileLine(pc[i])
 		isPanicFile := strings.HasSuffix(fileName, filePanicName)

@@ -63,9 +63,9 @@ func (c *Color) init() {
 	for i, id := range c.ids {
 		tmp[i] = fmt.Sprint(id)
 	}
-	c.begin = []byte(fmt.Sprintf("%s[%sm", escape, strings.Join(tmp, ";")))
+	c.begin = fmt.Appendf(nil, "%s[%sm", escape, strings.Join(tmp, ";"))
 
-	c.end = []byte(fmt.Sprintf("%s[%dm", escape, reset))
+	c.end = fmt.Appendf(nil, "%s[%dm", escape, reset)
 	c.endLn = []byte(string(c.end) + "\n")
 }
 

@@ -31,7 +31,7 @@ func TestInterval(t *testing.T) {
 		})
 		var f2 int32
 		var wg2 sync.WaitGroup
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			wg2.Add(1)
 			it.Add(func() {
 				defer wg2.Done()

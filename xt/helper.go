@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/xanygo/anygo/cli/xcolor"
 )
@@ -34,7 +35,7 @@ func isNil(object any) bool {
 	case
 		reflect.Chan, reflect.Func,
 		reflect.Interface, reflect.Map,
-		reflect.Ptr, reflect.Slice, reflect.UnsafePointer:
+		reflect.Pointer, reflect.Slice, reflect.UnsafePointer:
 
 		return value.IsNil()
 	}
@@ -55,7 +56,7 @@ func isEmpty(object any) bool {
 	case reflect.Chan, reflect.Map, reflect.Slice:
 		return objValue.Len() == 0
 	// pointers are empty if nil or if the value they point to is empty
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if objValue.IsNil() {
 			return true
 		}
@@ -71,7 +72,7 @@ func isEmpty(object any) bool {
 
 func samePointers(first, second any) bool {
 	firstPtr, secondPtr := reflect.ValueOf(first), reflect.ValueOf(second)
-	if firstPtr.Kind() != reflect.Ptr || secondPtr.Kind() != reflect.Ptr {
+	if firstPtr.Kind() != reflect.Pointer || secondPtr.Kind() != reflect.Pointer {
 		return false
 	}
 
@@ -90,12 +91,13 @@ func buildErrorChainString(err error) string {
 	}
 
 	e := errors.Unwrap(err)
-	chain := fmt.Sprintf("%q", err.Error())
+	var chain strings.Builder
+	chain.WriteString(fmt.Sprintf("%q", err.Error()))
 	for e != nil {
-		chain += fmt.Sprintf("\n\t%q", e.Error())
+		chain.WriteString(fmt.Sprintf("\n\t%q", e.Error()))
 		e = errors.Unwrap(e)
 	}
-	return chain
+	return chain.String()
 }
 
 // getLen tries to get the length of an object.

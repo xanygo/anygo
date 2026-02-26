@@ -355,9 +355,7 @@ func (m *memHash) HSet(ctx context.Context, field string, value string) error {
 
 func (m *memHash) HMSet(ctx context.Context, values map[string]string) error {
 	return m.withMapLocked(func(m map[string]string) (map[string]string, bool) {
-		for k, v := range values {
-			m[k] = v
-		}
+		maps.Copy(m, values)
 		return m, true
 	})
 }

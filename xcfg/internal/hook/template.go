@@ -33,7 +33,7 @@ func (t *Template) Hook(ctx context.Context, cfPath string, content []byte) ([]b
 	for _, cmt := range cmts {
 		if strings.HasPrefix(cmt, hookTplPrefix) {
 			arr := strings.Fields(cmt[len(hookTplPrefix):])
-			for i := 0; i < len(arr); i++ {
+			for i := range arr {
 				tmp := strings.Split(arr[i], "=")
 				if len(tmp) == 2 && len(tmp[0]) > 0 && len(tmp[1]) > 0 {
 					params[tmp[0]] = tmp[1]

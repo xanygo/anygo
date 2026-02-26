@@ -17,7 +17,7 @@ func TestCooldownRunner_Run(t *testing.T) {
 	var runner CooldownRunner
 	synctest.Test(t, func(t *testing.T) {
 		var num atomic.Int32
-		for i := 0; i < 1000; i++ {
+		for range 1000 {
 			runner.Run(time.Second, func() {
 				num.Add(1)
 			})

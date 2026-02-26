@@ -20,7 +20,7 @@ func parserMeta(str string) (Meta, error) {
 	meta := Meta{
 		Other: make(map[string]string),
 	}
-	for i := 0; i < len(arr); i++ {
+	for i := range arr {
 		txt := strings.TrimSpace(arr[i])
 		if txt == "" {
 			continue

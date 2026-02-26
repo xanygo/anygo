@@ -65,7 +65,7 @@ func (Postgres) PlaceholderList(n, start int) string {
 		return ""
 	}
 	holders := make([]string, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		holders[i] = fmt.Sprintf("$%d", start+i)
 	}
 	return strings.Join(holders, ", ")
@@ -99,7 +99,7 @@ func (d Postgres) UpsertSQL(table string, count int, cols, conflictCols, updateC
 	colList := strings.Join(xslice.MapFunc(cols, d.QuoteIdentifier), ",")
 
 	valPlaceholders := make([]string, len(cols))
-	for c := 0; c < count; c++ {
+	for c := range count {
 		tmp := make([]string, len(cols))
 		for i := range cols {
 			tmp[i] = fmt.Sprintf("$%d", c*i+1)

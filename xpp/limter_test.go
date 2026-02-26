@@ -48,16 +48,14 @@ func TestConcurrency(t *testing.T) {
 		c := NewConcLimiter(10)
 		start := time.Now()
 		var wg sync.WaitGroup
-		for i := 0; i < 100; i++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+		for range 100 {
+			wg.Go(func() {
 				fn := c.Wait()
 				time.AfterFunc(time.Millisecond, func() {
 					fn()
 					fn() // 可重复调用
 				})
-			}()
+			})
 		}
 		wg.Wait()
 		cost := time.Since(start)

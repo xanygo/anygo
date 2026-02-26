@@ -141,10 +141,7 @@ type LineLengthWriter struct {
 
 func (l *LineLengthWriter) Write(p []byte) (n int, err error) {
 	for len(p) > 0 {
-		space := l.MaxLen - l.lineLen
-		if space > len(p) {
-			space = len(p)
-		}
+		space := min(l.MaxLen-l.lineLen, len(p))
 
 		nn, err := l.W.Write(p[:space])
 		if err != nil {

@@ -98,7 +98,7 @@ func (r *Redis) MSet(ctx context.Context, data map[string]string, ttl time.Durat
 	values = append(values, strconv.FormatInt(tm.UnixMilli(), 10))
 
 	var result error
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		sha, err := r.loadScript(ctx)
 		if err != nil {
 			return err

@@ -127,7 +127,7 @@ func (e Encoder[T]) withStruct(v reflect.Value, fn func(name string, tag xstruct
 			switch fv.Kind() {
 			case reflect.Struct:
 				return e.withStruct(fv, fn)
-			case reflect.Ptr:
+			case reflect.Pointer:
 				return e.withStruct(fv.Elem(), fn)
 			default:
 				panic(fmt.Sprintf("what Anonymous %s: %v", fv.Kind(), fv))

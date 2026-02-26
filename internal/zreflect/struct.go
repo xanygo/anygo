@@ -33,8 +33,8 @@ func collectFields(t reflect.Type) []reflect.StructField {
 		t = t.Elem()
 	}
 	var fields []reflect.StructField
-	for i := 0; i < t.NumField(); i++ {
-		f := t.Field(i)
+	for f := range t.Fields() {
+		f := f
 		fields = append(fields, f)
 	}
 	return fields

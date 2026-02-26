@@ -4,7 +4,10 @@
 
 package xstr
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 func HasAnyPrefix(str string, prefix ...string) bool {
 	for _, v := range prefix {
@@ -26,12 +29,7 @@ func HasAnySuffix(str string, suffix ...string) bool {
 
 // EqualAny 判断是否和任意一个字符串相等
 func EqualAny(str string, values ...string) bool {
-	for _, v := range values {
-		if str == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(values, str)
 }
 
 func EqualFoldAny(str string, values ...string) bool {

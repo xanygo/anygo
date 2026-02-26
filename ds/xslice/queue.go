@@ -83,7 +83,7 @@ func (r *Queue[T]) Discard(n int) (discarded int) {
 	}
 	var zero T
 	total := min(n, r.size)
-	for i := 0; i < total; i++ {
+	for range total {
 		r.items[r.head] = zero
 		r.head = (r.head + 1) % len(r.items)
 		r.size--
@@ -208,7 +208,7 @@ func (r *SyncQueue[T]) Discard(n int) (discarded int) {
 	}
 	var zero T
 	total := min(n, r.size)
-	for i := 0; i < total; i++ {
+	for range total {
 		r.items[r.head] = zero
 		r.head = (r.head + 1) % len(r.items)
 		r.size--

@@ -175,7 +175,7 @@ func (a Array) ToZSlice() ([]Z, error) {
 		return nil, nil
 	}
 	result := make([]Z, 0, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		itemArr, ok := a[i].(Array)
 		if !ok {
 			return nil, fmt.Errorf("expect Array got %T", a[i])

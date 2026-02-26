@@ -46,7 +46,7 @@ func (t *Table1) HTML() ([]byte, error) {
 	for i := 0; i < len(t.rows); i++ {
 		row := t.rows[i]
 		bw.Write("<tr>")
-		for j := 0; j < len(row); j++ {
+		for j := range row {
 			bw.Write(row[j])
 		}
 		bw.Write("</tr>\n")

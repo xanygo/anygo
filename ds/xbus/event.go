@@ -22,7 +22,7 @@ func (e *EventBus[T]) Publish(err T) {
 	e.mu.RUnlock()
 
 	var wg sync.WaitGroup
-	for i := 0; i < total; i++ {
+	for i := range total {
 		sub := subs[i]
 		wg.Go(safely.WrapVoid(func() {
 			select {

@@ -133,7 +133,7 @@ func (c *TCP) Invoke(ctx context.Context, srv any, req Request, resp Response, o
 		retryPolicy = xoption.RetryPolicy(opt)
 	}
 
-	for attempt := 0; attempt < attemptTotal; attempt++ {
+	for attempt := range attemptTotal {
 		ctxTry := ctx
 		if attempt > 0 {
 			ctxTry = ContextWithRetryCount(ctx, attempt)

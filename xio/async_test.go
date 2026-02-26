@@ -21,7 +21,7 @@ func TestAsyncWriter(t *testing.T) {
 			NeedStatus: true,
 		}
 
-		for i := 0; i < 1000; i++ {
+		for range 1000 {
 			_, err := aw.Write([]byte("H"))
 			xt.NoError(t, err)
 		}
@@ -56,13 +56,13 @@ func TestAsyncWriter(t *testing.T) {
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			for i := 0; i < 1000; i++ {
+			for range 1000 {
 				_, _ = aw.Write([]byte("abc"))
 			}
 		}()
 		go func() {
 			defer wg.Done()
-			for i := 0; i < 1000; i++ {
+			for range 1000 {
 				_ = aw.Close()
 			}
 		}()

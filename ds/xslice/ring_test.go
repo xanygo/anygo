@@ -63,7 +63,7 @@ func TestRing(t *testing.T) {
 	t.Run("Set-3-Values", func(t *testing.T) {
 		check := func(t *testing.T, r1 testRingType[int]) {
 			xt.Nil(t, r1.Values())
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				r1.Push(i)
 				switch i {
 				case 0:
@@ -103,7 +103,7 @@ func TestRing(t *testing.T) {
 
 	t.Run("AddSwap", func(t *testing.T) {
 		check := func(t *testing.T, r1 testRingType[int]) {
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				old, swapped := r1.PushSwap(i)
 
 				switch i {
@@ -175,7 +175,7 @@ func TestNewRingUniqueSync(t *testing.T) {
 func TestRingUnique1(t *testing.T) {
 	check := func(t *testing.T, r1 testRingType[int]) {
 		xt.Nil(t, r1.Values())
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			r1.Push(i)
 
 			switch i {
@@ -214,7 +214,7 @@ func TestRingUnique1(t *testing.T) {
 
 func TestRingUnique2(t *testing.T) {
 	check := func(t *testing.T, r1 testRingType[int]) {
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			old, swapped := r1.PushSwap(i)
 
 			switch i {
@@ -263,11 +263,11 @@ func TestRingUnique2(t *testing.T) {
 
 func TestRingUnique3(t *testing.T) {
 	check := func(t *testing.T, r1 testRingType[int]) {
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			r1.Push(1)
 			xt.Equal(t, []int{1}, r1.Values())
 		}
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			old, swapped := r1.PushSwap(1)
 			xt.Equal(t, []int{1}, r1.Values())
 			xt.Equal(t, 1, old)
@@ -303,7 +303,7 @@ func TestRingUnique3(t *testing.T) {
 
 func BenchmarkRingUnique(b *testing.B) {
 	checkAdd := func(r1 testRingUniqueType[int]) {
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			r1.Push(i, i+1, i+2, i+3)
 		}
 	}

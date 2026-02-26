@@ -38,8 +38,8 @@ var typeToKindMap = map[reflect.Kind]Kind{
 }
 
 var specTypeToKindMap = map[reflect.Type]Kind{
-	reflect.TypeOf(time.Time{}): KindDateTime,
-	reflect.TypeOf([]byte(nil)): KindBinary,
+	reflect.TypeFor[time.Time](): KindDateTime,
+	reflect.TypeFor[[]byte]():    KindBinary,
 }
 
 func ReflectToKind(rt reflect.Type) (Kind, error) {

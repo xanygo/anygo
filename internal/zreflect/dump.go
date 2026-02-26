@@ -65,7 +65,7 @@ func dumpValue(v reflect.Value, visited map[uintptr]bool) map[string]any {
 	}
 
 	// ---- 指针 ------------------------------------------------------------
-	if kind == reflect.Ptr {
+	if kind == reflect.Pointer {
 		m["Type"] = "*" + interfaceToAny(t.Elem().String())
 
 		if v.IsNil() {
@@ -127,7 +127,7 @@ func dumpValue(v reflect.Value, visited map[uintptr]bool) map[string]any {
 		m["Type"] = interfaceToAny(t.String())
 		size := v.Len()
 		items := make([]any, 0, size)
-		for i := 0; i < size; i++ {
+		for i := range size {
 			item := dumpValue(v.Index(i), visited)
 			item["Index"] = i
 			items = append(items, item)

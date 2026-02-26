@@ -187,10 +187,7 @@ func (w *captureWriter) Write(b []byte) (int, error) {
 	if len(w.body) < 32 && len(b) > 1 &&
 		(strings.HasPrefix(ct, "text/") || strings.Contains(ct, "/json")) &&
 		isPrintable(b[0]) && isPrintable(b[1]) {
-		remain := 32 - len(w.body)
-		if remain > len(b) {
-			remain = len(b)
-		}
+		remain := min(32-len(w.body), len(b))
 		w.body = append(w.body, b[:remain]...)
 	}
 

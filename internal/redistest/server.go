@@ -124,7 +124,7 @@ func (srv *Server) startCmd() error {
 		log.Println("redis-server stopped")
 	}()
 	<-done
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		conn, err := net.DialTimeout("tcp", addr, time.Second)
 		if err == nil {
 			conn.Close()

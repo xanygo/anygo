@@ -39,7 +39,7 @@ func (b Byte) decode() []byte {
 	var result []byte
 	for _, n := range b.rle {
 		if n > 0 {
-			for i := 0; i < n; i++ {
+			for range n {
 				result = append(result, byte(1))
 			}
 		} else {
@@ -103,7 +103,7 @@ func (bs Bytes) Width() int {
 }
 
 func (bs Bytes) DrawTo(img SetAble, startX int, startY int, sep int, col color.Color) {
-	for i := 0; i < len(bs); i++ {
+	for i := range bs {
 		bc := bs[i]
 		bc.DrawTo(img, startX, startY, col)
 		startX += bc.Width + sep

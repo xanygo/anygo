@@ -310,7 +310,7 @@ var preFlushDB sync.Map
 
 func (ci CachedClient) doPreFlush(ctx context.Context, decoder xcodec.Decoder, result any, cacheKey string) {
 	t := reflect.TypeOf(result)
-	if t.Kind() != reflect.Ptr {
+	if t.Kind() != reflect.Pointer {
 		return
 	}
 

@@ -48,7 +48,7 @@ func ContainsAny[E comparable](all []E, values ...E) bool {
 // 总是返回不为 nil 的 map
 func ToMap[E comparable, V any](s []E, value V) map[E]V {
 	result := make(map[E]V, len(s))
-	for i := 0; i < len(s); i++ {
+	for i := range s {
 		result[s[i]] = value
 	}
 	return result
@@ -73,7 +73,7 @@ func FlatToMap[E comparable](arr []E) (map[E]E, error) {
 // ToMapFunc 使用回调函数，将 slice 转换为 map
 func ToMapFunc[E any, K comparable, V any](s []E, fn func(index int, v E) (K, V)) map[K]V {
 	result := make(map[K]V, len(s))
-	for i := 0; i < len(s); i++ {
+	for i := range s {
 		k, v := fn(i, s[i])
 		result[k] = v
 	}
@@ -86,7 +86,7 @@ func ToAnys[E any](s []E) []any {
 		return nil
 	}
 	result := make([]any, len(s))
-	for i := 0; i < len(s); i++ {
+	for i := range s {
 		result[i] = s[i]
 	}
 	return result
@@ -205,7 +205,7 @@ func JoinFunc[E any](arr []E, format func(val E) string, sep string) string {
 		return ""
 	}
 	elems := make([]string, len(arr))
-	for i := 0; i < len(arr); i++ {
+	for i := range arr {
 		elems[i] = format(arr[i])
 	}
 	return strings.Join(elems, sep)
@@ -245,7 +245,7 @@ func FilterAs[E any, Y any](arr []E, filter func(index int, item E, ok int) (Y, 
 		return nil
 	}
 	var result []Y
-	for i := 0; i < len(arr); i++ {
+	for i := range arr {
 		if item, ok := filter(i, arr[i], len(result)); ok {
 			result = append(result, item)
 		}
@@ -350,7 +350,7 @@ func Chunk[S ~[]E, E any](s S, size int) []S {
 
 func Repeat[E any](v E, count int) []E {
 	result := make([]E, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		result[i] = v
 	}
 	return result

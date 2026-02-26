@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -37,10 +38,8 @@ func IsMemory(c any) bool {
 		}
 
 		if uc, ok := c.(interface{ Unwrap() []any }); ok {
-			for _, c1 := range uc.Unwrap() {
-				if IsMemory(c1) {
-					return true
-				}
+			if slices.ContainsFunc(uc.Unwrap(), IsMemory) {
+				return true
 			}
 		}
 		return false

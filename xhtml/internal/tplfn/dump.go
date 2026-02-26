@@ -61,7 +61,7 @@ func printValue(v reflect.Value, w io.Writer, indent int, prefix string) {
 		str := v.String()
 		_, _ = fmt.Fprintf(w, "\t<span style='color:gray'>(%d)</span><span style='color:green'>%q</span>\n", len(str), str)
 	case reflect.Struct:
-		if v.Type() == reflect.TypeOf(time.Time{}) {
+		if v.Type() == reflect.TypeFor[time.Time]() {
 			tm := v.Interface().(time.Time)
 			_, _ = fmt.Fprintf(w, indentation+"  Time.String   : %s\n", tm.String())
 			_, _ = fmt.Fprintf(w, indentation+"  Time.UnixNano : %d\n", tm.UnixNano())
@@ -108,7 +108,7 @@ func printValue(v reflect.Value, w io.Writer, indent int, prefix string) {
 			w.Write([]byte("\n"))
 		}
 		xsync.PutBytesBuffer(bw)
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if v.IsNil() {
 			_, _ = fmt.Fprintln(w, "\tnil pointer")
 		} else {

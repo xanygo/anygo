@@ -63,7 +63,7 @@ func Test_ConnPool1(t *testing.T) {
 	xt.NoError(t, resp2.Body.Close())
 	xt.NoError(t, err3)
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		t.Run(fmt.Sprintf("loop_%d", i), func(t *testing.T) {
 			resp4, err4 := hc.Get(ts.URL)
 			xt.NoError(t, err4)

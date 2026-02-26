@@ -3,7 +3,6 @@
 //  Date: 2025-10-25
 
 //go:build windows
-// +build windows
 
 package zos
 

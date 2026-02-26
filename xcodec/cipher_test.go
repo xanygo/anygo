@@ -16,7 +16,7 @@ func TestAesCBC_Encrypt(t *testing.T) {
 	ac := &AesBlock{
 		Key: "hello",
 	}
-	for i := 0; i < 32; i++ {
+	for i := range 32 {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			txt := []byte(strings.Repeat("hello", i))
 			t.Logf("txt= %q, len=%d", txt, len(txt))
@@ -36,7 +36,7 @@ func TestAesOFB_Encrypt(t *testing.T) {
 	ac := &AesOFB{
 		Key: "hello",
 	}
-	for i := 0; i < 32; i++ {
+	for i := range 32 {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			txt := []byte(strings.Repeat("hello", i))
 			t.Logf("txt= %q, len=%d", txt, len(txt))

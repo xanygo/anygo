@@ -41,7 +41,7 @@ func ExampleConcLimiter_Wait() {
 
 	var wg sync.WaitGroup
 	start := time.Now()
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		wg.Add(1)
 
 		go func(id int) {

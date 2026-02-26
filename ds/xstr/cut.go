@@ -138,10 +138,7 @@ func SplitLen(s string, length int) []string {
 	total := math.Ceil(float64(len(s)) / float64(length))
 	result := make([]string, 0, int(total))
 	for i := 0; i < len(s); i += length {
-		end := i + length
-		if end > len(s) {
-			end = len(s)
-		}
+		end := min(i+length, len(s))
 		result = append(result, s[i:end])
 	}
 	return result

@@ -29,7 +29,7 @@ func main() {
 		Subject: "hello 你好",
 		Content: strings.Repeat("hello world，你好 <p style='color:red'>红色</p>\n", 2),
 	}
-	for _, f := range strings.Split(*files, ",") {
+	for f := range strings.SplitSeq(*files, ",") {
 		log.Printf("try add file %q", f)
 		f = strings.TrimSpace(f)
 		if f == "" {

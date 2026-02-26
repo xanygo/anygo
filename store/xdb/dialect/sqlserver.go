@@ -61,7 +61,7 @@ func (d SQLServerDialect) PlaceholderList(n, start int) string {
 		return ""
 	}
 	holders := make([]string, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		holders[i] = d.BindVar(start + i)
 	}
 	return strings.Join(holders, ", ")
@@ -100,7 +100,7 @@ var _ dbtype.UpsertDialect = SQLServerDialect{}
 // 返回：SQL string + 参数切片
 func (d SQLServerDialect) UpsertSQL(table string, count int, cols, conflictCols, updateCols []string, returningCols []string) string {
 	valPlaceholders := make([]string, len(cols))
-	for c := 0; c < count; c++ {
+	for c := range count {
 		tmp := make([]string, len(cols))
 		for i := range cols {
 			tmp[i] = fmt.Sprintf("@p%d", c*i+1)

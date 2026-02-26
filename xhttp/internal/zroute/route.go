@@ -316,7 +316,7 @@ func parserRegexpPattern(pattern string) (string, error) {
 		return "", fmt.Errorf("invalid path %q, has %d '{' and %d '}'", pattern, cnt1, cnt2)
 	}
 	names := make(map[string]bool)
-	var regPatternNew string // 归一化后的正则地址
+	var regPatternNew strings.Builder // 归一化后的正则地址
 	for {
 		leftIndex, rightIndex, found := xstr.BytePairIndex(pattern, '{', '}')
 		if !found && (rightIndex != -1 || leftIndex != -1) {
@@ -331,13 +331,13 @@ func parserRegexpPattern(pattern string) (string, error) {
 				return "", fmt.Errorf("dup name %q in path %q", name, pattern)
 			}
 			names[name] = true
-			regPatternNew += regexp.QuoteMeta(pattern[:starIndex]) + fmt.Sprintf("(?P<%s>%s)", name, ".*")
+			regPatternNew.WriteString(regexp.QuoteMeta(pattern[:starIndex]) + fmt.Sprintf("(?P<%s>%s)", name, ".*"))
 			pattern = pattern[starIndex+1:]
 			continue
 		}
 
 		if !found {
-			regPatternNew += regexp.QuoteMeta(pattern)
+			regPatternNew.WriteString(regexp.QuoteMeta(pattern))
 			break
 		}
 
@@ -348,7 +348,7 @@ func parserRegexpPattern(pattern string) (string, error) {
 		if names[name] {
 			return "", fmt.Errorf("dup name %q in path %q", name, pattern)
 		}
-		regPatternNew += regexp.QuoteMeta(pattern[:leftIndex])
+		regPatternNew.WriteString(regexp.QuoteMeta(pattern[:leftIndex]))
 		names[name] = true
 		if ok { // {id:[0-9]+} 、{id:*}
 			if txt, ok1 := regexpAlias[reg]; ok1 {
@@ -373,13 +373,13 @@ func parserRegexpPattern(pattern string) (string, error) {
 					reg = `[-]?(0|[1-9][0-9]*)`
 				}
 			}
-			regPatternNew += fmt.Sprintf("(?P<%s>%s)", name, reg)
+			regPatternNew.WriteString(fmt.Sprintf("(?P<%s>%s)", name, reg))
 		} else { // {id}
-			regPatternNew += fmt.Sprintf("(?P<%s>%s)", name, "[^/]+")
+			regPatternNew.WriteString(fmt.Sprintf("(?P<%s>%s)", name, "[^/]+"))
 		}
 		pattern = pattern[rightIndex+1:]
 	}
-	return regPatternNew, nil
+	return regPatternNew.String(), nil
 }
 
 var regexpAlias = map[string]string{}

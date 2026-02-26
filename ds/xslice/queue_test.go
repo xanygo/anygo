@@ -14,12 +14,12 @@ import (
 func TestQueue_Push(t *testing.T) {
 	t.Run("case 1", func(t *testing.T) {
 		var q xslice.Queue[int]
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			xt.True(t, q.Push(i))
 		}
 		xt.Equal(t, 10, q.Len())
 
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			got, ok := q.Pop()
 			xt.True(t, ok)
 			xt.Equal(t, i, got)
@@ -30,7 +30,7 @@ func TestQueue_Push(t *testing.T) {
 		xt.False(t, ok)
 		xt.Equal(t, 0, got)
 
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			xt.True(t, q.Push(i))
 		}
 		xt.Equal(t, 2, q.Discard(2))
@@ -45,12 +45,12 @@ func TestQueue_Push(t *testing.T) {
 		q := &xslice.Queue[int]{
 			Capacity: 3,
 		}
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			xt.True(t, q.Push(i))
 		}
 		xt.False(t, q.Push(4))
 
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			got, ok := q.Pop()
 			xt.True(t, ok)
 			xt.Equal(t, i, got)
@@ -65,12 +65,12 @@ func TestQueue_Push(t *testing.T) {
 func TestSyncQueue_Push(t *testing.T) {
 	t.Run("case 1", func(t *testing.T) {
 		var q xslice.SyncQueue[int]
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			xt.True(t, q.Push(i))
 		}
 		xt.Equal(t, 10, q.Len())
 
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			got, ok := q.Pop()
 			xt.True(t, ok)
 			xt.Equal(t, i, got)
@@ -82,7 +82,7 @@ func TestSyncQueue_Push(t *testing.T) {
 		xt.False(t, ok)
 		xt.Equal(t, 0, got)
 
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			xt.True(t, q.Push(i))
 		}
 		xt.Equal(t, 2, q.Discard(2))
@@ -97,12 +97,12 @@ func TestSyncQueue_Push(t *testing.T) {
 		q := &xslice.SyncQueue[int]{
 			Capacity: 3,
 		}
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			xt.True(t, q.Push(i))
 		}
 		xt.False(t, q.Push(4))
 
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			got, ok := q.Pop()
 			xt.True(t, ok)
 			xt.Equal(t, i, got)

@@ -38,7 +38,7 @@ func (c *ConnMonitor) afterRead(info xnet.ConnInfo, b []byte, readSize int, err 
 	var content []byte
 	format := "Read %d Bytes :\n"
 	args := []any{readSize}
-	for _, pt := range strings.Split(c.PrintType, ",") {
+	for pt := range strings.SplitSeq(c.PrintType, ",") {
 		pt = strings.TrimSpace(pt)
 		if pt == "" {
 			continue
@@ -107,7 +107,7 @@ func (c *ConnMonitor) afterWrite(info xnet.ConnInfo, b []byte, wroteSize int, er
 	var content []byte
 	format := "Write %d Bytes:\n"
 	args := []any{wroteSize}
-	for _, pt := range strings.Split(c.PrintType, ",") {
+	for pt := range strings.SplitSeq(c.PrintType, ",") {
 		pt = strings.TrimSpace(pt)
 		if pt == "" {
 			continue

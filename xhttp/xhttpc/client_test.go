@@ -46,7 +46,7 @@ func TestCacheClient(t *testing.T) {
 		Decoder: xcodec.Raw,
 	}
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		t.Run(fmt.Sprintf("i_%d", i), func(t *testing.T) {
 			resp := &xhttpc.StoredResponse{}
 			err := hc.Invoke(context.Background(), resp)

@@ -163,7 +163,7 @@ func (ss HTMLStringSlice[T]) Elements(tag string, fn func(b *Any)) Elements {
 		return nil
 	}
 	cs := make([]Element, len(ss))
-	for i := 0; i < len(ss); i++ {
+	for i := range ss {
 		b := &Any{
 			Tag:  tag,
 			Body: ToElements(HTMLString(ss[i])),
@@ -209,7 +209,7 @@ func (ss TextStringSlice) Elements(tag string, fn func(b *Any)) Elements {
 		return nil
 	}
 	cs := make([]Element, len(ss))
-	for i := 0; i < len(ss); i++ {
+	for i := range ss {
 		b := &Any{
 			Tag:  tag,
 			Body: ToElements(TextString(ss[i])),

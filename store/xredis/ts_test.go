@@ -209,7 +209,7 @@ func TestClientTS(t *testing.T) {
 
 		doTsAdd(t, "TSInfo-2")
 
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			doTsAdd(t, "TSInfo-3")
 		}
 

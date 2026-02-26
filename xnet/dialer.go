@@ -164,7 +164,6 @@ func (d *HedgingDialer) dialHedging(ctx context.Context, network string, ips []n
 	// 发送 backup request 请求
 	// 请求平均分布于超时时间的后半段
 	for idx, ip := range ips[1:] {
-		ip := ip
 		hr.Add(minDelay+time.Duration(idx)*part, func(ctx context.Context) (net.Conn, error) {
 			hostPort := net.JoinHostPort(ip.String(), port)
 			return d.dialStd(ctx, network, hostPort)
@@ -199,7 +198,7 @@ type dialerInterceptors []*DialerInterceptor
 func (dhs dialerInterceptors) Execute(ctx context.Context, invoker DialContextFunc, network, address string, idx int) (conn net.Conn, err error) {
 	dialIdx := -1
 	afterIdx := -1
-	for i := 0; i < len(dhs); i++ {
+	for i := range dhs {
 		item := dhs[i]
 		if item == nil {
 			continue

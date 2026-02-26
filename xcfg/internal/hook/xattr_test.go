@@ -105,7 +105,7 @@ func TestXAttrVars(t *testing.T) {
 			args: args{
 				input: []byte(`{"idc":"{xattr.IDC}","logDir":"{xattr.LogDir}"}`),
 			},
-			wantOutput: []byte(fmt.Sprintf(`{"idc":"online","logDir":"%s"}`, filepath.Join("testdata", "log"))),
+			wantOutput: fmt.Appendf(nil, `{"idc":"online","logDir":"%s"}`, filepath.Join("testdata", "log")),
 		},
 		{
 			name: "not support key",

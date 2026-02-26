@@ -41,7 +41,7 @@ func (c CSVCodec) Encode(a any) ([]byte, error) {
 
 	n := v.Len()
 	parts := make([]string, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		val := v.Index(i).Interface()
 		if str, ok := zreflect.BaseTypeToString(val); ok {
 			parts[i] = str

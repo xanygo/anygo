@@ -52,7 +52,7 @@ func (hs Elements) HTML() ([]byte, error) {
 		return nil, nil
 	}
 	bw := newBufWriter()
-	for i := 0; i < len(hs); i++ {
+	for i := range hs {
 		bw.Write(hs[i])
 	}
 	return bw.HTML()

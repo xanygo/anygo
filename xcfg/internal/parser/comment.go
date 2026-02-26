@@ -12,8 +12,8 @@ import (
 // 只支持单行，不支持行尾
 func StripComment(input []byte) (out []byte) {
 	var buf bytes.Buffer
-	lines := bytes.Split(input, []byte("\n"))
-	for _, line := range lines {
+	lines := bytes.SplitSeq(input, []byte("\n"))
+	for line := range lines {
 		lineN := bytes.TrimSpace(line)
 		if !bytes.HasPrefix(lineN, []byte("#")) {
 			buf.Write(line)
@@ -26,8 +26,8 @@ func StripComment(input []byte) (out []byte) {
 // HeadComments 获取头部的所有注释内容
 func HeadComments(input []byte) []string {
 	var cmts []string
-	lines := bytes.Split(input, []byte("\n"))
-	for _, line := range lines {
+	lines := bytes.SplitSeq(input, []byte("\n"))
+	for line := range lines {
 		lineN := bytes.TrimSpace(line)
 		if len(lineN) == 0 {
 			continue

@@ -63,7 +63,7 @@ func Connect(ctx context.Context, c Connector, addr xnet.AddrNode, opt xoption.R
 		return c.Connect(ctx1, addr, opt)
 	}
 	// 尝试多次连接，由于在 xnet.HedgingDialer 里已经有 Hedging request 的逻辑，所以这里就不需要了
-	for i := 0; i < total; i++ {
+	for range total {
 		nc, err = doDial(ctx)
 		if err == nil {
 			break

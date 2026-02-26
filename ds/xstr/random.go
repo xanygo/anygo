@@ -25,7 +25,7 @@ type Table string
 
 func (tb Table) RandNChar(n int) string {
 	bf := make([]byte, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		bf[i] = tb[rand.IntN(len(tb))]
 	}
 	return unsafe.String(unsafe.SliceData(bf), n)
@@ -33,7 +33,7 @@ func (tb Table) RandNChar(n int) string {
 
 func (tb Table) RandNByte(n int) []byte {
 	bf := make([]byte, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		bf[i] = tb[rand.IntN(len(tb))]
 	}
 	return bf

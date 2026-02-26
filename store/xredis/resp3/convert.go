@@ -295,7 +295,7 @@ func ToIntBools(e Element, err error, expectLen int, ok int) ([]bool, error) {
 		return nil, fmt.Errorf("array expect %d elements, got %d", expectLen, len(arr))
 	}
 	result := make([]bool, expectLen)
-	for i := 0; i < expectLen; i++ {
+	for i := range expectLen {
 		result[i], err = ToIntBool(arr[i], nil, ok)
 		if err != nil {
 			return nil, err
@@ -551,7 +551,7 @@ func ToMapFloat64WithKeys(e Element, err error, keys []string) (map[string]float
 		return nil, fmt.Errorf("length not match, reply=%d, keys=%d", len(arr), len(keys))
 	}
 	ret := make(map[string]float64, len(arr))
-	for i := 0; i < len(arr); i++ {
+	for i := range arr {
 		if _, ok2 := arr[i].(Null); ok2 {
 			continue
 		}

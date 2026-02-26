@@ -289,7 +289,7 @@ func (kvz *kvZSet) ZRem(ctx context.Context, members ...string) error {
 
 func (kv *RedisStorage) Delete(ctx context.Context, keys ...string) error {
 	if kv.KeyPrefix != "" {
-		for i := 0; i < len(keys); i++ {
+		for i := range keys {
 			keys[i] = kv.KeyPrefix + keys[i]
 		}
 	}

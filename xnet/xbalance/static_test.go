@@ -14,7 +14,7 @@ import (
 
 func TestStatic_Pick(t *testing.T) {
 	as := NewStaticByAddr(xnet.NewAddr("tcp", "127.0.0.1:8080"), xnet.NewAddr("tcp", "127.0.0.2:8080"))
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		node, err := as.Pick(context.Background())
 		xt.NoError(t, err)
 		xt.NotNil(t, node)

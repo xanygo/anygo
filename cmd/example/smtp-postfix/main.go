@@ -41,7 +41,7 @@ func main() {
 		Subject: *subject,
 		Content: strings.Repeat("hello world，你好 <p style='color:red'>红色</p>\n", 2),
 	}
-	for _, f := range strings.Split(*files, ",") {
+	for f := range strings.SplitSeq(*files, ",") {
 		f = strings.TrimSpace(f)
 		if f == "" {
 			continue

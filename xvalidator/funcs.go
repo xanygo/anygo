@@ -7,6 +7,7 @@ package xvalidator
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -20,10 +21,8 @@ func IsHTTPURL(str string) error {
 }
 
 func StringIn(value string, values ...string) error {
-	for _, v := range values {
-		if value == v {
-			return nil
-		}
+	if slices.Contains(values, value) {
+		return nil
 	}
 	return fmt.Errorf("%q is not in %q", value, values)
 }
