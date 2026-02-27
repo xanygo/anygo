@@ -37,9 +37,9 @@ func (r request) APIName() string {
 }
 
 func (r request) WriteTo(ctx context.Context, w *xnet.ConnNode, opt xoption.Reader) error {
-	cr, ok := w.Handshake.(*handshakeReply)
+	cr, ok := w.SessionReply.(*handshakeReply)
 	if !ok {
-		return fmt.Errorf("invalid handshake type: %T, not smtp client", w.Handshake)
+		return fmt.Errorf("invalid handshake type: %T, not smtp client", w.SessionReply)
 	}
 	ctx, span := xmetric.Start(ctx, Protocol)
 	var cnt int

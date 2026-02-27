@@ -88,16 +88,16 @@ func (c *Client) Do(ctx context.Context, cmd Cmder) error {
 }
 
 func init() {
-	handler := xdial.HandshakeFunc(handshake)
-	xdial.RegisterHandshakeHandler(Protocol, handler)
-	xdial.RegisterHandshakeHandler("Redis", handler)
+	handler := xdial.StartSessionFunc(startSession)
+	xdial.RegisterSessionStarter(Protocol, handler)
+	xdial.RegisterSessionStarter("Redis", handler)
 }
 
 // 创建连接后，和 redis server 握手
 //
 // xrpc 里有统一的 handshake timeout 设置
 // https://redis.io/docs/latest/commands/hello/
-func handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (xdial.HandshakeReply, error) {
+func startSession(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (xdial.SessionReply, error) {
 	hello := resp3.HelloRequest{}
 	const redisKey = "Redis"
 	cfg := xoption.Extra(opt, redisKey)

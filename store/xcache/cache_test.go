@@ -28,17 +28,24 @@ func testCache(t *testing.T, c xcache.Cache[string, int]) {
 		xt.False(t, got2)
 		xt.NoError(t, err2)
 	}
+	t.Logf("checkNotExists-0")
 	checkNotExists(t)
 
+	t.Logf("check set k1")
 	xt.NoError(t, c.Set(ctx, "k1", 1, 10*time.Second))
+
+	t.Logf("check get k1")
 	got2, err2 := c.Get(ctx, "k1")
 	xt.NoError(t, err2)
 	xt.Equal(t, 1, got2)
 
+	t.Logf("check has k1")
 	got3, err3 := c.Has(ctx, "k1")
 	xt.NoError(t, err3)
 	xt.True(t, got3)
 
 	xt.NoError(t, c.Delete(ctx, "k1"))
+
+	t.Logf("checkNotExists-1")
 	checkNotExists(t)
 }

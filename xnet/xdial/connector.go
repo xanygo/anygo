@@ -6,16 +6,31 @@ package xdial
 
 import (
 	"context"
+	"crypto/tls"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xctx"
 	"github.com/xanygo/anygo/ds/xmetric"
 	"github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/xnet"
 )
 
 // Connector 网络连接器
 type Connector interface {
 	Connect(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (*xnet.ConnNode, error)
+}
+
+type Interceptor struct {
+	BeforeConnect func(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (context.Context, xnet.AddrNode, xoption.Reader)
+
+	AfterConnect func(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader, result *xnet.ConnNode, err error) (*xnet.ConnNode, error)
+
+	// 在执行 TlsHandshake 前执行
+	// 若 *tls.Config == nil， 表名此次连接不需要执行 TlsHandshake
+	BeforeTlsHandshake func(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader, target xnet.AddrNode, tc *tls.Config) (context.Context, *xnet.ConnNode, xoption.Reader, xnet.AddrNode, *tls.Config)
+
+	AfterTlsHandshake func(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader, target xnet.AddrNode, tc *tls.Config, result *xnet.ConnNode, err error) (*xnet.ConnNode, error)
 }
 
 var _ Connector = ConnectorFunc(nil)
@@ -29,7 +44,22 @@ func (c ConnectorFunc) Connect(ctx context.Context, addr xnet.AddrNode, opt xopt
 func Connect(ctx context.Context, c Connector, addr xnet.AddrNode, opt xoption.Reader) (nc *xnet.ConnNode, err error) {
 	ctx, span := xmetric.Start(ctx, "Connect")
 
+	its := allITs(ctx)
+	for _, it := range its {
+		if it.BeforeConnect == nil {
+			continue
+		}
+		ctx, addr, opt = it.BeforeConnect(ctx, addr, opt)
+	}
+
 	defer func() {
+		for _, it := range its {
+			if it.AfterConnect == nil {
+				continue
+			}
+			nc, err = it.AfterConnect(ctx, addr, opt, nc, err)
+		}
+
 		if !span.IsRecording() {
 			return
 		}
@@ -85,4 +115,25 @@ func defaultConnect(ctx context.Context, addrNode xnet.AddrNode, opt xoption.Rea
 		CreatTime: time.Now(),
 	}
 	return node, err
+}
+
+var globalInterceptors []Interceptor
+
+func RegisterIT(its ...Interceptor) {
+	globalInterceptors = append(globalInterceptors, its...)
+}
+
+var ctxITKey = xctx.NewKey()
+
+func ContextWithIT(ctx context.Context, its ...Interceptor) context.Context {
+	return xctx.WithValues(ctx, ctxITKey, its...)
+}
+
+func ITFromContext(ctx context.Context) []Interceptor {
+	return xctx.Values[*xctx.Key, Interceptor](ctx, ctxITKey, true)
+}
+
+func allITs(ctx context.Context) []Interceptor {
+	its := ITFromContext(ctx)
+	return xslice.SafeMerge(globalInterceptors, its)
 }

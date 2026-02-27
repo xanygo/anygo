@@ -56,7 +56,7 @@ func (ch HelloRequest) getUsername() string {
 	return ch.Username
 }
 
-var _ xdial.HandshakeReply = (*HelloResponse)(nil)
+var _ xdial.SessionReply = (*HelloResponse)(nil)
 
 type HelloResponse struct {
 	ID      int64                 `json:"id"`      // 12
@@ -73,7 +73,7 @@ func (hr *HelloResponse) String() string {
 	return string(bf)
 }
 
-func (hr *HelloResponse) Desc() string {
+func (hr *HelloResponse) Summary() string {
 	return fmt.Sprintf("id=%d,mode=%s,proto=%d,role=%s,version=%s", hr.ID, hr.Mode, hr.Proto, hr.Role, hr.Version)
 }
 

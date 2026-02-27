@@ -202,13 +202,18 @@ func (r *Request) balancer(opt xoption.Reader, u *url.URL) xbalance.Reader {
 	return nil
 }
 
-func (r *Request) tlsConfig(u *url.URL) *tls.Config {
+func (r *Request) tlsConfig(u *url.URL, opt xoption.Reader) *tls.Config {
 	if !r.HTTPS {
 		return nil
 	}
-	return &tls.Config{
-		ServerName: u.Hostname(),
+	tc := xoption.GetTLSConfig(opt)
+	if tc == nil {
+		tc = &tls.Config{}
+	} else {
+		tc = tc.Clone()
 	}
+	tc.ServerName = u.Hostname()
+	return tc
 }
 
 func (r *Request) OptionReader(ctx context.Context, rd xoption.Reader) xoption.Reader {
@@ -220,7 +225,7 @@ func (r *Request) OptionReader(ctx context.Context, rd xoption.Reader) xoption.R
 	if b := r.balancer(rd, u); b != nil {
 		xbalance.OptSetReader(opt, b)
 	}
-	if tc := r.tlsConfig(u); tc != nil {
+	if tc := r.tlsConfig(u, rd); tc != nil {
 		xoption.SetTLSConfig(opt, tc)
 	}
 	return opt.Value()
@@ -315,13 +320,18 @@ func (h *NativeRequest) balancer(opt xoption.Reader) xbalance.Reader {
 	return nil
 }
 
-func (h *NativeRequest) tlsConfig() *tls.Config {
+func (h *NativeRequest) tlsConfig(opt xoption.Reader) *tls.Config {
 	if h.Request.URL.Scheme != "https" {
 		return nil
 	}
-	return &tls.Config{
-		ServerName: h.Request.URL.Hostname(),
+	tc := xoption.GetTLSConfig(opt)
+	if tc == nil {
+		tc = &tls.Config{}
+	} else {
+		tc = tc.Clone()
 	}
+	tc.ServerName = h.Request.URL.Hostname()
+	return tc
 }
 
 func (h *NativeRequest) OptionReader(ctx context.Context, opt xoption.Reader) xoption.Reader {
@@ -330,7 +340,7 @@ func (h *NativeRequest) OptionReader(ctx context.Context, opt xoption.Reader) xo
 		xbalance.OptSetReader(mp, ap)
 	}
 
-	if tc := h.tlsConfig(); tc != nil {
+	if tc := h.tlsConfig(opt); tc != nil {
 		xoption.SetTLSConfig(mp, tc)
 	}
 

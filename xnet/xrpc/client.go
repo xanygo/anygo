@@ -50,7 +50,7 @@ type config struct {
 	ap        xbalance.Reader
 	service   xservice.Service
 	registry  xservice.Registry
-	handshake xdial.HandshakeHandler
+	handshake xdial.SessionStarter
 }
 
 func (cfg config) getService(srv any) (xservice.Service, error) {
@@ -169,7 +169,7 @@ func OptServiceRegistry(s xservice.Registry) Option {
 	})
 }
 
-func OptHandshakeHandler(h xdial.HandshakeHandler) Option {
+func OptHandshakeHandler(h xdial.SessionStarter) Option {
 	return optionFunc(func(o *config) {
 		o.handshake = h
 	})

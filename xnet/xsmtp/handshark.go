@@ -22,12 +22,12 @@ import (
 )
 
 func init() {
-	handler := xdial.HandshakeFunc(handshake)
-	xdial.RegisterHandshakeHandler(Protocol, handler)
+	handler := xdial.StartSessionFunc(handshake)
+	xdial.RegisterSessionStarter(Protocol, handler)
 }
 
 // 创建连接后，和 smtp server 握手
-func handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (xdial.HandshakeReply, error) {
+func handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (xdial.SessionReply, error) {
 	serverName := conn.Addr.Host()
 	client, err := smtp.NewClient(conn, serverName)
 	if err != nil {
@@ -107,7 +107,7 @@ func handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (xd
 	}, nil
 }
 
-var _ xdial.HandshakeReply = (*handshakeReply)(nil)
+var _ xdial.SessionReply = (*handshakeReply)(nil)
 
 type handshakeReply struct {
 	username string
@@ -118,7 +118,7 @@ func (h *handshakeReply) String() string {
 	return "ok"
 }
 
-func (h *handshakeReply) Desc() string {
+func (h *handshakeReply) Summary() string {
 	return "ok"
 }
 

@@ -19,7 +19,7 @@ import (
 func TestRedis(t *testing.T) {
 	ts, errTs := redistest.NewServer()
 	if errTs != nil {
-		t.Logf("create redis fail: %v", errTs)
+		t.Skipf("cannot create redis: %v, skipped", errTs)
 		return
 	}
 	defer ts.Stop()
