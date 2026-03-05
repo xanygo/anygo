@@ -42,7 +42,10 @@ e.g.:  js,css
 `)
 
 var goFile = flag.String("go", "", "generated go file name, e.g. asset_ez.go")
-var goVar = flag.String("var", "asset", "go variable name")
+
+var goFn = flag.String("fn", "", "func name for export asset")
+var goVar = flag.String("var", "", "var name for export asset")
+
 var goPkg = flag.String("pkg", "", "go package name")
 var tags = flag.String("tags", "release", "for generated go file //go:build {tags}")
 
@@ -212,13 +215,18 @@ func generateGoFile() {
 		pkg = filepath.Base(filepath.Dir(fp))
 	}
 
+	if *goFn == "" && *goVar == "" {
+		log.Fatalln("both -var and -fn are empty")
+	}
+
 	vars := map[string]any{
-		"PKG":    pkg,
-		"Var":    *goVar,
-		"VarTmp": "_" + xhash.Md5(*outfile+"|"+*goVar+"|"+pkg),
-		"Token":  tokenStr(*token),
-		"EZFile": *outfile,
-		"Tags":   *tags,
+		"PKG":     pkg,
+		"FnName":  *goFn,
+		"VarName": *goVar,
+		"VarTmp":  "_" + xhash.Md5(strings.Join(os.Args, "|")),
+		"Token":   tokenStr(*token),
+		"EZFile":  *outfile,
+		"Tags":    *tags,
 	}
 	str, err := xstr.RenderTemplate(goFileTpl, vars)
 	assert(err, "Render Go file: "+fileName)
@@ -265,24 +273,40 @@ const goFileTpl = `
 package {{.PKG}}
 
 import (
-	_ "embed"
 	"io/fs"
+	_ "embed"
 
 	"github.com/xanygo/anygo/ds/xzip"
 	"github.com/xanygo/anygo/xcodec"
+    "github.com/xanygo/anygo/ds/xsync"
 )
-
-var {{.Var}} fs.FS
 
 //go:embed {{.EZFile}}
 var {{.VarTmp}} []byte
 
-func init() {
-	dz := &xcodec.AesOFB{
-		Key:{{.Token}},
-	}
-	{{.Var}} = xzip.MustDecrypt({{.VarTmp}}, dz)
-	clear({{.VarTmp}})
-	{{.VarTmp}} = nil
+var {{.VarTmp}}Once = &xsync.OnceInit[fs.FS]{
+	New: func() fs.FS {
+		dz := &xcodec.AesOFB{
+			Key: {{.Token}},
+		}
+		rd:= xzip.MustDecrypt({{.VarTmp}}, dz)
+		clear({{.VarTmp}})
+		{{.VarTmp}} = nil
+		return rd
+	},
 }
+
+{{ if .VarName }}
+var {{.VarName}} fs.FS = {{.VarTmp}}Once.Load()
+
+{{ end}}
+
+{{ if .FnName }}
+func {{.FnName}}() fs.FS {
+	return {{.VarTmp}}Once.Load()
+}
+{{ end }}
+
+
+
 `
