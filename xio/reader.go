@@ -25,3 +25,7 @@ func (l *limitReadCloser) Read(p []byte) (n int, err error) {
 func (l *limitReadCloser) Close() error {
 	return l.raw.Close()
 }
+
+type StringReader interface {
+	ReadString(delim byte) (string, error)
+}

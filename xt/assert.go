@@ -98,16 +98,18 @@ func ErrorIs(t Testing, err error, target error) {
 		return
 	}
 
-	var expectedText string
-	if target != nil {
-		expectedText = target.Error()
+	t.Fatalf("errors.Is(%#v, %q) = false, want true", err, target)
+}
+
+func NotErrorIs(t Testing, err error, target error) {
+	if h, ok := t.(Helper); ok {
+		h.Helper()
+	}
+	if !errors.Is(err, target) {
+		return
 	}
 
-	chain := buildErrorChainString(err)
-	t.Fatalf("Target error should be in err chain:\n"+
-		"expected: %q\n"+
-		"in chain: %s", expectedText, chain,
-	)
+	t.Fatalf("errors.Is(%#v, %#v) = true, want false", err, target)
 }
 
 func ErrorContains(t Testing, err error, substr string) {
@@ -130,26 +132,6 @@ func ErrorNotContains(t Testing, err error, substr string) {
 		return
 	}
 	t.Fatalf("error %q should not contains %q", et, substr)
-}
-
-func NotErrorIs(t Testing, err error, target error) {
-	if h, ok := t.(Helper); ok {
-		h.Helper()
-	}
-	if !errors.Is(err, target) {
-		return
-	}
-
-	var expectedText string
-	if target != nil {
-		expectedText = target.Error()
-	}
-
-	chain := buildErrorChainString(err)
-	t.Fatalf("Target error should not be in err chain:\n"+
-		"expected: %q\n"+
-		"in chain: %s", expectedText, chain,
-	)
 }
 
 func True(t Testing, got bool) {

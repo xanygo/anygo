@@ -87,7 +87,7 @@ func samePointers(first, second any) bool {
 
 func buildErrorChainString(err error) string {
 	if err == nil {
-		return ""
+		return "<nil>"
 	}
 
 	e := errors.Unwrap(err)
