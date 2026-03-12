@@ -7,10 +7,7 @@ package xt
 // from https://github.com/stretchr/testify
 
 import (
-	"errors"
-	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/xanygo/anygo/cli/xcolor"
 )
@@ -83,21 +80,6 @@ func samePointers(first, second any) bool {
 
 	// compare pointer addresses
 	return first == second
-}
-
-func buildErrorChainString(err error) string {
-	if err == nil {
-		return "<nil>"
-	}
-
-	e := errors.Unwrap(err)
-	var chain strings.Builder
-	chain.WriteString(fmt.Sprintf("%q", err.Error()))
-	for e != nil {
-		chain.WriteString(fmt.Sprintf("\n\t%q", e.Error()))
-		e = errors.Unwrap(e)
-	}
-	return chain.String()
 }
 
 // getLen tries to get the length of an object.
