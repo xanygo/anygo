@@ -59,6 +59,14 @@ func (c FileConfig) GetListen(name string) string {
 	panic(fmt.Sprintf("not found Listen[%q] in %s", name, c.SelfPath))
 }
 
+func (c FileConfig) GetOther(name string) (value any, ok bool) {
+	if len(c.Other) == 0 {
+		return nil, false
+	}
+	value, ok = c.Other[name]
+	return value, ok
+}
+
 func (c FileConfig) getAppName() string {
 	if c.AppName != "" {
 		return c.AppName

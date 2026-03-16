@@ -105,7 +105,6 @@ func renderMsgSlice(text string, args ...any) (string, error) {
 		rpv := fmt.Sprint(v)
 		text = strings.ReplaceAll(text, rpk, rpv)
 	}
-	strings.NewReplacer()
 	return text, nil
 }
 

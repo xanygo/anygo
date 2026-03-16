@@ -4,6 +4,8 @@
 
 package xi18n
 
+import "slices"
+
 // Bundle 用于存储所有本地化信息的组件，以支持的语言 ( Language )  为 key 存储和查询
 //
 // 比如在 Bundle 中，会同时存储 zh（中文-Chinese）、en （英文-English）的本地化信息
@@ -29,13 +31,39 @@ func (b *Bundle) MustLocalize(lang Language) *Localize {
 
 // Localize 查找指定语言的本地化配置，若不存在会返回 nil
 func (b *Bundle) Localize(lang Language) *Localize {
-	if b.localizes == nil {
+	if b == nil || len(b.localizes) == 0 {
 		return nil
 	}
 	return b.localizes[lang]
 }
 
+func (b *Bundle) Clone() *Bundle {
+	if b == nil {
+		return nil
+	}
+	bc := &Bundle{
+		localizes: make(map[Language]*Localize, len(b.localizes)),
+		languages: slices.Clone(b.languages),
+	}
+	for k, v := range b.localizes {
+		bc.localizes[k] = v.Clone()
+	}
+	return bc
+}
+
+func (b *Bundle) Merge(other *Bundle) {
+	for _, lang := range other.Languages() {
+		loc := b.MustLocalize(lang)
+		for k, msg := range other.Localize(lang).messages {
+			loc.MustAdd(k, msg)
+		}
+	}
+}
+
 // Languages 所有支持的本地化语言，返回的 slice 是排序的，先通过 MustLocalize 注册的会排在前面
 func (b *Bundle) Languages() []Language {
+	if b == nil {
+		return nil
+	}
 	return b.languages
 }

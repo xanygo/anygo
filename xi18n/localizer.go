@@ -6,6 +6,7 @@ package xi18n
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 )
 
@@ -52,6 +53,12 @@ func (l *Localize) Find(namespace string, key string) *Message {
 	}
 	path := l.keyJoin(namespace, key)
 	return l.messages[path]
+}
+
+func (l *Localize) Clone() *Localize {
+	return &Localize{
+		messages: maps.Clone(l.messages),
+	}
 }
 
 // FindMessage 在 Bundle 中，使用推荐的 Language 列表，查找指定的消息，若查找不到会返回 nil

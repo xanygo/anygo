@@ -437,7 +437,7 @@ var AdvancedFuncMap = map[string]func(tpl *template.Template) any{
 
 // WalkParseFS 遍历读取 fsys ，并将符合 pattern 的文件解析
 //
-// pattern: 不能包含目录，有效值，如 *.html
+// pattern: 文件名的规则，不能包含目录，有效值，如 *.html
 //
 // 注意：
 //  1. 所有 define 定义的块，全局应该不出现重名，在使用 template 方法渲染的时候，不应该添加其所在目录，

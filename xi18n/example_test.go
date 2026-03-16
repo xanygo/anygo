@@ -10,10 +10,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/xanygo/anygo"
 	"github.com/xanygo/anygo/xi18n"
 )
 
-func ExampleXI() {
+func ExampleRA() {
 	b := &xi18n.Bundle{}
 	// 在 index 这个名字空间下，为 zh 和 en 两种语言定义 title 这个资源
 	b.MustLocalize(xi18n.LangZh).MustAdd("index", &xi18n.Message{Key: "title", Other: "你好 {0}"})
@@ -21,12 +22,12 @@ func ExampleXI() {
 
 	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// 从 context 里读取到 Bundle 和语言支持列表，并渲染内容
-		txt := xi18n.XI(r.Context(), "index@title", "AnyGo")
+		txt := anygo.Must1(xi18n.RA(r.Context(), "index@title", "AnyGo"))
 		_, _ = w.Write([]byte(txt))
 	})
 
-	// 解析 Accept-Language 的中间件
-	handler = (&xi18n.HTTPLanguageHandler{
+	// 解析 Accept-Language 的中间件，将 Bundle 和 Language 信息绑定到 context 里去
+	handler = (&xi18n.HTTPHandler{
 		Bundle: b,
 	}).Next(handler)
 	ts := httptest.NewServer(handler)

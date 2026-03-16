@@ -29,6 +29,16 @@ func TestParserAccept(t *testing.T) {
 				Language("en"),
 			},
 		},
+		{
+			name: "case 2",
+			args: args{
+				accept: "zh-CN,zh;q=0.9,en;q=0",
+			},
+			want: []Language{
+				Language("zh-CN"),
+				Language("zh"),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

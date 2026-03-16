@@ -6,56 +6,91 @@ package xi18n
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"html/template"
+	"net/http"
+
+	"github.com/xanygo/anygo/ds/xmap"
 )
 
-type TemplateRender struct{}
+// TemplateRender 渲染模版的辅助类
+type TemplateRender struct {
+	Bundle    *Bundle    // 语言资源包
+	Languages []Language // 有 http header accept-language 解析出的首选语言列表
+}
 
-func (r TemplateRender) BindXI(b *Bundle, languages []Language, namespace string) func(key string, args ...any) string {
-	return func(key string, args ...any) string {
+// RA 在模版中加载渲染本地化内容
+//
+//	如  hello {{ .xi.RA "index@k1" }} 、 {{ .xi.RA "index@k1" arg1 arg2 }}
+//	第一个参数 "index@k1" 中 namespace = "index", key="k1"
+//	arg1 arg2 等是可选参数，支持 >=0 个
+//
+// 由于 xi 是通过 namespace + key 读取本地化内容的，所以要求所有的本地化资源都在 Bundle 中有定义
+func (tr *TemplateRender) RA(key string, args ...any) (string, error) {
+	return renderA(tr.Bundle, tr.Languages, key, args...)
+}
+
+func renderA(b *Bundle, ls []Language, key string, args ...any) (string, error) {
+	msg := FindMessage(b, ls, "", key)
+	if msg == nil {
+		return "", fmt.Errorf("cannot find %q", key)
+	}
+	return msg.Render(args...)
+}
+
+// RB 渲染本地化内容,若没有对应的语言内容，则使用传入的 text 渲染
+//
+//	如 {{ .xi.RB "你好" "index@k1" }} 或者 {{ .xi.RB "你好 {0}" "index@k1" "demo" }}
+//	在 “|” 前的内容是预定义的本地化模版信息,本地化信息中的变量使用 {number} 作为占位符，从 0 依次递增
+func (tr *TemplateRender) RB(text string, key string, args ...any) (string, error) {
+	return renderB(tr.Bundle, tr.Languages, text, key, args...)
+}
+
+func renderB(b *Bundle, ls []Language, text string, key string, args ...any) (string, error) {
+	if len(ls) > 1 {
+		ls = ls[:1] // 只查找第一候选语言
+	}
+	msg := FindMessage(b, ls, "", key)
+	if msg != nil {
+		return msg.Render(args...)
+	}
+	return renderMsgSlice(text, args...)
+}
+
+// Is 是否首选语言
+func (tr *TemplateRender) Is(lang string) bool {
+	return len(tr.Languages) > 0 && tr.Languages[0] == Language(lang)
+}
+
+func (tr *TemplateRender) BindXI(b *Bundle, languages []Language, namespace string) func(key string, args ...any) (string, error) {
+	return func(key string, args ...any) (string, error) {
 		msg := FindMessage(b, languages, namespace, key)
 		if msg == nil {
-			return "cannot find " + key
+			return "", fmt.Errorf("cannot find i18n key %q", key)
 		}
-		return renderResult(msg.Render(args...))
+		return msg.Render(args...)
 	}
 }
 
-func renderResult(result string, err error) string {
-	if err == nil {
-		return result
-	}
-	return fmt.Sprintf("render i18n message %s", err.Error())
-}
-
-func (r TemplateRender) BindXTT(b *Bundle, languages []Language, namespace string) func(key string, args ...any) string {
-	useDefault := len(languages) == 0
-	if !useDefault {
-		if bls := b.Languages(); len(bls) > 0 {
-			useDefault = bls[0] == languages[0]
-		}
-	}
-	return func(key string, args ...any) string {
+func (tr *TemplateRender) BindXTT(b *Bundle, languages []Language, namespace string) func(key string, args ...any) (string, error) {
+	return func(key string, args ...any) (string, error) {
 		var ok = len(args) > 0
 		var text string
 		if ok {
 			text, ok = args[len(args)-1].(string)
 		}
 		if !ok {
-			return fmt.Sprintf("key=%q, missing text", key)
+			return "", fmt.Errorf("i18n key=%q, missing text", key)
 		}
-		if useDefault {
-			return renderResult(renderMsgSlice(text, args[0:len(args)-1]...))
+		if namespace != "" {
+			key = namespace + "@" + key
 		}
-		msg := FindMessage(b, languages, namespace, key)
-		if msg == nil {
-			return renderResult(renderMsgSlice(text, args[0:len(args)-1]...))
-		}
-		return renderResult(msg.Render(args[0 : len(args)-1]...))
+		return renderB(b, languages, text, key, args[:len(args)-1]...)
 	}
 }
 
-func (r TemplateRender) BindIs(languages []Language) func(lang string) bool {
+func (tr *TemplateRender) BindIs(languages []Language) func(lang string) bool {
 	return func(lang string) bool {
 		return len(languages) > 0 && languages[0] == Language(lang)
 	}
@@ -95,54 +130,73 @@ func FuncMap(b *Bundle, languages []Language, namespace string) map[string]any {
 	}
 }
 
-type ctxBundle struct {
-	bundle    *Bundle
-	namespace string
-}
+var errNoBundleInCtx = errors.New("not found Bundle in context, should ContextWithBundle first")
 
-// ContextWithBundle 将本地化资源信息存储到 ctx 里去，如此之后可以直接在 .go 文件中使用 XI 和 XIT 等系列函数渲染文本内容
-func ContextWithBundle(ctx context.Context, b *Bundle, namespace string) context.Context {
-	rr := &ctxBundle{
-		bundle:    b,
-		namespace: namespace,
-	}
-	return context.WithValue(ctx, ctxKeyBundle, rr)
-}
-
-// XI 使用资源的 key 渲染文本内容,需要提前使用 ContextWithBundle 将 *Bundle 存入 ctx。
+// RA 使用资源的 key 渲染文本内容,需要提前使用 ContextWithBundle 将 *Bundle 存入 ctx。
 // 若是 Bundle 不存在会 panic，key 不存在会返回错误信息。
-func XI(ctx context.Context, key string, args ...any) string {
+func RA(ctx context.Context, key string, args ...any) (string, error) {
 	rr, ok := ctx.Value(ctxKeyBundle).(*ctxBundle)
 	if !ok {
-		panic(fmt.Sprintf("key=%q, not found Bundle in context, should ContextWithBundle first", key))
+		return "", errNoBundleInCtx
 	}
-	msg := FindMessage(rr.bundle, LanguagesFromContext(ctx), rr.namespace, key)
-	if msg == nil {
-		return "missing i18n key=" + key
+	if rr.namespace != "" {
+		key = rr.namespace + "@" + key
 	}
-	return renderResult(msg.Render(args...))
+	return renderA(rr.bundle, LanguagesFromContext(ctx), key, args...)
 }
 
-// XIT 使用传入的模版( 参数名: text ) 以及资源的 key 渲染文本内容,需要提前使用 ContextWithBundle 将 *Bundle 存入 ctx。
+// RB 使用资源 key 渲染文本内容,若 key 不存在则使用传入的模版( 参数名: text，作为默认模版 ) 渲染
+// 需要提前使用 ContextWithBundle 将 *Bundle 和 首选语言 Language 存入 ctx。
 // 若是 Bundle 不存在会 panic，key 不存在会返回错误信息。
-func XIT(ctx context.Context, text string, key string, args ...any) string {
+func RB(ctx context.Context, text string, key string, args ...any) (string, error) {
 	rr, ok := ctx.Value(ctxKeyBundle).(*ctxBundle)
 	if !ok {
-		panic(fmt.Sprintf("key=%q, not found Bundle in context, should ContextWithBundle first", key))
+		return "", errNoBundleInCtx
 	}
 	languages := LanguagesFromContext(ctx)
-	useDefault := len(languages) == 0
-	if !useDefault {
-		if bls := rr.bundle.Languages(); len(bls) > 0 {
-			useDefault = bls[0] == languages[0]
+	if rr.namespace != "" {
+		key = rr.namespace + "@" + key
+	}
+	return renderB(rr.bundle, languages, text, key, args...)
+}
+
+func RC(b *Bundle, req *http.Request, key string, args ...any) (string, error) {
+	languages := HTTPHandler{}.Languages(req)
+	return renderA(b, languages, key, args...)
+}
+
+func RD(b *Bundle, req *http.Request, text string, key string, args ...any) (string, error) {
+	languages := HTTPHandler{}.Languages(req)
+	return renderB(b, languages, text, key, args...)
+}
+
+// BuildTemplate 构建支持多语言支持的模版集合
+//
+//	在模版文件中，可以使用 xi、xit 函数来读取语言资源
+//
+// 基本原理：
+//
+//	给 Bundle 中已定义的语言类型(Language,如 zh，en 等)，每个语言各自编译一套模版文件（将 语言资源和此模版绑定），返回一个以 Language 为 key 的 Map。
+//	之后可以在渲染时，依据 http.Request 的 Accept-Language （用户浏览器配置的首选语言列表），从 Map 中筛选出对应的模版文件，然后渲染。
+func BuildTemplate(defaultLang Language, b *Bundle, build func(t *template.Template) *template.Template) *xmap.Tags[Language, *template.Template, Language] {
+	mt := &xmap.Tags[Language, *template.Template, Language]{}
+	var langs []Language
+	if b != nil {
+		langs = b.Languages()
+	}
+	if len(langs) == 0 {
+		langs = []Language{defaultLang}
+	}
+	for _, lang := range langs {
+		prefer := []Language{lang} // 当前语言优先级最高，其他语言作为 backup
+		for _, a := range langs {
+			if a != lang {
+				prefer = append(prefer, a)
+			}
 		}
+		tpl := template.New("i18n_layout").Funcs(FuncMap(b, prefer, ""))
+		tpl = build(tpl)
+		mt.Set(lang, tpl, lang)
 	}
-	if useDefault {
-		return renderResult(renderMsgSlice(text, args...))
-	}
-	msg := FindMessage(rr.bundle, languages, rr.namespace, key)
-	if msg == nil {
-		return "missing i18n key=" + key
-	}
-	return renderResult(msg.Render(args...))
+	return mt
 }

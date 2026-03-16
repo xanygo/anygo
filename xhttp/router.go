@@ -6,6 +6,7 @@ package xhttp
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"slices"
 	"strings"
@@ -127,25 +128,38 @@ func (r *Router) doNotFound(w http.ResponseWriter, req *http.Request) {
 //
 // pattern： 支持格式 (Method\s+)?(Path)(\s+meta|Meta)
 //
-//	Method: 请求方法，可选，支持一个活多个，如 “GET”，“GET,POST”
+//	Method: 请求方法，可选，支持一个或多个，如 “GET”，“GET,POST”
 //	若 Method 为空则不限定请求方法
 //
 //	Path: 请求地址，支持静态地址和通配符
 //
 //	Meta：路由的其他元信息
 //	如 meta|id=123 或者 meta|id=123,type=user
-func (r *Router) Handle(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
-	r.register(pattern, handler, mds...)
+func (r *Router) Handle(pattern string, handler http.Handler, mds ...MiddlewareFunc) error {
+	_, err := r.register(pattern, handler, mds...)
+	return err
 }
 
-func (r *Router) register(pattern string, handler http.Handler, mds ...MiddlewareFunc) []RouteInfo {
-	routes, err := zroute.ParserPattern(r.prefix, pattern)
+func (r *Router) MustHandle(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
+	r.mustRegister(pattern, handler, mds...)
+}
+
+func (r *Router) mustRegister(pattern string, handler http.Handler, mds ...MiddlewareFunc) []RouteInfo {
+	infos, err := r.register(pattern, handler, mds...)
 	if err != nil {
 		panic(err)
 	}
+	return infos
+}
+
+func (r *Router) register(pattern string, handler http.Handler, mds ...MiddlewareFunc) ([]RouteInfo, error) {
+	routes, err := zroute.ParserPattern(r.prefix, pattern)
+	if err != nil {
+		return nil, err
+	}
 
 	if handler == nil {
-		panic(pattern + ": register with a nil handler")
+		return nil, errors.New("register with a nil handler")
 	}
 
 	r.AutoLogger().Debug(context.Background(), "Handle",
@@ -171,7 +185,7 @@ func (r *Router) register(pattern string, handler http.Handler, mds ...Middlewar
 
 		r.AutoLogger().Debug(context.Background(), "Route", route.LogFields()...)
 	}
-	return result
+	return result, nil
 }
 
 // HandleFunc  注册路由， pattern 支持格式 (Method\s+)?(Path)(\s+meta|Meta)
@@ -180,7 +194,7 @@ func (r *Router) HandleFunc(pattern string, handler http.HandlerFunc, mds ...Mid
 }
 
 func (r *Router) handleMethod(method string, pattern string, handler http.Handler, mds ...MiddlewareFunc) RouteInfo {
-	infos := r.register(method+" "+pattern, handler, mds...)
+	infos := r.mustRegister(method+" "+pattern, handler, mds...)
 	return infos[0]
 }
 
