@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unsafe"
 
 	"github.com/xanygo/anygo/internal/zos"
 	"github.com/xanygo/anygo/store/xkv/internal"
@@ -431,12 +432,16 @@ type fileHash struct {
 
 type fileHashKV struct {
 	Field string `json:"f"`
-	Value string `json:"v"`
+	Value []byte `json:"v"` // 序列化采用的 json，为了让二进制支持的更好，需要使用 []byte 而不是 string
 }
 
 func (f fileHashKV) String() string {
 	bf, _ := json.Marshal(f)
 	return string(bf)
+}
+
+func (f fileHashKV) ValueString() string {
+	return unsafe.String(unsafe.SliceData(f.Value), len(f.Value))
 }
 
 func (f fileHash) HSet(ctx context.Context, field, value string) error {
@@ -445,7 +450,7 @@ func (f fileHash) HSet(ctx context.Context, field, value string) error {
 	}
 	kv := fileHashKV{
 		Field: field,
-		Value: value,
+		Value: unsafe.Slice(unsafe.StringData(value), len(value)),
 	}
 	return f.WriteKVDataFile(f.Md5(field), kv.String())
 }
@@ -458,7 +463,7 @@ func (f fileHash) HMSet(ctx context.Context, values map[string]string) error {
 	for k, v := range values {
 		kv := fileHashKV{
 			Field: k,
-			Value: v,
+			Value: []byte(v),
 		}
 		if err := f.WriteKVDataFile(f.Md5(k), kv.String()); err != nil {
 			errs = append(errs, err)
@@ -480,7 +485,7 @@ func (f fileHash) HGet(ctx context.Context, field string) (string, bool, error) 
 	if err != nil {
 		return "", false, err
 	}
-	return kv.Value, true, nil
+	return kv.ValueString(), true, nil
 }
 
 func (f fileHash) HDel(ctx context.Context, fields ...string) error {
@@ -508,7 +513,7 @@ func (f fileHash) HRange(ctx context.Context, fn func(field string, value string
 		if err != nil {
 			return err
 		}
-		if !fn(kv.Field, kv.Value) {
+		if !fn(kv.Field, kv.ValueString()) {
 			return fs.SkipAll
 		}
 		return nil
@@ -610,7 +615,7 @@ func (f fileZSet) ZAdd(ctx context.Context, score float64, member string) error 
 		return err
 	}
 	m := fileZSetMember{
-		Member: member,
+		Member: unsafe.Slice(unsafe.StringData(member), len(member)),
 		Score:  score,
 	}
 	bf, err := json.Marshal(m)
@@ -626,7 +631,8 @@ func (f fileZSet) ZScore(ctx context.Context, member string) (float64, bool, err
 		return 0, false, err
 	}
 	m := &fileZSetMember{}
-	err = json.Unmarshal([]byte(str), m)
+	bf := unsafe.Slice(unsafe.StringData(str), len(str))
+	err = json.Unmarshal(bf, m)
 	return m.Score, err == nil, err
 }
 
@@ -651,7 +657,7 @@ func (f fileZSet) ZRange(ctx context.Context, fn func(member string, score float
 		return list[i].Score < list[j].Score
 	})
 	for _, m := range list {
-		if !fn(m.Member, m.Score) {
+		if !fn(m.MemberString(), m.Score) {
 			return nil
 		}
 	}
@@ -673,6 +679,10 @@ func (f fileZSet) ZRem(ctx context.Context, members ...string) error {
 }
 
 type fileZSetMember struct {
-	Member string  `json:"m"`
+	Member []byte  `json:"m"`
 	Score  float64 `json:"s"`
+}
+
+func (fm fileZSetMember) MemberString() string {
+	return unsafe.String(unsafe.SliceData(fm.Member), len(fm.Member))
 }

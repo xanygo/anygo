@@ -25,7 +25,7 @@ type KVStore struct {
 	TTL time.Duration     // Session 有效期,可选，默认 30 天，若超过此时间没有读写，则清除掉
 
 	DataKeyPrefix string // 存储 session 实际数据的 key 前缀，可选，默认为 "ss|"
-	MetaKeyPrefix string // 存储元信息数据的 key 的前缀，可选，默认为 "session_meta"
+	MetaKeyPrefix string // 存储元信息数据的 key 的前缀，可选，默认为 "ss_meta"
 
 	Logger xlog.Logger // 可选，执行清理逻辑时打印日志用
 
@@ -67,7 +67,7 @@ func (ks *KVStore) Get(ctx context.Context, id string) Session {
 
 func (ks *KVStore) metaKey() string {
 	if ks.MetaKeyPrefix == "" {
-		return "session_meta"
+		return "ss_meta"
 	}
 	return ks.MetaKeyPrefix
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/xanygo/anygo/xt"
 )
 
-func testStorage(t *testing.T, ff xkv.StringStorage) {
+func testStringStorage(t *testing.T, ff xkv.StringStorage) {
 	t.Run("string", func(t *testing.T) {
 		ss1 := ff.String("hello")
 		got1, found1, err1 := ss1.Get(context.Background())

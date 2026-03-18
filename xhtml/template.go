@@ -248,6 +248,10 @@ var FuncMap = template.FuncMap{
 	"xNewMap":  xmap.Create[string, any],
 	"xMapKeys": tplfn.MapKeys,
 
+	"xNewSlice": func(arr ...any) []any {
+		return arr
+	},
+
 	// 若传入的 value 不为空，则返回自身。否则返回一个空的 map[sting]any
 	"xOrMap": tplfn.OrMap,
 

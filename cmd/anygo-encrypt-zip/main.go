@@ -41,6 +41,8 @@ https://github.com/tdewolff/minify/tree/master/cmd/minify
 e.g.:  js,css
 `)
 
+var stripComment = flag.Bool("sc", true, "strip head comments")
+
 var goFile = flag.String("go", "", "generated go file name, e.g. asset_ez.go")
 
 var goFn = flag.String("fn", "", "func name for export asset")
@@ -174,8 +176,23 @@ func oneFile(zw *zip.Writer, name string) error {
 	if err != nil {
 		return err
 	}
+	if *stripComment {
+		content = doStripComment(filepath.Base(name), content)
+	}
 	_, err = fw.Write(content)
 	return err
+}
+
+func doStripComment(name string, content []byte) []byte {
+	if strings.HasSuffix(name, ".js") {
+		content = bytes.TrimSpace(content)
+		if bytes.HasPrefix(content, []byte("/*!")) {
+			if _, after, found := bytes.Cut(content, []byte("*/!")); found && len(after) > 0 {
+				content = bytes.TrimSpace(after)
+			}
+		}
+	}
+	return content
 }
 
 func assert(err error, msg string) {

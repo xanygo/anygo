@@ -12,7 +12,7 @@ import (
 
 func TestMemoryStorage(t *testing.T) {
 	ff := &xkv.MemoryStore{}
-	testStorage(t, ff)
+	testStringStorage(t, ff)
 }
 
 func BenchmarkMemory(b *testing.B) {

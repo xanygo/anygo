@@ -93,7 +93,8 @@ func (fb FileBase) WriteKVDataFile2(baseName string, data string) (added bool, e
 	info, err := os.Stat(fp)
 	// 判断此文件是否新增
 	added = info == nil && errors.Is(err, fs.ErrNotExist)
-	return added, os.WriteFile(fp, []byte(data), 0666)
+	bf := unsafe.Slice(unsafe.StringData(data), len(data))
+	return added, os.WriteFile(fp, bf, 0666)
 }
 
 func (fb FileBase) WriteFile(baseName string, data string) error {
@@ -102,7 +103,8 @@ func (fb FileBase) WriteFile(baseName string, data string) error {
 	if err := xfs.KeepDirExists(dir); err != nil {
 		return err
 	}
-	return os.WriteFile(fp, []byte(data), 0666)
+	bf := unsafe.Slice(unsafe.StringData(data), len(data))
+	return os.WriteFile(fp, bf, 0666)
 }
 
 // CheckReadKVDataFile 检查并读取 kv 文件，

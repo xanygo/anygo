@@ -71,3 +71,10 @@ func DecoderWithTranscoder(dec Decoder, trans TranscoderFunc) Decoder {
 		return dec.Decode(nd, obj)
 	})
 }
+
+func CodecWithCipher(coder Codec, c Cipher) Codec {
+	enc := EncoderWithTranscoder(coder, c.Encrypt)
+	dec := DecoderWithTranscoder(coder, c.Decrypt)
+	ct, _ := ContentType(coder)
+	return NewCodec(coder.Name(), enc.Encode, dec.Decode, ct)
+}
