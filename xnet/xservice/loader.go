@@ -53,6 +53,8 @@ func (l *Loader) getRegistry() Registry {
 	return l.Registry
 }
 
+// LoadDir 加载指定 pattern 的 service 配置，
+// 比如 xxx/conf/service/*.yml, xxx/conf/service/*.json
 func (l *Loader) LoadDir(ctx context.Context, patterns ...string) error {
 	var files []string
 	for _, pattern := range patterns {
@@ -100,6 +102,7 @@ func (l *Loader) checkReload(ctx context.Context) error {
 	return nil
 }
 
+// Load 加载指定的 service 配置文件列表,若文件名以 “_” 或者 "." 开头，则此文件会跳过
 func (l *Loader) Load(ctx context.Context, filenames ...string) error {
 	l.once.Do(l.initOnce)
 
@@ -107,6 +110,11 @@ func (l *Loader) Load(ctx context.Context, filenames ...string) error {
 	xlog.AddAttr(ctx, xlog.String("Action", "xservice.Loader.Load"))
 	lg := l.getLogger()
 	reg := l.getRegistry()
+
+	if len(filenames) == 0 {
+		lg.Info(ctx, "loaded with no files")
+		return nil
+	}
 
 	parserOne := func(ctx context.Context, name string) error {
 		ctx = xlog.ForkContext(ctx)
@@ -180,6 +188,7 @@ func DefaultLoader() *Loader {
 	return defaultLoader.Load()
 }
 
+// LoadDir 加载 service 配置文件到 DefaultRegistry
 func LoadDir(ctx context.Context, patterns ...string) error {
 	return DefaultLoader().LoadDir(ctx, patterns...)
 }

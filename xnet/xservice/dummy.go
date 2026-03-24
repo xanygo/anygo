@@ -19,7 +19,7 @@ const Dummy = xnet.Dummy
 // GetDummyService 从默认的 Registry 中查找的 DummyService，若没有则返回固定配置的 DefaultDummyService
 func GetDummyService() Service {
 	dy, err := FindService(Dummy)
-	if err != nil {
+	if err == nil && dy != nil {
 		return dy
 	}
 	return DefaultDummyService()
