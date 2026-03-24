@@ -155,7 +155,7 @@ type Client struct {
 
 func (c *Client) getService() any {
 	if c.Service == nil {
-		return xservice.DummyService()
+		return xservice.GetDummyService()
 	}
 	return c.Service
 }

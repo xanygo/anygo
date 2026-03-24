@@ -11,6 +11,6 @@ import (
 )
 
 func TestDummyService(t *testing.T) {
-	ser := DummyService()
+	ser := DefaultDummyService()
 	xt.NotEmpty(t, ser)
 }

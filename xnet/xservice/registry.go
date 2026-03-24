@@ -17,8 +17,7 @@ import (
 type Registry interface {
 	Register(s Service) error       // 注册，若重名会返回错误
 	Deregister(name string) Service // 注销，若不存在则返回 nil
-
-	Upsert(s Service) (old Service) // 注册，若重名则替换并返回旧的
+	Upsert(s Service) (old Service) // 替换，若重名则替换并返回旧的
 
 	Find(name string) (Service, bool)
 	Range(fn func(s Service) bool)
@@ -108,7 +107,7 @@ func FindServiceWithRegistry(reg Registry, name string) (Service, error) {
 		return ser, nil
 	}
 	if xnet.IsDummyName(name) {
-		return DummyService(), nil
+		return DefaultDummyService(), nil
 	}
 	return nil, fmt.Errorf("service %q %w", name, xerror.NotFound)
 }
@@ -117,7 +116,7 @@ func FindServiceWithRegistry(reg Registry, name string) (Service, error) {
 //
 // 若 name 不包含 / ，从 DefaultRegistry()
 // 若 name 包含 /, 如 other/name, 则先使用 FindRegistry("other") 找到对应的 Registry，然后查找 name
-// 若 name == “dummy”， 则直接返回 DummyService
+// 若 name == “dummy”， 则直接返回 DefaultDummyService
 func FindService(srv any) (Service, error) {
 	var name string
 	switch obj := srv.(type) {
@@ -135,7 +134,7 @@ func FindService(srv any) (Service, error) {
 			return ser, nil
 		}
 		if xnet.IsDummyName(name) {
-			return DummyService(), nil
+			return DefaultDummyService(), nil
 		}
 		return nil, fmt.Errorf("service %q %w", name, xerror.NotFound)
 	}

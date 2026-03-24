@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync/atomic"
 
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xhttp/internal/zroute"
@@ -22,8 +23,12 @@ type MiddlewareFunc func(http.Handler) http.Handler
 
 var _ http.Handler = (*Router)(nil)
 
+var routerID atomic.Int64
+
 func NewRouter() *Router {
-	rt := &Router{}
+	rt := &Router{
+		id: routerID.Add(1),
+	}
 	return rt
 }
 
@@ -80,6 +85,7 @@ func NewRouter() *Router {
 //	在 Pattern 中，除了 Path 等其他元信息可以通过在 Pattern 中添加 (\s+meta|Meta) 段落内容添加。
 //	如 Handle("get /index meta|id=1,type=user")。id 字段时固定的字段，还可以添加其他任意 key 。
 type Router struct {
+	id, pid int64 // 方便观察日志
 	xlog.WithLogger
 
 	prefix      string
@@ -162,7 +168,8 @@ func (r *Router) register(pattern string, handler http.Handler, mds ...Middlewar
 		return nil, errors.New("register with a nil handler")
 	}
 
-	r.AutoLogger().Debug(context.Background(), "Handle",
+	r.AutoLogger().Info(context.Background(), "Register http.Handler",
+		xlog.Int64("RouterID", r.id),
 		xlog.String("Pattern", pattern),
 		xlog.Int("Routes.cnt", len(routes)),
 	)
@@ -245,6 +252,8 @@ func (r *Router) Prefix(prefix string, mds ...MiddlewareFunc) *Router {
 		panic("prefix must not be empty")
 	}
 	g := &Router{
+		pid:         r.id,
+		id:          routerID.Add(1),
 		prefix:      zroute.CleanPath(r.prefix + prefix),
 		middlewares: mds,
 	}

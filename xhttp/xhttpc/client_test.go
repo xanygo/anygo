@@ -37,7 +37,7 @@ func TestCacheClient(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	xservice.DefaultRegistry().Register(xservice.DummyService())
+	xservice.DefaultRegistry().Register(xservice.DefaultDummyService())
 
 	rc := xcache.NewLRU[string, *xhttpc.StoredResponse](10)
 	hc := xhttpc.CachedClient{

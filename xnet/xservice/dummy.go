@@ -16,7 +16,17 @@ import (
 
 const Dummy = xnet.Dummy
 
-func DummyService() Service {
+// GetDummyService 从默认的 Registry 中查找的 DummyService，若没有则返回固定配置的 DefaultDummyService
+func GetDummyService() Service {
+	dy, err := FindService(Dummy)
+	if err != nil {
+		return dy
+	}
+	return DefaultDummyService()
+}
+
+// DefaultDummyService 返回固定配置的（不是从 Registry 中查找的） DefaultDummyService
+func DefaultDummyService() Service {
 	return dummyService.Load()
 }
 
@@ -26,13 +36,19 @@ var dummyService = xsync.OnceInit[Service]{
 	},
 }
 
+// SetDefaultDummyService 替换默认的 DummyService，只影响 DefaultDummyService()
+// 若 Registry 里有名字叫做 dummy 的 service，应该使用 Registry.Upsert 替换
+func SetDefaultDummyService(srv Service) {
+	dummyService.Store(srv)
+}
+
 func NewDummyService(name string) Service {
 	cfg := &Config{
 		Name:           name,
 		ConnectRetry:   1,
-		ConnectTimeout: xtype.Duration(5000 * time.Millisecond),
-		WriteTimeout:   xtype.Duration(10000 * time.Millisecond),
-		ReadTimeout:    xtype.Duration(45000 * time.Millisecond),
+		ConnectTimeout: xtype.Duration(10 * time.Second),
+		WriteTimeout:   xtype.Duration(10 * time.Second),
+		ReadTimeout:    xtype.Duration(60 * time.Second),
 		Retry:          2,
 		WorkerCycle:    xtype.Duration(24 * time.Hour),
 		DownStream: DownStreamPart{
