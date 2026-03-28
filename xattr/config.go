@@ -7,6 +7,7 @@ package xattr
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/xanygo/anygo/xcodec"
 )
@@ -48,15 +49,23 @@ type FileConfig struct {
 	SelfPath string
 }
 
-func (c FileConfig) GetListen(name string) string {
+func (c FileConfig) MustGetListen(name string) string {
+	value, err := c.GetListen(name)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+func (c FileConfig) GetListen(name string) (string, error) {
 	if len(c.Listen) == 0 {
-		panic("empty Listen in " + c.SelfPath)
+		return "", fmt.Errorf("empty Listen in %s", c.SelfPath)
 	}
 	v, ok := c.Listen[name]
 	if ok {
-		return v
+		return strings.TrimSpace(v), nil
 	}
-	panic(fmt.Sprintf("not found Listen[%q] in %s", name, c.SelfPath))
+	return "", fmt.Errorf("not found Listen[%q] in %s", name, c.SelfPath)
 }
 
 func (c FileConfig) GetOther(name string) (value any, ok bool) {
