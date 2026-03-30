@@ -17,14 +17,14 @@ import (
 	"github.com/xanygo/anygo/xt"
 )
 
-func TestAnyServer(t *testing.T) {
+func TestTCPServer(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	xt.NoError(t, err)
 	xt.NotNil(t, l)
 	defer l.Close()
 
-	ser := &xrps.AnyServer{
-		Handler: xrps.HandleFunc(echoHandler),
+	ser := &xrps.AnyServer[net.Conn]{
+		Handler: xrps.HandleFunc[net.Conn](echoHandler),
 	}
 	var wg sync.WaitGroup
 	wg.Go(func() {

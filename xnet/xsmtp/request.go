@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"iter"
 	"net/smtp"
 	"time"
@@ -36,7 +37,11 @@ func (r request) APIName() string {
 	return "Send"
 }
 
-func (r request) WriteTo(ctx context.Context, w *xnet.ConnNode, opt xoption.Reader) error {
+func (r request) WriteTo(ctx context.Context, wr io.Writer, opt xoption.Reader) error {
+	w, ok := wr.(*xnet.ConnNode)
+	if !ok {
+		return fmt.Errorf("writer is %T, not a net.ConnNode", wr)
+	}
 	cr, ok := w.SessionReply.(*handshakeReply)
 	if !ok {
 		return fmt.Errorf("invalid handshake type: %T, not smtp client", w.SessionReply)

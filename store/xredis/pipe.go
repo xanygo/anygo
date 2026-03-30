@@ -15,7 +15,7 @@ import (
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/store/xredis/resp3"
 	"github.com/xanygo/anygo/xerror"
-	"github.com/xanygo/anygo/xnet"
+	"github.com/xanygo/anygo/xio"
 	"github.com/xanygo/anygo/xnet/xrpc"
 )
 
@@ -141,7 +141,7 @@ func (req *pipeRequest) APIName() string {
 	return "Pipeline"
 }
 
-func (req *pipeRequest) WriteTo(ctx context.Context, w *xnet.ConnNode, opt xoption.Reader) error {
+func (req *pipeRequest) WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error {
 	if req.tx {
 		return req.writeTx(w)
 	}
@@ -159,7 +159,11 @@ func (req *pipeRequest) WriteTo(ctx context.Context, w *xnet.ConnNode, opt xopti
 	return nil
 }
 
-func (req *pipeRequest) writeTx(w *xnet.ConnNode) error {
+func (req *pipeRequest) writeTx(w io.Writer) error {
+	wr, ok := w.(io.ReadWriter)
+	if !ok {
+		return fmt.Errorf("writer (%T) is not ReadWriter", w)
+	}
 	bf := bp.Get()
 	defer bp.Put(bf)
 	mr := resp3.NewRequest(resp3.DataTypeSimpleString, "MULTI")
@@ -168,7 +172,7 @@ func (req *pipeRequest) writeTx(w *xnet.ConnNode) error {
 	if err != nil {
 		return err
 	}
-	rd := bufio.NewReader(w)
+	rd := bufio.NewReader(wr)
 	reply, err := resp3.ReadByType(rd, resp3.DataTypeSimpleString)
 	if err = resp3.ToOkStatus(reply, err); err != nil {
 		return err
@@ -207,12 +211,14 @@ func (resp *pipeResponse) String() string {
 	return "pipeResponse"
 }
 
-func (resp *pipeResponse) LoadFrom(ctx context.Context, req xrpc.Request, rd *xnet.ConnNode, opt xoption.Reader) error {
-	timeout := xoption.ReadTimeout(opt)
-	if err := rd.SetDeadline(time.Now().Add(timeout)); err != nil {
-		return err
+func (resp *pipeResponse) LoadFrom(ctx context.Context, req xrpc.Request, rd io.Reader, opt xoption.Reader) error {
+	if ds, ok := rd.(xio.ReadDeadlineSetter); ok {
+		timeout := xoption.ReadTimeout(opt)
+		if err := ds.SetReadDeadline(time.Now().Add(timeout)); err != nil {
+			return err
+		}
+		defer ds.SetReadDeadline(time.Time{})
 	}
-	defer rd.SetDeadline(time.Time{})
 
 	br := bufio.NewReader(io.LimitReader(rd, xoption.MaxResponseSize(opt)))
 	if resp.tx {

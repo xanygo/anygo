@@ -8,16 +8,42 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strings"
 	"sync"
 	"sync/atomic"
-
-	"github.com/xanygo/anygo/ds/xmap"
 )
 
-type Server interface {
-	Serve(l net.Listener) error
+type (
+	TCPListener = Listener[net.Conn]
+
+	TCPHandler = Handler[net.Conn]
+
+	TCPServer = Server[net.Conn]
+
+	TCPAnyServer = AnyServer[net.Conn]
+)
+
+var _ Listener[net.Conn] = (net.Listener)(nil)
+
+type Listener[C any] interface {
+	Accept() (C, error)
+	Close() error
+}
+
+type Handler[C any] interface {
+	Handle(ctx context.Context, conn C)
+}
+
+type HandleFunc[C any] func(ctx context.Context, conn C)
+
+func (hf HandleFunc[C]) Handle(ctx context.Context, conn C) {
+	hf(ctx, conn)
+}
+
+type Server[C any] interface {
+	Serve(l Listener[C]) error
 }
 
 // CanShutdown 支持优雅关闭
@@ -25,29 +51,23 @@ type CanShutdown interface {
 	Shutdown(ctx context.Context) error
 }
 
-// GracefulServer 支持优雅关闭的 server
-type GracefulServer interface {
-	Server
-	CanShutdown
-}
-
-var _ GracefulServer = (*AnyServer)(nil)
+var _ CanShutdown = (*AnyServer[net.Conn])(nil)
 
 // AnyServer 一个通用的 server
-type AnyServer struct {
+type AnyServer[C any] struct {
 	// Handler 处理请求的 Handler，必填
-	Handler Handler
+	Handler Handler[C]
 
 	// BeforeAccept Accept 之前的回调，可选
-	BeforeAccept func(l net.Listener) error
+	BeforeAccept func(l Listener[C]) error
 
 	// OnConn 创建新链接后的回调，可选
-	OnConn func(ctx context.Context, conn net.Conn, err error) (context.Context, net.Conn, error)
+	OnConn func(ctx context.Context, conn C, err error) (context.Context, C, error)
 
 	closeCancel context.CancelFunc
 	serverExit  chan bool
 
-	connections xmap.Sync[net.Conn, struct{}]
+	connections sync.Map
 
 	status atomic.Int32
 }
@@ -79,7 +99,7 @@ type temporary interface {
 	Temporary() bool
 }
 
-func (as *AnyServer) Serve(l net.Listener) error {
+func (as *AnyServer[C]) Serve(l Listener[C]) error {
 	if as.Handler == nil {
 		return errors.New("handler is nil")
 	}
@@ -140,7 +160,7 @@ func (as *AnyServer) Serve(l net.Listener) error {
 	return errResult
 }
 
-func (as *AnyServer) handleConn(ctx context.Context, conn net.Conn) {
+func (as *AnyServer[C]) handleConn(ctx context.Context, conn C) {
 	as.connections.Store(conn, struct{}{})
 	defer as.connections.Delete(conn)
 
@@ -148,15 +168,17 @@ func (as *AnyServer) handleConn(ctx context.Context, conn net.Conn) {
 	as.Handler.Handle(ctx, conn)
 }
 
-func (as *AnyServer) closeAllConn() {
-	as.connections.Range(func(c net.Conn, value struct{}) bool {
-		_ = c.Close()
+func (as *AnyServer[C]) closeAllConn() {
+	as.connections.Range(func(c any, _ any) bool {
+		if cc, ok := c.(io.Closer); ok {
+			_ = cc.Close()
+		}
 		as.connections.Delete(c)
 		return true
 	})
 }
 
-func (as *AnyServer) Shutdown(ctx context.Context) error {
+func (as *AnyServer[C]) Shutdown(ctx context.Context) error {
 	switch as.status.Load() {
 	case statusClosed,
 		statusInit:

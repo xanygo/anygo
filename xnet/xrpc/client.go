@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net"
 	"time"
 
@@ -30,12 +31,17 @@ type Request interface {
 	String() string
 	Protocol() string
 	APIName() string
-	WriteTo(ctx context.Context, rw *xnet.ConnNode, opt xoption.Reader) error
+
+	// WriteTo 将请求写入到 w，w 大多数情况下是 *xnet.ConnNode
+	WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error
 }
 
 type Response interface {
 	String() string
-	LoadFrom(ctx context.Context, req Request, rw *xnet.ConnNode, opt xoption.Reader) error
+
+	// LoadFrom 从 r  中读取响应数据，r 大多数情况下是 *xnet.ConnNode
+	LoadFrom(ctx context.Context, req Request, r io.Reader, opt xoption.Reader) error
+
 	xerror.HasErrCode
 	xerror.HasErrMsg
 	Unwrap() any

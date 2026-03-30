@@ -6,21 +6,17 @@ package xrps
 
 import (
 	"context"
-	"net"
 
 	"github.com/xanygo/anygo/ds/xctx"
 )
 
-var ctxKeyConn = xctx.NewKey()
+var ctxKeyRW = xctx.NewKey()
 
-func ContextWithConn(ctx context.Context, conn net.Conn) context.Context {
-	return context.WithValue(ctx, ctxKeyConn, conn)
+func ContextWithConn[C any](ctx context.Context, conn C) context.Context {
+	return context.WithValue(ctx, ctxKeyRW, conn)
 }
 
-func ConnFromContext(ctx context.Context) net.Conn {
-	val := ctx.Value(ctxKeyConn)
-	if val == nil {
-		return nil
-	}
-	return val.(net.Conn)
+func ConnFromContext[C any](ctx context.Context) C {
+	val, _ := ctx.Value(ctxKeyRW).(C)
+	return val
 }

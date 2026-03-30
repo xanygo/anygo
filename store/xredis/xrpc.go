@@ -16,7 +16,7 @@ import (
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/store/xredis/resp3"
 	"github.com/xanygo/anygo/xerror"
-	"github.com/xanygo/anygo/xnet"
+	"github.com/xanygo/anygo/xio"
 	"github.com/xanygo/anygo/xnet/xrpc"
 )
 
@@ -40,15 +40,17 @@ func (r *rpcRequest) APIName() string {
 
 var bp = xsync.NewBytesBufferPool(1024)
 
-func (r *rpcRequest) WriteTo(ctx context.Context, w *xnet.ConnNode, opt xoption.Reader) error {
+func (r *rpcRequest) WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error {
 	bf := bp.Get()
 	content := r.req.Bytes(bf)
 
-	timeout := xoption.WriteTimeout(opt)
-	if err := w.SetDeadline(time.Now().Add(timeout)); err != nil {
-		return err
+	if ds, ok := w.(xio.WriteDeadlineSetter); ok {
+		timeout := xoption.WriteTimeout(opt)
+		if err := ds.SetWriteDeadline(time.Now().Add(timeout)); err != nil {
+			return err
+		}
+		defer ds.SetWriteDeadline(time.Time{})
 	}
-	defer w.SetDeadline(time.Time{})
 
 	_, err := w.Write(content)
 	bp.Put(bf)
@@ -69,17 +71,19 @@ func (resp *rpcResponse) String() string {
 	return resp.err.Error()
 }
 
-func (resp *rpcResponse) LoadFrom(ctx context.Context, req xrpc.Request, rd *xnet.ConnNode, opt xoption.Reader) error {
+func (resp *rpcResponse) LoadFrom(ctx context.Context, req xrpc.Request, rd io.Reader, opt xoption.Reader) error {
 	xrr, ok := req.(*rpcRequest)
 	if !ok {
 		return errors.New("not a redis rpcRequest")
 	}
 
-	timeout := xoption.ReadTimeout(opt)
-	if err := rd.SetDeadline(time.Now().Add(timeout)); err != nil {
-		return err
+	if ds, ok := rd.(xio.ReadDeadlineSetter); ok {
+		timeout := xoption.ReadTimeout(opt)
+		if err := ds.SetReadDeadline(time.Now().Add(timeout)); err != nil {
+			return err
+		}
+		defer ds.SetReadDeadline(time.Time{})
 	}
-	defer rd.SetDeadline(time.Time{})
 
 	br := bufio.NewReader(io.LimitReader(rd, xoption.MaxResponseSize(opt)))
 	resp.result, resp.err = resp3.ReadByType(br, xrr.req.ResponseType())

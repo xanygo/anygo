@@ -18,7 +18,7 @@ import (
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xerror"
-	"github.com/xanygo/anygo/xnet"
+	"github.com/xanygo/anygo/xio"
 	"github.com/xanygo/anygo/xnet/xrpc"
 )
 
@@ -38,9 +38,9 @@ func (resp *Response) String() string {
 	return "FetchResponse:" + resp.resp.Status
 }
 
-func (resp *Response) LoadFrom(ctx context.Context, req xrpc.Request, node *xnet.ConnNode, opt xoption.Reader) error {
+func (resp *Response) LoadFrom(ctx context.Context, req xrpc.Request, r io.Reader, opt xoption.Reader) error {
 	resp.resp = nil
-	resp.readErr = resp.doLoadFrom(ctx, req, node, opt)
+	resp.readErr = resp.doLoadFrom(ctx, req, r, opt)
 	if resp.readErr == nil {
 		return nil
 	}
@@ -68,18 +68,20 @@ func retryableStatus(code int) bool {
 	}
 }
 
-func (resp *Response) doLoadFrom(ctx context.Context, req xrpc.Request, node *xnet.ConnNode, opt xoption.Reader) error {
-	timeout := xoption.ReadTimeout(opt)
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, timeout)
-	defer cancel()
-	if err := node.SetDeadline(time.Now().Add(timeout)); err != nil {
-		return err
+func (resp *Response) doLoadFrom(ctx context.Context, req xrpc.Request, r io.Reader, opt xoption.Reader) error {
+	if ds, ok := r.(xio.ReadDeadlineSetter); ok {
+		timeout := xoption.ReadTimeout(opt)
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+		if err := ds.SetReadDeadline(time.Now().Add(timeout)); err != nil {
+			return err
+		}
+		defer ds.SetReadDeadline(time.Time{})
 	}
-	defer node.SetDeadline(time.Time{})
 
 	maxSize := xoption.MaxResponseSize(opt)
-	bio := bufio.NewReader(io.LimitReader(node, maxSize))
+	bio := bufio.NewReader(io.LimitReader(r, maxSize))
 	rr, err := http.ReadResponse(bio, nil)
 	if err != nil {
 		return fmt.Errorf("http.ReadResponse %w", err)

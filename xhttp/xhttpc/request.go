@@ -119,7 +119,11 @@ func (r *Request) GetMethod() string {
 	return r.getMethod()
 }
 
-func (r *Request) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.Reader) error {
+func (r *Request) WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error {
+	node, ok := w.(*xnet.ConnNode)
+	if !ok {
+		return fmt.Errorf("writer is %T, not net.ConnNode", w)
+	}
 	api, err := r.getURL(opt, node.Addr.HostPort)
 	if err != nil {
 		return err
@@ -278,7 +282,12 @@ func (h *NativeRequest) GetMethod() string {
 	return h.Request.Method
 }
 
-func (h *NativeRequest) WriteTo(ctx context.Context, node *xnet.ConnNode, opt xoption.Reader) error {
+func (h *NativeRequest) WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error {
+	node, ok := w.(*xnet.ConnNode)
+	if !ok {
+		return fmt.Errorf("writer is %T, not net.ConnNode", w)
+	}
+
 	timeout := xoption.WriteTimeout(opt)
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
