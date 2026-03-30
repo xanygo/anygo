@@ -28,10 +28,12 @@ func TestCommand1(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	ts := &xt.Collector{}
+
 	var wg sync.WaitGroup
 	for i := 0; i < 3; i++ {
 		wg.Go(func() {
-			t.Run(fmt.Sprintf("i_%d", i), func(t *testing.T) {
+			ts.Run(fmt.Sprintf("i_%d", i), func(t xt.Testing) {
 				for i := 0; i < 3; i++ {
 					rw, err := cmd.Spawn(ctx)
 					xt.NoError(t, err)
@@ -51,6 +53,8 @@ func TestCommand1(t *testing.T) {
 		})
 	}
 	wg.Wait()
+	ts.Check(t)
+
 	xt.NoError(t, cmd.Close())
 
 	t.Run("after closed", func(t *testing.T) {

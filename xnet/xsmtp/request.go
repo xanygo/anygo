@@ -15,6 +15,7 @@ import (
 
 	"github.com/xanygo/anygo/ds/xmetric"
 	"github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/xio"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xrpc"
 )
@@ -69,17 +70,17 @@ func (r request) WriteTo(ctx context.Context, wr io.Writer, opt xoption.Reader) 
 }
 
 // sendOne 发送邮件，这里的 client 是以及登录完成的
-func sendOne(conn *xnet.ConnNode, opt xoption.Reader, client *smtp.Client, username string, m *Mail) error {
+func sendOne(conn io.Writer, opt xoption.Reader, client *smtp.Client, username string, m *Mail) error {
 	if err := m.check(); err != nil {
 		return err
 	}
-
-	totalTimeout := xoption.WriteReadTimeout(opt)
-	if err := conn.SetDeadline(time.Now().Add(totalTimeout)); err != nil {
-		return err
+	if ds, ok := conn.(xio.DeadlineSetter); ok {
+		totalTimeout := xoption.WriteReadTimeout(opt)
+		if err := ds.SetDeadline(time.Now().Add(totalTimeout)); err != nil {
+			return err
+		}
+		defer ds.SetDeadline(time.Time{})
 	}
-	defer conn.SetDeadline(time.Time{})
-
 	from := m.From
 	if from == "" {
 		from = username
