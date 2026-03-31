@@ -9,12 +9,14 @@ import (
 	"crypto/tls"
 	"net"
 	"slices"
+	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xmeta"
+	"github.com/xanygo/anygo/ds/xpool"
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/internal/zslice"
-	"github.com/xanygo/anygo/xerror"
 )
 
 // NewConn  对 net.Conn 封装，以支持 ConnInterceptor
@@ -258,24 +260,44 @@ func (chs connInterceptors) CallClose(info ConnInfo, invoker func() error, idx i
 }
 
 var _ net.Conn = (*ConnNode)(nil)
+var _ xpool.Recycler = (*ConnNode)(nil)
 
 type ConnNode struct {
-	Conn         net.Conn   // 最原始的网络连接
-	Wraps        []net.Conn // 包括 tls.Conn、被代理逻辑封装后的 conn 等，
-	Addr         AddrNode   // 创建链接的的地址信息
-	SessionReply any        // 业务握手后得到的信息
-	CreatTime    time.Time  // 创建时间
-	LongPool     bool       // 是否来自长连接连接池
+	Conn      net.Conn   // 最原始的网络连接
+	Wraps     []net.Conn // 包括 tls.Conn、被代理逻辑封装后的 conn 等，
+	Addr      AddrNode   // 创建链接的的地址信息
+	CreatTime time.Time  // 创建时间
 
-	// OnClose 调用 Close 的时候调用
-	OnClose func() error
+	meta      sync.Map
+	onRecycle xsync.OnceLoadValue[func()]
 
+	lastErr         xsync.Value[error]
 	readTotalBytes  atomic.Int64
-	firstErr        xerror.OnceSet
 	writeTotalBytes atomic.Int64
 	readTotalTime   xsync.TimeDuration
 	writeTotalTime  xsync.TimeDuration
 	usage           atomic.Int64 // 使用次数
+}
+
+// OnRecycle 注册从连接池取出后，调用 Close 方法释放资源的回调方法
+func (t *ConnNode) OnRecycle(fn func()) {
+	t.onRecycle.Store(sync.OnceFunc(func() {
+		fn()           // 这里应该是 entry.Release(lastErr)
+		t.ResetStats() // 重置统计信息
+		t.lastErr.Clear()
+	}))
+}
+
+var _ xmeta.Setter = (*ConnNode)(nil)
+
+func (t *ConnNode) SetMeta(key any, val any) {
+	t.meta.Store(key, val)
+}
+
+var _ xmeta.Getter = (*ConnNode)(nil)
+
+func (t *ConnNode) GetMeta(key any) (any, bool) {
+	return t.meta.Load(key)
 }
 
 var _ ConnUnwrapper = (*ConnNode)(nil)
@@ -306,7 +328,7 @@ func (t *ConnNode) Read(b []byte) (n int, err error) {
 	n, err = t.Outer().Read(b)
 	t.readTotalTime.Add(time.Since(start))
 	if err != nil {
-		t.firstErr.SetOnce(err)
+		t.lastErr.Store(err)
 	}
 
 	t.readTotalBytes.Add(int64(n))
@@ -318,7 +340,7 @@ func (t *ConnNode) Write(b []byte) (n int, err error) {
 	n, err = t.Outer().Write(b)
 	t.writeTotalTime.Add(time.Since(start))
 	if err != nil {
-		t.firstErr.SetOnce(err)
+		t.lastErr.Store(err)
 	}
 
 	t.writeTotalBytes.Add(int64(n))
@@ -326,9 +348,13 @@ func (t *ConnNode) Write(b []byte) (n int, err error) {
 }
 
 func (t *ConnNode) Close() error {
-	if t.OnClose != nil {
-		return t.OnClose()
+	// 回收到对象池的逻辑，这一部分只会运行一次
+	// 若连接有异常或者不需要了，对象池会负责关闭（再次调用 Close()）
+	if recycle := t.onRecycle.Load(); recycle != nil {
+		recycle()
+		return nil
 	}
+	// 再次调用，会真的关闭连接
 	return t.Outer().Close()
 }
 
@@ -343,7 +369,7 @@ func (t *ConnNode) RemoteAddr() net.Addr {
 func (t *ConnNode) SetDeadline(tm time.Time) error {
 	err := t.Outer().SetDeadline(tm)
 	if err != nil {
-		t.firstErr.SetOnce(err)
+		t.lastErr.Store(err)
 	}
 	return err
 }
@@ -351,7 +377,7 @@ func (t *ConnNode) SetDeadline(tm time.Time) error {
 func (t *ConnNode) SetReadDeadline(tm time.Time) error {
 	err := t.Outer().SetReadDeadline(tm)
 	if err != nil {
-		t.firstErr.SetOnce(err)
+		t.lastErr.Store(err)
 	}
 	return err
 }
@@ -359,7 +385,7 @@ func (t *ConnNode) SetReadDeadline(tm time.Time) error {
 func (t *ConnNode) SetWriteDeadline(tm time.Time) error {
 	err := t.Outer().SetWriteDeadline(tm)
 	if err != nil {
-		t.firstErr.SetOnce(err)
+		t.lastErr.Store(err)
 	}
 	return err
 }
@@ -385,9 +411,9 @@ func (t *ConnNode) UsageCount() int64 {
 	return t.usage.Load() + 1
 }
 
-// Err 获取其首次 error 信息
+// Err 获取其最后的调用过程中的 error 信息
 func (t *ConnNode) Err() error {
-	return t.firstErr.Unwrap()
+	return t.lastErr.Load()
 }
 
 func (t *ConnNode) ResetStats() {

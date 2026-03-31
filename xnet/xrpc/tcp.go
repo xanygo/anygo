@@ -7,13 +7,14 @@ package xrpc
 import (
 	"context"
 	"fmt"
+	"io"
 	"slices"
-	"sync"
 	"time"
 
 	"github.com/xanygo/anygo/ds/xctx"
 	"github.com/xanygo/anygo/ds/xmetric"
 	"github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/ds/xpool"
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
@@ -186,18 +187,12 @@ func (c *TCP) tryOnce(ctx context.Context, cfg *config, req Request, resp Respon
 
 	entry, errPool := xdial.GroupPoolGet(ctx, service.GroupPool(), *addr)
 
-	var conn *xnet.ConnNode
+	var conn io.ReadWriteCloser
 	if errPool == nil {
+		// 注册调用资源回收逻辑，之后首次调用 conn.Close()，会将 entry 对象放回对象池
+		xpool.MustSetRecycler(entry)
+
 		conn = entry.Object()
-		var once sync.Once
-		conn.OnClose = func() error {
-			once.Do(func() {
-				conn.OnClose = nil
-				conn.ResetStats()
-				entry.Release(result)
-			})
-			return nil
-		}
 	}
 
 	for _, it := range its {
@@ -229,7 +224,7 @@ func (c *TCP) tryOnce(ctx context.Context, cfg *config, req Request, resp Respon
 	return err
 }
 
-func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption.Reader, conn *xnet.ConnNode) (err error) {
+func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption.Reader, conn io.ReadWriteCloser) (err error) {
 	start := time.Now()
 	// 暂时不将读写超时分开控制
 	err = req.WriteTo(ctx, conn, opt)
@@ -251,10 +246,10 @@ type TCPInterceptor struct {
 	AfterPickAddress  func(ctx context.Context, service string, node *xnet.AddrNode, err error)
 
 	// AfterDial 拨号完成后执行，最多执行 ( retry + 1 ) * ( connectRetry +1) 次
-	AfterDial func(ctx context.Context, service string, addr *xnet.AddrNode, conn *xnet.ConnNode, err error)
+	AfterDial func(ctx context.Context, service string, addr *xnet.AddrNode, conn io.ReadWriteCloser, err error)
 
 	// AfterWriteRead 每 Write + Read 完成后都会执行一次，最多执行 retry+1 次
-	AfterWriteRead func(ctx context.Context, service string, conn *xnet.ConnNode, req Request, resp Response, span xmetric.Span, err error)
+	AfterWriteRead func(ctx context.Context, service string, conn io.ReadWriteCloser, req Request, resp Response, span xmetric.Span, err error)
 
 	// AfterInvoke 在 Invoke 执行完成后，执行一次
 	AfterInvoke func(ctx context.Context, service string, req Request, resp Response, span xmetric.Span, err error)

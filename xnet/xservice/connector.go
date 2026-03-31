@@ -7,9 +7,11 @@ package xservice
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"strings"
 
+	"github.com/xanygo/anygo/ds/xmeta"
 	"github.com/xanygo/anygo/ds/xmetric"
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xslice"
@@ -23,7 +25,7 @@ var _ xdial.Connector = (*connector)(nil)
 
 type connector struct{}
 
-func (c *connector) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (conn *xnet.ConnNode, err error) {
+func (c *connector) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (conn io.ReadWriteCloser, err error) {
 	if useProxy := xoption.UseProxy(opt); useProxy != "" {
 		conn, err = c.connectProxy(ctx, useProxy, addr, opt)
 	} else {
@@ -32,12 +34,13 @@ func (c *connector) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption
 	if err != nil {
 		return conn, err
 	}
-	inConn := conn
-
-	conn, err = c.tlsHandshake(ctx, inConn, opt, addr)
-	if err != nil {
-		inConn.Close()
-		return nil, err
+	// 目前只有普通网络连接，才需要 tls 握手
+	if tc, ok := conn.(*xnet.ConnNode); ok {
+		conn, err = c.tlsHandshake(ctx, tc, opt, addr)
+		if err != nil {
+			conn.Close()
+			return nil, err
+		}
 	}
 
 	protocol := xoption.Protocol(opt)
@@ -47,13 +50,13 @@ func (c *connector) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption
 			_ = conn.Close()
 			return nil, err1
 		}
-		conn.SessionReply = ret
+		xmeta.TrySetMeta(conn, xmeta.KeySessionReply, ret)
 	}
 
 	return conn, nil
 }
 
-func (c *connector) connectProxy(ctx context.Context, proxyName string, target xnet.AddrNode, opt xoption.Reader) (nc *xnet.ConnNode, err error) {
+func (c *connector) connectProxy(ctx context.Context, proxyName string, target xnet.AddrNode, opt xoption.Reader) (nc io.ReadWriteCloser, err error) {
 	ctx, span := xmetric.Start(ctx, "ConnectProxy")
 	defer func() {
 		span.RecordError(err)
@@ -91,12 +94,15 @@ func (c *connector) connectProxy(ctx context.Context, proxyName string, target x
 		return nil, err
 	}
 
-	proxyConn, err := xproxy.Proxy(ctx, proxyDriver, conn, proxyConfig, target, proxyOpt)
-	if err != nil {
-		_ = conn.Close()
-		return nil, err
+	if tc, ok := conn.(*xnet.ConnNode); ok {
+		proxyConn, err := xproxy.Proxy(ctx, proxyDriver, tc, proxyConfig, target, proxyOpt)
+		if err != nil {
+			_ = conn.Close()
+			return nil, err
+		}
+		return proxyConn, nil
 	}
-	return proxyConn, nil
+	return conn, err
 }
 
 // connectProxyURL 处理传入的 UseProxy="http://127.0.0.1:3128" 这种格式
@@ -121,9 +127,16 @@ func (c *connector) connectProxyURL(ctx context.Context, proxy string, target xn
 		Addr:     xnet.NewAddr("tcp", address),
 	}
 
-	conn, err := xdial.Connect(ctx, nil, proxyAddr, opt)
+	rw, err := xdial.Connect(ctx, nil, proxyAddr, opt)
 	if err != nil {
 		return nil, err
+	}
+
+	// 只有是普通网络连接，才能使用代理
+	conn, ok := rw.(*xnet.ConnNode)
+	if !ok {
+		_ = rw.Close()
+		return nil, fmt.Errorf("invalid conn %T, expect *xnet.ConnNode", rw)
 	}
 	proxyDriver, err := xproxy.Find(cfg.Protocol)
 	if err != nil {
@@ -145,8 +158,8 @@ func (c *connector) tlsHandshake(ctx context.Context, conn *xnet.ConnNode, opt x
 const Network = "xservice"
 
 // DialerFuncWithServiceName 拨号时，直接使用的是 service 的名字作为 address
-func DialerFuncWithServiceName(srv Service) func(ctx context.Context, addr string) (net.Conn, error) {
-	return func(ctx context.Context, _ string) (net.Conn, error) {
+func DialerFuncWithServiceName(srv Service) func(ctx context.Context, addr string) (io.ReadWriteCloser, error) {
+	return func(ctx context.Context, _ string) (io.ReadWriteCloser, error) {
 		note, err := xbalance.Pick(ctx, srv.Balancer())
 		if err != nil {
 			return nil, err
@@ -156,8 +169,8 @@ func DialerFuncWithServiceName(srv Service) func(ctx context.Context, addr strin
 }
 
 // DialerFuncWithServiceName2 拨号时，直接使用的是 service 的名字作为 address，但是 service 优先从 reg 中查找
-func DialerFuncWithServiceName2(reg Registry) func(ctx context.Context, addr string) (net.Conn, error) {
-	return func(ctx context.Context, serviceName string) (net.Conn, error) {
+func DialerFuncWithServiceName2(reg Registry) func(ctx context.Context, addr string) (io.ReadWriteCloser, error) {
+	return func(ctx context.Context, serviceName string) (io.ReadWriteCloser, error) {
 		srv, err := FindServiceWithRegistry(reg, serviceName)
 		if err != nil {
 			return nil, err

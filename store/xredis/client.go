@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"net/url"
 	"strconv"
 	"strings"
@@ -19,7 +20,6 @@ import (
 	"github.com/xanygo/anygo/store/xredis/resp3"
 	"github.com/xanygo/anygo/xattr"
 	"github.com/xanygo/anygo/xerror"
-	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
@@ -97,7 +97,7 @@ func init() {
 //
 // xrpc 里有统一的 handshake timeout 设置
 // https://redis.io/docs/latest/commands/hello/
-func startSession(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (xdial.SessionReply, error) {
+func startSession(ctx context.Context, conn io.ReadWriteCloser, opt xoption.Reader) (xdial.SessionReply, error) {
 	hello := resp3.HelloRequest{}
 	const redisKey = "Redis"
 	cfg := xoption.Extra(opt, redisKey)

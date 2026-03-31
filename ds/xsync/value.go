@@ -29,27 +29,55 @@ func (v *Value[T]) CompareAndSwap(old, new T) (swapped bool) {
 }
 
 func (v *Value[T]) Load() (val T) {
+	v.once.Do(func() {
+		v.value.Store(baggage[T]{})
+	})
 	value, ok := v.value.Load().(baggage[T])
 	if ok {
 		return value.Value
 	}
-	var emp T
-	return emp
+	return val
 }
 
+func fnEmpty() {}
+
 func (v *Value[T]) Store(val T) {
+	v.once.Do(fnEmpty)
 	v.value.Store(baggage[T]{Value: val})
 }
 
 func (v *Value[T]) Swap(new T) (old T) {
+	v.once.Do(fnEmpty)
 	value, ok := v.value.Swap(baggage[T]{Value: new}).(baggage[T])
 	if ok {
 		return value.Value
 	}
+	return old
+}
+
+// Clear 用空值覆盖
+func (v *Value[T]) Clear() {
 	var emp T
-	return emp
+	v.Store(emp)
 }
 
 type baggage[T any] struct {
 	Value T
+}
+
+// OnceLoadValue 只允许 load 一次的 Value
+type OnceLoadValue[T any] struct {
+	value atomic.Value
+}
+
+func (l *OnceLoadValue[T]) Store(val T) {
+	l.value.Store(baggage[T]{Value: val})
+}
+
+func (l *OnceLoadValue[T]) Load() (val T) {
+	old, ok := l.value.Swap(baggage[T]{}).(baggage[T])
+	if ok {
+		return old.Value
+	}
+	return val
 }

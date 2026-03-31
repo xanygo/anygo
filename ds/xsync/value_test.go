@@ -65,4 +65,37 @@ func TestValueInt(t *testing.T) {
 		xt.Equal(t, 1, nv.Swap(2))
 		xt.Equal(t, 2, nv.Load())
 	})
+
+	t.Run("case 3", func(t *testing.T) {
+		nv := &Value[int]{}
+		nv.Store(1)
+		xt.Equal(t, 1, nv.Load())
+		xt.True(t, nv.CompareAndSwap(1, 2))
+		xt.Equal(t, 2, nv.Swap(3))
+	})
+
+	t.Run("case 4", func(t *testing.T) {
+		nv := &Value[int]{}
+		xt.Equal(t, 0, nv.Swap(1))
+		xt.Equal(t, 1, nv.Load())
+		xt.True(t, nv.CompareAndSwap(1, 2))
+		xt.Equal(t, 2, nv.Swap(3))
+	})
+}
+
+func TestOnceLoadValue_Store(t *testing.T) {
+	t.Run("case 1", func(t *testing.T) {
+		var vs OnceLoadValue[func()]
+		xt.Nil(t, vs.Load())
+		vs.Store(func() {})
+		xt.NotNil(t, vs.Load())
+		xt.Nil(t, vs.Load())
+	})
+	t.Run("case 2", func(t *testing.T) {
+		var vs OnceLoadValue[int]
+		xt.Equal(t, 0, vs.Load())
+		vs.Store(1)
+		xt.Equal(t, 1, vs.Load())
+		xt.Equal(t, 0, vs.Load())
+	})
 }

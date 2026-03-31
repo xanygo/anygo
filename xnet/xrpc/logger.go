@@ -6,6 +6,7 @@ package xrpc
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"time"
 
@@ -41,7 +42,7 @@ func (l *Logger) beforeInvoke(ctx context.Context, service string, req Request, 
 	return ctx, req, resp, opts
 }
 
-func (l *Logger) afterWriteRead(ctx context.Context, _ string, conn *xnet.ConnNode, _ Request, resp Response, span xmetric.Span, err error) {
+func (l *Logger) afterWriteRead(_ context.Context, _ string, rw io.ReadWriteCloser, _ Request, resp Response, span xmetric.Span, err error) {
 	item := map[string]any{
 		"Cost": time.Since(span.StartTime()).String(),
 	}
@@ -49,12 +50,14 @@ func (l *Logger) afterWriteRead(ctx context.Context, _ string, conn *xnet.ConnNo
 		item["Err"] = err.Error()
 	}
 
-	item["Conn"] = map[string]any{
-		"ReadBytes":  conn.ReadBytes(),
-		"WriteBytes": conn.WriteBytes(),
-		"ReadCost":   conn.ReadCost().String(),
-		"WriteCost":  conn.WriteCost().String(),
-		"Usage":      conn.UsageCount(),
+	if conn, ok := rw.(*xnet.ConnNode); ok {
+		item["Conn"] = map[string]any{
+			"ReadBytes":  conn.ReadBytes(),
+			"WriteBytes": conn.WriteBytes(),
+			"ReadCost":   conn.ReadCost().String(),
+			"WriteCost":  conn.WriteCost().String(),
+			"Usage":      conn.UsageCount(),
+		}
 	}
 
 	if rr, ok := resp.Unwrap().(*http.Response); ok && rr != nil {

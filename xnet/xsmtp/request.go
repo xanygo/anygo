@@ -13,10 +13,10 @@ import (
 	"net/smtp"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xmeta"
 	"github.com/xanygo/anygo/ds/xmetric"
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xio"
-	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xrpc"
 )
 
@@ -39,13 +39,9 @@ func (r request) APIName() string {
 }
 
 func (r request) WriteTo(ctx context.Context, wr io.Writer, opt xoption.Reader) error {
-	w, ok := wr.(*xnet.ConnNode)
+	cr, ok := xmeta.TryGetMeta(wr, xmeta.KeySessionReply).(*handshakeReply)
 	if !ok {
-		return fmt.Errorf("writer is %T, not a net.ConnNode", wr)
-	}
-	cr, ok := w.SessionReply.(*handshakeReply)
-	if !ok {
-		return fmt.Errorf("invalid handshake type: %T, not smtp client", w.SessionReply)
+		return fmt.Errorf("invalid handshake type: %T, not smtp client", wr)
 	}
 	ctx, span := xmetric.Start(ctx, Protocol)
 	var cnt int
@@ -61,7 +57,7 @@ func (r request) WriteTo(ctx context.Context, wr io.Writer, opt xoption.Reader) 
 			return context.Cause(ctx)
 		default:
 		}
-		if err := sendOne(w, opt, cr.client, cr.username, m); err != nil {
+		if err := sendOne(wr, opt, cr.client, cr.username, m); err != nil {
 			return err
 		}
 		cnt++

@@ -7,8 +7,11 @@ package xdial
 import (
 	"context"
 	"fmt"
+	"io"
+	"net"
 	"strings"
 
+	"github.com/xanygo/anygo/ds/xmeta"
 	"github.com/xanygo/anygo/ds/xmetric"
 	"github.com/xanygo/anygo/ds/xpool"
 	"github.com/xanygo/anygo/internal/znet"
@@ -16,45 +19,53 @@ import (
 	"github.com/xanygo/anygo/xnet"
 )
 
-type (
-	ConnPool = xpool.Pool[*xnet.ConnNode]
+// GroupPool service 对象所需要的类型
+//
+// io.ReadWriteCloser 在大多数情况下是 net.Conn（目前实际为 *xnet.ConnNode）
+// 同时要求连接池返回的 ReadWriteCloser 要实现 xmeta.Setter 和 xmeta.Getter
+type GroupPool = xpool.GroupPool[xnet.AddrNode, string, io.ReadWriteCloser]
 
-	ConnGroupPool = xpool.GroupPool[xnet.AddrNode, string, *xnet.ConnNode]
-)
+var _ xpool.Factory[io.ReadWriteCloser] = (*Factory)(nil)
+var _ xpool.GroupFactory[xnet.AddrNode, string, io.ReadWriteCloser] = (*Factory)(nil)
+var _ xpool.Validator[io.ReadWriteCloser] = (*Factory)(nil)
 
-var _ xpool.Factory[*xnet.ConnNode] = (*ConnFactory)(nil)
-var _ xpool.GroupFactory[xnet.AddrNode, string, *xnet.ConnNode] = (*ConnFactory)(nil)
-var _ xpool.Validator[*xnet.ConnNode] = (*ConnFactory)(nil)
-
-type ConnFactory struct {
+type Factory struct {
 	Addr    xnet.AddrNode
-	Connect func(ctx context.Context, addr xnet.AddrNode) (*xnet.ConnNode, error)
+	Connect func(ctx context.Context, addr xnet.AddrNode) (io.ReadWriteCloser, error)
 }
 
-func (c *ConnFactory) KeyFactory(key xnet.AddrNode) xpool.Factory[*xnet.ConnNode] {
-	return &ConnFactory{
+func (c *Factory) KeyFactory(key xnet.AddrNode) xpool.Factory[io.ReadWriteCloser] {
+	return &Factory{
 		Addr:    key,
 		Connect: c.Connect,
 	}
 }
 
-func (c *ConnFactory) New(ctx context.Context) (*xnet.ConnNode, error) {
+func (c *Factory) New(ctx context.Context) (io.ReadWriteCloser, error) {
 	return c.Connect(ctx, c.Addr)
 }
 
-func (c *ConnFactory) NewWithKey(ctx context.Context, key xnet.AddrNode) (*xnet.ConnNode, error) {
+func (c *Factory) NewWithKey(ctx context.Context, key xnet.AddrNode) (io.ReadWriteCloser, error) {
 	return c.Connect(ctx, key)
 }
 
 // Validate 验证网络连接是否有效
 //
 // 第二个参数 err 是 rpc client 交互后返回的 error，可能是底层网络错误，也可能是业务层错误,
-func (c *ConnFactory) Validate(conn *xnet.ConnNode, err error) error {
-	if err1 := conn.Err(); err1 != nil {
-		return err1
+func (c *Factory) Validate(rw io.ReadWriteCloser, err error) error {
+	if he, ok := rw.(interface{ Err() error }); ok {
+		if err1 := he.Err(); err1 != nil {
+			return err1
+		}
 	}
+
 	// 以下，判断出是底层网络错误
 	if err != nil && xerror.IsClientNetError(err) {
+		return err
+	}
+
+	conn, ok := rw.(net.Conn)
+	if !ok {
 		return err
 	}
 
@@ -62,10 +73,10 @@ func (c *ConnFactory) Validate(conn *xnet.ConnNode, err error) error {
 	return znet.ConnCheck(uc)
 }
 
-var groupPoolFactory = map[string]func(opt *xpool.Option, cc Connector) ConnGroupPool{}
+var groupPoolFactory = map[string]func(opt *xpool.Option, cc Connector) GroupPool{}
 
-// RegisterGroupPool 注册创建 ConnGroupPool 的工厂类，注册成功返回 true
-func RegisterGroupPool(name string, new func(opt *xpool.Option, cc Connector) ConnGroupPool) bool {
+// RegisterGroupPool 注册创建 GroupPool 的工厂类，注册成功返回 true
+func RegisterGroupPool(name string, new func(opt *xpool.Option, cc Connector) GroupPool) bool {
 	upperName := strings.ToUpper(name)
 	if _, ok := groupPoolFactory[upperName]; ok {
 		return false
@@ -84,7 +95,7 @@ func init() {
 	RegisterGroupPool(Short, newShort)
 }
 
-// NewGroupPool 使用名称创建 ConnGroupPool，name 支持：Long-长连接，Short-短连接
+// NewGroupPool 使用名称创建 GroupPool，name 支持：Long-长连接，Short-短连接
 //
 // 参数 xpool.Option： 连接池配置参数，可为 nil，当为 nil 时，使用默认值：
 //
@@ -95,7 +106,7 @@ func init() {
 //	   MaxIdleTime: 10min,
 //	   MaxPoolIdleTime: 10 min,
 //	}
-func NewGroupPool(name string, opt *xpool.Option, cc Connector) (ConnGroupPool, error) {
+func NewGroupPool(name string, opt *xpool.Option, cc Connector) (GroupPool, error) {
 	opt = opt.Normalization()
 	fixOption(opt)
 	upperName := strings.ToUpper(name)
@@ -119,43 +130,41 @@ func fixOption(opt *xpool.Option) {
 	}
 }
 
-func newLong(opt *xpool.Option, cc Connector) ConnGroupPool {
-	fac := &ConnFactory{
-		Connect: func(ctx context.Context, addr xnet.AddrNode) (*xnet.ConnNode, error) {
+func newLong(opt *xpool.Option, cc Connector) GroupPool {
+	fac := &Factory{
+		Connect: func(ctx context.Context, addr xnet.AddrNode) (io.ReadWriteCloser, error) {
 			node, err := Connect(ctx, cc, addr, nil)
-			if node != nil {
-				node.LongPool = true
-			}
+			xmeta.TrySetMeta(node, xmeta.KeyLongPool, true)
 			return node, err
 		},
 	}
-	return xpool.NewGroupPool[xnet.AddrNode, string, *xnet.ConnNode](opt, fac)
+	return xpool.NewGroupPool[xnet.AddrNode, string, io.ReadWriteCloser](opt, fac)
 }
 
-func newShort(opt *xpool.Option, cc Connector) ConnGroupPool {
-	fac := &ConnFactory{
-		Connect: func(ctx context.Context, addr xnet.AddrNode) (*xnet.ConnNode, error) {
+func newShort(_ *xpool.Option, cc Connector) GroupPool {
+	fac := &Factory{
+		Connect: func(ctx context.Context, addr xnet.AddrNode) (io.ReadWriteCloser, error) {
 			return Connect(ctx, cc, addr, nil)
 		},
 	}
-	return &xpool.DirectGroup[xnet.AddrNode, string, *xnet.ConnNode]{
+	return &xpool.DirectGroup[xnet.AddrNode, string, io.ReadWriteCloser]{
 		Factory: fac,
 	}
 }
 
-func GroupPoolGet(ctx context.Context, p ConnGroupPool, addr xnet.AddrNode) (entry xpool.Entry[*xnet.ConnNode], err error) {
+func GroupPoolGet(ctx context.Context, p GroupPool, addr xnet.AddrNode) (entry xpool.Entry[io.ReadWriteCloser], err error) {
 	ctx1, span := xmetric.Start(ctx, "ConnPoolGet")
 	if !span.IsRecording() {
 		return p.Get(ctx, addr)
 	}
 	defer func() {
 		if err == nil && entry != nil {
-			conn := entry.Object()
-			nc := conn.Outer()
-			span.SetAttributes(
-				xmetric.AnyAttr("Remote", nc.RemoteAddr()),
-				xmetric.AnyAttr("Local", nc.LocalAddr()),
-			)
+			if conn, ok := entry.Object().(net.Conn); ok && conn != nil {
+				span.SetAttributes(
+					xmetric.AnyAttr("Remote", conn.RemoteAddr()),
+					xmetric.AnyAttr("Local", conn.LocalAddr()),
+				)
+			}
 		}
 		span.RecordError(err)
 		span.End()

@@ -7,6 +7,8 @@ package xdial
 import (
 	"context"
 	"crypto/tls"
+	"io"
+	"net"
 	"time"
 
 	"github.com/xanygo/anygo/ds/xctx"
@@ -18,13 +20,14 @@ import (
 
 // Connector 网络连接器
 type Connector interface {
-	Connect(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (*xnet.ConnNode, error)
+	// Connect 创建连接，大多数情况下，ReadWriteCloser 就是 *xnet.ConnNode
+	Connect(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (io.ReadWriteCloser, error)
 }
 
 type Interceptor struct {
 	BeforeConnect func(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (context.Context, xnet.AddrNode, xoption.Reader)
 
-	AfterConnect func(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader, result *xnet.ConnNode, err error) (*xnet.ConnNode, error)
+	AfterConnect func(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader, result io.ReadWriteCloser, err error) (io.ReadWriteCloser, error)
 
 	// 在执行 TlsHandshake 前执行
 	// 若 *tls.Config == nil， 表名此次连接不需要执行 TlsHandshake
@@ -35,13 +38,13 @@ type Interceptor struct {
 
 var _ Connector = ConnectorFunc(nil)
 
-type ConnectorFunc func(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (*xnet.ConnNode, error)
+type ConnectorFunc func(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (io.ReadWriteCloser, error)
 
-func (c ConnectorFunc) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (*xnet.ConnNode, error) {
+func (c ConnectorFunc) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (io.ReadWriteCloser, error) {
 	return c(ctx, addr, opt)
 }
 
-func Connect(ctx context.Context, c Connector, addr xnet.AddrNode, opt xoption.Reader) (nc *xnet.ConnNode, err error) {
+func Connect(ctx context.Context, c Connector, addr xnet.AddrNode, opt xoption.Reader) (rw io.ReadWriteCloser, err error) {
 	ctx, span := xmetric.Start(ctx, "Connect")
 
 	its := allITs(ctx)
@@ -51,19 +54,18 @@ func Connect(ctx context.Context, c Connector, addr xnet.AddrNode, opt xoption.R
 		}
 		ctx, addr, opt = it.BeforeConnect(ctx, addr, opt)
 	}
-
 	defer func() {
 		for _, it := range its {
 			if it.AfterConnect == nil {
 				continue
 			}
-			nc, err = it.AfterConnect(ctx, addr, opt, nc, err)
+			rw, err = it.AfterConnect(ctx, addr, opt, rw, err)
 		}
 
 		if !span.IsRecording() {
 			return
 		}
-		if conn := nc.NetConn(); conn != nil {
+		if conn, ok := rw.(net.Conn); conn != nil && ok {
 			span.SetAttributes(
 				xmetric.AnyAttr("Remote", conn.RemoteAddr()),
 				xmetric.AnyAttr("Local", conn.LocalAddr()),
@@ -83,7 +85,7 @@ func Connect(ctx context.Context, c Connector, addr xnet.AddrNode, opt xoption.R
 	timeout := xoption.ConnectTimeout(opt)
 	span.SetAttemptCount(total)
 
-	doDial := func(ctx context.Context) (nc *xnet.ConnNode, err error) {
+	doDial := func(ctx context.Context) (io.ReadWriteCloser, error) {
 		ctx1, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 
@@ -94,19 +96,19 @@ func Connect(ctx context.Context, c Connector, addr xnet.AddrNode, opt xoption.R
 	}
 	// 尝试多次连接，由于在 xnet.HedgingDialer 里已经有 Hedging request 的逻辑，所以这里就不需要了
 	for range total {
-		nc, err = doDial(ctx)
+		rw, err = doDial(ctx)
 		if err == nil {
 			break
 		}
 	}
-	return nc, err
+	return rw, err
 }
 
 func DefaultConnector() Connector {
 	return ConnectorFunc(defaultConnect)
 }
 
-func defaultConnect(ctx context.Context, addrNode xnet.AddrNode, opt xoption.Reader) (*xnet.ConnNode, error) {
+func defaultConnect(ctx context.Context, addrNode xnet.AddrNode, opt xoption.Reader) (io.ReadWriteCloser, error) {
 	addr := addrNode.Addr
 	conn, err := xnet.DialContext(ctx, addr.Network(), addr.String())
 	node := &xnet.ConnNode{

@@ -10,6 +10,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"net/smtp"
 	"slices"
 	"strings"
@@ -27,7 +28,11 @@ func init() {
 }
 
 // 创建连接后，和 smtp server 握手
-func handshake(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (xdial.SessionReply, error) {
+func handshake(ctx context.Context, rw io.ReadWriteCloser, opt xoption.Reader) (xdial.SessionReply, error) {
+	conn, ok := rw.(*xnet.ConnNode)
+	if !ok {
+		return nil, fmt.Errorf("invaid conn %T, expect *xnet.ConnNode", rw)
+	}
 	serverName := conn.Addr.Host()
 	client, err := smtp.NewClient(conn, serverName)
 	if err != nil {

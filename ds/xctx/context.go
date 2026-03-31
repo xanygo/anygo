@@ -31,7 +31,7 @@ func CheckError(ctx context.Context, err error) error {
 	if err != nil {
 		return err
 	}
-	return ctx.Err()
+	return context.Cause(ctx)
 }
 
 var signKey = NewKey()

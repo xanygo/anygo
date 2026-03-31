@@ -8,12 +8,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
 	"github.com/xanygo/anygo/ds/xmap"
+	"github.com/xanygo/anygo/ds/xmeta"
 	"github.com/xanygo/anygo/ds/xmetric"
 	"github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/xio"
 	"github.com/xanygo/anygo/xnet"
 )
 
@@ -28,19 +31,20 @@ type SessionReply interface {
 // SessionStarter 用于创建连接后,tcp client 业务层面的握手
 // 如 Redis 协议发送 Hello Request
 type SessionStarter interface {
-	StartSession(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (SessionReply, error)
+	// StartSession 开始一个会话，conn 大多数情况下是 *xnet.ConnNode
+	StartSession(ctx context.Context, conn io.ReadWriteCloser, opt xoption.Reader) (SessionReply, error)
 }
 
 var _ SessionStarter = StartSessionFunc(nil)
 
-type StartSessionFunc func(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (SessionReply, error)
+type StartSessionFunc func(ctx context.Context, conn io.ReadWriteCloser, opt xoption.Reader) (SessionReply, error)
 
-func (h StartSessionFunc) StartSession(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader) (SessionReply, error) {
+func (h StartSessionFunc) StartSession(ctx context.Context, conn io.ReadWriteCloser, opt xoption.Reader) (SessionReply, error) {
 	return h(ctx, conn, opt)
 }
 
 func WithSessionStarter(c Connector, h SessionStarter, opt xoption.Reader) Connector {
-	return ConnectorFunc(func(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (*xnet.ConnNode, error) {
+	return ConnectorFunc(func(ctx context.Context, addr xnet.AddrNode, opt xoption.Reader) (io.ReadWriteCloser, error) {
 		conn, err := c.Connect(ctx, addr, opt)
 		if err != nil {
 			return conn, err
@@ -50,7 +54,7 @@ func WithSessionStarter(c Connector, h SessionStarter, opt xoption.Reader) Conne
 			conn.Close()
 			return conn, err
 		}
-		conn.SessionReply = ret
+		xmeta.TrySetMeta(conn, xmeta.KeySessionReply, ret)
 		return conn, nil
 	})
 }
@@ -76,7 +80,7 @@ func FindSessionStarter(protocol string) (SessionStarter, error) {
 	return nil, fmt.Errorf("protocol %s not registered", protocol)
 }
 
-func StartSession(ctx context.Context, protocol string, conn *xnet.ConnNode, opt xoption.Reader) (ret SessionReply, err error) {
+func StartSession(ctx context.Context, protocol string, conn io.ReadWriteCloser, opt xoption.Reader) (ret SessionReply, err error) {
 	ctx, span := xmetric.Start(ctx, "StartSession")
 	timeout := xoption.HandshakeTimeout(opt)
 	defer func() {
@@ -93,9 +97,13 @@ func StartSession(ctx context.Context, protocol string, conn *xnet.ConnNode, opt
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	conn.SetDeadline(time.Now().Add(timeout))
+
+	if ds, ok := conn.(xio.DeadlineSetter); ok {
+		ds.SetDeadline(time.Now().Add(timeout))
+		defer ds.SetDeadline(time.Time{})
+	}
 	ret, err = handler.StartSession(ctx, conn, opt)
-	conn.SetDeadline(time.Time{})
+
 	if err == nil && ret != nil {
 		span.SetAttributes(xmetric.AnyAttr("Summary", ret.Summary()))
 	}

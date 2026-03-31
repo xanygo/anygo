@@ -59,7 +59,10 @@ type GroupPool[K GroupKey[T], T comparable, V io.Closer] interface {
 	// Close 关闭 Pool
 	Close() error
 
+	// Stats 由 GroupStats 合并得到的完整的统计信息
 	Stats() Stats
+
+	// GroupStats 分组的统计详情
 	GroupStats() map[T]Stats
 
 	// Range 遍历所有的子 Pool

@@ -26,7 +26,7 @@ func Test_ConnPool1(t *testing.T) {
 		w.Write([]byte("hello:" + req.RemoteAddr))
 	}))
 	addr := ts.Listener.Addr()
-	cc := xdial.ConnectorFunc(func(ctx context.Context, _ xnet.AddrNode, opt xoption.Reader) (*xnet.ConnNode, error) {
+	cc := xdial.ConnectorFunc(func(ctx context.Context, _ xnet.AddrNode, opt xoption.Reader) (io.ReadWriteCloser, error) {
 		a := xnet.AddrNode{
 			Addr: addr,
 		}
@@ -47,13 +47,8 @@ func Test_ConnPool1(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				conn := ent.Object()
-				conn.OnClose = func() error {
-					conn.OnClose = nil
-					ent.Release(conn.Err())
-					return nil
-				}
-				return conn, nil
+				xpool.MustSetRecycler(ent)
+				return ent.Object().(net.Conn), nil
 			},
 		},
 	}

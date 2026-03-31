@@ -7,6 +7,7 @@ package xpool
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"sync/atomic"
 	"time"
@@ -47,9 +48,10 @@ type (
 	}
 )
 
+// Entry 从 Pool 中取出来的一个对象，当使用完成后，必须使用 Release 方法释放对象
 type Entry[V io.Closer] interface {
-	ID() uint64
-	Object() V
+	ID() uint64            // 唯一编号
+	Object() V             // 实际的底层对象
 	CreatedAt() time.Time  // 创建时间
 	LastUsedAt() time.Time // 上次使用时间
 	UsageCount() uint64    // 使用次数
@@ -238,4 +240,48 @@ func (oe *OpenEntry[V]) Close() error {
 	var emp V
 	oe.obj = emp
 	return err
+}
+
+// Recycler 可自动回收资源(Object)，需要实现的方法，可以参考 xnet.ConnNode
+//
+//	比如 ConnNode 的实现：
+//
+//	func (t *ConnNode) OnRecycle(fn func()) {
+//		t.onRecycle.Store(sync.OnceFunc(func() {
+//			fn()
+//			t.ResetStats()
+//			t.firstErr.Clear()
+//		}))
+//	}
+//
+// 通过 MustSetRecycler(entry) 方法将 et.Release(oc.Err()) 注册，最终在 Close() 方法中被调用。
+//
+//	func (t *ConnNode) Close() error {
+//		// 回收到对象池的逻辑，这一部分只会运行一次
+//		// 若连接有异常或者不需要了，对象池会负责关闭（再次调用 Close()）
+//		if recycle := t.onRecycle.Load(); recycle != nil {
+//			recycle()
+//			return nil
+//		}
+//		// 再次调用，会真的关闭连接
+//		return t.Outer().Close()
+//	}
+type Recycler interface {
+	// OnRecycle 注册从连接池取出后，调用 Close 方法释放资源的回调方法
+	OnRecycle(fn func())
+
+	// Err Object 在使用中出现的错误
+	Err() error
+}
+
+// MustSetRecycler 用于注册调用资源回收逻辑，之后首次调用 object.Close()，会将 entry 对象放回对象池
+func MustSetRecycler[T io.Closer](et Entry[T]) {
+	var obj any = et.Object()
+	oc, ok := obj.(Recycler)
+	if !ok {
+		panic(fmt.Errorf("type %T does not implement Recycler", obj))
+	}
+	oc.OnRecycle(func() {
+		et.Release(oc.Err())
+	})
 }
