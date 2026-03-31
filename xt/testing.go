@@ -56,8 +56,8 @@ type logLineBy string
 
 const (
 	logLineByFatalf logLineBy = "Fatalf"
-	logLineByErrorf           = "Errorf"
-	logLineByLogf             = "Logf"
+	logLineByErrorf logLineBy = "Errorf"
+	logLineByLogf   logLineBy = "Logf"
 )
 
 func (t *Collector) Failed() bool {
