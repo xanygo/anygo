@@ -76,3 +76,57 @@ func (m *myTesting) Fail(fn func(t Testing)) {
 	fn(m)
 	m.check()
 }
+
+func TestCollector(t *testing.T) {
+	t.Run("case 1", func(t *testing.T) {
+		tc := &Collector{}
+		tc.Logf("ok")
+		False(t, tc.Failed())
+
+		tc.Fatalf("fail")
+		True(t, tc.Failed())
+
+		tc.Errorf("error")
+		True(t, tc.Failed())
+
+		logs := tc.getLogs()
+		for _, line := range logs {
+			t.Logf("line: %v", line)
+			Contains(t, line.log, "xt.TestCollector")
+			Contains(t, line.log, "testing_test.go")
+		}
+	})
+
+	t.Run("case 2 run", func(t *testing.T) {
+		tc := &Collector{}
+		tc.Run("test1", func(t TB) {
+			t.Logf("ok")
+		})
+		False(t, tc.Failed())
+		tc.Run("test2", func(t TB) {
+			t.Errorf("errorf")
+		})
+		True(t, tc.Failed())
+		for _, line := range tc.getLogs() {
+			t.Logf("line: %v", line)
+			Contains(t, line.log, "xt.TestCollector")
+			Contains(t, line.log, "testing_test.go")
+		}
+	})
+
+	t.Run("case 3 dup name", func(t *testing.T) {
+		tc := &Collector{}
+		tc.Run("hello", func(t TB) {
+			t.Logf("hello")
+		})
+		tc.Run("hello", func(t TB) {
+			t.Logf("world")
+		})
+		False(t, tc.Failed())
+		for _, line := range tc.getLogs() {
+			t.Logf("line: %v", line)
+			Contains(t, line.log, "xt.TestCollector")
+			Contains(t, line.log, "testing_test.go")
+		}
+	})
+}

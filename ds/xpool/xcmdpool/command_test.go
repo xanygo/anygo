@@ -33,7 +33,7 @@ func TestCommand1(t *testing.T) {
 	var wg sync.WaitGroup
 	for i := 0; i < 3; i++ {
 		wg.Go(func() {
-			ts.Run(fmt.Sprintf("i_%d", i), func(t xt.Testing) {
+			ts.Run(fmt.Sprintf("i_%d", i), func(t xt.TB) {
 				for i := 0; i < 3; i++ {
 					rw, err := cmd.Spawn(ctx)
 					xt.NoError(t, err)
