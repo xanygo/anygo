@@ -133,6 +133,7 @@ func fixOption(opt *xpool.Option) {
 func newLong(opt *xpool.Option, cc Connector) GroupPool {
 	fac := &Factory{
 		Connect: func(ctx context.Context, addr xnet.AddrNode) (io.ReadWriteCloser, error) {
+			ctx = xpool.ContextWithOption(ctx, opt)
 			node, err := Connect(ctx, cc, addr, nil)
 			xmeta.TrySetMeta(node, xmeta.KeyLongPool, true)
 			return node, err
@@ -141,9 +142,10 @@ func newLong(opt *xpool.Option, cc Connector) GroupPool {
 	return xpool.NewGroupPool[xnet.AddrNode, string, io.ReadWriteCloser](opt, fac)
 }
 
-func newShort(_ *xpool.Option, cc Connector) GroupPool {
+func newShort(opt *xpool.Option, cc Connector) GroupPool {
 	fac := &Factory{
 		Connect: func(ctx context.Context, addr xnet.AddrNode) (io.ReadWriteCloser, error) {
+			ctx = xpool.ContextWithOption(ctx, opt)
 			return Connect(ctx, cc, addr, nil)
 		},
 	}

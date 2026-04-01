@@ -12,7 +12,7 @@ import (
 )
 
 func TestLookup(t *testing.T) {
-	nodes1, err1 := Lookup(context.Background(), "", "bj", "example.com:80", nil)
+	nodes1, err1 := Lookup(context.Background(), "", "bj", "example.com:80")
 	xt.NoError(t, err1)
 	testNodesEqual(t, nodes1, []string{"example.com:80"})
 }

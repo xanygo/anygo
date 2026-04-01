@@ -14,7 +14,7 @@ import (
 
 func TestFileStore_Lookup(t *testing.T) {
 	f := &FileStore{}
-	nodes1, err1 := f.Lookup(context.Background(), "bj", "testdata/file/server_list_0.txt", nil)
+	nodes1, err1 := f.Lookup(context.Background(), "bj", "testdata/file/server_list_0.txt")
 	xt.NoError(t, err1)
 	testNodesEqual(t, nodes1, []string{"127.0.0.1:8000", "127.0.0.2:8000", "10.0.0.1:9000"})
 }

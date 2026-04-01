@@ -129,8 +129,12 @@ func (d *HedgingDialer) doDial(ctx context.Context, network string, address stri
 
 var zeroDialer = &net.Dialer{}
 
-func (d *HedgingDialer) dialStd(ctx context.Context, network string, address string) (net.Conn, error) {
-	conn, err := zeroDialer.DialContext(ctx, network, address)
+func (d *HedgingDialer) dialStd(ctx context.Context, network string, address string) (conn net.Conn, err error) {
+	if nd, ok := networkDialer[network]; ok {
+		conn, err = nd.DialContext(ctx, network, address)
+	} else {
+		conn, err = zeroDialer.DialContext(ctx, network, address)
+	}
 	if err != nil {
 		return nil, err
 	}

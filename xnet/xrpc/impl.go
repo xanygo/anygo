@@ -23,25 +23,26 @@ import (
 	"github.com/xanygo/anygo/xnet/xservice"
 )
 
-var _ Client = (*TCP)(nil)
+var _ Client = (*Feilian)(nil)
 
-type TCP struct {
-	Interceptor     []TCPInterceptor
+// Feilian Client 的默认实现
+type Feilian struct {
+	Interceptor     []Interceptor
 	ServiceRegistry xservice.Registry
 }
 
-func (c *TCP) allITs(ctx context.Context) []TCPInterceptor {
-	its := slices.Clone(globalTCPInterceptors)
+func (c *Feilian) allITs(ctx context.Context) []Interceptor {
+	its := slices.Clone(globalInterceptors)
 	if len(c.Interceptor) > 0 {
 		its = append(its, c.Interceptor...)
 	}
-	if items := TCPITFromContext(ctx); len(items) > 0 {
+	if items := ITFromContext(ctx); len(items) > 0 {
 		its = append(its, items...)
 	}
 	return its
 }
 
-func (c *TCP) getServiceName(srv any) string {
+func (c *Feilian) getServiceName(srv any) string {
 	switch sv := srv.(type) {
 	case string:
 		return sv
@@ -52,7 +53,7 @@ func (c *TCP) getServiceName(srv any) string {
 	}
 }
 
-func (c *TCP) Invoke(ctx context.Context, srv any, req Request, resp Response, opts ...Option) (result error) {
+func (c *Feilian) Invoke(ctx context.Context, srv any, req Request, resp Response, opts ...Option) (result error) {
 	var rootSpan xmetric.Span
 	ctx, rootSpan = xmetric.Start(ctx, "invoke")
 	its := c.allITs(ctx)
@@ -150,7 +151,7 @@ func (c *TCP) Invoke(ctx context.Context, srv any, req Request, resp Response, o
 	return result
 }
 
-func (c *TCP) tryOnce(ctx context.Context, cfg *config, req Request, resp Response, serviceName string, service xservice.Service, its []TCPInterceptor,
+func (c *Feilian) tryOnce(ctx context.Context, cfg *config, req Request, resp Response, serviceName string, service xservice.Service, its []Interceptor,
 	opt xoption.Reader) (result error) {
 	timeout := xoption.TotalTimeout(opt)
 	var cancel context.CancelFunc
@@ -224,7 +225,7 @@ func (c *TCP) tryOnce(ctx context.Context, cfg *config, req Request, resp Respon
 	return err
 }
 
-func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption.Reader, conn io.ReadWriteCloser) (err error) {
+func (c *Feilian) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption.Reader, conn io.ReadWriteCloser) (err error) {
 	start := time.Now()
 	// 暂时不将读写超时分开控制
 	err = req.WriteTo(ctx, conn, opt)
@@ -238,7 +239,7 @@ func (c *TCP) doWriteRead(ctx context.Context, req Request, resp Response, opt x
 	return err
 }
 
-type TCPInterceptor struct {
+type Interceptor struct {
 	BeforeInvoke func(ctx context.Context, service string, req Request, resp Response, span xmetric.Span,
 		opts ...Option) (context.Context, Request, Response, []Option)
 
@@ -255,26 +256,26 @@ type TCPInterceptor struct {
 	AfterInvoke func(ctx context.Context, service string, req Request, resp Response, span xmetric.Span, err error)
 }
 
-var defaultTCPClient = &xsync.OnceInit[*TCP]{
-	New: func() *TCP {
-		return &TCP{}
+var defaultClient = &xsync.OnceInit[Client]{
+	New: func() Client {
+		return &Feilian{}
 	},
 }
 
-func DefaultTCPClient() *TCP {
-	return defaultTCPClient.Load()
+func DefaultClient() Client {
+	return defaultClient.Load()
 }
 
-func SetDefaultTCPClient(c *TCP) {
-	defaultTCPClient.Store(c)
+func SetDefaultClient(c Client) {
+	defaultClient.Store(c)
 }
 
 func Invoke(ctx context.Context, service any, req Request, resp Response, opts ...Option) (result error) {
-	return DefaultTCPClient().Invoke(ctx, service, req, resp, opts...)
+	return DefaultClient().Invoke(ctx, service, req, resp, opts...)
 }
 
-var globalTCPInterceptors []TCPInterceptor
+var globalInterceptors []Interceptor
 
-func RegisterTCPIT(its ...TCPInterceptor) {
-	globalTCPInterceptors = append(globalTCPInterceptors, its...)
+func RegisterIT(its ...Interceptor) {
+	globalInterceptors = append(globalInterceptors, its...)
 }

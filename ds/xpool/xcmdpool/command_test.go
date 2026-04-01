@@ -23,7 +23,7 @@ import (
 func TestCommand1(t *testing.T) {
 	cmd := &xcmdpool.Command{
 		Path: "go",
-		Args: []string{"run", filepath.Join("testdata", "ping", "ping.go")},
+		Args: []string{"run", filepath.Join("../../../cmd/example/stdio-ping/", "main.go")},
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

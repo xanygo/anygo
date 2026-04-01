@@ -10,14 +10,14 @@ import (
 	"github.com/xanygo/anygo/ds/xctx"
 )
 
-var ctxTCPITKey = xctx.NewKey()
+var ctxITKey = xctx.NewKey()
 
-func ContextWithTCPIT(ctx context.Context, its ...TCPInterceptor) context.Context {
-	return xctx.WithValues(ctx, ctxTCPITKey, its...)
+func ContextWithIT(ctx context.Context, its ...Interceptor) context.Context {
+	return xctx.WithValues(ctx, ctxITKey, its...)
 }
 
-func TCPITFromContext(ctx context.Context) []TCPInterceptor {
-	return xctx.Values[*xctx.Key, TCPInterceptor](ctx, ctxTCPITKey, true)
+func ITFromContext(ctx context.Context) []Interceptor {
+	return xctx.Values[*xctx.Key, Interceptor](ctx, ctxITKey, true)
 }
 
 var ctxOptionKey = xctx.NewKey()

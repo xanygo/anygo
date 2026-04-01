@@ -282,7 +282,7 @@ type ConnNode struct {
 // OnRecycle 注册从连接池取出后，调用 Close 方法释放资源的回调方法
 func (t *ConnNode) OnRecycle(fn func()) {
 	t.onRecycle.Store(sync.OnceFunc(func() {
-		fn()           // 这里应该是 entry.Release(lastErr)
+		fn()           // 这里实际是 entry.Release(lastErr)
 		t.ResetStats() // 重置统计信息
 		t.lastErr.Clear()
 	}))

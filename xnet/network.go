@@ -4,6 +4,12 @@
 
 package xnet
 
+import (
+	"fmt"
+
+	"github.com/xanygo/anygo/xnet/internal/stdio"
+)
+
 // Network dialer and resolver network types
 type Network string
 
@@ -22,6 +28,7 @@ const (
 	NetworkUnix       = "unix"
 	NetworkUnixGram   = "unixgram"
 	NetworkUnixPacket = "unixpacket"
+	NetworkStdio      = "stdio" // 使用 stdin 和 stdout 通讯
 )
 
 // Resolver 转换为 Resolver 所需要的类型
@@ -55,4 +62,18 @@ func (nt Network) IsIP() bool {
 // String 字符串类型
 func (nt Network) String() string {
 	return string(nt)
+}
+
+var networkDialer = map[string]Dialer{}
+
+func RegisterDialer(network string, d Dialer) error {
+	if _, ok := networkDialer[network]; ok {
+		return fmt.Errorf("network %s already registered", network)
+	}
+	networkDialer[network] = d
+	return nil
+}
+
+func init() {
+	RegisterDialer(NetworkStdio, &stdio.Dialer{})
 }

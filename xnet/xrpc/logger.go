@@ -21,8 +21,8 @@ type Logger struct {
 	Logger xlog.Logger
 }
 
-func (l *Logger) Interceptor() TCPInterceptor {
-	return TCPInterceptor{
+func (l *Logger) Interceptor() Interceptor {
+	return Interceptor{
 		BeforeInvoke:   l.beforeInvoke,
 		AfterWriteRead: l.afterWriteRead,
 		AfterInvoke:    l.afterInvoke,

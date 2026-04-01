@@ -19,7 +19,7 @@ func main() {
 	l := &xrpc.Logger{
 		Logger: xlog.NewSimple(os.Stderr),
 	}
-	xrpc.RegisterTCPIT(l.Interceptor())
+	xrpc.RegisterIT(l.Interceptor())
 
 	xservice.LoadDir(context.Background(), "../service/*")
 	rc := xredis.NewClient("rds")

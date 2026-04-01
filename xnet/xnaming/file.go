@@ -7,10 +7,9 @@ package xnaming
 import (
 	"context"
 	"fmt"
-	"net"
-	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/xio/xfs"
@@ -19,7 +18,7 @@ import (
 
 var _ Naming = (*FileStore)(nil)
 
-// FileStore 解析文件，如  file://server_list.ns
+// FileStore 解析文件，如  file@server_list.ns
 //
 //	文件内部格式如：
 //	# user service node list
@@ -51,9 +50,9 @@ func (f *FileStore) init() {
 	}
 }
 
-func (f *FileStore) Lookup(ctx context.Context, idc string, fileName string, param url.Values) ([]xnet.AddrNode, error) {
+func (f *FileStore) Lookup(ctx context.Context, idc string, filename string) ([]xnet.AddrNode, error) {
 	f.once.Do(f.init)
-	return f.cache.Get(fileName).fetch()
+	return f.cache.Get(filename).fetch()
 }
 
 func init() {
@@ -81,21 +80,19 @@ func (cf *cachedFile) fetch() ([]xnet.AddrNode, error) {
 func (cf *cachedFile) parser(content []byte) ([]xnet.AddrNode, error) {
 	lines := strings.Split(string(content), "\n")
 	nodes := make([]xnet.AddrNode, 0, len(lines))
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
 	for _, line := range lines {
 		line, _, _ = strings.Cut(line, "#") // 去掉 # 注释的内容
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		_, _, err := net.SplitHostPort(line)
+		ns, err := LookupRaw(ctx, "", line)
 		if err != nil {
 			return nil, err
 		}
-		node := xnet.AddrNode{
-			HostPort: line,
-			Addr:     xnet.NewAddr("tcp", line),
-		}
-		nodes = append(nodes, node)
+		nodes = append(nodes, ns...)
 	}
 	if len(nodes) == 0 {
 		return nil, fmt.Errorf("no hostPort found in file %s", cf.path)

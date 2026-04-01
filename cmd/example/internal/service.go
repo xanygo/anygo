@@ -20,7 +20,7 @@ func ServiceInit() {
 	l := &xrpc.Logger{
 		Logger: xlog.NewSimple(os.Stderr),
 	}
-	xrpc.RegisterTCPIT(l.Interceptor())
+	xrpc.RegisterIT(l.Interceptor())
 
 	ps := []string{"../service/*.json"}
 	err1 := xservice.LoadDir(context.Background(), ps...)

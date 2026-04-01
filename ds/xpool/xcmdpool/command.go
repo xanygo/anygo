@@ -91,7 +91,7 @@ func (c *Command) Close() error {
 }
 
 // Spawn 获取一个空闲的读写对象，若没有空闲的会等待或创建新的
-// 读写完成后，使必须调用 Close() 方法，是否资源
+// 读写完成后，使必须调用 Close() 方法，释放资源
 func (c *Command) Spawn(ctx context.Context) (io.ReadWriteCloser, error) {
 	c.initOnce()
 	child, err := c.pool.Get(ctx)

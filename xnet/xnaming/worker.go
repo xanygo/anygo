@@ -7,9 +7,6 @@ package xnaming
 import (
 	"context"
 	"errors"
-	"fmt"
-	"net/url"
-	"strings"
 	"sync"
 	"time"
 
@@ -97,31 +94,8 @@ func (n *Worker) do(ctx context.Context) error {
 func (n *Worker) search(ctx context.Context, idc string, items []string) ([]xnet.AddrNode, error) {
 	var allNodes []xnet.AddrNode
 	var errs []error
-	for idx, item := range items {
-		item = strings.TrimSpace(item)
-		if item == "" {
-			continue
-		}
-		scheme, after, found := strings.Cut(item, "://")
-		if !found {
-			scheme = ""
-			after = item
-		}
-		name, paramStr, _ := strings.Cut(after, "|")
-
-		name = strings.TrimSpace(name)
-		paramStr = strings.TrimSpace(paramStr)
-
-		var param url.Values
-		if len(paramStr) > 0 {
-			var err error
-			param, err = url.ParseQuery(paramStr)
-			if err != nil {
-				errs = append(errs, fmt.Errorf("[%d]=%q %w", idx, item, err))
-				continue
-			}
-		}
-		nodes, err := Lookup(ctx, scheme, idc, name, param)
+	for _, item := range items {
+		nodes, err := LookupRaw(ctx, idc, item)
 		if err != nil {
 			errs = append(errs, err)
 			continue

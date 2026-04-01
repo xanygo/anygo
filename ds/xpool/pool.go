@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xctx"
 	"github.com/xanygo/anygo/ds/xsync"
 )
 
@@ -284,4 +285,15 @@ func MustSetRecycler[T io.Closer](et Entry[T]) {
 	oc.OnRecycle(func() {
 		et.Release(oc.Err())
 	})
+}
+
+var ctxKey = xctx.NewKey()
+
+func ContextWithOption(ctx context.Context, opt *Option) context.Context {
+	return context.WithValue(ctx, ctxKey, opt)
+}
+
+func OptionFromContext(ctx context.Context) *Option {
+	val, _ := ctx.Value(ctxKey).(*Option)
+	return val
 }

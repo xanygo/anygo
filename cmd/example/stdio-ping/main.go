@@ -25,5 +25,4 @@ func main() {
 		log.Printf("ping.go pid=%d read= %q\n", pid, line)
 		fmt.Fprintf(os.Stdout, "Ok: %s\n", line)
 	}
-	log.Println("ping.go exiting ...., pid=", pid)
 }

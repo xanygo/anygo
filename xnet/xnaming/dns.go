@@ -7,7 +7,6 @@ package xnaming
 import (
 	"context"
 	"net"
-	"net/url"
 
 	"github.com/xanygo/anygo/xnet"
 )
@@ -21,7 +20,7 @@ func (d *DNS) Scheme() string {
 	return "dns"
 }
 
-func (d *DNS) Lookup(ctx context.Context, idc string, hostPort string, param url.Values) ([]xnet.AddrNode, error) {
+func (d *DNS) Lookup(ctx context.Context, idc string, hostPort string) ([]xnet.AddrNode, error) {
 	host, port, err := net.SplitHostPort(hostPort)
 	if err != nil {
 		return nil, err
@@ -35,7 +34,7 @@ func (d *DNS) Lookup(ctx context.Context, idc string, hostPort string, param url
 		addr := net.JoinHostPort(ip.String(), port)
 		node := xnet.AddrNode{
 			HostPort: hostPort,
-			Addr:     xnet.NewAddr("tcp", addr),
+			Addr:     xnet.NewAddr(xnet.NetworkTCP, addr),
 		}
 		nodes = append(nodes, node)
 	}
