@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xnet/internal/stdio"
 	"github.com/xanygo/anygo/xt"
 )
@@ -22,7 +23,14 @@ func TestDialer_DialContext(t *testing.T) {
 	defer cancel()
 
 	fp := filepath.Join("../../../cmd/example/stdio-ping/", "main.go")
-	address := fmt.Sprintf(`{"Path":"go","Args":["run","%s"]}`, fp)
+	data := map[string]any{
+		"Path": "go",
+		"Args": []string{
+			"run",
+			fp,
+		},
+	}
+	address, _ := xcodec.EncodeToString(xcodec.JSON, data)
 
 	for i := 0; i < 3; i++ {
 		t.Run(fmt.Sprintf("DialContext_%d", i), func(t *testing.T) {
