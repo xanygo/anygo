@@ -20,16 +20,18 @@ func TestRouter_Handle(t *testing.T) {
 		return "world", nil
 	}))
 	t.Run("case 1", func(t *testing.T) {
-		input := `{"jsonrpc": "2.0", "method": "hello", "params": [1,2,4], "id": "1"}
+		for i := 0; i < 3; i++ {
+			input := `{"jsonrpc": "2.0", "method": "hello", "params": [1,2,4], "id": "1"}
 {"jsonrpc": "2.0", "method": "hello", "params": [1,2,4], "id": "2"}
 `
-		bf := strings.NewReader(input)
-		w := &bytes.Buffer{}
-		err := router.Serve(context.Background(), bf, w)
-		xt.NoError(t, err)
-		want := `{"jsonrpc":"2.0","id":"1","result":"world"}
+			bf := strings.NewReader(input)
+			w := &bytes.Buffer{}
+			err := router.Serve(context.Background(), bf, w)
+			xt.NoError(t, err)
+			want := `{"jsonrpc":"2.0","id":"1","result":"world"}
 {"jsonrpc":"2.0","id":"2","result":"world"}
 `
-		xt.Equal(t, want, w.String())
+			xt.Equal(t, want, w.String())
+		}
 	})
 }

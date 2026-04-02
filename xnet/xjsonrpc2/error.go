@@ -28,9 +28,11 @@ func (e Error) Error() string {
 }
 
 var (
-	ErrParse          = &Error{Code: -32700, Message: "parse error"}
-	ErrInvalidRequest = &Error{Code: -32600, Message: "invalid request"}
+	ErrParse          = &Error{Code: -32700, Message: "parse error"}     // 数据包格式错误
+	ErrInvalidRequest = &Error{Code: -32600, Message: "invalid request"} // 请求
 	ErrMethodNotFound = &Error{Code: -32601, Message: "method not found"}
-	ErrInvalidParams  = &Error{Code: -32602, Message: "invalid params"}
+	ErrInvalidParams  = &Error{Code: -32602, Message: "invalid params"} // 解析请求中的参数失败
 	ErrInternal       = &Error{Code: -32603, Message: "internal error"}
+
+	ErrInvalidResult = &Error{Code: -32000, Message: "invalid result"} // 解析响应的 结果失败
 )

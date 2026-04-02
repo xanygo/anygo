@@ -71,9 +71,6 @@ func retryableStatus(code int) bool {
 func (resp *Response) doLoadFrom(ctx context.Context, req xrpc.Request, r io.Reader, opt xoption.Reader) error {
 	if ds, ok := r.(xio.ReadDeadlineSetter); ok {
 		timeout := xoption.ReadTimeout(opt)
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, timeout)
-		defer cancel()
 		if err := ds.SetReadDeadline(time.Now().Add(timeout)); err != nil {
 			return err
 		}

@@ -32,7 +32,11 @@ func (res *Response) envelope() envelope {
 }
 
 func (res *Response) DecodeResult(obj any) error {
-	return xcodec.JSON.Decode(res.Result, obj)
+	err := xcodec.JSON.Decode(res.Result, obj)
+	if err == nil {
+		return nil
+	}
+	return errors.Join(ErrInvalidResult, err)
 }
 
 func (res *Response) WIthResult(obj any) error {

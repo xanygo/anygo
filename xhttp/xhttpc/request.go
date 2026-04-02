@@ -46,13 +46,13 @@ func DefaultUserAgent() string {
 var _ xrpc.Request = (*Request)(nil)
 
 type Request struct {
-	API     string // APIName
-	Method  string // 请求方法，可选，默认为 http.MethodGet
-	Path    string
-	HTTPS   bool
-	Query   url.Values
-	Header  http.Header
-	GetBody func() (io.ReadCloser, error)
+	API     string                        // 接口名称,可选
+	Method  string                        // 请求方法，可选，默认为 http.MethodGet
+	Path    string                        // 请求地址，可选，如 /v1/api
+	HTTPS   bool                          // 是否是 HTTPS 请求，可选
+	Query   url.Values                    // 请求携带的 query 参数，可选
+	Header  http.Header                   // 请求的 header，可选
+	GetBody func() (io.ReadCloser, error) // 发送的 Body，可选
 
 	// Idempotency 多次发送该请求，Server 端的结果是否幂等，可选
 	// 当不设置的时候，会依据 Method 判断

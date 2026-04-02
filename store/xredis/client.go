@@ -97,7 +97,7 @@ func init() {
 //
 // xrpc 里有统一的 handshake timeout 设置
 // https://redis.io/docs/latest/commands/hello/
-func startSession(ctx context.Context, conn io.ReadWriteCloser, opt xoption.Reader) (xdial.SessionReply, error) {
+func startSession(ctx context.Context, conn io.ReadWriter, opt xoption.Reader) (xdial.SessionReply, error) {
 	hello := resp3.HelloRequest{}
 	const redisKey = "Redis"
 	cfg := xoption.Extra(opt, redisKey)

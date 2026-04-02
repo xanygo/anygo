@@ -31,6 +31,12 @@ func (h HandlerFunc) Handle(ctx context.Context, req *Request) (result any, err 
 var _ http.Handler = (*Router)(nil)
 var _ Handler = (*Router)(nil)
 
+func NewRouter() *Router {
+	return &Router{
+		handlers: make(map[string]Handler),
+	}
+}
+
 type Router struct {
 	handlers map[string]Handler
 }
@@ -40,6 +46,10 @@ func (r *Router) Register(method string, h Handler) {
 		r.handlers = make(map[string]Handler)
 	}
 	r.handlers[method] = h
+}
+
+func (r *Router) RegisterFunc(method string, fn func(ctx context.Context, req *Request) (result any, err error)) {
+	r.Register(method, HandlerFunc(fn))
 }
 
 func (r *Router) Handle(ctx context.Context, req *Request) (result any, err error) {
@@ -57,9 +67,31 @@ func (r *Router) Handle(ctx context.Context, req *Request) (result any, err erro
 	return result, err
 }
 
+const upgradeResp = "HTTP/1.1 101 Switching Protocols\r\n" +
+	"Upgrade: " + Protocol + "\r\n" +
+	"Connection: Upgrade\r\n\r\n"
+
 // ServeHTTP 处理 HTTP 请求，从 request.Body 读取数据流
+// 客户端需要发送 HTTP Upgrade 请求
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	r.Serve(req.Context(), req.Body, w)
+	if up := req.Header.Get("Upgrade"); up == "" {
+		http.Error(w, "not Upgrade request", http.StatusBadRequest)
+		return
+	}
+	hj, ok := w.(http.Hijacker)
+	if !ok {
+		http.Error(w, "hijack not supported", http.StatusInternalServerError)
+		return
+	}
+	conn, rw, err := hj.Hijack()
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+	_, _ = rw.WriteString(upgradeResp)
+	_ = rw.Flush()
+
+	r.Serve(req.Context(), rw.Reader, rw.Writer)
 }
 
 func (r *Router) Serve(ctx context.Context, rd io.Reader, w io.Writer) error {
@@ -85,7 +117,7 @@ func (r *Router) Serve(ctx context.Context, rd io.Reader, w io.Writer) error {
 			err = r.serveOne(ctx, bw, reqs[0])
 		}
 		if err == nil {
-			err = xio.TryFlush(w)
+			err = xio.TryFlush(bw, w)
 		}
 		if err != nil {
 			return err
@@ -142,7 +174,7 @@ func (r *Router) serveOne(ctx context.Context, w *bufio.Writer, req *Request) er
 	}
 	bf, _ := xcodec.JSON.Encode(el)
 	w.Write(bf)
-	w.WriteString("\n")
+	w.WriteByte('\n')
 	return w.Flush()
 }
 
@@ -173,6 +205,6 @@ func (r *Router) serveBatch(ctx context.Context, w *bufio.Writer, reqs []*Reques
 
 	bf, _ := xcodec.JSON.Encode(resps)
 	w.Write(bf)
-	w.WriteString("\n")
+	w.WriteByte('\n')
 	return w.Flush()
 }

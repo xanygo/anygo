@@ -104,6 +104,10 @@ func (c *Feilian) Invoke(ctx context.Context, srv any, req Request, resp Respons
 		return err
 	}
 
+	if cfg.handshake != nil {
+		ctx = xdial.ContextWithSessionStarter(ctx, cfg.handshake)
+	}
+
 	// 将临时 option 和 service 的 option 合并
 	opt := xoption.Readers(cfg.opt, service.Option())
 

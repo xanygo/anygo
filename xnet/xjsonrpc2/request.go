@@ -59,11 +59,23 @@ func (req *Request) WriteTo(w io.Writer) (int64, error) {
 	}
 	bf = append(bf, '\n')
 	num, err := w.Write(bf)
-	return int64(num), err
+	if err != nil {
+		return int64(num), err
+	}
+	return int64(num), xio.TryFlush(w)
+}
+
+func (req *Request) Write(w io.Writer) error {
+	_, err := req.WriteTo(w)
+	return err
 }
 
 func (req *Request) DecodeParams(obj any) error {
-	return xcodec.JSON.Decode(req.Params, obj)
+	err := xcodec.JSON.Decode(req.Params, obj)
+	if err == nil {
+		return nil
+	}
+	return errors.Join(ErrInvalidParams, err)
 }
 
 func (req *Request) WithParams(obj any) error {
@@ -131,6 +143,7 @@ func ReadRequests(rd *bufio.Reader) ([]*Request, bool, error) {
 	if err != nil {
 		return nil, false, err
 	}
+
 	if head[0] != '[' {
 		req, err := ReadRequest(rd)
 		if err != nil {
@@ -144,8 +157,8 @@ func ReadRequests(rd *bufio.Reader) ([]*Request, bool, error) {
 		if err != nil {
 			return nil, false, err
 		}
-		line = bytes.TrimSpace(line)
 		bf.Write(line)
+		line = bytes.TrimSpace(line)
 		if bytes.HasSuffix(line, []byte("]")) {
 			break
 		}

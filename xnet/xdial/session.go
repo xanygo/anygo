@@ -5,13 +5,17 @@
 package xdial
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xctx"
 	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xmeta"
 	"github.com/xanygo/anygo/ds/xmetric"
@@ -32,15 +36,15 @@ type SessionReply interface {
 // 如 Redis 协议发送 Hello Request
 type SessionStarter interface {
 	// StartSession 开始一个会话，conn 大多数情况下是 *xnet.ConnNode
-	StartSession(ctx context.Context, conn io.ReadWriteCloser, opt xoption.Reader) (SessionReply, error)
+	StartSession(ctx context.Context, rw io.ReadWriter, opt xoption.Reader) (SessionReply, error)
 }
 
 var _ SessionStarter = StartSessionFunc(nil)
 
-type StartSessionFunc func(ctx context.Context, conn io.ReadWriteCloser, opt xoption.Reader) (SessionReply, error)
+type StartSessionFunc func(ctx context.Context, rw io.ReadWriter, opt xoption.Reader) (SessionReply, error)
 
-func (h StartSessionFunc) StartSession(ctx context.Context, conn io.ReadWriteCloser, opt xoption.Reader) (SessionReply, error) {
-	return h(ctx, conn, opt)
+func (h StartSessionFunc) StartSession(ctx context.Context, rw io.ReadWriter, opt xoption.Reader) (SessionReply, error) {
+	return h(ctx, rw, opt)
 }
 
 func WithSessionStarter(c Connector, h SessionStarter, opt xoption.Reader) Connector {
@@ -72,15 +76,16 @@ func RegisterSessionStarter(protocol string, h SessionStarter) error {
 	return nil
 }
 
-func FindSessionStarter(protocol string) (SessionStarter, error) {
-	handler, ok := protocols.Load(strings.ToUpper(protocol))
-	if ok {
-		return handler, nil
-	}
-	return nil, fmt.Errorf("protocol %s not registered", protocol)
+// FindSessionStarter 按照协议查找，若找不到会返回nil
+func FindSessionStarter(protocol string) SessionStarter {
+	handler, _ := protocols.Load(strings.ToUpper(protocol))
+	return handler
 }
 
-func StartSession(ctx context.Context, protocol string, conn io.ReadWriteCloser, opt xoption.Reader) (ret SessionReply, err error) {
+// StartSession 用于在连接创建完成后，业务正式使用前，执行会话开启的逻辑。
+// 如身份认证，协议升级等。
+// 目前在 xservice.connector 里调用
+func StartSession(ctx context.Context, protocol string, rw io.ReadWriter, opt xoption.Reader) (ret SessionReply, started bool, err error) {
 	ctx, span := xmetric.Start(ctx, "StartSession")
 	timeout := xoption.HandshakeTimeout(opt)
 	defer func() {
@@ -91,21 +96,70 @@ func StartSession(ctx context.Context, protocol string, conn io.ReadWriteCloser,
 		span.RecordError(err)
 		span.End()
 	}()
-	handler, err1 := FindSessionStarter(protocol)
-	if err1 != nil {
-		return nil, err1
+	handler := SessionStarterFromContext(ctx)
+	if handler == nil {
+		handler = FindSessionStarter(protocol)
+	}
+	// 若找不到，则直接返回(跳过)
+	if handler == nil {
+		return nil, false, nil
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	if ds, ok := conn.(xio.DeadlineSetter); ok {
+	if ds, ok := rw.(xio.DeadlineSetter); ok {
 		ds.SetDeadline(time.Now().Add(timeout))
 		defer ds.SetDeadline(time.Time{})
 	}
-	ret, err = handler.StartSession(ctx, conn, opt)
+	ret, err = handler.StartSession(ctx, rw, opt)
 
 	if err == nil && ret != nil {
 		span.SetAttributes(xmetric.AnyAttr("Summary", ret.Summary()))
 	}
-	return ret, err
+	return ret, true, err
+}
+
+var ctxKey = xctx.NewKey()
+
+func ContextWithSessionStarter(ctx context.Context, h SessionStarter) context.Context {
+	return context.WithValue(ctx, ctxKey, h)
+}
+
+func SessionStarterFromContext(ctx context.Context) SessionStarter {
+	val, _ := ctx.Value(ctxKey).(SessionStarter)
+	return val
+}
+
+// HTTPUpgrade 构建一个能执行 HTTP Upgrade 逻辑的会话创建逻辑
+func HTTPUpgrade(method string, uri string, protocol string) SessionStarter {
+	hd := bytes.NewBuffer(nil)
+	fmt.Fprintf(hd, "%s %s HTTP/1.1\r\n", method, uri)
+	fmt.Fprintf(hd, "Upgrade: %s\r\n", protocol)
+	fmt.Fprint(hd, "Connection: Upgrade\r\n")
+	return StartSessionFunc(func(ctx context.Context, rw io.ReadWriter, opt xoption.Reader) (SessionReply, error) {
+		conn, ok := rw.(*xnet.ConnNode)
+		if !ok {
+			return nil, errors.New("conn is not a net.ConnNode")
+		}
+		host := fmt.Sprintf("Host: %s\r\n\r\n", conn.Addr.HostPort)
+		bf := bytes.NewBuffer(nil)
+		bf.Grow(hd.Len() + len(host))
+		bf.Write(hd.Bytes())
+		bf.WriteString(host)
+		_, err := rw.Write(bf.Bytes())
+		if err != nil {
+			return nil, err
+		}
+		reader := bufio.NewReader(conn)
+		resp, err := http.ReadResponse(reader, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		// 校验状态码是否为 101 Switching Protocols
+		if resp.StatusCode != http.StatusSwitchingProtocols {
+			return nil, fmt.Errorf("upgrade failed with status=%s, expect statusCode=101", resp.Status)
+		}
+		return nil, nil
+	})
 }

@@ -28,7 +28,7 @@ func init() {
 }
 
 // 创建连接后，和 smtp server 握手
-func handshake(ctx context.Context, rw io.ReadWriteCloser, opt xoption.Reader) (xdial.SessionReply, error) {
+func handshake(ctx context.Context, rw io.ReadWriter, opt xoption.Reader) (xdial.SessionReply, error) {
 	conn, ok := rw.(*xnet.ConnNode)
 	if !ok {
 		return nil, fmt.Errorf("invaid conn %T, expect *xnet.ConnNode", rw)

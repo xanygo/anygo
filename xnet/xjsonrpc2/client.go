@@ -89,14 +89,9 @@ func (c *ClientResponse[P]) String() string {
 
 func (c *ClientResponse[P]) LoadFrom(_ context.Context, req xrpc.Request, r io.Reader, opt xoption.Reader) error {
 	c.raw = nil
-	nr, ok := req.(noReply)
-	if !ok {
-		return fmt.Errorf("invalid request type %T, expect ClientRequest", req)
-	}
-	if nr.NoReply() {
+	if nr, ok := req.(noReply); ok && nr.NoReply() {
 		return nil
 	}
-
 	if ds, ok := r.(xio.ReadDeadlineSetter); ok {
 		timeout := xoption.ReadTimeout(opt)
 		if err := ds.SetReadDeadline(time.Now().Add(timeout)); err != nil {
@@ -113,7 +108,6 @@ func (c *ClientResponse[P]) LoadFrom(_ context.Context, req xrpc.Request, r io.R
 		return err
 	}
 	c.raw = resp
-
 	return resp.DecodeResult(&c.Result)
 }
 
@@ -189,6 +183,15 @@ func (crs ClientRequests[P]) WriteTo(_ context.Context, w io.Writer, opt xoption
 	return err
 }
 
+func (crs ClientRequests[P]) NoReply() bool {
+	for _, cr := range crs {
+		if !cr.NoReply() {
+			return false
+		}
+	}
+	return true
+}
+
 var _ xrpc.Response = (*ClientResponses)(nil)
 
 // ClientResponses  和 ClientRequests 匹配对应的响应解析逻辑
@@ -202,6 +205,11 @@ func (c *ClientResponses) String() string {
 }
 
 func (c *ClientResponses) LoadFrom(_ context.Context, req xrpc.Request, r io.Reader, opt xoption.Reader) error {
+	c.values = nil
+	c.err = nil
+	if nr, ok := req.(noReply); ok && nr.NoReply() {
+		return nil
+	}
 	if ds, ok := r.(xio.ReadDeadlineSetter); ok {
 		timeout := xoption.ReadTimeout(opt)
 		if err := ds.SetReadDeadline(time.Now().Add(timeout)); err != nil {
@@ -218,7 +226,7 @@ func (c *ClientResponses) ErrCode() int64 {
 	if c.err == nil {
 		return 0
 	}
-	return xerror.ErrCode(c.err, 0)
+	return xerror.ErrCode(c.err, 1)
 }
 
 func (c *ClientResponses) ErrMsg() string {

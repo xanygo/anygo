@@ -6,6 +6,10 @@ package xservice
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"net"
+	"net/url"
 
 	"github.com/xanygo/anygo/ds/xbus"
 	"github.com/xanygo/anygo/ds/xoption"
@@ -76,4 +80,37 @@ func (ds *serviceImpl) Start(ctx context.Context) error {
 func (ds *serviceImpl) Stop(ctx context.Context) error {
 	ds.broker.Stop()
 	return xpp.TryStopWorker(ctx, ds.balancer, ds.nw, ds.broker)
+}
+
+func NewServiceByAddress(name string, address ...string) (Service, error) {
+	if len(address) == 0 {
+		return nil, errors.New("address is empty")
+	}
+	cfg := &Config{
+		Name: name,
+		DownStream: DownStreamPart{
+			Address: address,
+		},
+	}
+	return cfg.Parser("dev")
+}
+
+func NewServiceByURL(name string, urlStr string) (Service, error) {
+	u, err := url.Parse(urlStr)
+	if err != nil {
+		return nil, err
+	}
+	host := u.Hostname()
+	port := u.Port()
+	if port == "" {
+		switch u.Scheme {
+		case "http":
+			port = "80"
+		case "https":
+			port = "443"
+		default:
+			return nil, fmt.Errorf("invalid url %q, missing port", urlStr)
+		}
+	}
+	return NewServiceByAddress(name, net.JoinHostPort(host, port))
 }

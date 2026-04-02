@@ -44,13 +44,14 @@ func (c *connector) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption
 	}
 
 	protocol := xoption.Protocol(opt)
-	if protocol != "" {
-		ret, err1 := xdial.StartSession(ctx, protocol, conn, opt)
-		if err1 != nil {
-			_ = conn.Close()
-			return nil, err1
-		}
-		xmeta.TrySetMeta(conn, xmeta.KeySessionReply, ret)
+	reply, started, err1 := xdial.StartSession(ctx, protocol, conn, opt)
+	if err1 != nil {
+		_ = conn.Close()
+		return nil, err1
+	}
+	// 若有执行 StartSession
+	if started {
+		xmeta.TrySetMeta(conn, xmeta.KeySessionReply, reply)
 	}
 
 	return conn, nil

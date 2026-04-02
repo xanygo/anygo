@@ -175,7 +175,8 @@ func OptServiceRegistry(s xservice.Registry) Option {
 	})
 }
 
-func OptHandshakeHandler(h xdial.SessionStarter) Option {
+// OptDialHandshake 注册在创建连接后，开始创建会话的逻辑。如身份认证（Redis）、协议升级（HTTP Upgrade）等
+func OptDialHandshake(h xdial.SessionStarter) Option {
 	return optionFunc(func(o *config) {
 		o.handshake = h
 	})

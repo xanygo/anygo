@@ -17,7 +17,16 @@ type Flusher interface {
 }
 
 // TryFlush 尝试调用 writer的 Flush 方法，若不支持会直接返回 nil
-func TryFlush(w io.Writer) error {
+func TryFlush(ww ...io.Writer) error {
+	for _, w := range ww {
+		if err := flush(w); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func flush(w io.Writer) error {
 	switch fw := w.(type) {
 	case Flusher:
 		return fw.Flush()
