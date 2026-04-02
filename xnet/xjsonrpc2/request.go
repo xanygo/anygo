@@ -17,7 +17,7 @@ import (
 )
 
 const Version = "2.0"
-const Protocol = "json-rpc2"
+const Protocol = "JSON-RPC2"
 
 type Request struct {
 	// ID 客户端的唯一标识id，值必须包含一个字符串、数值或 NULL 空值

@@ -19,16 +19,16 @@ import (
 	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xnet"
-	"github.com/xanygo/anygo/xnet/xdial"
+	"github.com/xanygo/anygo/xnet/dsession"
 )
 
 func init() {
-	handler := xdial.StartSessionFunc(handshake)
-	xdial.RegisterSessionStarter(Protocol, handler)
+	handler := dsession.StartFunc(handshake)
+	dsession.RegisterProtocol(Protocol, handler)
 }
 
 // 创建连接后，和 smtp server 握手
-func handshake(ctx context.Context, rw io.ReadWriter, opt xoption.Reader) (xdial.SessionReply, error) {
+func handshake(ctx context.Context, rw io.ReadWriter, opt xoption.Reader) (dsession.Reply, error) {
 	conn, ok := rw.(*xnet.ConnNode)
 	if !ok {
 		return nil, fmt.Errorf("invaid conn %T, expect *xnet.ConnNode", rw)
@@ -112,7 +112,7 @@ func handshake(ctx context.Context, rw io.ReadWriter, opt xoption.Reader) (xdial
 	}, nil
 }
 
-var _ xdial.SessionReply = (*handshakeReply)(nil)
+var _ dsession.Reply = (*handshakeReply)(nil)
 
 type handshakeReply struct {
 	username string

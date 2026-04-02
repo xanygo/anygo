@@ -15,8 +15,8 @@ import (
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
+	"github.com/xanygo/anygo/xnet/dsession"
 	"github.com/xanygo/anygo/xnet/xbalance"
-	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xpolicy"
 	"github.com/xanygo/anygo/xnet/xservice"
 )
@@ -56,7 +56,7 @@ type config struct {
 	ap        xbalance.Reader
 	service   xservice.Service
 	registry  xservice.Registry
-	handshake xdial.SessionStarter
+	handshake dsession.Starter
 }
 
 func (cfg config) getService(srv any) (xservice.Service, error) {
@@ -176,7 +176,7 @@ func OptServiceRegistry(s xservice.Registry) Option {
 }
 
 // OptDialHandshake 注册在创建连接后，开始创建会话的逻辑。如身份认证（Redis）、协议升级（HTTP Upgrade）等
-func OptDialHandshake(h xdial.SessionStarter) Option {
+func OptDialHandshake(h dsession.Starter) Option {
 	return optionFunc(func(o *config) {
 		o.handshake = h
 	})

@@ -33,6 +33,9 @@ var (
 
 	// KeyExtra 只用于 ConsumeRPCConfig 方法,业务层可以通过此key内传递此类消息以更新 option
 	KeyExtra = NewKey(keyExtraPrefix)
+
+	// KeySessionStarter 拨号成功后，业务使用前的逻辑
+	KeySessionStarter = NewKey("SessionStarter")
 )
 
 // 定义为默认值，方便全局调整
@@ -223,4 +226,22 @@ func convertDoSet[T any](opt Writer, value any, fn func(opt Writer, val T)) erro
 	}
 	fn(opt, cv)
 	return nil
+}
+
+func SetSessionStarter(opt Writer, val *SessionStarterConfig) {
+	opt.Set(KeySessionStarter, val)
+}
+
+func SessionStarter(opt Reader) *SessionStarterConfig {
+	val, ok := opt.Get(KeySessionStarter)
+	if !ok {
+		return nil
+	}
+	cfg, _ := val.(*SessionStarterConfig)
+	return cfg
+}
+
+type SessionStarterConfig struct {
+	Name   string         `json:"Name" yaml:"Name"`
+	Params map[string]any `json:"Params,omitempty" yaml:"Params,omitempty"`
 }

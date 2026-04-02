@@ -11,7 +11,7 @@ import (
 	"fmt"
 
 	"github.com/xanygo/anygo/ds/xmap"
-	"github.com/xanygo/anygo/xnet/xdial"
+	"github.com/xanygo/anygo/xnet/dsession"
 )
 
 var _ Request = HelloRequest{}
@@ -56,7 +56,7 @@ func (ch HelloRequest) getUsername() string {
 	return ch.Username
 }
 
-var _ xdial.SessionReply = (*HelloResponse)(nil)
+var _ dsession.Reply = (*HelloResponse)(nil)
 
 type HelloResponse struct {
 	ID      int64                 `json:"id"`      // 12

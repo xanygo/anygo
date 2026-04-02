@@ -12,7 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xanygo/anygo/xnet/xdial"
+	"github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/xnet/dsession"
 	"github.com/xanygo/anygo/xnet/xjsonrpc2"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
@@ -34,18 +35,19 @@ func TestClientRequest1(t *testing.T) {
 	ser := httptest.NewServer(router)
 	defer ser.Close()
 
-	srv, err := xservice.NewServiceByURL("test", ser.URL)
-	xt.NoError(t, err)
-	xt.NotNil(t, srv)
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	xt.NoError(t, srv.Start(ctx))
-	defer srv.Stop(ctx)
-
 	t.Run("case 1", func(t *testing.T) {
-		ss := xdial.HTTPUpgrade(http.MethodPost, "/", "json-rpc2")
+		srv, err := xservice.NewServiceByURL("test", ser.URL)
+		xt.NoError(t, err)
+		xt.NotNil(t, srv)
+
+		xt.NoError(t, srv.Start(ctx))
+		defer srv.Stop(ctx)
+
+		// 手工协议升级
+		ss := dsession.HTTPUpgrade(http.MethodPost, "/", "json-rpc2")
 		for i := 1; i < 10; i++ {
 			t.Run(fmt.Sprintf("loop_%d", i), func(t *testing.T) {
 				req := &xjsonrpc2.ClientRequest[string]{
@@ -55,6 +57,40 @@ func TestClientRequest1(t *testing.T) {
 				}
 				resp := &xjsonrpc2.ClientResponse[string]{}
 				err = xrpc.Invoke(ctx, srv, req, resp, xrpc.OptDialHandshake(ss))
+				xt.Equal(t, "Ok: hello", resp.Result)
+			})
+		}
+	})
+
+	t.Run("case 2", func(t *testing.T) {
+		srv, err := xservice.NewServiceByURL("test", ser.URL)
+		xt.NoError(t, err)
+		xt.NotNil(t, srv)
+
+		// 添加配置，使其自动的完成协议升级转换
+		optw, ok := srv.Option().(xoption.Writer)
+		xt.True(t, ok)
+		xoption.SetSessionStarter(optw, &xoption.SessionStarterConfig{
+			Name: "HTTP-Upgrade",
+			Params: map[string]any{
+				"Method":   http.MethodPost,
+				"URI":      "/api",
+				"Protocol": xjsonrpc2.Protocol,
+			},
+		})
+		
+		xt.NoError(t, srv.Start(ctx))
+		defer srv.Stop(ctx)
+
+		for i := 1; i < 3; i++ {
+			t.Run(fmt.Sprintf("loop_%d", i), func(t *testing.T) {
+				req := &xjsonrpc2.ClientRequest[string]{
+					ID:     xjsonrpc2.Int64ID(i),
+					Method: "ping",
+					Params: "hello",
+				}
+				resp := &xjsonrpc2.ClientResponse[string]{}
+				err = xrpc.Invoke(ctx, srv, req, resp)
 				xt.Equal(t, "Ok: hello", resp.Result)
 			})
 		}

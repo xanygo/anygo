@@ -16,6 +16,7 @@ import (
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/xnet"
+	"github.com/xanygo/anygo/xnet/dsession"
 	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xproxy"
@@ -43,8 +44,7 @@ func (c *connector) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption
 		}
 	}
 
-	protocol := xoption.Protocol(opt)
-	reply, started, err1 := xdial.StartSession(ctx, protocol, conn, opt)
+	reply, started, err1 := dsession.StartSession(ctx, conn, opt)
 	if err1 != nil {
 		_ = conn.Close()
 		return nil, err1

@@ -17,6 +17,7 @@ import (
 	"github.com/xanygo/anygo/ds/xpool"
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xnet"
+	"github.com/xanygo/anygo/xnet/dsession"
 	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xpolicy"
@@ -105,7 +106,7 @@ func (c *Feilian) Invoke(ctx context.Context, srv any, req Request, resp Respons
 	}
 
 	if cfg.handshake != nil {
-		ctx = xdial.ContextWithSessionStarter(ctx, cfg.handshake)
+		ctx = dsession.ContextWith(ctx, cfg.handshake)
 	}
 
 	// 将临时 option 和 service 的 option 合并

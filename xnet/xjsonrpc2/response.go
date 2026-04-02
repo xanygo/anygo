@@ -57,6 +57,11 @@ func (res *Response) WriteTo(w io.Writer) (int64, error) {
 	return int64(num), err
 }
 
+func (res *Response) Write(w io.Writer) error {
+	_, err := res.WriteTo(w)
+	return err
+}
+
 func ReadResponse(rd xio.SliceReader) (*Response, error) {
 	return readResponse(rd)
 }

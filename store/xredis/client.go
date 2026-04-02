@@ -20,6 +20,7 @@ import (
 	"github.com/xanygo/anygo/store/xredis/resp3"
 	"github.com/xanygo/anygo/xattr"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xnet/dsession"
 	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
@@ -88,16 +89,16 @@ func (c *Client) Do(ctx context.Context, cmd Cmder) error {
 }
 
 func init() {
-	handler := xdial.StartSessionFunc(startSession)
-	xdial.RegisterSessionStarter(Protocol, handler)
-	xdial.RegisterSessionStarter("Redis", handler)
+	handler := dsession.StartFunc(startSession)
+	dsession.RegisterProtocol(Protocol, handler)
+	dsession.RegisterProtocol("Redis", handler)
 }
 
 // 创建连接后，和 redis server 握手
 //
 // xrpc 里有统一的 handshake timeout 设置
 // https://redis.io/docs/latest/commands/hello/
-func startSession(ctx context.Context, conn io.ReadWriter, opt xoption.Reader) (xdial.SessionReply, error) {
+func startSession(ctx context.Context, conn io.ReadWriter, opt xoption.Reader) (dsession.Reply, error) {
 	hello := resp3.HelloRequest{}
 	const redisKey = "Redis"
 	cfg := xoption.Extra(opt, redisKey)

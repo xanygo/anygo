@@ -1,15 +1,17 @@
 
 ## 配置文件格式 ( toml ) 示例：
 ```toml
-Name = "demo"          # Name 需要和文件名保持一致: demo.toml
-ConnectTime = 1000
-ReadTimeout = 1000
-HandshakeTimeout = 1000
+Name = "demo"             # Name 需要和文件名保持一致: demo.toml
+ConnectTime = 1000        # 创建网络连接的超时时间，可选，单位 ms，默认值为 5 秒
+ReadTimeout = 1000        # socket Read 超时时间，可选，单位 ms，默认值为 10 秒
+WriteTimeout = 1000       # socket Write 超时时间，可选，单位 ms，默认值为 5 秒
+HandshakeTimeout = 1000   # 握手超时时间
 
-Protocol="HTTP"     # 交互协议
+Protocol="HTTP"     # 交互协议,可选
 
 UseProxy = "proxy1" # 可选，使用指定的代理
 
+# HTTP 协议专属配置，可选
 [HTTP]
 Host = "demo.com"
 HTTPS = true
@@ -40,6 +42,14 @@ Password = "psw"
 # CAFile = ""                 # 可选，根证书（CA），用于信任自签名证书,ca.crt 的内容
 # CertFile =""                # 可选，客户端证书,  client.crt 的内容
 # KeyFile =""                 # 可选，客户端证私钥， client.key 的内容
+
+# 用于在连接创建完成后，业务正式使用前，执行会话开启的逻辑，可选
+[SessionInit]
+Name = "HTTP-Upgrade"
+[SessionInit.Params]  # HTTP-Upgrade 专属配置
+Method = "POST"
+URI = "/api/v1/stream"
+Protocol = "JSON-RPC2"
 
 # 下游地址列表，必填
 [DownStream]

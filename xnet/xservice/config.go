@@ -45,6 +45,8 @@ type Config struct {
 	TLS        *xoption.TLSConfig `json:"TLS"               yaml:"TLS"`                                           // TLS 加密配置，可选
 	DownStream DownStreamPart     `json:"DownStream"        yaml:"DownStream" validator:"required,dive,required"` // 下游地址，必填
 
+	SessionInit *xoption.SessionStarterConfig `json:"SessionInit"   yaml:"SessionInit"`
+
 	Extra map[string]any // 其他字段，配置里配置了，但是在此 Config 里没有定义的字段会解析到此处
 }
 
@@ -178,6 +180,10 @@ func (c *Config) Parser(idc string) (Service, error) {
 	}
 	if c.HTTP != nil {
 		SetOptHTTP(opt, *c.HTTP)
+	}
+
+	if c.SessionInit != nil {
+		xoption.SetSessionStarter(opt, c.SessionInit)
 	}
 
 	for k, v := range c.Extra {
