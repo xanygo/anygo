@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/ds/xctx"
+	"github.com/xanygo/anygo/ds/xmeta"
 	"github.com/xanygo/anygo/ds/xmetric"
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xsync"
@@ -71,6 +72,10 @@ func (c *Feilian) Invoke(ctx context.Context, srv any, req Request, resp Respons
 		o.withOption(cfg)
 	}
 
+	if cfg.sessionInit != nil {
+		ctx = dsession.ContextWithSkip(ctx, true)
+	}
+
 	serviceName := c.getServiceName(srv)
 
 	rootSpan.SetAttributes(
@@ -102,10 +107,6 @@ func (c *Feilian) Invoke(ctx context.Context, srv any, req Request, resp Respons
 
 	if err != nil {
 		return err
-	}
-
-	if cfg.handshake != nil {
-		ctx = dsession.ContextWith(ctx, cfg.handshake)
 	}
 
 	// 将临时 option 和 service 的 option 合并
@@ -205,6 +206,15 @@ func (c *Feilian) tryOnce(ctx context.Context, cfg *config, req Request, resp Re
 	}
 	if errPool != nil {
 		return errPool
+	}
+
+	if cfg.sessionInit != nil && !xmeta.HasKey(conn, xmeta.KeySessionReply) {
+		reply, errSS := cfg.sessionInit.StartSession(ctx, conn, opt)
+		if errSS != nil {
+			return errSS
+		}
+		xmeta.TrySet(conn, xmeta.KeySessionReply, reply)
+		rootSpan.SetAttributes(xmetric.AnyAttr("StartSession", reply))
 	}
 
 	wrCtx, wrSpan := xmetric.Start(ctx, "WriteRead")

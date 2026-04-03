@@ -52,7 +52,7 @@ func WithStarter(c xdial.Connector, h Starter, opt xoption.Reader) xdial.Connect
 			conn.Close()
 			return conn, err
 		}
-		xmeta.TrySetMeta(conn, xmeta.KeySessionReply, ret)
+		xmeta.TrySet(conn, xmeta.KeySessionReply, ret)
 		return conn, nil
 	})
 }
@@ -71,13 +71,18 @@ func StartSession(ctx context.Context, rw io.ReadWriter, opt xoption.Reader) (re
 		span.End()
 	}()
 
-	handler := FromContext(ctx)
-	if handler == nil {
-		if cfg := xoption.SessionStarter(opt); cfg != nil {
-			handler, err = create(cfg)
-			if err != nil {
-				return nil, false, err
-			}
+	if SkipFromContext(ctx) {
+		span.SetAttributes(
+			xmetric.AnyAttr("Skipped", "already exists"),
+		)
+		return nil, false, nil
+	}
+
+	var handler Starter
+	if cfg := xoption.SessionStarter(opt); cfg != nil {
+		handler, err = create(cfg)
+		if err != nil {
+			return nil, false, err
 		}
 	}
 	if handler == nil {
@@ -104,14 +109,14 @@ func StartSession(ctx context.Context, rw io.ReadWriter, opt xoption.Reader) (re
 	return ret, true, err
 }
 
-var ctxKey = xctx.NewKey()
+var keySkip = xctx.NewKey()
 
-func ContextWith(ctx context.Context, h Starter) context.Context {
-	return context.WithValue(ctx, ctxKey, h)
+func ContextWithSkip(ctx context.Context, skip bool) context.Context {
+	return context.WithValue(ctx, keySkip, skip)
 }
 
-func FromContext(ctx context.Context) Starter {
-	val, _ := ctx.Value(ctxKey).(Starter)
+func SkipFromContext(ctx context.Context) bool {
+	val, _ := ctx.Value(keySkip).(bool)
 	return val
 }
 

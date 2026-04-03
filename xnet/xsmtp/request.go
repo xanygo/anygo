@@ -39,7 +39,7 @@ func (r request) APIName() string {
 }
 
 func (r request) WriteTo(ctx context.Context, wr io.Writer, opt xoption.Reader) error {
-	cr, ok := xmeta.TryGetMeta(wr, xmeta.KeySessionReply).(*handshakeReply)
+	cr, ok := xmeta.TryGet(wr, xmeta.KeySessionReply).(*handshakeReply)
 	if !ok {
 		return fmt.Errorf("invalid handshake type: %T, not smtp client", wr)
 	}

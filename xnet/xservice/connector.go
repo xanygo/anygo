@@ -51,7 +51,7 @@ func (c *connector) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption
 	}
 	// 若有执行 StartSession
 	if started {
-		xmeta.TrySetMeta(conn, xmeta.KeySessionReply, reply)
+		xmeta.TrySet(conn, xmeta.KeySessionReply, reply)
 	}
 
 	return conn, nil

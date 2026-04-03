@@ -52,11 +52,11 @@ type HasOptionReader interface {
 }
 
 type config struct {
-	opt       *xoption.Simple
-	ap        xbalance.Reader
-	service   xservice.Service
-	registry  xservice.Registry
-	handshake dsession.Starter
+	opt         *xoption.Simple
+	ap          xbalance.Reader
+	service     xservice.Service
+	registry    xservice.Registry
+	sessionInit dsession.Starter
 }
 
 func (cfg config) getService(srv any) (xservice.Service, error) {
@@ -176,9 +176,15 @@ func OptServiceRegistry(s xservice.Registry) Option {
 }
 
 // OptSessionInit 注册在创建连接后，开始创建会话的逻辑。如身份认证（Redis）、协议升级（HTTP Upgrade）等
+//
+// 局限性：
+//
+//  1. 对于不使用连接池的短连接，由于每次请求都是创建新连接，无使用限制
+//  2. 对于使用了连接池的长连接，建议在 service 配置文件中配置，否则容易出现不一致：传入不同的 Starter 逻辑，导致会话信息混乱
+//  3. 使用此方法后，service 配置里的 SessionInit 里的配置段落将不生效
 func OptSessionInit(h dsession.Starter) Option {
 	return optionFunc(func(o *config) {
-		o.handshake = h
+		o.sessionInit = h
 	})
 }
 

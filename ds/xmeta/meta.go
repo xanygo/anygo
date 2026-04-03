@@ -42,16 +42,24 @@ func NewKey(name string) *Key {
 	}
 }
 
-func TrySetMeta(obj any, key any, meta any) {
+func TrySet(obj any, key any, meta any) {
 	if mc, ok := obj.(Setter); ok {
 		mc.SetMeta(key, meta)
 	}
 }
 
-func TryGetMeta(obj any, key any) any {
+func TryGet(obj any, key any) any {
 	if mc, ok := obj.(Getter); ok {
 		val, _ := mc.GetMeta(key)
 		return val
 	}
 	return nil
+}
+
+func HasKey(obj any, key any) bool {
+	if mc, ok := obj.(Getter); ok {
+		_, ok1 := mc.GetMeta(key)
+		return ok1
+	}
+	return false
 }
