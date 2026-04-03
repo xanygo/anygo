@@ -29,7 +29,7 @@ func TestSimple(t *testing.T) {
 			v1, err1 := p1.Get(context.Background())
 			xt.NoError(t, err1)
 			xt.NotEmpty(t, v1)
-			xt.Equal(t, 1, v1.Object().id)
+			xt.Equal(t, 1, v1.Raw().id)
 			v1.Release(nil)
 		})
 	}
@@ -40,7 +40,7 @@ func TestSimple(t *testing.T) {
 			t.Log("eid=", v1.ID())
 			xt.NoError(t, err1)
 			xt.NotEmpty(t, v1)
-			xt.Equal(t, int64(i+1), v1.Object().id)
+			xt.Equal(t, int64(i+1), v1.Raw().id)
 			v1.Release(xpool.ErrBadEntry) // 放回去的时候标记错误
 		})
 	}

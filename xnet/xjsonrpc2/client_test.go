@@ -6,14 +6,19 @@ package xjsonrpc2_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xctx"
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xnet/dsession"
+	"github.com/xanygo/anygo/xnet/internal"
+	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xjsonrpc2"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
@@ -29,17 +34,27 @@ func pingHandler(ctx context.Context, req *xjsonrpc2.Request) (result any, err e
 	return "Ok: " + payload, nil
 }
 
+func infoHandler(ctx context.Context, req *xjsonrpc2.Request) (result any, err error) {
+	cc := xctx.ClientConn[net.Conn](ctx)
+	if cc == nil {
+		return nil, errors.New("invalid client conn")
+	}
+	result = fmt.Sprintf("id=%v, client=%s", req.ID, cc.LocalAddr().String())
+	return result, nil
+}
+
 func TestClientRequest1(t *testing.T) {
 	router := xjsonrpc2.NewRouter()
 	router.RegisterFunc("ping", pingHandler)
-	ser := httptest.NewServer(router)
-	defer ser.Close()
+	router.RegisterFunc("info", infoHandler)
+	ts := httptest.NewServer(router)
+	defer ts.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	t.Run("case 1", func(t *testing.T) {
-		srv, err := xservice.NewServiceByURL("test", ser.URL)
+	t.Run("case 1 over http", func(t *testing.T) {
+		srv, err := xservice.NewServiceByURL("test", ts.URL)
 		xt.NoError(t, err)
 		xt.NotNil(t, srv)
 
@@ -56,18 +71,18 @@ func TestClientRequest1(t *testing.T) {
 					Params: "hello",
 				}
 				resp := &xjsonrpc2.ClientResponse[string]{}
-				err = xrpc.Invoke(ctx, srv, req, resp, xrpc.OptDialHandshake(ss))
+				err = xrpc.Invoke(ctx, srv, req, resp, xrpc.OptSessionInit(ss))
 				xt.Equal(t, "Ok: hello", resp.Result)
 			})
 		}
 	})
 
-	t.Run("case 2", func(t *testing.T) {
-		srv, err := xservice.NewServiceByURL("test", ser.URL)
+	t.Run("case 2 auto http upgrade with short conn", func(t *testing.T) {
+		srv, err := xservice.NewServiceByURL("test", ts.URL)
 		xt.NoError(t, err)
 		xt.NotNil(t, srv)
 
-		// 添加配置，使其自动的完成协议升级转换
+		// 添加配置，使其自动完成协议升级转换
 		optw, ok := srv.Option().(xoption.Writer)
 		xt.True(t, ok)
 		xoption.SetSessionStarter(optw, &xoption.SessionStarterConfig{
@@ -78,21 +93,83 @@ func TestClientRequest1(t *testing.T) {
 				"Protocol": xjsonrpc2.Protocol,
 			},
 		})
-		
+
 		xt.NoError(t, srv.Start(ctx))
 		defer srv.Stop(ctx)
 
-		for i := 1; i < 3; i++ {
-			t.Run(fmt.Sprintf("loop_%d", i), func(t *testing.T) {
-				req := &xjsonrpc2.ClientRequest[string]{
-					ID:     xjsonrpc2.Int64ID(i),
-					Method: "ping",
-					Params: "hello",
-				}
-				resp := &xjsonrpc2.ClientResponse[string]{}
-				err = xrpc.Invoke(ctx, srv, req, resp)
-				xt.Equal(t, "Ok: hello", resp.Result)
-			})
+		t.Run("ping-pong", func(t *testing.T) {
+			for i := 1; i < 3; i++ {
+				t.Run(fmt.Sprintf("loop_%d", i), func(t *testing.T) {
+					req := &xjsonrpc2.ClientRequest[string]{
+						ID:     xjsonrpc2.Int64ID(i),
+						Method: "ping",
+						Params: "hello",
+					}
+					resp := &xjsonrpc2.ClientResponse[string]{}
+					err = xrpc.Invoke(ctx, srv, req, resp)
+					xt.Equal(t, "Ok: hello", resp.Result)
+				})
+			}
+		})
+	})
+
+	t.Run("case 3 auto http upgrade with long conn", func(t *testing.T) {
+		address, err := internal.HostPortFromURL(ts.URL)
+		xt.NoError(t, err)
+		cfg := &xservice.Config{
+			Name: "test",
+			ConnPool: &xservice.ConnPoolPart{
+				Name: xdial.Long,
+			},
+			SessionInit: &xoption.SessionStarterConfig{
+				Name: "HTTP-Upgrade",
+				Params: map[string]any{
+					"Method":   http.MethodPost,
+					"URI":      "/api",
+					"Protocol": xjsonrpc2.Protocol,
+				},
+			},
+			DownStream: xservice.DownStreamPart{
+				Address: []string{address},
+			},
 		}
+		srv, err := cfg.Parser("test")
+		xt.NoError(t, err)
+		xt.NotNil(t, srv)
+
+		xt.NoError(t, srv.Start(ctx))
+		defer srv.Stop(ctx)
+
+		t.Run("ping-pong", func(t *testing.T) {
+			for i := 1; i < 3; i++ {
+				t.Run(fmt.Sprintf("loop_%d", i), func(t *testing.T) {
+					req := &xjsonrpc2.ClientRequest[string]{
+						ID:     xjsonrpc2.Int64ID(i),
+						Method: "ping",
+						Params: "hello",
+					}
+					resp := &xjsonrpc2.ClientResponse[string]{}
+					err = xrpc.Invoke(ctx, srv, req, resp)
+					xt.Equal(t, "Ok: hello", resp.Result)
+				})
+			}
+		})
+
+		t.Run("info", func(t *testing.T) {
+			req := &xjsonrpc2.ClientRequest[string]{
+				ID:     xjsonrpc2.Int64ID(1),
+				Method: "info",
+				Params: "hello",
+			}
+			resp := &xjsonrpc2.ClientResponse[string]{}
+			err = xrpc.Invoke(ctx, srv, req, resp)
+			xt.NoError(t, err)
+			ret1 := resp.Result
+			xt.HasPrefix(t, ret1, "id=1, client=")
+
+			err = xrpc.Invoke(ctx, srv, req, resp)
+			xt.NoError(t, err)
+			xt.Equal(t, ret1, resp.Result)
+		})
 	})
 }

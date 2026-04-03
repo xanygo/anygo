@@ -16,6 +16,15 @@ import (
 	"github.com/xanygo/anygo/xio"
 )
 
+func NewResponse(id ID, err *Error, data any) (*Response, error) {
+	resp := &Response{
+		ID:    id,
+		Error: err,
+	}
+	err1 := resp.WithResult(data)
+	return resp, err1
+}
+
 type Response struct {
 	ID     ID
 	Error  *Error
@@ -39,7 +48,7 @@ func (res *Response) DecodeResult(obj any) error {
 	return errors.Join(ErrInvalidResult, err)
 }
 
-func (res *Response) WIthResult(obj any) error {
+func (res *Response) WithResult(obj any) error {
 	bf, err := xcodec.JSON.Encode(obj)
 	res.Result = bf
 	return err

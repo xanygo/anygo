@@ -14,7 +14,6 @@ import (
 	"github.com/xanygo/anygo/ds/xctx"
 	"github.com/xanygo/anygo/ds/xmetric"
 	"github.com/xanygo/anygo/ds/xoption"
-	"github.com/xanygo/anygo/ds/xpool"
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/dsession"
@@ -196,9 +195,7 @@ func (c *Feilian) tryOnce(ctx context.Context, cfg *config, req Request, resp Re
 	var conn io.ReadWriteCloser
 	if errPool == nil {
 		// 注册调用资源回收逻辑，之后首次调用 conn.Close()，会将 entry 对象放回对象池
-		xpool.MustSetRecycler(entry)
-
-		conn = entry.Object()
+		conn = entry.Borrowed()
 	}
 
 	for _, it := range its {
@@ -230,16 +227,16 @@ func (c *Feilian) tryOnce(ctx context.Context, cfg *config, req Request, resp Re
 	return err
 }
 
-func (c *Feilian) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption.Reader, conn io.ReadWriteCloser) (err error) {
+func (c *Feilian) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption.Reader, rw io.ReadWriteCloser) (err error) {
 	start := time.Now()
 	// 暂时不将读写超时分开控制
-	err = req.WriteTo(ctx, conn, opt)
+	err = req.WriteTo(ctx, rw, opt)
 	if err != nil {
 		return err
 	}
-	err = resp.LoadFrom(ctx, req, conn, opt)
+	err = resp.LoadFrom(ctx, req, rw, opt)
 	if err != nil {
-		return fmt.Errorf("%w, cost=%s", err, time.Since(start).String())
+		return fmt.Errorf("read Response %w, cost=%s", err, time.Since(start).String())
 	}
 	return err
 }

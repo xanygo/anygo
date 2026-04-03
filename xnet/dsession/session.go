@@ -114,3 +114,13 @@ func FromContext(ctx context.Context) Starter {
 	val, _ := ctx.Value(ctxKey).(Starter)
 	return val
 }
+
+var _ Starter = (*Nop)(nil)
+
+// Nop 什么都不做的 Starter 实现，可用于占位或者覆盖默认配置
+type Nop struct{}
+
+func (e Nop) StartSession(ctx context.Context, rw io.ReadWriter, opt xoption.Reader) (Reply, error) {
+	// 什么都不做
+	return nil, nil
+}

@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/xanygo/anygo/ds/xctx"
 )
 
 type (
@@ -164,7 +166,7 @@ func (as *AnyServer[C]) handleConn(ctx context.Context, conn C) {
 	as.connections.Store(conn, struct{}{})
 	defer as.connections.Delete(conn)
 
-	ctx = ContextWithConn(ctx, conn)
+	ctx = xctx.WithClientConn(ctx, conn)
 	as.Handler.Handle(ctx, conn)
 }
 

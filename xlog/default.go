@@ -6,6 +6,7 @@ package xlog
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -15,7 +16,11 @@ import (
 
 var defaultLogger = &xsync.OnceInit[Logger]{
 	New: func() Logger {
-		return NewSimpleWithLevel(os.Stderr, DefaultLevel)
+		level := DefaultLevel
+		if xattr.IsDebugMode() {
+			level = LevelDebug
+		}
+		return NewSimpleWithLevel(os.Stderr, level)
 	},
 }
 
@@ -80,4 +85,25 @@ func SetAllDefaultLogger(logger Logger) {
 	SetPanicLogger(logger)
 	SetAccessLogger(logger)
 	SetClientLogger(logger)
+}
+
+func AsWriter(ctx context.Context, l Logger, level Level) io.Writer {
+	return &asWriter{
+		ctx:   ctx,
+		lg:    l,
+		level: level,
+	}
+}
+
+var _ io.Writer = (*asWriter)(nil)
+
+type asWriter struct {
+	ctx   context.Context
+	lg    Logger
+	level Level
+}
+
+func (a *asWriter) Write(p []byte) (n int, err error) {
+	a.lg.Output(a.ctx, a.level, 1, string(p))
+	return len(p), nil
 }

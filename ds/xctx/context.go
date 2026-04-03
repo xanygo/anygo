@@ -34,12 +34,14 @@ func CheckError(ctx context.Context, err error) error {
 	return context.Cause(ctx)
 }
 
-var signKey = NewKey()
+var ctxKeyClientConn = NewKey()
 
-func WithSign(ctx context.Context, sign string) context.Context {
-	return WithValues(ctx, signKey, sign)
+// WithClientConn 用于 server 的 handler 中存储用于读写的文件句柄
+func WithClientConn[C any](ctx context.Context, conn C) context.Context {
+	return context.WithValue(ctx, ctxKeyClientConn, conn)
 }
 
-func Signs(ctx context.Context) []string {
-	return Values[*Key, string](ctx, signKey, true)
+func ClientConn[C any](ctx context.Context) C {
+	val, _ := ctx.Value(ctxKeyClientConn).(C)
+	return val
 }

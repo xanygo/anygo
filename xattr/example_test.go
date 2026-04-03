@@ -14,14 +14,14 @@ func ExampleIDC() {
 	fmt.Println("idc=", xattr.IDC()) // idc= online
 
 	// Output:
-	// idc= online
+	// idc= dev
 }
 
 func ExampleRunMode() {
 	fmt.Println("runMode=", xattr.RunMode()) // runMode= product
 
 	// Output:
-	// runMode= product
+	// runMode= debug
 }
 
 func ExampleAppName() {

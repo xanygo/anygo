@@ -73,4 +73,5 @@ func httpUpgradeFactory(param map[string]any) (Starter, error) {
 
 func init() {
 	RegisterFactory("HTTP-Upgrade", httpUpgradeFactory)
+	RegisterFactory("HTTPUpgrade", httpUpgradeFactory)
 }

@@ -9,13 +9,15 @@ import (
 	"context"
 	"errors"
 	"io"
+	"maps"
 	"net/http"
 	"sync"
 
+	"github.com/xanygo/anygo/ds/xctx"
 	"github.com/xanygo/anygo/ds/xsync"
+	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xerror"
-	"github.com/xanygo/anygo/xio"
 )
 
 type Handler interface {
@@ -38,6 +40,11 @@ func NewRouter() *Router {
 }
 
 type Router struct {
+	// Async 决定 Handler 逻辑是否异步
+	// 默认为 false，即依次读请求，Handler 处理，然后将结果发送。此时，请求和响应的顺序是一样的。
+	// 若为 true，则读取请求后，立即异步调用 Handler处理，然后将结果发送。此时请求和响应的顺序不是一样的。
+	Async bool
+
 	handlers map[string]Handler
 }
 
@@ -46,6 +53,13 @@ func (r *Router) Register(method string, h Handler) {
 		r.handlers = make(map[string]Handler)
 	}
 	r.handlers[method] = h
+}
+
+func (r *Router) Clone() *Router {
+	return &Router{
+		Async:    r.Async,
+		handlers: maps.Clone(r.handlers),
+	}
 }
 
 func (r *Router) RegisterFunc(method string, fn func(ctx context.Context, req *Request) (result any, err error)) {
@@ -60,6 +74,9 @@ func (r *Router) Handle(ctx context.Context, req *Request) (result any, err erro
 	if !ok {
 		return nil, ErrMethodNotFound
 	}
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+	defer cancel()
 	result, err = h.Handle(ctx, req)
 	if req.NoReply() {
 		return nil, err
@@ -90,8 +107,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer conn.Close()
 	_, _ = rw.WriteString(upgradeResp)
 	_ = rw.Flush()
+	ctx := xctx.WithClientConn(req.Context(), conn)
 
-	r.Serve(req.Context(), rw.Reader, rw.Writer)
+	r.Serve(ctx, rw.Reader, rw.Writer)
 }
 
 func (r *Router) Serve(ctx context.Context, rd io.Reader, w io.Writer) error {
@@ -111,13 +129,20 @@ func (r *Router) Serve(ctx context.Context, rd io.Reader, w io.Writer) error {
 			err1 := r.sendError(bw, err)
 			return errors.Join(err, err1)
 		}
+		if r.Async {
+			go safely.Run(func() {
+				if batch {
+					_ = r.serveBatch(ctx, bw, reqs)
+				} else {
+					_ = r.serveOne(ctx, bw, reqs[0])
+				}
+			})
+			continue
+		}
 		if batch {
 			err = r.serveBatch(ctx, bw, reqs)
 		} else {
 			err = r.serveOne(ctx, bw, reqs[0])
-		}
-		if err == nil {
-			err = xio.TryFlush(bw, w)
 		}
 		if err != nil {
 			return err
@@ -173,8 +198,8 @@ func (r *Router) serveOne(ctx context.Context, w *bufio.Writer, req *Request) er
 		return nil
 	}
 	bf, _ := xcodec.JSON.Encode(el)
+	bf = append(bf, '\n')
 	w.Write(bf)
-	w.WriteByte('\n')
 	return w.Flush()
 }
 
@@ -204,7 +229,7 @@ func (r *Router) serveBatch(ctx context.Context, w *bufio.Writer, reqs []*Reques
 	}
 
 	bf, _ := xcodec.JSON.Encode(resps)
+	bf = append(bf, '\n')
 	w.Write(bf)
-	w.WriteByte('\n')
 	return w.Flush()
 }

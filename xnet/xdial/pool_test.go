@@ -47,8 +47,7 @@ func Test_ConnPool1(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				xpool.MustSetRecycler(ent)
-				return ent.Object().(net.Conn), nil
+				return ent.Borrowed().(net.Conn), nil
 			},
 		},
 	}

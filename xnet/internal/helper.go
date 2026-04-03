@@ -4,7 +4,11 @@
 
 package internal
 
-import "net"
+import (
+	"fmt"
+	"net"
+	"net/url"
+)
 
 // ParseIPZone parses s as an IP address, return it and its associated zone
 // identifier (IPv6 only).
@@ -46,4 +50,24 @@ func last(s string, b byte) int {
 		}
 	}
 	return i
+}
+
+func HostPortFromURL(urlStr string) (string, error) {
+	u, err := url.Parse(urlStr)
+	if err != nil {
+		return "", err
+	}
+	host := u.Hostname()
+	port := u.Port()
+	if port == "" {
+		switch u.Scheme {
+		case "http":
+			port = "80"
+		case "https":
+			port = "443"
+		default:
+			return "", fmt.Errorf("invalid url %q, missing port", urlStr)
+		}
+	}
+	return net.JoinHostPort(host, port), nil
 }

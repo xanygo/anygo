@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -127,6 +128,13 @@ func (c *ClientResponse[P]) ErrMsg() string {
 
 func (c *ClientResponse[P]) Unwrap() any {
 	return c.raw
+}
+
+func (c *ClientResponse[P]) RawResult() json.RawMessage {
+	if c.raw == nil {
+		return nil
+	}
+	return c.raw.Result
 }
 
 // 下面是批量的实现

@@ -18,6 +18,8 @@ import (
 	"github.com/xanygo/anygo/ds/xpool/xcmdpool"
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/internal/ztypes"
+	"github.com/xanygo/anygo/xattr"
+	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xnet/internal"
 )
 
@@ -27,15 +29,20 @@ var registry = xmap.Sync[string, *xcmdpool.Command]{}
 type Dialer struct{}
 
 func (d *Dialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	if xattr.IsDebugMode() {
+		xlog.Debug(ctx, "stdio.Dialer", xlog.String("network", network), xlog.String("address", address))
+	}
+
 	if xp, ok := registry.Load(address); ok {
 		rw, err := xp.Spawn(ctx)
 		if err != nil {
 			return nil, err
 		}
+		addr := internal.NewAddr(network, xp.Path)
 		return &stdioConn{
 			rw:     rw,
-			local:  internal.NewAddr(network, xp.Path),
-			remote: internal.NewAddr(network, xp.Path),
+			local:  addr,
+			remote: addr,
 		}, nil
 	}
 	sc := &ztypes.ServiceCommand{}
@@ -43,11 +50,10 @@ func (d *Dialer) DialContext(ctx context.Context, network, address string) (net.
 		return nil, err
 	}
 
-	poolOption := xpool.OptionFromContext(ctx)
 	pc := &xcmdpool.Command{
 		Path:       sc.Path,
 		Args:       sc.Args,
-		PoolOption: poolOption,
+		PoolOption: d.getPoolOption(ctx),
 		Setup: func(cmd *exec.Cmd) {
 			if sc.Dir != "" {
 				cmd.Dir = sc.Dir
@@ -59,11 +65,37 @@ func (d *Dialer) DialContext(ctx context.Context, network, address string) (net.
 	if err != nil {
 		return nil, err
 	}
-	return &stdioConn{
+	addr := internal.NewAddr(network, xp.Path)
+	conn := &stdioConn{
 		rw:     rw,
-		local:  internal.NewAddr(network, xp.Path),
-		remote: internal.NewAddr(network, xp.Path),
-	}, nil
+		local:  addr,
+		remote: addr,
+	}
+	conn.OnRecycle(func() {
+		if conn.lastErr.Load() != nil {
+			rw.Close()
+		}
+	})
+	return conn, nil
+}
+
+func (d *Dialer) getPoolOption(ctx context.Context) *xpool.Option {
+	poolOption := xpool.OptionFromContext(ctx)
+	if poolOption == nil {
+		poolOption = &xpool.Option{
+			MaxOpen:         32,
+			MaxIdle:         8,
+			MaxPoolIdleTime: 10 * time.Minute,
+			MaxIdleTime:     10 * time.Minute,
+			MaxLifeTime:     time.Hour,
+		}
+	} else {
+		poolOption = poolOption.Normalization()
+		if poolOption.MaxLifeTime < time.Minute {
+			poolOption.MaxLifeTime = 10 * time.Minute
+		}
+	}
+	return poolOption
 }
 
 var _ net.Conn = (*stdioConn)(nil)
@@ -73,7 +105,7 @@ type stdioConn struct {
 	rw        io.ReadWriteCloser
 	lastErr   xsync.Value[error]
 	meta      sync.Map
-	onRecycle xsync.OnceLoadValue[func()]
+	onRecycle xsync.OnceLoadValue[func()] // Load 一次后，再次 Load 读到的是 nil
 	remote    net.Addr
 	local     net.Addr
 }

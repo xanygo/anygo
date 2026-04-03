@@ -21,8 +21,8 @@ func TestDefault(t *testing.T) {
 	xt.Equal(t, filepath.Join(root, "data"), DataDir())
 	xt.Equal(t, filepath.Join(root, "log"), LogDir())
 	xt.Equal(t, filepath.Join(root, "temp"), TempDir())
-	xt.Equal(t, IDCOnline, IDC())
-	xt.Equal(t, ModeProduct, RunMode())
+	xt.Equal(t, IDCDev, IDC())
+	xt.Equal(t, ModeDebug, RunMode())
 
 	Set("k1", "v1")
 	got1, ok1 := Get("k1")

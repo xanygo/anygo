@@ -44,9 +44,12 @@ Password = "psw"
 # KeyFile =""                 # 可选，客户端证私钥， client.key 的内容
 
 # 用于在连接创建完成后，业务正式使用前，执行会话开启的逻辑，可选
+# 使用 xrpc.Invoke 时，也可以不配置此，而是通过代码添加 OptSessionInit 来实现
 [SessionInit]
+# 初始化方式，目前框架内置 HTTP-Upgrade：将 HTTP 协议请求，Upgrade 为普通 TCP 数据流
+# 也支持  xnet/dsession.RegisterFactory 来注册自定义实现
 Name = "HTTP-Upgrade"
-[SessionInit.Params]  # HTTP-Upgrade 专属配置
+[SessionInit.Params]  # 配置参数
 Method = "POST"
 URI = "/api/v1/stream"
 Protocol = "JSON-RPC2"

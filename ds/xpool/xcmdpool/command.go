@@ -6,9 +6,7 @@ package xcmdpool
 
 import (
 	"context"
-	"errors"
 	"io"
-	"os"
 	"os/exec"
 	"sync"
 	"sync/atomic"
@@ -37,41 +35,11 @@ var _ io.Closer = (*command)(nil)
 
 type command struct {
 	cmd *exec.Cmd
-	rw  io.ReadWriteCloser
+	rw  io.ReadWriter
 }
 
 func (c *command) Close() error {
 	return c.cmd.Process.Kill()
-}
-
-var _ xpool.Factory[*command] = (*commandFactory)(nil)
-
-type commandFactory struct {
-	P *Command
-}
-
-func (c *commandFactory) New(ctx context.Context) (*command, error) {
-	cmd := exec.CommandContext(ctx, c.P.Path, c.P.Args...)
-	cmd.Stderr = os.Stderr
-	if c.P.Setup != nil {
-		c.P.Setup(cmd)
-	}
-	w, _ := cmd.StdinPipe()
-	r, _ := cmd.StdoutPipe()
-	err := cmd.Start()
-	if err != nil {
-		return nil, err
-	}
-	rw := &readWriter{
-		r: r,
-		w: w,
-	}
-
-	nc := &command{
-		cmd: cmd,
-		rw:  rw,
-	}
-	return nc, nil
 }
 
 func (c *Command) initOnce() {
@@ -98,48 +66,23 @@ func (c *Command) Spawn(ctx context.Context) (io.ReadWriteCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	cc := child.Object()
-	return &commandRWEntry{
+	cc := child.Raw()
+	return &entry{
 		pe: child,
 		rw: cc.rw,
 	}, nil
 }
 
-var _ io.ReadWriteCloser = (*readWriter)(nil)
+var _ io.ReadWriteCloser = (*entry)(nil)
 
-type readWriter struct {
-	w    io.WriteCloser
-	r    io.ReadCloser
-	once xsync.OnceDoErr
-}
-
-func (rw *readWriter) Read(p []byte) (n int, err error) {
-	return rw.r.Read(p)
-}
-
-func (rw *readWriter) Write(p []byte) (n int, err error) {
-	return rw.w.Write(p)
-}
-
-func (rw *readWriter) Close() error {
-	return rw.once.Do(func() error {
-		err1 := rw.w.Close()
-		err2 := rw.w.Close()
-		return errors.Join(err1, err2)
-	})
-}
-
-var _ io.ReadWriteCloser = (*commandRWEntry)(nil)
-
-type commandRWEntry struct {
+type entry struct {
 	pe     xpool.Entry[*command]
 	rw     io.ReadWriter
 	rwErr  xsync.Value[error]
-	once   sync.Once
 	closed atomic.Bool
 }
 
-func (c *commandRWEntry) Read(p []byte) (n int, err error) {
+func (c *entry) Read(p []byte) (n int, err error) {
 	if c.closed.Load() {
 		return 0, io.ErrClosedPipe
 	}
@@ -150,7 +93,7 @@ func (c *commandRWEntry) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (c *commandRWEntry) Write(p []byte) (n int, err error) {
+func (c *entry) Write(p []byte) (n int, err error) {
 	if c.closed.Load() {
 		return 0, io.ErrClosedPipe
 	}
@@ -161,10 +104,9 @@ func (c *commandRWEntry) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (c *commandRWEntry) Close() error {
-	c.once.Do(func() {
-		c.closed.Store(true)
+func (c *entry) Close() error {
+	if c.closed.CompareAndSwap(false, true) {
 		c.pe.Release(c.rwErr.Load())
-	})
+	}
 	return nil
 }

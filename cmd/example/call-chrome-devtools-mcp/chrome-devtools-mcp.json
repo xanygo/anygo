@@ -1,0 +1,9 @@
+{
+  "Name":"chrome-devtools-mcp",
+  "ConnPool": {
+    "Name": "Long"
+  },
+  "Downstream":{
+    "Address": ["stdio@{\"Path\":\"npx\",\"Args\":[\"-y\",\"chrome-devtools-mcp@latest\",\"--headless\",\"--isolated\"]}"]
+  }
+}

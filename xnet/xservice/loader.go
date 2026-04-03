@@ -64,7 +64,7 @@ func (l *Loader) LoadDir(ctx context.Context, patterns ...string) error {
 		}
 		files = append(files, matches...)
 	}
-	return l.Load(ctx, files...)
+	return l.LoadFile(ctx, files...)
 }
 
 func (l *Loader) initOnce() {
@@ -92,7 +92,7 @@ func (l *Loader) checkReload(ctx context.Context) error {
 			return true
 		}
 		if info.ModTime().After(value.ModTime()) {
-			err = l.Load(ctx, name)
+			err = l.LoadFile(ctx, name)
 			if err == nil {
 				l.watchFiles.Store(name, info)
 			}
@@ -102,8 +102,8 @@ func (l *Loader) checkReload(ctx context.Context) error {
 	return nil
 }
 
-// Load 加载指定的 service 配置文件列表,若文件名以 “_” 或者 "." 开头，则此文件会跳过
-func (l *Loader) Load(ctx context.Context, filenames ...string) error {
+// LoadFile 加载指定的 service 配置文件列表,若文件名以 “_” 或者 "." 开头，则此文件会跳过
+func (l *Loader) LoadFile(ctx context.Context, filenames ...string) error {
 	l.once.Do(l.initOnce)
 
 	ctx = xlog.NewContext(ctx)
@@ -191,4 +191,8 @@ func DefaultLoader() *Loader {
 // LoadDir 加载 service 配置文件到 DefaultRegistry
 func LoadDir(ctx context.Context, patterns ...string) error {
 	return DefaultLoader().LoadDir(ctx, patterns...)
+}
+
+func LoadFile(ctx context.Context, filenames ...string) error {
+	return DefaultLoader().LoadFile(ctx, filenames...)
 }

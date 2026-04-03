@@ -28,6 +28,8 @@ func doInit() {
 		panic(err)
 	}
 	Init(filepath.Base(pwd), pwd)
+	Default.SetRunMode(ModeDebug)
+	Default.SetIDC(IDCDev)
 }
 
 func Init(appName string, rootDir string) {

@@ -34,6 +34,8 @@ func FindProtocol(protocol string) Starter {
 
 var registry = &xmap.Sync[string, FactoryFunc]{}
 
+// RegisterFactory 注册自定义会话初始化工厂方法，
+// 注册后可以在 service 配置的 SessionInit 段落使用
 func RegisterFactory(name string, factory FactoryFunc) error {
 	_, loaded := registry.LoadOrStore(name, factory)
 	if loaded {

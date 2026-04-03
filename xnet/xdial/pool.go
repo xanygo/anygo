@@ -161,7 +161,7 @@ func GroupPoolGet(ctx context.Context, p GroupPool, addr xnet.AddrNode) (entry x
 	}
 	defer func() {
 		if err == nil && entry != nil {
-			if conn, ok := entry.Object().(net.Conn); ok && conn != nil {
+			if conn, ok := entry.Raw().(net.Conn); ok && conn != nil {
 				span.SetAttributes(
 					xmetric.AnyAttr("Remote", conn.RemoteAddr()),
 					xmetric.AnyAttr("Local", conn.LocalAddr()),

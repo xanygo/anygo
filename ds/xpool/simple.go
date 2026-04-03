@@ -42,7 +42,7 @@ type element[V io.Closer] struct {
 	validator Validator[V]
 
 	mux         sync.Mutex // guards following
-	obj         V
+	raw         V
 	closed      bool
 	finalClosed bool   // obj.Close has been called
 	usageCount  uint64 // 已被使用次数，回池后+1
@@ -65,8 +65,19 @@ func (dc *element[V]) ID() uint64 {
 	return dc.id
 }
 
-func (dc *element[V]) Object() V {
-	return dc.obj
+func (dc *element[V]) Raw() V {
+	return dc.raw
+}
+
+func (dc *element[V]) Borrowed() V {
+	oc, ok := any(dc.raw).(Recycler)
+	if !ok {
+		panic(fmt.Errorf("type %T does not implement Recycler", dc.raw))
+	}
+	oc.OnRecycle(func() {
+		dc.Release(oc.Err())
+	})
+	return dc.raw
 }
 
 func (dc *element[V]) CreatedAt() time.Time {
@@ -100,9 +111,9 @@ func (dc *element[V]) finalClose() error {
 	var err error
 	dc.withLock(func() {
 		dc.finalClosed = true
-		err = dc.obj.Close()
+		err = dc.raw.Close()
 		var emp V
-		dc.obj = emp
+		dc.raw = emp
 	})
 	dc.pool.withLock(func() {
 		dc.pool.numOpen--
@@ -267,7 +278,7 @@ func (p *simple[V]) newElement(obj V) *element[V] {
 		pool:       p,
 		createdAt:  now,
 		returnedAt: now,
-		obj:        obj,
+		raw:        obj,
 		validator:  vat,
 	}
 }
@@ -414,7 +425,7 @@ func stack() string {
 
 func (p *simple[V]) validateConnection(dc *element[V], err error) bool {
 	if hv, ok := p.creator.(Validator[V]); ok {
-		return hv.Validate(dc.obj, err) == nil
+		return hv.Validate(dc.raw, err) == nil
 	}
 	return err == nil
 }

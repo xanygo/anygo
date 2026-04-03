@@ -51,8 +51,15 @@ type (
 
 // Entry 从 Pool 中取出来的一个对象，当使用完成后，必须使用 Release 方法释放对象
 type Entry[V io.Closer] interface {
-	ID() uint64            // 唯一编号
-	Object() V             // 实际的底层对象
+	ID() uint64 // 唯一编号
+
+	// Raw 实际的底层对象，调用 Close 会将对象关闭
+	Raw() V
+
+	// Borrowed 返回的底层对象，调用 Close 方法会自动回收回 Pool
+	// 底层对象必须实现 Recycler 接口，否则会 panic
+	Borrowed() V
+
 	CreatedAt() time.Time  // 创建时间
 	LastUsedAt() time.Time // 上次使用时间
 	UsageCount() uint64    // 使用次数
@@ -213,7 +220,18 @@ func (oe *OpenEntry[V]) ID() uint64 {
 	return oe.id
 }
 
-func (oe *OpenEntry[V]) Object() V {
+func (oe *OpenEntry[V]) Raw() V {
+	return oe.obj
+}
+
+func (oe *OpenEntry[V]) Borrowed() V {
+	oc, ok := any(oe.obj).(Recycler)
+	if !ok {
+		panic(fmt.Errorf("type %T does not implement Recycler", oe.obj))
+	}
+	oc.OnRecycle(func() {
+		oe.Release(oc.Err())
+	})
 	return oe.obj
 }
 
@@ -273,18 +291,6 @@ type Recycler interface {
 
 	// Err Object 在使用中出现的错误
 	Err() error
-}
-
-// MustSetRecycler 用于注册调用资源回收逻辑，之后首次调用 object.Close()，会将 entry 对象放回对象池
-func MustSetRecycler[T io.Closer](et Entry[T]) {
-	var obj any = et.Object()
-	oc, ok := obj.(Recycler)
-	if !ok {
-		panic(fmt.Errorf("type %T does not implement Recycler", obj))
-	}
-	oc.OnRecycle(func() {
-		et.Release(oc.Err())
-	})
 }
 
 var ctxKey = xctx.NewKey()

@@ -13,8 +13,8 @@ import (
 
 var _ Naming = (*Stdio)(nil)
 
-type Stdio struct {
-}
+// Stdio 和 Command 子进程的 stdin/stdout 通行模式
+type Stdio struct{}
 
 func (c *Stdio) Scheme() string {
 	return xnet.NetworkStdio

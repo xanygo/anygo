@@ -19,6 +19,15 @@ import (
 const Version = "2.0"
 const Protocol = "JSON-RPC2"
 
+func NewRequest(id ID, method string, params any) (*Request, error) {
+	req := &Request{
+		ID:     id,
+		Method: method,
+	}
+	err := req.WithParams(params)
+	return req, err
+}
+
 type Request struct {
 	// ID 客户端的唯一标识id，值必须包含一个字符串、数值或 NULL 空值
 	ID ID

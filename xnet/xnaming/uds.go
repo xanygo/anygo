@@ -12,8 +12,7 @@ import (
 
 var _ Naming = (*Unix)(nil)
 
-type Unix struct {
-}
+type Unix struct{}
 
 func (d *Unix) Scheme() string {
 	return xnet.NetworkUnix
