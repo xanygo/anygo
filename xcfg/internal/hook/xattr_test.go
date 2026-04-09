@@ -84,7 +84,7 @@ func Test_getAttrValue(t *testing.T) {
 				return
 			}
 			if !tt.wantErr {
-				xt.Equal(t, tt.want, got)
+				xt.Equal(t, got, tt.want)
 			}
 		})
 	}
@@ -123,7 +123,7 @@ func TestXAttrVars(t *testing.T) {
 				return
 			}
 			if !tt.wantErr {
-				xt.Equal(t, string(tt.wantOutput), string(gotOutput))
+				xt.Equal(t, string(gotOutput), string(tt.wantOutput))
 			}
 		})
 	}

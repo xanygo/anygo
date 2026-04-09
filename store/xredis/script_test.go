@@ -31,7 +31,7 @@ func TestClient_Script(t *testing.T) {
 	t.Run("EVAL", func(t *testing.T) {
 		result := client.Eval(ctx, `return ARGV[1]`, nil, "hello")
 		xt.NoError(t, result.Err())
-		xt.Equal(t, "hello", result.Value())
+		xt.Equal(t, result.Value(), "hello")
 
 		result = client.Eval(ctx, `return ARGV[1]`, nil) // 缺少参数
 		xt.NoError(t, result.Err())
@@ -63,11 +63,11 @@ func TestClient_Script(t *testing.T) {
 		str, err := client.FunctionLoad(ctx, false, code)
 		t.Logf("FunctionLoad=%q", str)
 		xt.NoError(t, err)
-		xt.Equal(t, "mylib", str)
+		xt.Equal(t, str, "mylib")
 
 		str, err = client.FunctionLoad(ctx, true, code)
 		xt.NoError(t, err)
-		xt.Equal(t, "mylib", str)
+		xt.Equal(t, str, "mylib")
 	})
 
 	t.Run("FunctionStats", func(t *testing.T) {

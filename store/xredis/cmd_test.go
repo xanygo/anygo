@@ -32,6 +32,6 @@ func TestClientCmd(t *testing.T) {
 		xt.NoError(t, err)
 		got, err := pc.ValueErr()
 		xt.NoError(t, err)
-		xt.Equal(t, got, "hello")
+		xt.Equal(t, "hello", got)
 	})
 }

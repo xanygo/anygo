@@ -22,7 +22,7 @@ func testCache(t *testing.T, c xcache.Cache[string, int]) {
 	checkNotExists := func(t *testing.T) {
 		t.Helper()
 		got1, err1 := c.Get(ctx, "k1")
-		xt.Equal(t, 0, got1)
+		xt.Equal(t, got1, 0)
 		xt.ErrorIs(t, err1, xerror.NotFound)
 		got2, err2 := c.Has(ctx, "k1")
 		xt.False(t, got2)
@@ -37,7 +37,7 @@ func testCache(t *testing.T, c xcache.Cache[string, int]) {
 	t.Logf("check get k1")
 	got2, err2 := c.Get(ctx, "k1")
 	xt.NoError(t, err2)
-	xt.Equal(t, 1, got2)
+	xt.Equal(t, got2, 1)
 
 	t.Logf("check has k1")
 	got3, err3 := c.Has(ctx, "k1")

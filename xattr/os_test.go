@@ -16,7 +16,7 @@ func Test_osEnvDefault(t *testing.T) {
 	xt.NoError(t, os.Unsetenv(key))
 	defer xt.NoError(t, os.Unsetenv(key))
 
-	xt.Equal(t, "v1", osEnvDefault(key, "v1"))
+	xt.Equal(t, osEnvDefault(key, "v1"), "v1")
 	xt.NoError(t, os.Setenv(key, "v2"))
-	xt.Equal(t, "v2", osEnvDefault(key, "v1"))
+	xt.Equal(t, osEnvDefault(key, "v1"), "v2")
 }

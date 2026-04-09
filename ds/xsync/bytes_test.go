@@ -13,5 +13,5 @@ import (
 
 func TestNewBytesBuffer(t *testing.T) {
 	b1 := xsync.NewBytesBufferString("hello")
-	xt.Equal(t, "hello", b1.String())
+	xt.Equal(t, b1.String(), "hello")
 }

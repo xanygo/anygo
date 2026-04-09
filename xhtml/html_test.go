@@ -17,7 +17,7 @@ func TestNewDiv(t *testing.T) {
 		got, err := div.HTML()
 		xt.NoError(t, err)
 		want := `<div></div>`
-		xt.Equal(t, want, string(got))
+		xt.Equal(t, string(got), want)
 	})
 
 	t.Run("div_p", func(t *testing.T) {
@@ -27,7 +27,7 @@ func TestNewDiv(t *testing.T) {
 		got, err := div.HTML()
 		xt.NoError(t, err)
 		want := `<div id="#abc"><p></p></div>`
-		xt.Equal(t, want, string(got))
+		xt.Equal(t, string(got), want)
 	})
 
 	t.Run("div_attrs", func(t *testing.T) {
@@ -37,7 +37,7 @@ func TestNewDiv(t *testing.T) {
 		got, err := div.HTML()
 		xt.NoError(t, err)
 		want := `<div class="c1 c2" id="#abc"></div>`
-		xt.Equal(t, want, string(got))
+		xt.Equal(t, string(got), want)
 	})
 }
 
@@ -53,7 +53,7 @@ func TestBody(t *testing.T) {
 		got, err := body.HTML()
 		xt.NoError(t, err)
 		want := `<body style="max-width:100px; height:200px"><div>hello</div></body>`
-		xt.Equal(t, want, string(got))
+		xt.Equal(t, string(got), want)
 	})
 }
 
@@ -64,7 +64,7 @@ func TestIMG(t *testing.T) {
 		got, err := a.HTML()
 		xt.NoError(t, err)
 		want := `<img src="/a.jpg" alt="hello"/>`
-		xt.Equal(t, want, string(got))
+		xt.Equal(t, string(got), want)
 	})
 
 	t.Run("width_height", func(t *testing.T) {
@@ -74,7 +74,7 @@ func TestIMG(t *testing.T) {
 		got, err := a.HTML()
 		xt.NoError(t, err)
 		want := `<img src="/a.jpg" width="100px" height="110px"/>`
-		xt.Equal(t, want, string(got))
+		xt.Equal(t, string(got), want)
 	})
 }
 
@@ -85,7 +85,7 @@ func TestA(t *testing.T) {
 		got, err := a.HTML()
 		xt.NoError(t, err)
 		want := `<a href="/gogo" title="hello"></a>`
-		xt.Equal(t, want, string(got))
+		xt.Equal(t, string(got), want)
 	})
 }
 
@@ -96,7 +96,7 @@ func TestMeta(t *testing.T) {
 		got, err := a.HTML()
 		xt.NoError(t, err)
 		want := `<meta name="robots" content="all"/>`
-		xt.Equal(t, want, string(got))
+		xt.Equal(t, string(got), want)
 	})
 }
 
@@ -107,7 +107,7 @@ func TestLink(t *testing.T) {
 		got, err := a.HTML()
 		xt.NoError(t, err)
 		want := `<link rel="stylesheet" type="text/css" href="/a.css"/>`
-		xt.Equal(t, want, string(got))
+		xt.Equal(t, string(got), want)
 	})
 }
 
@@ -118,7 +118,7 @@ func TestScript(t *testing.T) {
 		got, err := a.HTML()
 		xt.NoError(t, err)
 		want := `<script async></script>`
-		xt.Equal(t, want, string(got))
+		xt.Equal(t, string(got), want)
 	})
 }
 
@@ -130,6 +130,6 @@ func TestInput(t *testing.T) {
 		got, err := a.HTML()
 		xt.NoError(t, err)
 		want := `<input type="text" value="hello" onchange="alter(\"ok\")"/>`
-		xt.Equal(t, want, string(got))
+		xt.Equal(t, string(got), want)
 	})
 }

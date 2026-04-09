@@ -18,14 +18,14 @@ func TestTriStateDecode(t *testing.T) {
 		var u1 *user
 		xt.NoError(t, json.Unmarshal(bf1, &u1))
 		want1 := &user{Name: "hello", State: xtype.TriTrue}
-		xt.Equal(t, want1, u1)
+		xt.Equal(t, u1, want1)
 	})
 	t.Run("string true", func(t *testing.T) {
 		bf1 := []byte(`{"State":"true","name":"hello"}`)
 		var u1 *user
 		xt.NoError(t, json.Unmarshal(bf1, &u1))
 		want1 := &user{Name: "hello", State: xtype.TriTrue}
-		xt.Equal(t, want1, u1)
+		xt.Equal(t, u1, want1)
 	})
 
 	t.Run("bool false", func(t *testing.T) {
@@ -33,7 +33,7 @@ func TestTriStateDecode(t *testing.T) {
 		var u1 *user
 		xt.NoError(t, json.Unmarshal(bf1, &u1))
 		want1 := &user{Name: "hello", State: xtype.TriFalse}
-		xt.Equal(t, want1, u1)
+		xt.Equal(t, u1, want1)
 	})
 
 	t.Run("string false", func(t *testing.T) {
@@ -41,7 +41,7 @@ func TestTriStateDecode(t *testing.T) {
 		var u1 *user
 		xt.NoError(t, json.Unmarshal(bf1, &u1))
 		want1 := &user{Name: "hello", State: xtype.TriFalse}
-		xt.Equal(t, want1, u1)
+		xt.Equal(t, u1, want1)
 	})
 
 	t.Run("null", func(t *testing.T) {
@@ -49,7 +49,7 @@ func TestTriStateDecode(t *testing.T) {
 		var u1 *user
 		xt.NoError(t, json.Unmarshal(bf1, &u1))
 		want1 := &user{Name: "hello", State: xtype.TriNull}
-		xt.Equal(t, want1, u1)
+		xt.Equal(t, u1, want1)
 	})
 
 	t.Run("string null", func(t *testing.T) {
@@ -57,7 +57,7 @@ func TestTriStateDecode(t *testing.T) {
 		var u1 *user
 		xt.NoError(t, json.Unmarshal(bf1, &u1))
 		want1 := &user{Name: "hello", State: xtype.TriNull}
-		xt.Equal(t, want1, u1)
+		xt.Equal(t, u1, want1)
 	})
 
 	t.Run("invalid", func(t *testing.T) {
@@ -75,7 +75,7 @@ func TestTriStateEncode(t *testing.T) {
 		}
 		bf, err := json.Marshal(u1)
 		xt.NoError(t, err)
-		xt.Equal(t, `{"Name":"hello","State":true}`, string(bf))
+		xt.Equal(t, string(bf), `{"Name":"hello","State":true}`)
 	})
 	t.Run("false", func(t *testing.T) {
 		u1 := user{
@@ -84,7 +84,7 @@ func TestTriStateEncode(t *testing.T) {
 		}
 		bf, err := json.Marshal(u1)
 		xt.NoError(t, err)
-		xt.Equal(t, `{"Name":"hello","State":false}`, string(bf))
+		xt.Equal(t, string(bf), `{"Name":"hello","State":false}`)
 	})
 	t.Run("null", func(t *testing.T) {
 		u1 := user{
@@ -92,7 +92,7 @@ func TestTriStateEncode(t *testing.T) {
 		}
 		bf, err := json.Marshal(u1)
 		xt.NoError(t, err)
-		xt.Equal(t, `{"Name":"hello","State":null}`, string(bf))
+		xt.Equal(t, string(bf), `{"Name":"hello","State":null}`)
 	})
 }
 

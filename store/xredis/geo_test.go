@@ -36,23 +36,23 @@ func TestGEO(t *testing.T) {
 	t.Run("GEOHash", func(t *testing.T) {
 		got, err := client.GEOHash(ctx, "GEOHash-1", "m1")
 		xt.NoError(t, err)
-		xt.Equal(t, []*string{nil}, got)
+		xt.Equal(t, got, []*string{nil})
 
 		added, err := client.GEOAdd(ctx, "GEOHash-1", members1...)
 		xt.NoError(t, err)
-		xt.Equal(t, 4, added)
+		xt.Equal(t, added, 4)
 
 		got, err = client.GEOHash(ctx, "GEOHash-1", "Palermo", "Catania")
 		xt.NoError(t, err)
 		a := "sqc8b49rny0"
 		b := "sqdtr74hyu0"
-		xt.Equal(t, []*string{&a, &b}, got)
+		xt.Equal(t, got, []*string{&a, &b})
 	})
 
 	t.Run("GEOSearch", func(t *testing.T) {
 		added, err := client.GEOAdd(ctx, "GEOSearch-1", members1...)
 		xt.NoError(t, err)
-		xt.Equal(t, 4, added)
+		xt.Equal(t, added, 4)
 
 		opt1 := &GEOSearchOption{
 			Longitude:  15,
@@ -63,7 +63,7 @@ func TestGEO(t *testing.T) {
 		}
 		sr, err := client.GEOSearch(ctx, "GEOSearch-1", opt1)
 		xt.NoError(t, err)
-		xt.Equal(t, []string{"Catania", "Palermo"}, sr)
+		xt.Equal(t, sr, []string{"Catania", "Palermo"})
 
 		opt2 := &GEOSearchOption{
 			Longitude: 15,

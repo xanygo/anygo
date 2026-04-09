@@ -51,16 +51,16 @@ func TestCacheClient(t *testing.T) {
 			resp := &xhttpc.StoredResponse{}
 			err := hc.Invoke(context.Background(), resp)
 			xt.NoError(t, err)
-			xt.Equal(t, "1", string(resp.Body))
-			xt.Equal(t, "Ok", resp.Header.Get("X-Ok"))
+			xt.Equal(t, string(resp.Body), "1")
+			xt.Equal(t, resp.Header.Get("X-Ok"), "Ok")
 			xt.Greater(t, resp.CreateAt, 1)
-			xt.Equal(t, 200, resp.StatusCode)
+			xt.Equal(t, resp.StatusCode, 200)
 			if i == 0 {
 				xt.False(t, resp.FromCache)
 			} else {
 				xt.True(t, resp.FromCache)
 			}
-			xt.Equal(t, 1, id.Load())
+			xt.Equal(t, id.Load(), 1)
 		})
 	}
 
@@ -72,10 +72,10 @@ func TestCacheClient(t *testing.T) {
 		resp1 := &xhttpc.StoredResponse{}
 		err1 := hc.Invoke(context.Background(), resp1)
 		xt.NoError(t, err1)
-		xt.Equal(t, "1", string(resp1.Body))
-		xt.Equal(t, "Ok", resp1.Header.Get("X-Ok"))
+		xt.Equal(t, string(resp1.Body), "1")
+		xt.Equal(t, resp1.Header.Get("X-Ok"), "Ok")
 		xt.Greater(t, resp1.CreateAt, 1)
-		xt.Equal(t, 200, resp1.StatusCode)
+		xt.Equal(t, resp1.StatusCode, 200)
 		xt.True(t, resp1.FromCache)
 	})
 }
@@ -95,7 +95,7 @@ func TestClient(t *testing.T) {
 		resp := &xhttpc.StoredResponse{}
 		err := xhttpc.Get(ctx, xservice.Dummy, ts.URL, xhttpc.TeeReader(resp))
 		xt.NoError(t, err)
-		xt.Equal(t, "Ok", resp.Header.Get("X-Ok"))
+		xt.Equal(t, resp.Header.Get("X-Ok"), "Ok")
 	})
 
 	t.Run("PostJSON", func(t *testing.T) {
@@ -105,8 +105,8 @@ func TestClient(t *testing.T) {
 		}
 		err := xhttpc.PostJSON(ctx, xservice.Dummy, ts.URL, data, xhttpc.TeeReader(resp))
 		xt.NoError(t, err)
-		xt.Equal(t, "Ok", resp.Header.Get("X-Ok"))
-		xt.Equal(t, `{"k1":"v1"}`, string(resp.Body))
+		xt.Equal(t, resp.Header.Get("X-Ok"), "Ok")
+		xt.Equal(t, string(resp.Body), `{"k1":"v1"}`)
 	})
 
 	t.Run("Client.PostJSON", func(t *testing.T) {
@@ -116,7 +116,7 @@ func TestClient(t *testing.T) {
 		c1 := &xhttpc.Client{}
 		resp, err := c1.PostJSON(ctx, ts.URL, data)
 		xt.NoError(t, err)
-		xt.Equal(t, "Ok", resp.Header.Get("X-Ok"))
+		xt.Equal(t, resp.Header.Get("X-Ok"), "Ok")
 		defer resp.Body.Close()
 		xt.NoError(t, iotest.TestReader(resp.Body, []byte(`{"k1":"v1"}`)))
 	})
@@ -161,9 +161,9 @@ func TestClientRetry(t *testing.T) {
 		resp := &http.Response{}
 		err := xhttpc.Get(ctx, "dummy", ts.URL, xhttpc.FetchResponse(resp), xrpc.OptRetry(2))
 		xt.NoError(t, err)
-		xt.Equal(t, 200, resp.StatusCode)
+		xt.Equal(t, resp.StatusCode, 200)
 		xt.NoError(t, iotest.TestReader(resp.Body, []byte(`Ok`)))
-		xt.Equal(t, 1, requestID.Load())
+		xt.Equal(t, requestID.Load(), 1)
 	})
 
 	t.Run("get-timeout-retry", func(t *testing.T) {
@@ -176,9 +176,9 @@ func TestClientRetry(t *testing.T) {
 		err := xhttpc.Get(ctx, "dummy", ts.URL+"?sleep=get-timeout-retry", xhttpc.FetchResponse(resp),
 			xrpc.OptRetry(2), xrpc.OptReadTimeout(10*time.Millisecond))
 		xt.NoError(t, err)
-		xt.Equal(t, 200, resp.StatusCode)
+		xt.Equal(t, resp.StatusCode, 200)
 		xt.NoError(t, iotest.TestReader(resp.Body, []byte(`Ok`)))
-		xt.Equal(t, 2, requestID.Load()) // 值是 2，说明重试成功
+		xt.Equal(t, requestID.Load(), 2) // 值是 2，说明重试成功
 	})
 
 	t.Run("Post-timeout-always-retry", func(t *testing.T) {
@@ -191,9 +191,9 @@ func TestClientRetry(t *testing.T) {
 		err := xhttpc.PostJSON(ctx, "dummy", ts.URL+"?sleep=Post-timeout-always-retry", map[string]any{},
 			xhttpc.FetchResponse(resp), xrpc.OptRetry(2), xrpc.OptReadTimeout(20*time.Millisecond))
 		xt.NoError(t, err)
-		xt.Equal(t, 200, resp.StatusCode)
+		xt.Equal(t, resp.StatusCode, 200)
 		xt.NoError(t, iotest.TestReader(resp.Body, []byte(`Ok`)))
-		xt.Equal(t, 2, requestID.Load()) // 值是 2，说明重试成功
+		xt.Equal(t, requestID.Load(), 2) // 值是 2，说明重试成功
 	})
 
 	t.Run("Post-timeout-no-retry", func(t *testing.T) {
@@ -210,8 +210,8 @@ func TestClientRetry(t *testing.T) {
 			xhttpc.FetchResponse(resp), xrpc.OptRetryWithPolicy(2, nil), xrpc.OptReadTimeout(10*time.Millisecond))
 		cost := time.Since(start)
 		t.Logf("cost=%s", cost.String())
-		xt.Equal(t, 1, requestID.Load()) // 值是 1，说明没有重试
+		xt.Equal(t, requestID.Load(), 1) // 值是 1，说明没有重试
 		xt.Error(t, err)
-		xt.Equal(t, 0, resp.StatusCode)
+		xt.Equal(t, resp.StatusCode, 0)
 	})
 }

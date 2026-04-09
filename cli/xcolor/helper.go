@@ -257,4 +257,3 @@ func BgWhiteString(format string, a ...any) string {
 func BgHiWhiteString(format string, a ...any) string {
 	return getByID(CodeBgHiWhite).SprintfFunc(format)(a...)
 }
-

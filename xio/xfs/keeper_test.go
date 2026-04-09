@@ -33,7 +33,7 @@ func TestKeepFile(t *testing.T) {
 	xt.NoError(t, kp.Start())
 
 	t.Run("after start", func(t *testing.T) {
-		xt.Equal(t, int32(1), atomic.LoadInt32(&changeNum))
+		xt.Equal(t, atomic.LoadInt32(&changeNum), int32(1))
 		xt.NotNil(t, kp.File())
 	})
 
@@ -66,7 +66,7 @@ func TestKeepFile(t *testing.T) {
 		xt.NoError(t, os.Remove(fp))
 		time.Sleep(ci * 2)
 		checkExists(t)
-		xt.Equal(t, int32(2), atomic.LoadInt32(&changeNum))
+		xt.Equal(t, atomic.LoadInt32(&changeNum), int32(2))
 	})
 
 	t.Run("stopped", func(t *testing.T) {

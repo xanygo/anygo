@@ -43,15 +43,15 @@ func TestClientCF(t *testing.T) {
 
 		count, err := client.CFCount(ctx, "CFAddNX-1", "world")
 		xt.NoError(t, err)
-		xt.Equal(t, 1, count)
+		xt.Equal(t, count, 1)
 
 		count, err = client.CFCount(ctx, "CFAddNX-1", "not-found")
 		xt.NoError(t, err)
-		xt.Equal(t, 0, count)
+		xt.Equal(t, count, 0)
 
 		count, err = client.CFCount(ctx, "CFAddNX-1-not-found", "not-found")
 		xt.NoError(t, err)
-		xt.Equal(t, 0, count)
+		xt.Equal(t, count, 0)
 	})
 
 	t.Run("CFDel", func(t *testing.T) {
@@ -101,41 +101,41 @@ func TestClientCF(t *testing.T) {
 	t.Run("CFInsert", func(t *testing.T) {
 		got, err := client.CFInsert(ctx, "CFInsert-1", "k1", "k2")
 		xt.NoError(t, err)
-		xt.Equal(t, []bool{true, true}, got)
+		xt.Equal(t, got, []bool{true, true})
 
 		// 重复添加一次
 		got, err = client.CFInsertWithOption(ctx, "CFInsert-1", nil, "k1", "k2")
 		xt.NoError(t, err)
-		xt.Equal(t, []bool{true, true}, got)
+		xt.Equal(t, got, []bool{true, true})
 	})
 
 	t.Run("CFInsertNX", func(t *testing.T) {
 		got, err := client.CFInsertNX(ctx, "CFInsertNX-1", "k1", "k2")
 		xt.NoError(t, err)
-		xt.Equal(t, []bool{true, true}, got)
+		xt.Equal(t, got, []bool{true, true})
 
 		// 重复添加一次: 全部失败
 		got, err = client.CFInsertNXWithOption(ctx, "CFInsertNX-1", nil, "k1", "k2")
 		xt.NoError(t, err)
-		xt.Equal(t, []bool{false, false}, got)
+		xt.Equal(t, got, []bool{false, false})
 
 		// 重复添加一次: 部分成功
 		got, err = client.CFInsertNXWithOption(ctx, "CFInsertNX-1", nil, "k1", "k2", "k3")
 		xt.NoError(t, err)
-		xt.Equal(t, []bool{false, false, true}, got)
+		xt.Equal(t, got, []bool{false, false, true})
 	})
 
 	t.Run("CFMExists", func(t *testing.T) {
 		got, err := client.CFMExists(ctx, "CFMExists-1", "k1", "k2")
 		xt.NoError(t, err)
-		xt.Equal(t, []bool{false, false}, got)
+		xt.Equal(t, got, []bool{false, false})
 
 		_, err = client.CFAdd(ctx, "CFMExists-1", "k1")
 		xt.NoError(t, err)
 
 		got, err = client.CFMExists(ctx, "CFMExists-1", "k1", "k2")
 		xt.NoError(t, err)
-		xt.Equal(t, []bool{true, false}, got)
+		xt.Equal(t, got, []bool{true, false})
 	})
 
 	t.Run("CFReserve", func(t *testing.T) {

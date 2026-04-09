@@ -18,19 +18,19 @@ func TestSliding_Incr(t *testing.T) {
 		for range 10 {
 			ct.Incr()
 		}
-		xt.Equal(t, 10, ct.Count(time.Second))
-		xt.Equal(t, 10, ct.Count(10*time.Second))
-		xt.Equal(t, 10, ct.WindowTotal())
+		xt.Equal(t, ct.Count(time.Second), 10)
+		xt.Equal(t, ct.Count(10*time.Second), 10)
+		xt.Equal(t, ct.WindowTotal(), 10)
 
 		time.Sleep(2 * time.Second)
-		xt.Equal(t, 0, ct.Count(time.Second))
-		xt.Equal(t, 10, ct.WindowTotal())
+		xt.Equal(t, ct.Count(time.Second), 0)
+		xt.Equal(t, ct.WindowTotal(), 10)
 		time.Sleep(time.Hour)
-		xt.Equal(t, 0, ct.CountWindow())
-		xt.Equal(t, 0, ct.WindowTotal())
+		xt.Equal(t, ct.CountWindow(), 0)
+		xt.Equal(t, ct.WindowTotal(), 0)
 
 		ct.Incr()
-		xt.Equal(t, 1, ct.Count(time.Second))
-		xt.Equal(t, 1, ct.WindowTotal())
+		xt.Equal(t, ct.Count(time.Second), 1)
+		xt.Equal(t, ct.WindowTotal(), 1)
 	})
 }

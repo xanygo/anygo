@@ -93,14 +93,14 @@ func TestInteger(t *testing.T) {
 	testInteger[int32](t, strconv.FormatUint(math.MaxInt32, 10), math.MaxInt32, true)
 	testInteger[int64](t, strconv.FormatUint(math.MaxInt64, 10), math.MaxInt64, true)
 
-	xt.Equal(t, 123, ToInteger[int]("123"))
+	xt.Equal(t, ToInteger[int]("123"), 123)
 }
 
 func testInteger[T IntegerTypes](t *testing.T, v any, val T, ok bool) {
 	t.Helper()
 	num, status := Integer[T](v)
 	xt.Equal[T](t, val, num)
-	xt.Equal(t, ok, status)
+	xt.Equal(t, status, ok)
 }
 
 func TestFloat(t *testing.T) {
@@ -144,12 +144,12 @@ func TestFloat(t *testing.T) {
 	testFloat[float64](t, int32(8), 8, true)
 	testFloat[float64](t, int64(8), 8, true)
 
-	xt.Equal(t, 123.0, ToFloat[float64]("123"))
+	xt.Equal(t, ToFloat[float64]("123"), 123.0)
 }
 
 func testFloat[T FloatTypes](t *testing.T, v any, val T, ok bool) {
 	t.Helper()
 	num, status := Float[T](v)
 	xt.Equal[T](t, val, num)
-	xt.Equal(t, ok, status)
+	xt.Equal(t, status, ok)
 }

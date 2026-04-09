@@ -25,8 +25,8 @@ func TestOnceDoErr(t *testing.T) {
 			return errors.New("hello")
 		})
 		xt.Error(t, got)
-		xt.Equal(t, "hello", got.Error())
-		xt.Equal(t, 1, num)
+		xt.Equal(t, got.Error(), "hello")
+		xt.Equal(t, num, 1)
 	}
 }
 
@@ -44,9 +44,9 @@ func TestOnceValueErr(t *testing.T) {
 			return "ok", errors.New("hello")
 		})
 		xt.Error(t, got2)
-		xt.Equal(t, "hello", got2.Error())
-		xt.Equal(t, "ok", got1)
-		xt.Equal(t, 1, num)
+		xt.Equal(t, got2.Error(), "hello")
+		xt.Equal(t, got1, "ok")
+		xt.Equal(t, num, 1)
 	}
 }
 
@@ -57,7 +57,7 @@ func TestOnceValue(t *testing.T) {
 		return num
 	})
 	for range 3 {
-		xt.Equal(t, 1, one())
+		xt.Equal(t, one(), 1)
 	}
 }
 
@@ -71,8 +71,8 @@ func TestOnceValue2(t *testing.T) {
 	})
 	for range 3 {
 		v1, v2 := once()
-		xt.Equal(t, 1, v1)
-		xt.Equal(t, 2, v2)
+		xt.Equal(t, v1, 1)
+		xt.Equal(t, v2, 2)
 	}
 }
 
@@ -88,9 +88,9 @@ func TestOnceValue3(t *testing.T) {
 	})
 	for range 3 {
 		v1, v2, v3 := once()
-		xt.Equal(t, 1, v1)
-		xt.Equal(t, 2, v2)
-		xt.Equal(t, 5, v3)
+		xt.Equal(t, v1, 1)
+		xt.Equal(t, v2, 2)
+		xt.Equal(t, v3, 5)
 	}
 }
 
@@ -108,9 +108,9 @@ func TestOnceValue4(t *testing.T) {
 	})
 	for range 3 {
 		v1, v2, v3, v4 := once()
-		xt.Equal(t, 1, v1)
-		xt.Equal(t, 2, v2)
-		xt.Equal(t, 5, v3)
-		xt.Equal(t, 7, v4)
+		xt.Equal(t, v1, 1)
+		xt.Equal(t, v2, 2)
+		xt.Equal(t, v3, 5)
+		xt.Equal(t, v4, 7)
 	}
 }

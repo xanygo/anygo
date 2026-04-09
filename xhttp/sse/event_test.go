@@ -59,7 +59,7 @@ func TestEvent_Bytes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := string(tt.ev.Bytes())
-			xt.Equal(t, tt.want, got)
+			xt.Equal(t, got, tt.want)
 		})
 	}
 }

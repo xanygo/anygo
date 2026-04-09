@@ -34,46 +34,46 @@ func TestClientList(t *testing.T) {
 
 		num, err := client.LPush(ctx, "l1", "v1")
 		xt.NoError(t, err)
-		xt.Equal(t, 1, num)
+		xt.Equal(t, num, 1)
 
 		values, err = client.LRange(ctx, "l1", 0, -1)
 		xt.NoError(t, err)
-		xt.Equal(t, []string{"v1"}, values)
+		xt.Equal(t, values, []string{"v1"})
 	})
 
 	t.Run("LPop", func(t *testing.T) {
 		num, err := client.RPush(ctx, "k2", "v2")
 		xt.NoError(t, err)
-		xt.Equal(t, 1, num)
+		xt.Equal(t, num, 1)
 
 		value, err := client.LPop(ctx, "k2")
 		xt.NoError(t, err)
-		xt.Equal(t, "v2", value)
+		xt.Equal(t, value, "v2")
 
 		value, err = client.LPop(ctx, "k2")
 		xt.ErrorIs(t, err, ErrNil)
-		xt.Equal(t, "", value)
+		xt.Equal(t, value, "")
 
 		num, err = client.RPush(ctx, "k2", "v2", "v3", "v4")
 		xt.NoError(t, err)
-		xt.Equal(t, 3, num)
+		xt.Equal(t, num, 3)
 	})
 
 	t.Run("LPopN", func(t *testing.T) {
 		num, err := client.RPush(ctx, "k3", "v2", "v3", "v4")
 		xt.NoError(t, err)
-		xt.Equal(t, 3, num)
+		xt.Equal(t, num, 3)
 		values, err := client.LPopN(ctx, "k3", 2)
 		xt.NoError(t, err)
-		xt.Equal(t, []string{"v2", "v3"}, values)
+		xt.Equal(t, values, []string{"v2", "v3"})
 
 		num, err = client.RPushX(ctx, "k3", "v5", "v6")
 		xt.NoError(t, err)
-		xt.Equal(t, 3, num)
+		xt.Equal(t, num, 3)
 
 		values, err = client.RPopN(ctx, "k3", 2)
 		xt.NoError(t, err)
-		xt.Equal(t, []string{"v6", "v5"}, values)
+		xt.Equal(t, values, []string{"v6", "v5"})
 	})
 
 	t.Run("RPop", func(t *testing.T) {
@@ -83,11 +83,11 @@ func TestClientList(t *testing.T) {
 
 		num, err := client.RPush(ctx, "RPop-1", "v2", "v3", "v4")
 		xt.NoError(t, err)
-		xt.Equal(t, 3, num)
+		xt.Equal(t, num, 3)
 
 		got, err = client.RPop(ctx, "RPop-1")
 		xt.NoError(t, err)
-		xt.Equal(t, "v4", got)
+		xt.Equal(t, got, "v4")
 	})
 
 	t.Run("RPopN", func(t *testing.T) {
@@ -97,24 +97,24 @@ func TestClientList(t *testing.T) {
 
 		num, err := client.RPush(ctx, "RPopN-1", "v2", "v3", "v4")
 		xt.NoError(t, err)
-		xt.Equal(t, 3, num)
+		xt.Equal(t, num, 3)
 
 		got, err = client.RPopN(ctx, "RPopN-1", 2)
 		xt.NoError(t, err)
-		xt.Equal(t, []string{"v4", "v3"}, got)
+		xt.Equal(t, got, []string{"v4", "v3"})
 	})
 
 	t.Run("LLen", func(t *testing.T) {
 		got, err := client.LLen(ctx, "LLen-1")
 		xt.NoError(t, err)
-		xt.Equal(t, 0, got)
+		xt.Equal(t, got, 0)
 
 		num, err := client.RPush(ctx, "LLen-1", "v2", "v3", "v4")
 		xt.NoError(t, err)
-		xt.Equal(t, 3, num)
+		xt.Equal(t, num, 3)
 
 		got, err = client.LLen(ctx, "LLen-1")
 		xt.NoError(t, err)
-		xt.Equal(t, 3, got)
+		xt.Equal(t, got, 3)
 	})
 }

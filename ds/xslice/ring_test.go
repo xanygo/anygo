@@ -67,31 +67,31 @@ func TestRing(t *testing.T) {
 				r1.Push(i)
 				switch i {
 				case 0:
-					xt.Equal(t, []int{0}, r1.Values())
+					xt.Equal(t, r1.Values(), []int{0})
 				case 1:
-					xt.Equal(t, []int{0, 1}, r1.Values())
+					xt.Equal(t, r1.Values(), []int{0, 1})
 				case 2:
-					xt.Equal(t, []int{0, 1, 2}, r1.Values())
+					xt.Equal(t, r1.Values(), []int{0, 1, 2})
 				case 3:
-					xt.Equal(t, []int{1, 2, 3}, r1.Values())
+					xt.Equal(t, r1.Values(), []int{1, 2, 3})
 				case 4:
-					xt.Equal(t, []int{2, 3, 4}, r1.Values())
+					xt.Equal(t, r1.Values(), []int{2, 3, 4})
 				case 5:
-					xt.Equal(t, []int{3, 4, 5}, r1.Values())
+					xt.Equal(t, r1.Values(), []int{3, 4, 5})
 				}
 				if i < 2 {
-					xt.Equal(t, i+1, r1.Len())
+					xt.Equal(t, r1.Len(), i+1)
 				} else {
-					xt.Equal(t, 3, r1.Len())
+					xt.Equal(t, r1.Len(), 3)
 				}
 			}
 			// 0,1,2 | 3,4,5 | 6,7,8 | 9
 			want2 := []int{7, 8, 9}
-			xt.Equal(t, want2, r1.Values())
+			xt.Equal(t, r1.Values(), want2)
 
 			r1.Clear()
 			xt.Empty(t, r1.Values())
-			xt.Equal(t, 0, r1.Len())
+			xt.Equal(t, r1.Len(), 0)
 		}
 		t.Run("common", func(t *testing.T) {
 			check(t, NewRing[int](3))
@@ -108,36 +108,36 @@ func TestRing(t *testing.T) {
 
 				switch i {
 				case 0:
-					xt.Equal(t, []int{0}, r1.Values())
-					xt.Equal(t, 0, old)
+					xt.Equal(t, r1.Values(), []int{0})
+					xt.Equal(t, old, 0)
 					xt.False(t, swapped)
 				case 1:
-					xt.Equal(t, []int{0, 1}, r1.Values())
-					xt.Equal(t, 0, old)
+					xt.Equal(t, r1.Values(), []int{0, 1})
+					xt.Equal(t, old, 0)
 					xt.False(t, swapped)
 				case 2:
-					xt.Equal(t, []int{0, 1, 2}, r1.Values())
-					xt.Equal(t, 0, old)
+					xt.Equal(t, r1.Values(), []int{0, 1, 2})
+					xt.Equal(t, old, 0)
 					xt.False(t, swapped)
 				case 3:
-					xt.Equal(t, []int{1, 2, 3}, r1.Values())
-					xt.Equal(t, 0, old)
+					xt.Equal(t, r1.Values(), []int{1, 2, 3})
+					xt.Equal(t, old, 0)
 					xt.True(t, swapped)
 				case 4:
-					xt.Equal(t, []int{2, 3, 4}, r1.Values())
-					xt.Equal(t, 1, old)
+					xt.Equal(t, r1.Values(), []int{2, 3, 4})
+					xt.Equal(t, old, 1)
 					xt.True(t, swapped)
 				}
 
 				if i < 2 {
-					xt.Equal(t, i+1, r1.Len())
+					xt.Equal(t, r1.Len(), i+1)
 				} else {
-					xt.Equal(t, 3, r1.Len())
+					xt.Equal(t, r1.Len(), 3)
 				}
 			}
 			// 0,1,2 | 3,4,5 | 6,7,8 | 9
 			want2 := []int{7, 8, 9}
-			xt.Equal(t, want2, r1.Values())
+			xt.Equal(t, r1.Values(), want2)
 		}
 		check(t, NewRing[int](3))
 	})
@@ -150,7 +150,7 @@ func TestRing(t *testing.T) {
 			gots = append(gots, v)
 		}
 		wants := []int{1, 2, 3}
-		xt.Equal(t, wants, gots)
+		xt.Equal(t, gots, wants)
 	})
 }
 
@@ -180,21 +180,21 @@ func TestRingUnique1(t *testing.T) {
 
 			switch i {
 			case 0:
-				xt.Equal(t, []int{0}, r1.Values())
+				xt.Equal(t, r1.Values(), []int{0})
 			case 1:
-				xt.Equal(t, []int{0, 1}, r1.Values())
+				xt.Equal(t, r1.Values(), []int{0, 1})
 			case 2:
-				xt.Equal(t, []int{0, 1, 2}, r1.Values())
+				xt.Equal(t, r1.Values(), []int{0, 1, 2})
 			case 3:
-				xt.Equal(t, []int{1, 2, 3}, r1.Values())
+				xt.Equal(t, r1.Values(), []int{1, 2, 3})
 			case 4:
-				xt.Equal(t, []int{2, 3, 4}, r1.Values())
+				xt.Equal(t, r1.Values(), []int{2, 3, 4})
 			}
 
 			if i < 2 {
-				xt.Equal(t, i+1, r1.Len())
+				xt.Equal(t, r1.Len(), i+1)
 			} else {
-				xt.Equal(t, 3, r1.Len())
+				xt.Equal(t, r1.Len(), 3)
 			}
 		}
 		// 0,1,2 | 3,4,5 | 6,7,8 | 9
@@ -202,11 +202,11 @@ func TestRingUnique1(t *testing.T) {
 		// xt.Equal(t, want1, r1.values)
 
 		want2 := []int{7, 8, 9}
-		xt.Equal(t, want2, r1.Values())
+		xt.Equal(t, r1.Values(), want2)
 
 		r1.Clear()
 		xt.Empty(t, r1.Values())
-		xt.Equal(t, 0, r1.Len())
+		xt.Equal(t, r1.Len(), 0)
 	}
 	check(t, NewUniqRing[int](3))
 	check(t, NewSyncUniqRing[int](3))
@@ -219,31 +219,31 @@ func TestRingUnique2(t *testing.T) {
 
 			switch i {
 			case 0:
-				xt.Equal(t, []int{0}, r1.Values())
-				xt.Equal(t, 0, old)
+				xt.Equal(t, r1.Values(), []int{0})
+				xt.Equal(t, old, 0)
 				xt.False(t, swapped)
 			case 1:
-				xt.Equal(t, []int{0, 1}, r1.Values())
-				xt.Equal(t, 0, old)
+				xt.Equal(t, r1.Values(), []int{0, 1})
+				xt.Equal(t, old, 0)
 				xt.False(t, swapped)
 			case 2:
-				xt.Equal(t, []int{0, 1, 2}, r1.Values())
-				xt.Equal(t, 0, old)
+				xt.Equal(t, r1.Values(), []int{0, 1, 2})
+				xt.Equal(t, old, 0)
 				xt.False(t, swapped)
 			case 3:
-				xt.Equal(t, []int{1, 2, 3}, r1.Values())
-				xt.Equal(t, 0, old)
+				xt.Equal(t, r1.Values(), []int{1, 2, 3})
+				xt.Equal(t, old, 0)
 				xt.True(t, swapped)
 			case 4:
-				xt.Equal(t, []int{2, 3, 4}, r1.Values())
-				xt.Equal(t, 1, old)
+				xt.Equal(t, r1.Values(), []int{2, 3, 4})
+				xt.Equal(t, old, 1)
 				xt.True(t, swapped)
 			}
 
 			if i < 2 {
-				xt.Equal(t, i+1, r1.Len())
+				xt.Equal(t, r1.Len(), i+1)
 			} else {
-				xt.Equal(t, 3, r1.Len())
+				xt.Equal(t, r1.Len(), 3)
 			}
 		}
 		// 0,1,2 | 3,4,5 | 6,7,8 | 9
@@ -251,11 +251,11 @@ func TestRingUnique2(t *testing.T) {
 		// xt.Equal(t, want1, r1.values)
 
 		want2 := []int{7, 8, 9}
-		xt.Equal(t, want2, r1.Values())
+		xt.Equal(t, r1.Values(), want2)
 
 		r1.Clear()
 		xt.Empty(t, r1.Values())
-		xt.Equal(t, 0, r1.Len())
+		xt.Equal(t, r1.Len(), 0)
 	}
 	check(t, NewUniqRing[int](3))
 	check(t, NewSyncUniqRing[int](3))
@@ -265,34 +265,34 @@ func TestRingUnique3(t *testing.T) {
 	check := func(t *testing.T, r1 testRingType[int]) {
 		for range 10 {
 			r1.Push(1)
-			xt.Equal(t, []int{1}, r1.Values())
+			xt.Equal(t, r1.Values(), []int{1})
 		}
 		for range 10 {
 			old, swapped := r1.PushSwap(1)
-			xt.Equal(t, []int{1}, r1.Values())
-			xt.Equal(t, 1, old)
+			xt.Equal(t, r1.Values(), []int{1})
+			xt.Equal(t, old, 1)
 			xt.True(t, swapped)
-			xt.Equal(t, []int{1}, r1.Values())
+			xt.Equal(t, r1.Values(), []int{1})
 		}
 
 		{
 			old, swapped := r1.PushSwap(2)
-			xt.Equal(t, 0, old)
-			xt.Equal(t, 2, r1.Len())
+			xt.Equal(t, old, 0)
+			xt.Equal(t, r1.Len(), 2)
 			xt.False(t, swapped)
-			xt.Equal(t, []int{1, 2}, r1.Values())
+			xt.Equal(t, r1.Values(), []int{1, 2})
 		}
 
 		{
 			old, swapped := r1.PushSwap(3)
-			xt.Equal(t, 0, old)
+			xt.Equal(t, old, 0)
 			xt.False(t, swapped)
-			xt.Equal(t, []int{1, 2, 3}, r1.Values())
+			xt.Equal(t, r1.Values(), []int{1, 2, 3})
 		}
 		{
 			old, swapped := r1.PushSwap(4)
-			xt.Equal(t, []int{2, 3, 4}, r1.Values())
-			xt.Equal(t, 1, old)
+			xt.Equal(t, r1.Values(), []int{2, 3, 4})
+			xt.Equal(t, old, 1)
 			xt.True(t, swapped)
 		}
 	}
@@ -331,49 +331,49 @@ func TestRing_Pop(t *testing.T) {
 	check := func(t *testing.T, r1 ppv) {
 		got, ok := r1.Pop()
 		xt.False(t, ok)
-		xt.Equal(t, 0, got)
-		xt.Equal(t, 0, r1.Len())
+		xt.Equal(t, got, 0)
+		xt.Equal(t, r1.Len(), 0)
 
 		r1.Push(1)
-		xt.Equal(t, []int{1}, r1.Values())
-		xt.Equal(t, 1, r1.Len())
+		xt.Equal(t, r1.Values(), []int{1})
+		xt.Equal(t, r1.Len(), 1)
 
 		r1.Push(2)
-		xt.Equal(t, []int{1, 2}, r1.Values())
-		xt.Equal(t, 2, r1.Len())
+		xt.Equal(t, r1.Values(), []int{1, 2})
+		xt.Equal(t, r1.Len(), 2)
 
 		r1.Push(3)
-		xt.Equal(t, []int{1, 2, 3}, r1.Values())
-		xt.Equal(t, 3, r1.Len())
+		xt.Equal(t, r1.Values(), []int{1, 2, 3})
+		xt.Equal(t, r1.Len(), 3)
 
 		r1.Push(4)
-		xt.Equal(t, []int{2, 3, 4}, r1.Values())
-		xt.Equal(t, 3, r1.Len())
+		xt.Equal(t, r1.Values(), []int{2, 3, 4})
+		xt.Equal(t, r1.Len(), 3)
 
 		got, ok = r1.Pop()
 		xt.True(t, ok)
-		xt.Equal(t, 2, got)
-		xt.Equal(t, []int{3, 4}, r1.Values())
-		xt.Equal(t, 2, r1.Len())
+		xt.Equal(t, got, 2)
+		xt.Equal(t, r1.Values(), []int{3, 4})
+		xt.Equal(t, r1.Len(), 2)
 
 		r1.Push(5)
-		xt.Equal(t, []int{3, 4, 5}, r1.Values())
+		xt.Equal(t, r1.Values(), []int{3, 4, 5})
 
 		got, ok = r1.Pop()
 		xt.True(t, ok)
-		xt.Equal(t, 3, got)
-		xt.Equal(t, []int{4, 5}, r1.Values())
+		xt.Equal(t, got, 3)
+		xt.Equal(t, r1.Values(), []int{4, 5})
 
 		got, ok = r1.Pop()
 		xt.True(t, ok)
-		xt.Equal(t, 4, got)
-		xt.Equal(t, []int{5}, r1.Values())
+		xt.Equal(t, got, 4)
+		xt.Equal(t, r1.Values(), []int{5})
 
 		r1.Push(6)
-		xt.Equal(t, []int{5, 6}, r1.Values())
+		xt.Equal(t, r1.Values(), []int{5, 6})
 		got, ok = r1.Pop()
 		xt.True(t, ok)
-		xt.Equal(t, 5, got)
+		xt.Equal(t, got, 5)
 	}
 	t.Run("ring", func(t *testing.T) {
 		r1 := NewRing[int](3)
@@ -391,11 +391,11 @@ func TestSyncRingWriter_WriteString(t *testing.T) {
 	w.WriteString("1")
 	w.WriteString("2")
 	w.WriteString("3")
-	xt.Equal(t, "123", w.String())
+	xt.Equal(t, w.String(), "123")
 	w.WriteString("4")
-	xt.Equal(t, "234", w.String())
+	xt.Equal(t, w.String(), "234")
 	w.Reset()
-	xt.Equal(t, "", w.String())
+	xt.Equal(t, w.String(), "")
 	w.Write([]byte("5"))
-	xt.Equal(t, "5", w.String())
+	xt.Equal(t, w.String(), "5")
 }

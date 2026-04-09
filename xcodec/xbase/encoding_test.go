@@ -23,7 +23,7 @@ func TestEncodeInt64(t *testing.T) {
 					t.Logf("num=%d b62=%q", num, str)
 					got, err := ec.DecodeInt64String(str)
 					xt.NoError(t, err)
-					xt.Equal(t, num, got)
+					xt.Equal(t, got, num)
 				})
 			}
 		})
@@ -31,7 +31,7 @@ func TestEncodeInt64(t *testing.T) {
 	check(t, "Base62", Base62)
 	check(t, "Base36", Base36)
 
-	xt.Equal(t, "7m85Y0n8LzA", Base62.EncodeInt64(math.MaxInt64))
+	xt.Equal(t, Base62.EncodeInt64(math.MaxInt64), "7m85Y0n8LzA")
 }
 
 func TestEncodeToString(t *testing.T) {
@@ -39,11 +39,11 @@ func TestEncodeToString(t *testing.T) {
 		got1 := Base62.EncodeToString([]byte(str))
 		got2, err2 := Base62.DecodeString(got1)
 		xt.NoError(t, err2)
-		xt.Equal(t, str, string(got2))
+		xt.Equal(t, string(got2), str)
 
 		got2, err2 = Base62.Decode([]byte(got1))
 		xt.NoError(t, err2)
-		xt.Equal(t, str, string(got2))
+		xt.Equal(t, string(got2), str)
 	}
 	checkEncodeDecode(t, "hello 你好")
 	checkEncodeDecode(t, "")

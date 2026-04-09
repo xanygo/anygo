@@ -13,12 +13,12 @@ import (
 
 func TestInt64ID_Bytes(t *testing.T) {
 	id := Int64ID(100)
-	xt.Equal(t, "100", string(id.Bytes()))
+	xt.Equal(t, string(id.Bytes()), "100")
 }
 
 func TestStringID_Bytes(t *testing.T) {
 	id := StringID("hello")
-	xt.Equal(t, `"hello"`, string(id.Bytes()))
+	xt.Equal(t, string(id.Bytes()), `"hello"`)
 }
 
 func Test_parserID(t *testing.T) {

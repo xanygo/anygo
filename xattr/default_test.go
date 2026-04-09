@@ -17,50 +17,50 @@ func TestDefault(t *testing.T) {
 	xt.NotEmpty(t, AppName())
 	root := RootDir()
 	xt.NotEmpty(t, root)
-	xt.Equal(t, filepath.Join(root, "conf"), ConfDir())
-	xt.Equal(t, filepath.Join(root, "data"), DataDir())
-	xt.Equal(t, filepath.Join(root, "log"), LogDir())
-	xt.Equal(t, filepath.Join(root, "temp"), TempDir())
-	xt.Equal(t, IDCDev, IDC())
-	xt.Equal(t, ModeDebug, RunMode())
+	xt.Equal(t, ConfDir(), filepath.Join(root, "conf"))
+	xt.Equal(t, DataDir(), filepath.Join(root, "data"))
+	xt.Equal(t, LogDir(), filepath.Join(root, "log"))
+	xt.Equal(t, TempDir(), filepath.Join(root, "temp"))
+	xt.Equal(t, IDC(), IDCDev)
+	xt.Equal(t, RunMode(), ModeDebug)
 
 	Set("k1", "v1")
 	got1, ok1 := Get("k1")
-	xt.Equal(t, "v1", got1)
+	xt.Equal(t, got1, "v1")
 	xt.True(t, ok1)
 
 	SetConfDir("/user/cfg|abs")
-	xt.Equal(t, "/user/cfg", ConfDir())
+	xt.Equal(t, ConfDir(), "/user/cfg")
 
 	SetConfDir("user/cfg")
-	xt.Equal(t, filepath.Join(root, "/user/cfg"), ConfDir())
+	xt.Equal(t, ConfDir(), filepath.Join(root, "/user/cfg"))
 
 	SetDataDir("/user/data|abs")
-	xt.Equal(t, "/user/data", DataDir())
+	xt.Equal(t, DataDir(), "/user/data")
 
 	SetDataDir("user/data")
-	xt.Equal(t, filepath.Join(root, "/user/data"), DataDir())
+	xt.Equal(t, DataDir(), filepath.Join(root, "/user/data"))
 
 	SetTempDir("/temp|abs")
-	xt.Equal(t, "/temp", TempDir())
+	xt.Equal(t, TempDir(), "/temp")
 
 	SetTempDir("temp")
-	xt.Equal(t, filepath.Join(root, "temp"), TempDir())
+	xt.Equal(t, TempDir(), filepath.Join(root, "temp"))
 
 	SetLogDir("/temp/log|abs")
-	xt.Equal(t, "/temp/log", LogDir())
+	xt.Equal(t, LogDir(), "/temp/log")
 
 	SetLogDir("temp/log")
-	xt.Equal(t, filepath.Join(root, "temp", "log"), LogDir())
+	xt.Equal(t, LogDir(), filepath.Join(root, "temp", "log"))
 }
 
 func TestGetAs(t *testing.T) {
 	Set("TestGetAs-1", 123)
 	got1, ok1 := Get("TestGetAs-1")
-	xt.Equal(t, 123, got1)
+	xt.Equal(t, got1, 123)
 	xt.True(t, ok1)
 
 	got2, err2 := GetAs[int64]("TestGetAs-1")
-	xt.Equal(t, 123, got2)
+	xt.Equal(t, got2, 123)
 	xt.NoError(t, err2)
 }

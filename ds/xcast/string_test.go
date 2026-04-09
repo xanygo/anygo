@@ -35,12 +35,12 @@ func TestString(t *testing.T) {
 	testString(t, nil, "", false)
 	testString(t, &net.AddrError{}, "", false)
 
-	xt.Equal(t, "abc", ToString("abc"))
+	xt.Equal(t, ToString("abc"), "abc")
 }
 
 func testString(t *testing.T, v any, expect string, ok bool) {
 	t.Helper()
 	got1, got2 := String(v)
-	xt.Equal(t, expect, got1)
-	xt.Equal(t, ok, got2)
+	xt.Equal(t, got1, expect)
+	xt.Equal(t, got2, ok)
 }

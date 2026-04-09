@@ -51,15 +51,15 @@ func TestClientBF(t *testing.T) {
 	t.Run("BFMAdd", func(t *testing.T) {
 		got, err := client.BFMAdd(ctx, "bf-madd", "v1")
 		xt.NoError(t, err)
-		xt.Equal(t, []bool{true}, got)
+		xt.Equal(t, got, []bool{true})
 
 		got, err = client.BFMAdd(ctx, "bf-madd", "v1")
 		xt.NoError(t, err)
-		xt.Equal(t, []bool{false}, got)
+		xt.Equal(t, got, []bool{false})
 
 		got, err = client.BFMAdd(ctx, "bf-madd", "v1", "v2")
 		xt.NoError(t, err)
-		xt.Equal(t, []bool{false, true}, got)
+		xt.Equal(t, got, []bool{false, true})
 	})
 
 	t.Run("BFInfo", func(t *testing.T) {
@@ -73,9 +73,9 @@ func TestClientBF(t *testing.T) {
 		xt.NoError(t, err)
 		xt.NotEmpty(t, info)
 		t.Logf("BFInfo=%#v", info)
-		xt.Equal(t, 1, info.Items)
-		xt.Equal(t, 1, info.Filters)
-		xt.Equal(t, 2, info.Expansion)
+		xt.Equal(t, info.Items, 1)
+		xt.Equal(t, info.Filters, 1)
+		xt.Equal(t, info.Expansion, 2)
 		xt.Greater(t, info.Capacity, 10)
 		xt.Greater(t, info.Size, 10)
 	})
@@ -83,13 +83,13 @@ func TestClientBF(t *testing.T) {
 	t.Run("BFCard", func(t *testing.T) {
 		got, err := client.BFCard(ctx, "bf-card") // not exists
 		xt.NoError(t, err)
-		xt.Equal(t, 0, got)
+		xt.Equal(t, got, 0)
 
 		bfAdd(t, "bf-card", "v1")
 
 		got, err = client.BFCard(ctx, "bf-card") // not exists
 		xt.NoError(t, err)
-		xt.Equal(t, 1, got)
+		xt.Equal(t, got, 1)
 	})
 
 	t.Run("BFExists", func(t *testing.T) {
@@ -99,7 +99,7 @@ func TestClientBF(t *testing.T) {
 
 		got1, err1 := client.BFMExists(ctx, "bf-exists", "v1")
 		xt.NoError(t, err1)
-		xt.Equal(t, []bool{false}, got1)
+		xt.Equal(t, got1, []bool{false})
 
 		bfAdd(t, "bf-exists", "v1")
 
@@ -109,17 +109,17 @@ func TestClientBF(t *testing.T) {
 
 		got1, err1 = client.BFMExists(ctx, "bf-exists", "v1")
 		xt.NoError(t, err1)
-		xt.Equal(t, []bool{true}, got1)
+		xt.Equal(t, got1, []bool{true})
 	})
 
 	t.Run("BFInsert", func(t *testing.T) {
 		got, err := client.BFInsert(ctx, "bf-insert1", []string{"v1"}, nil)
 		xt.NoError(t, err)
-		xt.Equal(t, []bool{true}, got)
+		xt.Equal(t, got, []bool{true})
 
 		got, err = client.BFInsert(ctx, "bf-insert1", []string{"v1", "v2"}, nil)
 		xt.NoError(t, err)
-		xt.Equal(t, []bool{false, true}, got)
+		xt.Equal(t, got, []bool{false, true})
 	})
 
 	t.Run("BFReserve", func(t *testing.T) {

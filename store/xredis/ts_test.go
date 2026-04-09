@@ -39,7 +39,7 @@ func TestClientTS(t *testing.T) {
 		}
 		got, err := client.TSAdd(ctx, key, value, 9, opt)
 		xt.NoError(t, err)
-		xt.Equal(t, value, got)
+		xt.Equal(t, got, value)
 	}
 
 	t.Run("TSAdd", func(t *testing.T) {
@@ -63,7 +63,7 @@ func TestClientTS(t *testing.T) {
 		value := time.Now().UnixMilli()
 		got, err := client.TSAdd(ctx, "TSAdd-2", value, 9, opt1)
 		xt.NoError(t, err)
-		xt.Equal(t, value, got)
+		xt.Equal(t, got, value)
 	})
 
 	t.Run("TSAlter", func(t *testing.T) {
@@ -139,20 +139,20 @@ func TestClientTS(t *testing.T) {
 		}
 		got, err = client.TSDecrBy(ctx, "TSDecrBy-2", 1.1, opt2)
 		xt.NoError(t, err)
-		xt.Equal(t, num, got)
+		xt.Equal(t, got, num)
 	})
 
 	t.Run("TSDel", func(t *testing.T) {
 		num, err := client.TSDel(ctx, "TSDel-1", 0, time.Now().UnixMilli())
 		xt.Error(t, err)
 		xt.True(t, xerror.IsNotFound(err))
-		xt.Equal(t, 0, num)
+		xt.Equal(t, num, 0)
 
 		doTsAdd(t, "TSDel-2")
 
 		num, err = client.TSDel(ctx, "TSDel-2", 0, time.Now().UnixMilli())
 		xt.NoError(t, err)
-		xt.Equal(t, 1, num)
+		xt.Equal(t, num, 1)
 	})
 
 	t.Run("TSDelRule", func(t *testing.T) {
@@ -172,7 +172,7 @@ func TestClientTS(t *testing.T) {
 		got, err = client.TSGet(ctx, "TSGet-2")
 		xt.NoError(t, err)
 		xt.NotNil(t, got)
-		xt.Equal(t, 9, got.Value)
+		xt.Equal(t, got.Value, 9)
 		xt.Greater(t, got.Timestamp, 0)
 	})
 
@@ -198,7 +198,7 @@ func TestClientTS(t *testing.T) {
 		}
 		got, err = client.TSIncrBy(ctx, "TSIncrBy-2", 1.1, opt2)
 		xt.NoError(t, err)
-		xt.Equal(t, num, got)
+		xt.Equal(t, got, num)
 	})
 
 	t.Run("TSInfo", func(t *testing.T) {
@@ -221,8 +221,8 @@ func TestClientTS(t *testing.T) {
 		t.Logf("TSInfo-2: %#v", got)
 		xt.NotEmpty(t, got)
 		xt.NotEmpty(t, got.Rules)
-		xt.Equal(t, TSEncodingCompressed, got.ChunkType)
-		xt.Equal(t, TSDuplicateMax, got.DuplicatePolicy)
+		xt.Equal(t, got.ChunkType, TSEncodingCompressed)
+		xt.Equal(t, got.DuplicatePolicy, TSDuplicateMax)
 		xt.Greater(t, got.MemoryUsage, 0)
 		xt.Greater(t, got.TotalSamples, 0)
 		xt.Greater(t, got.FirstTimestamp, 0)
@@ -235,9 +235,9 @@ func TestClientTS(t *testing.T) {
 		t.Logf("TSInfo-3: %#v", got)
 		xt.NotEmpty(t, got.Chunks)
 		xt.Empty(t, got.Rules)
-		xt.Equal(t, map[string]string{"f1": "v1"}, got.Labels)
-		xt.Equal(t, 48, got.ChunkSize)
-		xt.Equal(t, len(got.Chunks), int(got.ChunkCount))
+		xt.Equal(t, got.Labels, map[string]string{"f1": "v1"})
+		xt.Equal(t, got.ChunkSize, 48)
+		xt.Equal(t, int(got.ChunkCount), len(got.Chunks))
 		xt.NotNil(t, got.SourceKey)
 	})
 

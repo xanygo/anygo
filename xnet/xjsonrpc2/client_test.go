@@ -75,7 +75,7 @@ func TestClientRequest1(t *testing.T) {
 				}
 				resp := &xjsonrpc2.ClientResponse[string]{}
 				err = xrpc.Invoke(ctx, srv, req, resp, xrpc.OptSessionInit(ss))
-				xt.Equal(t, "Ok: hello", resp.Result)
+				xt.Equal(t, resp.Result, "Ok: hello")
 			})
 		}
 	})
@@ -110,7 +110,7 @@ func TestClientRequest1(t *testing.T) {
 					}
 					resp := &xjsonrpc2.ClientResponse[string]{}
 					err = xrpc.Invoke(ctx, srv, req, resp)
-					xt.Equal(t, "Ok: hello", resp.Result)
+					xt.Equal(t, resp.Result, "Ok: hello")
 				})
 			}
 		})
@@ -153,7 +153,7 @@ func TestClientRequest1(t *testing.T) {
 					}
 					resp := &xjsonrpc2.ClientResponse[string]{}
 					err = xrpc.Invoke(ctx, srv, req, resp)
-					xt.Equal(t, "Ok: hello", resp.Result)
+					xt.Equal(t, resp.Result, "Ok: hello")
 				})
 			}
 		})
@@ -172,7 +172,7 @@ func TestClientRequest1(t *testing.T) {
 
 			err = xrpc.Invoke(ctx, srv, req, resp)
 			xt.NoError(t, err)
-			xt.Equal(t, ret1, resp.Result)
+			xt.Equal(t, resp.Result, ret1)
 		})
 	})
 }

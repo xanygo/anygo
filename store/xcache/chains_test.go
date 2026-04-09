@@ -33,7 +33,7 @@ func TestNewChains(t *testing.T) {
 		value1, err1 := c.Get(ctx, "k1")
 		xt.Error(t, err1)
 		xt.True(t, xcache.IsNotExists(err1))
-		xt.Equal(t, "", value1)
+		xt.Equal(t, value1, "")
 	}
 	err2 := l2.Cache.Set(ctx, "k1", "v1", time.Minute)
 	xt.NoError(t, err2)
@@ -41,13 +41,13 @@ func TestNewChains(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		value3, err3 := c.Get(ctx, "k1")
 		xt.NoError(t, err3)
-		xt.Equal(t, "v1", value3)
+		xt.Equal(t, value3, "v1")
 
 		synctest.Wait()
 
 		value4, err4 := l1.Cache.Get(ctx, "k1")
 		xt.NoError(t, err4)
-		xt.Equal(t, "v1", value4)
+		xt.Equal(t, value4, "v1")
 	})
 
 	err5 := c.Delete(ctx, "k1")
@@ -56,5 +56,5 @@ func TestNewChains(t *testing.T) {
 	value6, err6 := c.Get(ctx, "k1")
 	xt.Error(t, err6)
 	xt.True(t, xcache.IsNotExists(err6))
-	xt.Equal(t, "", value6)
+	xt.Equal(t, value6, "")
 }

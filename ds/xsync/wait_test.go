@@ -28,11 +28,11 @@ func TestWaitFirst(t *testing.T) {
 		})
 		xt.NoError(t, wg.Wait())
 
-		xt.Equal(t, int32(1), cnt.Load())
+		xt.Equal(t, cnt.Load(), int32(1))
 		wg.Go(func() {
 			cnt.Add(1)
 		})
-		xt.Equal(t, int32(1), cnt.Load())
+		xt.Equal(t, cnt.Load(), int32(1))
 	})
 
 	t.Run("case 3 void panic", func(t *testing.T) {
@@ -44,12 +44,12 @@ func TestWaitFirst(t *testing.T) {
 		})
 		xt.Error(t, wg.Wait())
 
-		xt.Equal(t, int32(1), cnt.Load())
+		xt.Equal(t, cnt.Load(), int32(1))
 		wg.Go(func() {
 			cnt.Add(1)
 			panic("hello")
 		})
-		xt.Equal(t, int32(1), cnt.Load())
+		xt.Equal(t, cnt.Load(), int32(1))
 	})
 
 	t.Run("case 4 error nil", func(t *testing.T) {
@@ -60,13 +60,13 @@ func TestWaitFirst(t *testing.T) {
 			return nil
 		})
 		xt.NoError(t, wg.Wait())
-		xt.Equal(t, int32(1), cnt.Load())
+		xt.Equal(t, cnt.Load(), int32(1))
 
 		wg.GoErr(func() error {
 			cnt.Add(1)
 			return nil
 		})
-		xt.Equal(t, int32(1), cnt.Load())
+		xt.Equal(t, cnt.Load(), int32(1))
 	})
 
 	t.Run("case 5 error", func(t *testing.T) {
@@ -77,13 +77,13 @@ func TestWaitFirst(t *testing.T) {
 			return io.EOF
 		})
 		xt.Error(t, wg.Wait())
-		xt.Equal(t, int32(1), cnt.Load())
+		xt.Equal(t, cnt.Load(), int32(1))
 
 		wg.GoErr(func() error {
 			cnt.Add(1)
 			return io.EOF
 		})
-		xt.Equal(t, int32(1), cnt.Load())
+		xt.Equal(t, cnt.Load(), int32(1))
 	})
 
 	t.Run("case 6 ctx nil", func(t *testing.T) {
@@ -93,12 +93,12 @@ func TestWaitFirst(t *testing.T) {
 			cnt.Add(1)
 		})
 		xt.NoError(t, wg.Wait())
-		xt.Equal(t, int32(1), cnt.Load())
+		xt.Equal(t, cnt.Load(), int32(1))
 
 		wg.GoCtx(context.Background(), func(ctx context.Context) {
 			cnt.Add(1)
 		})
-		xt.Equal(t, int32(1), cnt.Load())
+		xt.Equal(t, cnt.Load(), int32(1))
 	})
 
 	t.Run("case 7 ctxerr nil", func(t *testing.T) {
@@ -109,13 +109,13 @@ func TestWaitFirst(t *testing.T) {
 			return nil
 		})
 		xt.NoError(t, wg.Wait())
-		xt.Equal(t, int32(1), cnt.Load())
+		xt.Equal(t, cnt.Load(), int32(1))
 
 		wg.GoCtxErr(context.Background(), func(ctx context.Context) error {
 			cnt.Add(1)
 			return nil
 		})
-		xt.Equal(t, int32(1), cnt.Load())
+		xt.Equal(t, cnt.Load(), int32(1))
 	})
 
 	t.Run("case 8 ctxerr err", func(t *testing.T) {
@@ -126,12 +126,12 @@ func TestWaitFirst(t *testing.T) {
 			return io.EOF
 		})
 		xt.Error(t, wg.Wait())
-		xt.Equal(t, int32(1), cnt.Load())
+		xt.Equal(t, cnt.Load(), int32(1))
 
 		wg.GoCtxErr(context.Background(), func(ctx context.Context) error {
 			cnt.Add(1)
 			return io.EOF
 		})
-		xt.Equal(t, int32(1), cnt.Load())
+		xt.Equal(t, cnt.Load(), int32(1))
 	})
 }

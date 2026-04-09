@@ -15,12 +15,12 @@ func TestCSVCodec(t *testing.T) {
 	t.Run("string1", func(t *testing.T) {
 		str, err := EncodeToString(CSV, []string{"a", "b", "c"})
 		xt.NoError(t, err)
-		xt.Equal(t, "a,b,c", str)
+		xt.Equal(t, str, "a,b,c")
 
 		var a0 []string
 		err = DecodeFromString(CSV, "a,b,c", &a0)
 		xt.NoError(t, err)
-		xt.Equal(t, []string{"a", "b", "c"}, a0)
+		xt.Equal(t, a0, []string{"a", "b", "c"})
 	})
 
 	t.Run("int1", func(t *testing.T) {
@@ -31,45 +31,45 @@ func TestCSVCodec(t *testing.T) {
 
 		str, err := EncodeToString(CSV, []int{1, 2, 3})
 		xt.NoError(t, err)
-		xt.Equal(t, "1,2,3", str)
+		xt.Equal(t, str, "1,2,3")
 
 		var b0 []int
 		err = DecodeFromString(CSV, "1,2,3", &b0)
 		xt.NoError(t, err)
-		xt.Equal(t, []int{1, 2, 3}, b0)
+		xt.Equal(t, b0, []int{1, 2, 3})
 	})
 
 	t.Run("int64_1", func(t *testing.T) {
 		str, err := EncodeToString(CSV, []int64{1, 2, 3})
 		xt.NoError(t, err)
-		xt.Equal(t, "1,2,3", str)
+		xt.Equal(t, str, "1,2,3")
 
 		var c0 []int64
 		err = DecodeFromString(CSV, "1,2,3", &c0)
 		xt.NoError(t, err)
-		xt.Equal(t, []int64{1, 2, 3}, c0)
+		xt.Equal(t, c0, []int64{1, 2, 3})
 	})
 
 	t.Run("bool_1", func(t *testing.T) {
 		str, err := EncodeToString(CSV, []bool{true, false, true})
 		xt.NoError(t, err)
-		xt.Equal(t, "true,false,true", str)
+		xt.Equal(t, str, "true,false,true")
 
 		var b1 []bool
 		err = DecodeFromString(CSV, "true,false,true", &b1)
 		xt.NoError(t, err)
-		xt.Equal(t, []bool{true, false, true}, b1)
+		xt.Equal(t, b1, []bool{true, false, true})
 	})
 
 	t.Run("uint8_1", func(t *testing.T) {
 		str, err := EncodeToString(CSV, []uint8{1, 2, 3})
 		xt.NoError(t, err)
-		xt.Equal(t, "1,2,3", str)
+		xt.Equal(t, str, "1,2,3")
 
 		var c1 []uint8
 		err = DecodeFromString(CSV, "1,2,3", &c1)
 		xt.NoError(t, err)
-		xt.Equal(t, []uint8{1, 2, 3}, c1)
+		xt.Equal(t, c1, []uint8{1, 2, 3})
 
 		var c2 []uint8
 		err = DecodeFromString(CSV, "1024,2,3", &c2)

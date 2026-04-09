@@ -27,7 +27,7 @@ func TestAesCBC_Encrypt(t *testing.T) {
 			got2, err2 := ac.Decrypt(got1)
 			xt.NoError(t, err2)
 			t.Logf("got2= %q , len=%d", got2, len(got2))
-			xt.Equal(t, string(txt), string(got2))
+			xt.Equal(t, string(got2), string(txt))
 		})
 	}
 }
@@ -47,7 +47,7 @@ func TestAesOFB_Encrypt(t *testing.T) {
 			got2, err2 := ac.Decrypt(got1)
 			xt.NoError(t, err2)
 			t.Logf("got2= %q , len=%d", got2, len(got2))
-			xt.Equal(t, string(txt), string(got2))
+			xt.Equal(t, string(got2), string(txt))
 		})
 	}
 }
@@ -113,5 +113,5 @@ func TestCiphers(t *testing.T) {
 	xt.NoError(t, err1)
 	got2, err2 := cs.Decrypt(got1)
 	xt.NoError(t, err2)
-	xt.Equal(t, string(txt), string(got2))
+	xt.Equal(t, string(got2), string(txt))
 }

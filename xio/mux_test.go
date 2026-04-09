@@ -40,13 +40,13 @@ func TestNewMux(t *testing.T) {
 		}
 		got := string(buf[:n])
 		want := fmt.Sprintf("hello %d", s.ID())
-		xt.Equal(t, want, got)
+		xt.Equal(t, got, want)
 		t.Logf("stream=%d Read %q", s.ID(), got)
 
 		resp := "echo: " + got
 		n, err = s.Write([]byte(resp))
 		xt.NoError(t, err)
-		xt.Equal(t, len(resp), n)
+		xt.Equal(t, n, len(resp))
 	}
 
 	var wg1 sync.WaitGroup
@@ -69,24 +69,24 @@ func TestNewMux(t *testing.T) {
 
 	// client side: open two streams
 	clientStream1, _ := muxClient.Open()
-	xt.Equal(t, 2, clientStream1.ID())
+	xt.Equal(t, clientStream1.ID(), 2)
 
 	clientStream2, _ := muxClient.Open()
-	xt.Equal(t, 4, clientStream2.ID())
+	xt.Equal(t, clientStream2.ID(), 4)
 
 	var wg2 sync.WaitGroup
 	wg2.Go(func() {
 		str := fmt.Sprintf("hello %d", clientStream1.ID())
 		n, err := clientStream1.Write([]byte(str))
 		xt.NoError(t, err)
-		xt.Equal(t, len(str), n)
+		xt.Equal(t, n, len(str))
 	})
 
 	wg2.Go(func() {
 		str := fmt.Sprintf("hello %d", clientStream2.ID())
 		n, err := clientStream2.Write([]byte(str))
 		xt.NoError(t, err)
-		xt.Equal(t, len(str), n)
+		xt.Equal(t, n, len(str))
 
 		// read echo
 		buf := make([]byte, 1024)
@@ -94,7 +94,7 @@ func TestNewMux(t *testing.T) {
 		xt.NoError(t, err)
 		got := string(buf[:n])
 		want := "echo: " + str
-		xt.Equal(t, want, got)
+		xt.Equal(t, got, want)
 	})
 
 	wg2.Wait()

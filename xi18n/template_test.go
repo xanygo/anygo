@@ -138,7 +138,7 @@ func TestTemplate(t *testing.T) {
 				return
 			}
 			xt.NoError(t, err)
-			xt.Equal(t, tt.want, bf.String())
+			xt.Equal(t, bf.String(), tt.want)
 		})
 	}
 }
@@ -155,17 +155,17 @@ func TestRA(t *testing.T) {
 	xt.Error(t, err0)
 
 	ctx1 := ContextWithBundle(context.Background(), b, "")
-	xt.Equal(t, "你好", anygo.Must1(RA(ctx1, "index@k1")))
-	xt.Equal(t, "你好 demo", anygo.Must1(RA(ctx1, "index@k2", "demo")))
+	xt.Equal(t, anygo.Must1(RA(ctx1, "index@k1")), "你好")
+	xt.Equal(t, anygo.Must1(RA(ctx1, "index@k2", "demo")), "你好 demo")
 
 	t.Run("RB", func(t *testing.T) {
-		xt.Equal(t, "你好", anygo.Must1(RB(ctx1, "abc", "index@k1")))
+		xt.Equal(t, anygo.Must1(RB(ctx1, "abc", "index@k1")), "你好")
 
 		ctx2 := ContextWithLanguages(ctx1, []Language{"jp"})
-		xt.Equal(t, "abc", anygo.Must1(RB(ctx2, "abc", "index@k1")))
-		xt.Equal(t, "abc demo", anygo.Must1(RB(ctx2, "abc {0}", "index@k1", "demo")))
+		xt.Equal(t, anygo.Must1(RB(ctx2, "abc", "index@k1")), "abc")
+		xt.Equal(t, anygo.Must1(RB(ctx2, "abc {0}", "index@k1", "demo")), "abc demo")
 	})
 
 	ctx3 := ContextWithLanguages(ctx1, []Language{LangEn})
-	xt.Equal(t, "hello", anygo.Must1(RA(ctx3, "index@k1")))
+	xt.Equal(t, anygo.Must1(RA(ctx3, "index@k1")), "hello")
 }

@@ -25,5 +25,5 @@ func testNodesEqual(t *testing.T, nodes []xnet.AddrNode, want []string) {
 	for _, node := range nodes {
 		addrs = append(addrs, node.Addr.String())
 	}
-	xt.Equal(t, want, addrs)
+	xt.Equal(t, addrs, want)
 }

@@ -18,12 +18,12 @@ func TestBool(t *testing.T) {
 
 	testBool(t, 100, false, false)
 
-	xt.Equal(t, true, ToBool("true"))
+	xt.Equal(t, ToBool("true"), true)
 }
 
 func testBool(t *testing.T, v any, expect bool, ok bool) {
 	t.Helper()
 	got1, got2 := Bool(v)
-	xt.Equal(t, expect, got1)
-	xt.Equal(t, ok, got2)
+	xt.Equal(t, got1, expect)
+	xt.Equal(t, got2, ok)
 }

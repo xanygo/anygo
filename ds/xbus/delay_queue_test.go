@@ -26,9 +26,9 @@ func TestDelayQueue(t *testing.T) {
 			v, err := q.PopWait()
 			// t.Logf("PopWait <%d: %d, %v>", i, v, err)
 			xt.NoError(t, err)
-			xt.Equal(t, i, v)
+			xt.Equal(t, v, i)
 		}
-		xt.Equal(t, 0, q.Len())
+		xt.Equal(t, q.Len(), 0)
 	})
 
 	t.Run("delay", func(t *testing.T) {
@@ -47,10 +47,10 @@ func TestDelayQueue(t *testing.T) {
 			v, err := q.PopWait()
 			// t.Logf("PopWait <%d: %d, %v>", i, v, err)
 			xt.NoError(t, err)
-			xt.Equal(t, i, v)
+			xt.Equal(t, v, i)
 			delay := time.Since(now)
 			xt.GreaterOrEqual(t, delay, q.Delay)
 		}
-		xt.Equal(t, 0, q.Len())
+		xt.Equal(t, q.Len(), 0)
 	})
 }

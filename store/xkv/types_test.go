@@ -18,12 +18,12 @@ func testStringStorage(t *testing.T, ff xkv.StringStorage) {
 		got1, found1, err1 := ss1.Get(context.Background())
 		xt.NoError(t, err1)
 		xt.False(t, found1)
-		xt.Equal(t, "", got1)
+		xt.Equal(t, got1, "")
 		xt.NoError(t, ss1.Set(context.Background(), "world"))
 		got2, found2, err2 := ss1.Get(context.Background())
 		xt.True(t, found2)
 		xt.NoError(t, err2)
-		xt.Equal(t, "world", got2)
+		xt.Equal(t, got2, "world")
 
 		got3, err3 := ff.Has(context.Background(), "hello")
 		xt.NoError(t, err3)
@@ -45,7 +45,7 @@ func testStringStorage(t *testing.T, ff xkv.StringStorage) {
 			return true
 		})
 		xt.NoError(t, err3)
-		xt.Equal(t, []string{"2", "1"}, values)
+		xt.Equal(t, values, []string{"2", "1"})
 
 		values = nil
 		err4 := list.LRange(context.Background(), func(val string) bool {
@@ -53,7 +53,7 @@ func testStringStorage(t *testing.T, ff xkv.StringStorage) {
 			return true
 		})
 		xt.NoError(t, err4)
-		xt.Equal(t, []string{"1", "2"}, values)
+		xt.Equal(t, values, []string{"1", "2"})
 
 		values = nil
 		err5 := list.Range(context.Background(), func(val string) bool {
@@ -70,22 +70,22 @@ func testStringStorage(t *testing.T, ff xkv.StringStorage) {
 		value1, found1, err1 := hh.HGet(context.Background(), "key1")
 		xt.NoError(t, err1)
 		xt.True(t, found1)
-		xt.Equal(t, "value1", value1)
+		xt.Equal(t, value1, "value1")
 
 		value2, found2, err2 := hh.HGet(context.Background(), "key2")
 		xt.NoError(t, err2)
 		xt.False(t, found2)
-		xt.Equal(t, "", value2)
+		xt.Equal(t, value2, "")
 
 		all, err4 := hh.HGetAll(context.Background())
 		xt.NoError(t, err4)
-		xt.Equal(t, map[string]string{"key1": "value1"}, all)
+		xt.Equal(t, all, map[string]string{"key1": "value1"})
 
 		xt.NoError(t, hh.HDel(context.Background(), "key1"))
 		value3, found3, err3 := hh.HGet(context.Background(), "key2")
 		xt.NoError(t, err3)
 		xt.False(t, found3)
-		xt.Equal(t, "", value3)
+		xt.Equal(t, value3, "")
 	})
 
 	t.Run("Set", func(t *testing.T) {
@@ -95,19 +95,19 @@ func testStringStorage(t *testing.T, ff xkv.StringStorage) {
 
 		got1, err2 := set.SMembers(context.Background())
 		xt.NoError(t, err2)
-		xt.Equal(t, []string{"v1"}, got1)
+		xt.Equal(t, got1, []string{"v1"})
 
 		_, err3 := set.SAdd(context.Background(), "v2")
 		xt.NoError(t, err3)
 
 		got2, err4 := set.SMembers(context.Background())
 		xt.NoError(t, err4)
-		xt.Equal(t, []string{"v1", "v2"}, got2)
+		xt.Equal(t, got2, []string{"v1", "v2"})
 
 		xt.NoError(t, set.SRem(context.Background(), "v1"))
 		got3, err3 := set.SMembers(context.Background())
 		xt.NoError(t, err3)
-		xt.Equal(t, []string{"v2"}, got3)
+		xt.Equal(t, got3, []string{"v2"})
 	})
 
 	t.Run("ZSet", func(t *testing.T) {
@@ -116,7 +116,7 @@ func testStringStorage(t *testing.T, ff xkv.StringStorage) {
 		got1, found1, err1 := zset.ZScore(context.Background(), "m1")
 		xt.NoError(t, err1)
 		xt.True(t, found1)
-		xt.Equal(t, 1, got1)
+		xt.Equal(t, got1, 1)
 
 		xt.NoError(t, zset.ZAdd(context.Background(), 2, "m2"))
 		xt.NoError(t, zset.ZAdd(context.Background(), 1.5, "m3"))
@@ -127,14 +127,14 @@ func testStringStorage(t *testing.T, ff xkv.StringStorage) {
 			scores = append(scores, score)
 			return true
 		})
-		xt.Equal(t, []string{"m1", "m3", "m2"}, members)
-		xt.Equal(t, []float64{1, 1.5, 2}, scores)
+		xt.Equal(t, members, []string{"m1", "m3", "m2"})
+		xt.Equal(t, scores, []float64{1, 1.5, 2})
 
 		xt.NoError(t, zset.ZRem(context.Background(), "m2"))
 		got2, found2, err2 := zset.ZScore(context.Background(), "m2")
 		xt.NoError(t, err2)
 		xt.False(t, found2)
-		xt.Equal(t, 0, got2)
+		xt.Equal(t, got2, 0)
 	})
 }
 

@@ -132,7 +132,7 @@ func TestDuration_UnmarshalText(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("UnmarshalText() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			xt.Equal(t, tt.want, m1)
+			xt.Equal(t, m1, tt.want)
 		})
 	}
 }

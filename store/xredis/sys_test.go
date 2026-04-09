@@ -66,7 +66,7 @@ func TestClientSys(t *testing.T) {
 		xt.NoError(t, client.Set(ctx, "MemoryUsage-1", "a"))
 		got, err = client.MemoryUsage(ctx, "MemoryUsage-1")
 		xt.NoError(t, err)
-		xt.Equal(t, 40, got)
+		xt.Equal(t, got, 40)
 	})
 
 	t.Run("MemoryStats", func(t *testing.T) {

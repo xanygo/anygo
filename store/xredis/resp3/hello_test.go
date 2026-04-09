@@ -20,7 +20,7 @@ func TestHelloResponse(t *testing.T) {
 	mp, err1 := ReadByType(bufio.NewReader(bytes.NewBuffer(content)), DataTypeMap)
 	xt.NoError(t, err1)
 	xt.NotEmpty(t, mp)
-	xt.Equal(t, DataTypeMap, mp.DataType())
+	xt.Equal(t, mp.DataType(), DataTypeMap)
 	mv, err2 := ToAny(mp, nil)
 	xt.NoError(t, err2)
 	xt.NotEmpty(t, mv)
@@ -67,5 +67,5 @@ func TestHelloResponse(t *testing.T) {
 			},
 		},
 	}
-	xt.Equal(t, want, obj)
+	xt.Equal(t, obj, want)
 }

@@ -17,18 +17,18 @@ func TestSlidingDual_IncrN(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		wd := xcounter.NewSlidingWindowStats(time.Hour, time.Second)
 		wd.IncrN(1, 2)
-		xt.Equal(t, 3, wd.WindowTotal())
-		xt.Equal(t, 1, wd.WindowSuccess())
-		xt.Equal(t, 2, wd.WindowFailure())
+		xt.Equal(t, wd.WindowTotal(), 3)
+		xt.Equal(t, wd.WindowSuccess(), 1)
+		xt.Equal(t, wd.WindowFailure(), 2)
 
 		time.Sleep(time.Hour)
 
-		xt.Equal(t, 0, wd.WindowTotal())
-		xt.Equal(t, 0, wd.WindowSuccess())
-		xt.Equal(t, 0, wd.WindowFailure())
+		xt.Equal(t, wd.WindowTotal(), 0)
+		xt.Equal(t, wd.WindowSuccess(), 0)
+		xt.Equal(t, wd.WindowFailure(), 0)
 
-		xt.Equal(t, 3, wd.LifetimeTotal())
-		xt.Equal(t, 1, wd.LifetimeSuccess())
-		xt.Equal(t, 2, wd.LifetimeFailure())
+		xt.Equal(t, wd.LifetimeTotal(), 3)
+		xt.Equal(t, wd.LifetimeSuccess(), 1)
+		xt.Equal(t, wd.LifetimeFailure(), 2)
 	})
 }

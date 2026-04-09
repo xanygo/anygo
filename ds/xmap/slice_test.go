@@ -36,15 +36,15 @@ func TestSlice(t *testing.T) {
 	t.Run("case 1", func(t *testing.T) {
 		check := func(t *testing.T, s1 testSliceValueSyncType[string, int]) {
 			s1.Set("k1", 1)
-			xt.Equal(t, []int{1}, s1.Get("k1"))
-			xt.Equal(t, 1, s1.GetFirst("k1"))
+			xt.Equal(t, s1.Get("k1"), []int{1})
+			xt.Equal(t, s1.GetFirst("k1"), 1)
 			xt.True(t, s1.Has("k1"))
 			xt.False(t, s1.Has("k2"))
 			xt.True(t, s1.HasValue("k1", 1, 2))
 			xt.False(t, s1.HasValue("k2", 1, 2))
 
 			s1.Set("k1", 2)
-			xt.Equal(t, []int{2}, s1.Get("k1"))
+			xt.Equal(t, s1.Get("k1"), []int{2})
 
 			s1.AddUnique("k2", 2, 3)
 			xt.True(t, s1.Has("k2"))
@@ -52,16 +52,16 @@ func TestSlice(t *testing.T) {
 			xt.False(t, s1.HasValue("k2", 4))
 
 			s1.AddUnique("k2", 4)
-			xt.Equal(t, []int{2, 3, 4}, s1.Get("k2"))
+			xt.Equal(t, s1.Get("k2"), []int{2, 3, 4})
 
 			keys := s1.Keys()
 			sort.Strings(keys)
-			xt.Equal(t, []string{"k1", "k2"}, keys)
-			xt.Equal(t, map[string][]int{"k1": {2}, "k2": {2, 3, 4}}, s1.Map(false))
+			xt.Equal(t, keys, []string{"k1", "k2"})
+			xt.Equal(t, s1.Map(false), map[string][]int{"k1": {2}, "k2": {2, 3, 4}})
 
 			s1.Delete("k3", "k1")
 			s1.DeleteValue("k2", 3, 1)
-			xt.Equal(t, map[string][]int{"k2": {2, 4}}, s1.Map(true))
+			xt.Equal(t, s1.Map(true), map[string][]int{"k2": {2, 4}})
 		}
 		check(t, &xmap.SliceValue[string, int]{})
 		check(t, &xmap.SliceValueSync[string, int]{})
@@ -70,6 +70,6 @@ func TestSlice(t *testing.T) {
 	t.Run("case 2", func(t *testing.T) {
 		s1 := &xmap.SliceValueSync[string, int]{}
 		s1.Set("k1", 1)
-		xt.Equal(t, []int{1}, s1.Get("k1"))
+		xt.Equal(t, s1.Get("k1"), []int{1})
 	})
 }

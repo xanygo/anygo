@@ -25,7 +25,7 @@ func TestInt64Cipher_Encode(t *testing.T) {
 			xt.NoError(t, err)
 			n, err := ec.Decode(str)
 			xt.NoError(t, err)
-			xt.Equal(t, num, n)
+			xt.Equal(t, n, num)
 		})
 	}
 }

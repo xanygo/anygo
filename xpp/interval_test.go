@@ -49,9 +49,9 @@ func TestInterval(t *testing.T) {
 		wg2.Wait()
 
 		it.Reset(time.Millisecond)
-		xt.Equal(t, int32(1), atomic.LoadInt32(&num))
-		xt.Equal(t, int32(1), atomic.LoadInt32(&f1))
-		xt.Equal(t, int32(2), atomic.LoadInt32(&f2))
+		xt.Equal(t, atomic.LoadInt32(&num), int32(1))
+		xt.Equal(t, atomic.LoadInt32(&f1), int32(1))
+		xt.Equal(t, atomic.LoadInt32(&f2), int32(2))
 	})
 }
 
@@ -72,6 +72,6 @@ func TestInterval2(t *testing.T) {
 		time.Sleep(time.Millisecond / 2)
 		it.Stop()
 		time.Sleep(time.Millisecond / 2)
-		xt.Equal(t, int64(9), num.Load())
+		xt.Equal(t, num.Load(), int64(9))
 	})
 }

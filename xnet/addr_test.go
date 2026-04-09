@@ -16,12 +16,12 @@ func TestNewAddr(t *testing.T) {
 	addr := NewAddr(NetworkTCP, "127.0.0.1:8080")
 	b := NewAddr(NetworkTCP, "127.0.0.1:8080")
 	xt.True(t, addr.Equal(b))
-	xt.Equal(t, "tcp", addr.Network())
-	xt.Equal(t, "127.0.0.1:8080", addr.String())
+	xt.Equal(t, addr.Network(), "tcp")
+	xt.Equal(t, addr.String(), "127.0.0.1:8080")
 
 	xt.NotNil(t, addr.Attr())
 	addr.Attr().Set("idc", "test")
-	xt.Equal(t, "test", addr.Attr().GetFirst("idc"))
+	xt.Equal(t, addr.Attr().GetFirst("idc"), "test")
 
 	ctx := ContextWithAddr(context.Background(), addr)
 	g1 := AddrFromContext(ctx)

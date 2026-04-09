@@ -135,8 +135,8 @@ func TestReadRequests(t *testing.T) {
 				t.Errorf("ReadRequests() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			xt.Equal(t, tt.want, got)
-			xt.Equal(t, tt.want1, got1)
+			xt.Equal(t, got, tt.want)
+			xt.Equal(t, got1, tt.want1)
 		})
 	}
 }
@@ -158,7 +158,7 @@ func TestReadRequests2(t *testing.T) {
 					ID:     StringID("1"),
 				},
 			}
-			xt.Equal(t, want1, reqs)
+			xt.Equal(t, reqs, want1)
 		})
 
 		t.Run("second read", func(t *testing.T) {
@@ -171,7 +171,7 @@ func TestReadRequests2(t *testing.T) {
 					ID:     StringID("2"),
 				},
 			}
-			xt.Equal(t, want1, reqs)
+			xt.Equal(t, reqs, want1)
 		})
 
 		t.Run("third read", func(t *testing.T) {
@@ -205,7 +205,7 @@ func TestReadRequests2(t *testing.T) {
 					ID:     StringID("2"),
 				},
 			}
-			xt.Equal(t, want1, reqs)
+			xt.Equal(t, reqs, want1)
 		})
 
 		t.Run("second read", func(t *testing.T) {
@@ -218,7 +218,7 @@ func TestReadRequests2(t *testing.T) {
 					ID:     StringID("3"),
 				},
 			}
-			xt.Equal(t, want1, reqs)
+			xt.Equal(t, reqs, want1)
 		})
 
 		t.Run("third read", func(t *testing.T) {

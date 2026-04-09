@@ -31,6 +31,6 @@ func TestTable1(t *testing.T) {
 			"</tbody>\n" +
 			"<tfoot>\n<tr><td>f1</td><td>f2</td></tr>\n</tfoot>\n" +
 			"</table>\n"
-		xt.Equal(t, want, string(got))
+		xt.Equal(t, string(got), want)
 	})
 }

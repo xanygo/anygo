@@ -292,7 +292,7 @@ func Test_parserRegexpPattern(t *testing.T) {
 				t.Errorf("parserRegexpPattern() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			xt.Equal(t, tt.want, got)
+			xt.Equal(t, got, tt.want)
 		})
 	}
 }

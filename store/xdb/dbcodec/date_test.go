@@ -18,7 +18,7 @@ func TestDate_Encode(t *testing.T) {
 		xt.NoError(t, err)
 		got, err := de.Encode(tm)
 		xt.NoError(t, err)
-		xt.Equal(t, "2006", got)
+		xt.Equal(t, got, "2006")
 	})
 	t.Run("not-time", func(t *testing.T) {
 		got, err := de.Encode("string")
@@ -33,7 +33,7 @@ func TestDate_Decode(t *testing.T) {
 		var tm time.Time
 		err := de.Decode("2006", &tm)
 		xt.NoError(t, err)
-		xt.Equal(t, 2006, tm.Year())
+		xt.Equal(t, tm.Year(), 2006)
 
 		err = de.Decode("hello", &tm)
 		xt.Error(t, err)

@@ -51,35 +51,35 @@ func TestValueErr(t *testing.T) {
 func TestValueInt(t *testing.T) {
 	t.Run("case 1", func(t *testing.T) {
 		nv := NewValue(0)
-		xt.Equal(t, 0, nv.Load())
+		xt.Equal(t, nv.Load(), 0)
 		xt.True(t, nv.CompareAndSwap(0, 1))
-		xt.Equal(t, 1, nv.Load())
-		xt.Equal(t, 1, nv.Swap(2))
-		xt.Equal(t, 2, nv.Load())
+		xt.Equal(t, nv.Load(), 1)
+		xt.Equal(t, nv.Swap(2), 1)
+		xt.Equal(t, nv.Load(), 2)
 	})
 	t.Run("case 2", func(t *testing.T) {
 		nv := &Value[int]{}
-		xt.Equal(t, 0, nv.Load())
+		xt.Equal(t, nv.Load(), 0)
 		xt.True(t, nv.CompareAndSwap(0, 1))
-		xt.Equal(t, 1, nv.Load())
-		xt.Equal(t, 1, nv.Swap(2))
-		xt.Equal(t, 2, nv.Load())
+		xt.Equal(t, nv.Load(), 1)
+		xt.Equal(t, nv.Swap(2), 1)
+		xt.Equal(t, nv.Load(), 2)
 	})
 
 	t.Run("case 3", func(t *testing.T) {
 		nv := &Value[int]{}
 		nv.Store(1)
-		xt.Equal(t, 1, nv.Load())
+		xt.Equal(t, nv.Load(), 1)
 		xt.True(t, nv.CompareAndSwap(1, 2))
-		xt.Equal(t, 2, nv.Swap(3))
+		xt.Equal(t, nv.Swap(3), 2)
 	})
 
 	t.Run("case 4", func(t *testing.T) {
 		nv := &Value[int]{}
-		xt.Equal(t, 0, nv.Swap(1))
-		xt.Equal(t, 1, nv.Load())
+		xt.Equal(t, nv.Swap(1), 0)
+		xt.Equal(t, nv.Load(), 1)
 		xt.True(t, nv.CompareAndSwap(1, 2))
-		xt.Equal(t, 2, nv.Swap(3))
+		xt.Equal(t, nv.Swap(3), 2)
 	})
 }
 
@@ -93,9 +93,9 @@ func TestOnceLoadValue_Store(t *testing.T) {
 	})
 	t.Run("case 2", func(t *testing.T) {
 		var vs OnceLoadValue[int]
-		xt.Equal(t, 0, vs.Load())
+		xt.Equal(t, vs.Load(), 0)
 		vs.Store(1)
-		xt.Equal(t, 1, vs.Load())
-		xt.Equal(t, 0, vs.Load())
+		xt.Equal(t, vs.Load(), 1)
+		xt.Equal(t, vs.Load(), 0)
 	})
 }

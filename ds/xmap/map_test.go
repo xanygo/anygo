@@ -16,21 +16,21 @@ func TestGet(t *testing.T) {
 	got1, ok1 := Get(m1, "k1")
 	xt.False(t, ok1)
 	xt.Empty(t, got1)
-	xt.Equal(t, 0, GetDf(m1, "k1", 0))
-	xt.Equal(t, 2, GetDf(m1, "k1", 2))
+	xt.Equal(t, GetDf(m1, "k1", 0), 0)
+	xt.Equal(t, GetDf(m1, "k1", 2), 2)
 
 	m1 = map[string]int{"k1": 1}
 	got2, ok2 := Get(m1, "k1")
 	xt.True(t, ok2)
-	xt.Equal(t, 1, got2)
-	xt.Equal(t, 1, GetDf(m1, "k1", 0))
-	xt.Equal(t, 1, GetDf(m1, "k1", 2))
+	xt.Equal(t, got2, 1)
+	xt.Equal(t, GetDf(m1, "k1", 0), 1)
+	xt.Equal(t, GetDf(m1, "k1", 2), 1)
 
 	got3, ok3 := Get(m1, "k2")
 	xt.False(t, ok3)
-	xt.Equal(t, 0, got3)
-	xt.Equal(t, 0, GetDf(m1, "k2", 0))
-	xt.Equal(t, 2, GetDf(m1, "k2", 2))
+	xt.Equal(t, got3, 0)
+	xt.Equal(t, GetDf(m1, "k2", 0), 0)
+	xt.Equal(t, GetDf(m1, "k2", 2), 2)
 }
 
 func TestRange(t *testing.T) {
@@ -48,7 +48,7 @@ func TestRange(t *testing.T) {
 		})
 		wantKeys := Keys(mp)
 		xt.SliceSortEqual(t, wantKeys, keys)
-		xt.Equal(t, 4, num)
+		xt.Equal(t, num, 4)
 
 		keys = nil
 		num = Range[string, int](mp, func(key string, val int) bool {
@@ -56,14 +56,14 @@ func TestRange(t *testing.T) {
 			return true
 		})
 		xt.SliceSortEqual(t, []string{"k1", "k2"}, keys)
-		xt.Equal(t, 2, num)
+		xt.Equal(t, num, 2)
 	})
 
 	t.Run("nil map", func(t *testing.T) {
 		num := Range[string, any](nil, func(key string, val any) bool {
 			return true
 		})
-		xt.Equal(t, 0, num)
+		xt.Equal(t, num, 0)
 	})
 
 	t.Run("empty map", func(t *testing.T) {
@@ -71,6 +71,6 @@ func TestRange(t *testing.T) {
 		num := Range[string, any](m, func(key string, val any) bool {
 			return true
 		})
-		xt.Equal(t, 0, num)
+		xt.Equal(t, num, 0)
 	})
 }

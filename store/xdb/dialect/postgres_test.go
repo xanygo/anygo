@@ -49,7 +49,7 @@ func Test_pgAnyArrayCodec_Decode(t *testing.T) {
 				t.Errorf("Decode() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if err != nil {
-				xt.Equal(t, tt.want, tt.args.a)
+				xt.Equal(t, tt.args.a, tt.want)
 			}
 		})
 	}

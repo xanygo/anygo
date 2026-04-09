@@ -115,5 +115,5 @@ func TestParseExtra(t *testing.T) {
 			},
 		},
 	}
-	xt.Equal(t, fmt.Sprintf("%#v", want.Extra), fmt.Sprintf("%#v", obj.Extra))
+	xt.Equal(t, fmt.Sprintf("%#v", obj.Extra), fmt.Sprintf("%#v", want.Extra))
 }

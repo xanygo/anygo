@@ -71,7 +71,7 @@ func TestAntiTheft_check(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, tt.url, nil)
 			req.Header.Set("referer", tt.refer)
-			xt.Equal(t, tt.want, tt.at.check(req))
+			xt.Equal(t, tt.at.check(req), tt.want)
 		})
 	}
 }

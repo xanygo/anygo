@@ -25,8 +25,8 @@ func TestRunVoid(t *testing.T) {
 		num++
 		panic("hello")
 	})
-	xt.Equal(t, 2, num)
-	xt.Equal(t, 1, reNum)
+	xt.Equal(t, num, 2)
+	xt.Equal(t, reNum, 1)
 }
 
 func TestRun(t *testing.T) {
@@ -36,7 +36,7 @@ func TestRun(t *testing.T) {
 		num++
 		return nil
 	}))
-	xt.Equal(t, 2, num)
+	xt.Equal(t, num, 2)
 
 	xt.Error(t, Run(func() {
 		num++
@@ -46,7 +46,7 @@ func TestRun(t *testing.T) {
 		num++
 		panic("hello")
 	}))
-	xt.Equal(t, 4, num)
+	xt.Equal(t, num, 4)
 }
 
 func TestRunCtxVoid(t *testing.T) {
@@ -59,7 +59,7 @@ func TestRunCtxVoid(t *testing.T) {
 		num++
 		panic("hello")
 	})
-	xt.Equal(t, 2, num)
+	xt.Equal(t, num, 2)
 }
 
 func TestRunCtx(t *testing.T) {
@@ -69,7 +69,7 @@ func TestRunCtx(t *testing.T) {
 		num++
 		return nil
 	}))
-	xt.Equal(t, 2, num)
+	xt.Equal(t, num, 2)
 
 	xt.Error(t, RunCtx(context.Background(), func(ctx context.Context) {
 		num++
@@ -79,5 +79,5 @@ func TestRunCtx(t *testing.T) {
 		num++
 		panic("hello")
 	}))
-	xt.Equal(t, 4, num)
+	xt.Equal(t, num, 4)
 }

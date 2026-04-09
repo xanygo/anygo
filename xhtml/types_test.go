@@ -17,7 +17,7 @@ func TestStringSlice_Codes(t *testing.T) {
 		got, err := a.Elements("li", nil).HTML()
 		xt.NoError(t, err)
 		want := ``
-		xt.Equal(t, want, string(got))
+		xt.Equal(t, string(got), want)
 	})
 
 	t.Run("1 value", func(t *testing.T) {
@@ -27,7 +27,7 @@ func TestStringSlice_Codes(t *testing.T) {
 		}).HTML()
 		xt.NoError(t, err)
 		want := `<li class="red">123</li>`
-		xt.Equal(t, want, string(got))
+		xt.Equal(t, string(got), want)
 	})
 
 	t.Run("2 value", func(t *testing.T) {
@@ -35,7 +35,7 @@ func TestStringSlice_Codes(t *testing.T) {
 		got, err := a.Elements("li", nil).HTML()
 		xt.NoError(t, err)
 		want := "<li>123</li><li>456</li>"
-		xt.Equal(t, want, string(got))
+		xt.Equal(t, string(got), want)
 	})
 }
 
@@ -44,5 +44,5 @@ func TestStringSlice_HTML(t *testing.T) {
 	b, err := ss.HTML()
 	xt.NoError(t, err)
 	want := "<ul><li>hello</li><li>world</li></ul>"
-	xt.Equal(t, want, string(b))
+	xt.Equal(t, string(b), want)
 }

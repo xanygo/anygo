@@ -24,7 +24,7 @@ func TestCodecWithCipher(t *testing.T) {
 		var str string
 		err = coder.Decode(got1, &str)
 		xt.NoError(t, err)
-		xt.Equal(t, input, str)
+		xt.Equal(t, str, input)
 	})
 
 	t.Run("case 2", func(t *testing.T) {
@@ -37,7 +37,7 @@ func TestCodecWithCipher(t *testing.T) {
 		var want map[string]any
 		err = coder.Decode(got1, &want)
 		xt.NoError(t, err)
-		xt.Equal(t, input, want)
+		xt.Equal(t, want, input)
 	})
 	t.Run("case 3", func(t *testing.T) {
 		input := map[string]any{
@@ -49,6 +49,6 @@ func TestCodecWithCipher(t *testing.T) {
 		var want map[string]any
 		err = xcodec.DecodeFromString(coder, got1, &want)
 		xt.NoError(t, err)
-		xt.Equal(t, input, want)
+		xt.Equal(t, want, input)
 	})
 }

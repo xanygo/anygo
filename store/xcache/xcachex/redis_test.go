@@ -37,14 +37,14 @@ func TestRedis(t *testing.T) {
 
 	val, err := rc.Get(ctx, "k1")
 	xt.NoError(t, err)
-	xt.Equal(t, "v1", val)
+	xt.Equal(t, val, "v1")
 
 	err = rc.Delete(ctx, "k1")
 	xt.NoError(t, err)
 
 	val, err = rc.Get(ctx, "k1")
 	xt.ErrorIs(t, err, xerror.NotFound)
-	xt.Equal(t, "", val)
+	xt.Equal(t, val, "")
 
 	vs := map[string]string{
 		"k2": "v2",
@@ -55,5 +55,5 @@ func TestRedis(t *testing.T) {
 
 	values, err := rc.MGet(ctx, "k1", "k2", "k3")
 	xt.NoError(t, err)
-	xt.Equal(t, vs, values)
+	xt.Equal(t, values, vs)
 }

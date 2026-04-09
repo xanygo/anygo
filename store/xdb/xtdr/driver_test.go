@@ -29,8 +29,8 @@ func TestRegister(t *testing.T) {
 			var name string
 			err = rows.Scan(&id, &name)
 			xt.NoError(t, err)
-			xt.Equal(t, 1, id)
-			xt.Equal(t, "hello", name)
+			xt.Equal(t, id, 1)
+			xt.Equal(t, name, "hello")
 		}
 		xt.NoError(t, rows.Err())
 		xt.NoError(t, rows.Close())
@@ -46,11 +46,11 @@ func TestRegister(t *testing.T) {
 		xt.NoError(t, err)
 		num1, err1 := ret.RowsAffected()
 		xt.NoError(t, err1)
-		xt.Equal(t, 2, num1)
+		xt.Equal(t, num1, 2)
 
 		num2, err2 := ret.LastInsertId()
 		xt.NoError(t, err2)
-		xt.Equal(t, 3, num2)
+		xt.Equal(t, num2, 3)
 
 		ret, err = db.Exec("delete 1")
 		xt.Error(t, err)

@@ -29,9 +29,9 @@ func TestAttributes(t *testing.T) {
 		bf, err := attrs.HTML()
 		xt.NoError(t, err)
 		want := `id="#abc" name="hello" class="c3 c5" value="\"你好<>\""`
-		xt.Equal(t, want, string(bf))
+		xt.Equal(t, string(bf), want)
 
 		wantKeys := []string{"id", "name", "class", "value"}
-		xt.Equal(t, wantKeys, attrs.Keys())
+		xt.Equal(t, attrs.Keys(), wantKeys)
 	})
 }

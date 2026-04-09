@@ -46,16 +46,16 @@ func TestFileStorageCipher(t *testing.T) {
 
 		num, err := store.RPush(context.Background(), u1)
 		xt.NoError(t, err)
-		xt.Equal(t, num, 1)
+		xt.Equal(t, 1, num)
 
 		var cnt int
 		err = store.Range(context.Background(), func(val user) bool {
-			xt.Equal(t, u1, val)
+			xt.Equal(t, val, u1)
 			cnt++
 			return true
 		})
 		xt.NoError(t, err)
-		xt.Equal(t, 1, cnt)
+		xt.Equal(t, cnt, 1)
 	})
 
 	t.Run("hash", func(t *testing.T) {
@@ -75,12 +75,12 @@ func TestFileStorageCipher(t *testing.T) {
 		xt.NoError(t, err)
 		var cnt int
 		err = store.ZRange(context.Background(), func(member user, score float64) bool {
-			xt.Equal(t, u1.Name, member.Name)
-			xt.Equal(t, 1, score)
+			xt.Equal(t, member.Name, u1.Name)
+			xt.Equal(t, score, 1)
 			cnt++
 			return true
 		})
 		xt.NoError(t, err)
-		xt.Equal(t, 1, cnt)
+		xt.Equal(t, cnt, 1)
 	})
 }

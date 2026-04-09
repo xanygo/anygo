@@ -51,18 +51,18 @@ func TestTopK(t *testing.T) {
 
 		ct, err := client.TopKCount(ctx, "TopKAdd-1", "f1")
 		xt.NoError(t, err)
-		xt.Equal(t, 1, ct)
+		xt.Equal(t, ct, 1)
 
 		info, err := client.TopKInfo(ctx, "TopKAdd-1")
 		xt.NoError(t, err)
-		xt.Equal(t, TopKInfo{K: 10, Width: 8, Depth: 7, Decay: 0.925}, info)
+		xt.Equal(t, info, TopKInfo{K: 10, Width: 8, Depth: 7, Decay: 0.925})
 	})
 
 	t.Run("TopKCount", func(t *testing.T) {
 		got, err := client.TopKCount(ctx, "TopKCount-1", "f1")
 		xt.ErrorContains(t, err, "TopK: key does not exist")
 		xt.True(t, xerror.IsNotFound(err))
-		xt.Equal(t, 0, got)
+		xt.Equal(t, got, 0)
 	})
 
 	t.Run("TopKIncrBy", func(t *testing.T) {

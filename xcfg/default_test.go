@@ -137,7 +137,7 @@ func TestParse(t *testing.T) {
 				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !tt.wantErr {
-				xt.Equal(t, tt.want, tt.args.obj)
+				xt.Equal(t, tt.args.obj, tt.want)
 			}
 		})
 	}

@@ -20,7 +20,7 @@ func TestNewMemoryStore(t *testing.T) {
 	session.Set(context.Background(), "k1", "v1")
 	got1, err1 := session.Get(context.Background(), "k1")
 	xt.NoError(t, err1)
-	xt.Equal(t, "v1", got1)
+	xt.Equal(t, got1, "v1")
 	session.Delete(context.Background(), "k1")
 
 	got2, err2 := session.Get(context.Background(), "k1")

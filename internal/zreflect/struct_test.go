@@ -26,8 +26,8 @@ func TestRangeStructFields(t *testing.T) {
 			return nil
 		})
 		xt.NoError(t, err)
-		xt.Equal(t, []string{"Fields"}, names)
-		xt.Equal(t, 1, zreflect.StructMetaCache.Count())
+		xt.Equal(t, names, []string{"Fields"})
+		xt.Equal(t, zreflect.StructMetaCache.Count(), 1)
 	})
 
 	t.Run("structMeta", func(t *testing.T) {
@@ -38,9 +38,9 @@ func TestRangeStructFields(t *testing.T) {
 			return nil
 		})
 		xt.NoError(t, err)
-		xt.Equal(t, []string{"Fields"}, names)
+		xt.Equal(t, names, []string{"Fields"})
 
-		xt.Equal(t, 2, zreflect.StructMetaCache.Count())
+		xt.Equal(t, zreflect.StructMetaCache.Count(), 2)
 	})
 
 	type user struct {
@@ -59,7 +59,7 @@ func TestRangeStructFields(t *testing.T) {
 		xt.NoError(t, err)
 		xt.SliceSortEqual(t, []string{"Name", "Class", "age"}, names)
 
-		xt.Equal(t, 3, zreflect.StructMetaCache.Count())
+		xt.Equal(t, zreflect.StructMetaCache.Count(), 3)
 	})
 }
 

@@ -17,28 +17,28 @@ func TestQueue_Push(t *testing.T) {
 		for i := range 10 {
 			xt.True(t, q.Push(i))
 		}
-		xt.Equal(t, 10, q.Len())
+		xt.Equal(t, q.Len(), 10)
 
 		for i := range 10 {
 			got, ok := q.Pop()
 			xt.True(t, ok)
-			xt.Equal(t, i, got)
+			xt.Equal(t, got, i)
 		}
-		xt.Equal(t, 0, q.Len())
+		xt.Equal(t, q.Len(), 0)
 
 		got, ok := q.Pop()
 		xt.False(t, ok)
-		xt.Equal(t, 0, got)
+		xt.Equal(t, got, 0)
 
 		for i := range 10 {
 			xt.True(t, q.Push(i))
 		}
-		xt.Equal(t, 2, q.Discard(2))
-		xt.Equal(t, 8, q.Len())
-		xt.Equal(t, 8, q.Discard(10))
-		xt.Equal(t, 0, q.Len())
-		xt.Equal(t, 0, q.Discard(10))
-		xt.Equal(t, 0, q.Len())
+		xt.Equal(t, q.Discard(2), 2)
+		xt.Equal(t, q.Len(), 8)
+		xt.Equal(t, q.Discard(10), 8)
+		xt.Equal(t, q.Len(), 0)
+		xt.Equal(t, q.Discard(10), 0)
+		xt.Equal(t, q.Len(), 0)
 	})
 
 	t.Run("case 2", func(t *testing.T) {
@@ -53,12 +53,12 @@ func TestQueue_Push(t *testing.T) {
 		for i := range 3 {
 			got, ok := q.Pop()
 			xt.True(t, ok)
-			xt.Equal(t, i, got)
+			xt.Equal(t, got, i)
 		}
 
 		got, ok := q.Pop()
 		xt.False(t, ok)
-		xt.Equal(t, 0, got)
+		xt.Equal(t, got, 0)
 	})
 }
 
@@ -68,29 +68,29 @@ func TestSyncQueue_Push(t *testing.T) {
 		for i := range 10 {
 			xt.True(t, q.Push(i))
 		}
-		xt.Equal(t, 10, q.Len())
+		xt.Equal(t, q.Len(), 10)
 
 		for i := range 10 {
 			got, ok := q.Pop()
 			xt.True(t, ok)
-			xt.Equal(t, i, got)
+			xt.Equal(t, got, i)
 		}
 
-		xt.Equal(t, 0, q.Len())
+		xt.Equal(t, q.Len(), 0)
 
 		got, ok := q.Pop()
 		xt.False(t, ok)
-		xt.Equal(t, 0, got)
+		xt.Equal(t, got, 0)
 
 		for i := range 10 {
 			xt.True(t, q.Push(i))
 		}
-		xt.Equal(t, 2, q.Discard(2))
-		xt.Equal(t, 8, q.Len())
-		xt.Equal(t, 8, q.Discard(10))
-		xt.Equal(t, 0, q.Len())
-		xt.Equal(t, 0, q.Discard(10))
-		xt.Equal(t, 0, q.Len())
+		xt.Equal(t, q.Discard(2), 2)
+		xt.Equal(t, q.Len(), 8)
+		xt.Equal(t, q.Discard(10), 8)
+		xt.Equal(t, q.Len(), 0)
+		xt.Equal(t, q.Discard(10), 0)
+		xt.Equal(t, q.Len(), 0)
 	})
 
 	t.Run("case 2", func(t *testing.T) {
@@ -105,11 +105,11 @@ func TestSyncQueue_Push(t *testing.T) {
 		for i := range 3 {
 			got, ok := q.Pop()
 			xt.True(t, ok)
-			xt.Equal(t, i, got)
+			xt.Equal(t, got, i)
 		}
 
 		got, ok := q.Pop()
 		xt.False(t, ok)
-		xt.Equal(t, 0, got)
+		xt.Equal(t, got, 0)
 	})
 }

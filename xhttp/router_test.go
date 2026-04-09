@@ -19,7 +19,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 	router := NewRouter()
 	var called atomic.Int64
 	checkCalled := func(t *testing.T) {
-		xt.Equal(t, 1, called.Load())
+		xt.Equal(t, called.Load(), 1)
 		called.Store(0)
 	}
 	router.Use(func(handler http.Handler) http.Handler {
@@ -31,7 +31,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 	})
 	router.Use(func(handler http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			xt.Equal(t, 1, called.Load())
+			xt.Equal(t, called.Load(), 1)
 			handler.ServeHTTP(w, r)
 		})
 	})
@@ -72,7 +72,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		xt.NoError(t, err)
 		xt.NoError(t, iotest.TestReader(res.Body, []byte("GET index /")))
 		xt.NoError(t, res.Body.Close())
-		xt.Equal(t, http.StatusOK, res.StatusCode)
+		xt.Equal(t, res.StatusCode, http.StatusOK)
 		checkCalled(t)
 	})
 
@@ -81,7 +81,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		xt.NoError(t, err)
 		xt.NoError(t, iotest.TestReader(res.Body, []byte("GET index.list /index/list")))
 		xt.NoError(t, res.Body.Close())
-		xt.Equal(t, http.StatusOK, res.StatusCode)
+		xt.Equal(t, res.StatusCode, http.StatusOK)
 		checkCalled(t)
 	})
 
@@ -90,7 +90,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		xt.NoError(t, err)
 		xt.NoError(t, iotest.TestReader(res.Body, []byte("Not-Found /index/404")))
 		xt.NoError(t, res.Body.Close())
-		xt.Equal(t, http.StatusNotFound, res.StatusCode)
+		xt.Equal(t, res.StatusCode, http.StatusNotFound)
 		checkCalled(t)
 	})
 
@@ -100,7 +100,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		xt.NoError(t, err)
 		xt.NoError(t, iotest.TestReader(res.Body, []byte("GET index /")))
 		xt.NoError(t, res.Body.Close())
-		xt.Equal(t, http.StatusOK, res.StatusCode)
+		xt.Equal(t, res.StatusCode, http.StatusOK)
 		checkCalled(t)
 	})
 
@@ -109,7 +109,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		xt.NoError(t, err)
 		xt.NoError(t, iotest.TestReader(res.Body, []byte("POST index /index")))
 		xt.NoError(t, res.Body.Close())
-		xt.Equal(t, http.StatusOK, res.StatusCode)
+		xt.Equal(t, res.StatusCode, http.StatusOK)
 		checkCalled(t)
 	})
 
@@ -119,7 +119,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		xt.NoError(t, err)
 		xt.NoError(t, iotest.TestReader(res.Body, []byte("PUT user /user/1, id=1")))
 		xt.NoError(t, res.Body.Close())
-		xt.Equal(t, http.StatusOK, res.StatusCode)
+		xt.Equal(t, res.StatusCode, http.StatusOK)
 		checkCalled(t)
 	})
 
@@ -129,7 +129,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		xt.NoError(t, err)
 		xt.NoError(t, iotest.TestReader(res.Body, []byte("PUT user.html /user/1.html, id=1")))
 		xt.NoError(t, res.Body.Close())
-		xt.Equal(t, http.StatusOK, res.StatusCode)
+		xt.Equal(t, res.StatusCode, http.StatusOK)
 		checkCalled(t)
 	})
 
@@ -139,7 +139,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		xt.NoError(t, err)
 		xt.NoError(t, iotest.TestReader(res.Body, []byte("DELETE /user/1 NOT Found")))
 		xt.NoError(t, res.Body.Close())
-		xt.Equal(t, http.StatusNotFound, res.StatusCode)
+		xt.Equal(t, res.StatusCode, http.StatusNotFound)
 		checkCalled(t)
 	})
 
@@ -149,7 +149,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		const body = `{"Method":"GET","Pattern":"/index/routeInfo","Path":"/index/routeInfo","MetaID":"1","MetaOther":{"k1":"v1"}}`
 		xt.NoError(t, iotest.TestReader(res.Body, []byte(body+"\n")))
 		xt.NoError(t, res.Body.Close())
-		xt.Equal(t, http.StatusOK, res.StatusCode)
+		xt.Equal(t, res.StatusCode, http.StatusOK)
 		checkCalled(t)
 	})
 }
@@ -160,26 +160,26 @@ func TestRouter_Use(t *testing.T) {
 	var num atomic.Int64
 	router.Use(func(handler http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			xt.Equal(t, 1, num.Add(1)) // 执行顺序 1
+			xt.Equal(t, num.Add(1), 1) // 执行顺序 1
 			handler.ServeHTTP(w, r)
-			xt.Equal(t, 1+3+5+7, num.Load()) // 执行顺序 7
+			xt.Equal(t, num.Load(), 1+3+5+7) // 执行顺序 7
 		})
 	})
 	router.Use(func(handler http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			xt.Equal(t, 1+3, num.Add(3)) // 执行顺序 2
+			xt.Equal(t, num.Add(3), 1+3) // 执行顺序 2
 			handler.ServeHTTP(w, r)
-			xt.Equal(t, 1+3+5+7, num.Load()) // 执行顺序 6
+			xt.Equal(t, num.Load(), 1+3+5+7) // 执行顺序 6
 		})
 	})
 	router.GetFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		xt.Equal(t, 1+3+5+7, num.Add(7)) // 执行顺序 4
+		xt.Equal(t, num.Add(7), 1+3+5+7) // 执行顺序 4
 		_, _ = w.Write([]byte("ok"))
 	}, func(handler http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			xt.Equal(t, 1+3+5, num.Add(5)) // 执行顺序 3
+			xt.Equal(t, num.Add(5), 1+3+5) // 执行顺序 3
 			handler.ServeHTTP(w, r)
-			xt.Equal(t, 1+3+5+7, num.Load()) // 执行顺序 5
+			xt.Equal(t, num.Load(), 1+3+5+7) // 执行顺序 5
 		})
 	})
 	ts := httptest.NewServer(router)
@@ -195,34 +195,34 @@ func TestRouter_Prefix(t *testing.T) {
 	router.Use(func(handler http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			log.Println("run md-1-1")
-			xt.Equal(t, 1, num.Add(1)) // 执行顺序 1
+			xt.Equal(t, num.Add(1), 1) // 执行顺序 1
 
 			ri := ReadRouteInfo(r.Context())
-			xt.Equal(t, http.MethodGet, ri.Method)
-			xt.Equal(t, http.MethodGet, r.Method)
-			xt.Equal(t, "/api/index", ri.Path)
+			xt.Equal(t, ri.Method, http.MethodGet)
+			xt.Equal(t, r.Method, http.MethodGet)
+			xt.Equal(t, ri.Path, "/api/index")
 
 			session, _ := ri.GetMeta("session")
-			xt.Equal(t, "no", session)
+			xt.Equal(t, session, "no")
 
 			handler.ServeHTTP(w, r)
 			log.Println("run md-1-2")
-			xt.Equal(t, 1+3+5, num.Load()) // 执行顺序 5
+			xt.Equal(t, num.Load(), 1+3+5) // 执行顺序 5
 		})
 	})
 	p := router.Prefix("/api/", func(handler http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			log.Println("run md-2-1") // 执行顺序 2
-			xt.Equal(t, 1, num.Load())
+			xt.Equal(t, num.Load(), 1)
 			handler.ServeHTTP(w, r)
 			log.Println("run md-2-2") // 执行顺序 4
-			xt.Equal(t, 1+3+5, num.Add(5))
+			xt.Equal(t, num.Add(5), 1+3+5)
 		})
 	})
 	p.GetFunc("/index meta|session=no", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("run handler-3") // 执行顺序 3
-		xt.Equal(t, 1, num.Load())
-		xt.Equal(t, 1+3, num.Add(3))
+		xt.Equal(t, num.Load(), 1)
+		xt.Equal(t, num.Add(3), 1+3)
 		_, _ = w.Write([]byte("ok"))
 	})
 	ts := httptest.NewServer(router)

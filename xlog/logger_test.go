@@ -28,16 +28,16 @@ func TestSimple(t *testing.T) {
 
 		meta, ok := data["meta"].(map[string]any)
 		xt.True(t, ok)
-		xt.Equal(t, "v1", meta["k1"])
+		xt.Equal(t, meta["k1"], "v1")
 
 		attr, ok := data["attr"].(map[string]any)
 		xt.True(t, ok)
 
-		xt.Equal(t, "v2", attr["k2"])
-		xt.Equal(t, "v3", attr["k3"])
+		xt.Equal(t, attr["k2"], "v2")
+		xt.Equal(t, attr["k3"], "v3")
 
-		xt.Equal(t, "hello", data["msg"])
-		xt.Equal(t, level.String(), data["level"].(string))
+		xt.Equal(t, data["msg"], "hello")
+		xt.Equal(t, data["level"].(string), level.String())
 		bf.Reset()
 	}
 	t.Run("info", func(t *testing.T) {

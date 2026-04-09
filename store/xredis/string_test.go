@@ -38,11 +38,11 @@ func TestClientString(t *testing.T) {
 		xt.NoError(t, err)
 		value, err := client.Get(ctx, "k1")
 		xt.NoError(t, err)
-		xt.Equal(t, "v1", value)
+		xt.Equal(t, value, "v1")
 
 		num, err := client.Del(ctx, "k1", "k2")
 		xt.NoError(t, err)
-		xt.Equal(t, 1, num)
+		xt.Equal(t, num, 1)
 
 		value, err = client.Get(ctx, "k1")
 		xt.ErrorIs(t, err, ErrNil)
@@ -89,23 +89,23 @@ func TestClientString(t *testing.T) {
 
 		num, err := client.Incr(ctx, "incr-1") // invalid type
 		xt.Error(t, err)
-		xt.Equal(t, 0, num)
+		xt.Equal(t, num, 0)
 
 		num, err = client.Incr(ctx, "incr-2")
 		xt.NoError(t, err)
-		xt.Equal(t, 1, num)
+		xt.Equal(t, num, 1)
 
 		num, err = client.IncrBy(ctx, "incr-2", 3)
 		xt.NoError(t, err)
-		xt.Equal(t, 4, num)
+		xt.Equal(t, num, 4)
 
 		num, err = client.Decr(ctx, "incr-2")
 		xt.NoError(t, err)
-		xt.Equal(t, 3, num)
+		xt.Equal(t, num, 3)
 
 		num, err = client.DecrBy(ctx, "incr-2", 2)
 		xt.NoError(t, err)
-		xt.Equal(t, 1, num)
+		xt.Equal(t, num, 1)
 	})
 
 	t.Run("GetDel", func(t *testing.T) {
@@ -114,63 +114,63 @@ func TestClientString(t *testing.T) {
 
 		val, err := client.GetDel(ctx, "GetDel-1")
 		xt.NoError(t, err)
-		xt.Equal(t, "v3", val)
+		xt.Equal(t, val, "v3")
 
 		val, err = client.GetDel(ctx, "GetDel-1")
 		xt.ErrorIs(t, err, ErrNil)
-		xt.Equal(t, "", val)
+		xt.Equal(t, val, "")
 	})
 
 	t.Run("GetSet", func(t *testing.T) {
 		val, err := client.GetSet(ctx, "k5", "v5")
 		xt.ErrorIs(t, err, ErrNil)
-		xt.Equal(t, "", val)
+		xt.Equal(t, val, "")
 
 		val, err = client.GetSet(ctx, "k5", "v5-1")
 		xt.NoError(t, err)
-		xt.Equal(t, "v5", val)
+		xt.Equal(t, val, "v5")
 
 		val, err = client.GetSet(ctx, "k5", "v5-2")
 		xt.NoError(t, err)
-		xt.Equal(t, "v5-1", val)
+		xt.Equal(t, val, "v5-1")
 	})
 
 	t.Run("getrange", func(t *testing.T) {
 		val, err := client.GetRange(ctx, "k6", 0, 4)
 		xt.NoError(t, err)
-		xt.Equal(t, "", val)
+		xt.Equal(t, val, "")
 
 		xt.NoError(t, client.Set(ctx, "k6", "hello-world"))
 
 		val, err = client.GetRange(ctx, "k6", 0, 4)
 		xt.NoError(t, err)
-		xt.Equal(t, "hello", val)
+		xt.Equal(t, val, "hello")
 
 		val, err = client.GetRange(ctx, "k6", 0, 100)
 		xt.NoError(t, err)
-		xt.Equal(t, "hello-world", val)
+		xt.Equal(t, val, "hello-world")
 	})
 
 	t.Run("echo", func(t *testing.T) {
 		val, err := client.Echo(ctx, "hello")
 		xt.NoError(t, err)
-		xt.Equal(t, "hello", val)
+		xt.Equal(t, val, "hello")
 	})
 
 	t.Run("IncrBy", func(t *testing.T) {
 		got, err := client.IncrBy(ctx, "IncrBy-1", 2)
 		xt.NoError(t, err)
-		xt.Equal(t, 2, got)
+		xt.Equal(t, got, 2)
 
 		got, err = client.DecrBy(ctx, "IncrBy-1", 1)
 		xt.NoError(t, err)
-		xt.Equal(t, 1, got)
+		xt.Equal(t, got, 1)
 	})
 
 	t.Run("IncrByFloat", func(t *testing.T) {
 		got, err := client.IncrByFloat(ctx, "IncrByFloat-1", 1.2)
 		xt.NoError(t, err)
-		xt.Equal(t, 1.2, got)
+		xt.Equal(t, got, 1.2)
 	})
 }
 

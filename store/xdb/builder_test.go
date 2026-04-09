@@ -20,6 +20,6 @@ func TestInsertBuilder_Build(t *testing.T) {
 	t1.Values(map[string]any{"id": 1, "name": "hello"})
 	str, arg, err = t1.Build()
 	xt.NoError(t, err)
-	xt.Equal(t, "INSERT INTO user (id,name) VALUES (?,?)", str)
-	xt.Equal(t, []any{1, "hello"}, arg)
+	xt.Equal(t, str, "INSERT INTO user (id,name) VALUES (?,?)")
+	xt.Equal(t, arg, []any{1, "hello"})
 }

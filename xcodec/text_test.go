@@ -15,46 +15,46 @@ func TestText(t *testing.T) {
 	t.Run("string-1", func(t *testing.T) {
 		out, err := tc.Encode("string")
 		xt.NoError(t, err)
-		xt.Equal(t, "string", string(out))
+		xt.Equal(t, string(out), "string")
 
 		var str string
 		err = tc.Decode([]byte("string"), &str)
 		xt.NoError(t, err)
-		xt.Equal(t, "string", str)
+		xt.Equal(t, str, "string")
 	})
 
 	t.Run("my-string", func(t *testing.T) {
 		type myString string
 		out, err := tc.Encode(myString("string"))
 		xt.NoError(t, err)
-		xt.Equal(t, "string", string(out))
+		xt.Equal(t, string(out), "string")
 
 		var str myString
 		err = tc.Decode([]byte("string"), &str)
 		xt.NoError(t, err)
-		xt.Equal(t, "string", str)
+		xt.Equal(t, str, "string")
 	})
 
 	t.Run("int-1", func(t *testing.T) {
 		out, err := tc.Encode(123)
 		xt.NoError(t, err)
-		xt.Equal(t, "123", string(out))
+		xt.Equal(t, string(out), "123")
 
 		var str int
 		err = tc.Decode([]byte("123"), &str)
 		xt.NoError(t, err)
-		xt.Equal(t, 123, str)
+		xt.Equal(t, str, 123)
 	})
 
 	t.Run("bytes", func(t *testing.T) {
 		out, err := tc.Encode([]byte("string"))
 		xt.NoError(t, err)
-		xt.Equal(t, "string", string(out))
+		xt.Equal(t, string(out), "string")
 
 		var str []byte
 		err = tc.Decode([]byte("string"), &str)
 		xt.NoError(t, err)
-		xt.Equal(t, "string", string(str))
+		xt.Equal(t, string(str), "string")
 	})
 
 	getIntPtr := func(num int64) *int64 {
@@ -64,11 +64,11 @@ func TestText(t *testing.T) {
 		itp1 := getIntPtr(123)
 		out, err := tc.Encode(itp1)
 		xt.NoError(t, err)
-		xt.Equal(t, "123", string(out))
+		xt.Equal(t, string(out), "123")
 
 		var num1 *int64
 		err = tc.Decode([]byte("123"), &num1)
 		xt.NoError(t, err)
-		xt.Equal(t, 123, *num1)
+		xt.Equal(t, *num1, 123)
 	})
 }

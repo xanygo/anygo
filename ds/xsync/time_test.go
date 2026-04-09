@@ -19,7 +19,7 @@ func TestTimeStamp(t *testing.T) {
 	now := time.Now()
 	a.Store(now)
 	got2 := a.Load()
-	xt.Equal(t, now.UnixNano(), got2.UnixNano())
+	xt.Equal(t, got2.UnixNano(), now.UnixNano())
 
 	t2 := now.Add(time.Second)
 	xt.True(t, a.Before(t2))
@@ -27,7 +27,7 @@ func TestTimeStamp(t *testing.T) {
 	t3 := now.Add(-1 * time.Second)
 	xt.True(t, a.After(t3))
 
-	xt.Equal(t, time.Second, a.Sub(t3))
+	xt.Equal(t, a.Sub(t3), time.Second)
 
 	xt.GreaterOrEqual(t, a.Since(time.Now()), time.Duration(0))
 }

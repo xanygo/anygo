@@ -15,14 +15,14 @@ func TestBaseTypeToString(t *testing.T) {
 	t.Run("int", func(t *testing.T) {
 		str, ok := zreflect.BaseTypeToString(123)
 		xt.True(t, ok)
-		xt.Equal(t, "123", str)
+		xt.Equal(t, str, "123")
 	})
 
 	t.Run("int-ptr", func(t *testing.T) {
 		num := 123
 		str, ok := zreflect.BaseTypeToString(&num)
 		xt.True(t, ok)
-		xt.Equal(t, "123", str)
+		xt.Equal(t, str, "123")
 	})
 
 	t.Run("int-ptr-ptr", func(t *testing.T) {
@@ -30,14 +30,14 @@ func TestBaseTypeToString(t *testing.T) {
 		np := &num
 		str, ok := zreflect.BaseTypeToString(&np)
 		xt.True(t, ok)
-		xt.Equal(t, "123", str)
+		xt.Equal(t, str, "123")
 	})
 
 	t.Run("my-int", func(t *testing.T) {
 		type myInt int
 		str, ok := zreflect.BaseTypeToString(myInt(123))
 		xt.True(t, ok)
-		xt.Equal(t, "123", str)
+		xt.Equal(t, str, "123")
 	})
 }
 
@@ -45,28 +45,28 @@ func TestBaseTypeToInt64(t *testing.T) {
 	t.Run("int", func(t *testing.T) {
 		num, ok := zreflect.BaseTypeToInt64(123)
 		xt.True(t, ok)
-		xt.Equal(t, int64(123), num)
+		xt.Equal(t, num, int64(123))
 	})
 	t.Run("int-ptr", func(t *testing.T) {
 		num1 := 123
 		num, ok := zreflect.BaseTypeToInt64(&num1)
 		xt.True(t, ok)
-		xt.Equal(t, int64(123), num)
+		xt.Equal(t, num, int64(123))
 	})
 	t.Run("my-int", func(t *testing.T) {
 		type myInt int
 		num, ok := zreflect.BaseTypeToInt64(myInt(123))
 		xt.True(t, ok)
-		xt.Equal(t, int64(123), num)
+		xt.Equal(t, num, int64(123))
 	})
 
 	t.Run("bool", func(t *testing.T) {
 		num, ok := zreflect.BaseTypeToInt64(true)
 		xt.True(t, ok)
-		xt.Equal(t, int64(1), num)
+		xt.Equal(t, num, int64(1))
 
 		num, ok = zreflect.BaseTypeToInt64(false)
 		xt.True(t, ok)
-		xt.Equal(t, int64(0), num)
+		xt.Equal(t, num, int64(0))
 	})
 }

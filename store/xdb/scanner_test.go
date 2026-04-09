@@ -26,7 +26,7 @@ func TestScanRows(t *testing.T) {
 			{ID: 1, Name: "hello"},
 			{ID: 2, Name: "world"},
 		}
-		xt.Equal(t, want, users)
+		xt.Equal(t, users, want)
 	})
 
 	t.Run("case 2", func(t *testing.T) {
@@ -39,7 +39,7 @@ func TestScanRows(t *testing.T) {
 			{"id": int64(1), "name": "hello"},
 			{"id": int64(2), "name": "world"},
 		}
-		xt.Equal(t, want, users)
+		xt.Equal(t, users, want)
 	})
 
 	t.Run("case 3", func(t *testing.T) {
@@ -52,7 +52,7 @@ func TestScanRows(t *testing.T) {
 			{IDs1: []int{1}, Bs1: []byte("hello")},
 			{IDs1: nil, Bs1: []byte("world")},
 		}
-		xt.Equal(t, want, users)
+		xt.Equal(t, users, want)
 	})
 
 	t.Run("case 4", func(t *testing.T) {
@@ -65,7 +65,7 @@ func TestScanRows(t *testing.T) {
 			{CSV1: []int{1, 2}, MP1: map[string]string{"k1": "v1"}},
 			{CSV1: nil, MP1: nil},
 		}
-		xt.Equal(t, want, users)
+		xt.Equal(t, users, want)
 	})
 }
 
@@ -83,7 +83,7 @@ func TestScanRowsEmbed(t *testing.T) {
 			{Name: "hello", TestUser2: TestUser2{CSV1: []int{1, 2}}},
 			{Name: "world", TestUser2: TestUser2{CSV1: []int{2, 3}}},
 		}
-		xt.Equal(t, want, users)
+		xt.Equal(t, users, want)
 	})
 
 	t.Run("testUser4", func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestScanRowsEmbed(t *testing.T) {
 			{Name: "hello", TestUser2: &TestUser2{CSV1: []int{1, 2}}},
 			{Name: "world", TestUser2: &TestUser2{CSV1: []int{2, 3}}},
 		}
-		xt.Equal(t, want, users)
+		xt.Equal(t, users, want)
 	})
 	t.Run("testUser6", func(t *testing.T) {
 		xtdr.ExpectQuery("select 1", []string{"id", "name", "csv1"}, [][]any{{1, "hello", "1,2"}, {2, "world", "2,3"}})
@@ -138,6 +138,6 @@ func TestScanRowsEmbed(t *testing.T) {
 				},
 			},
 		}
-		xt.Equal(t, want, users)
+		xt.Equal(t, users, want)
 	})
 }

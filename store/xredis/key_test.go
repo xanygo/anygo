@@ -30,12 +30,12 @@ func TestClientKey(t *testing.T) {
 	t.Run("TTL", func(t *testing.T) {
 		val, err := client.TTL(ctx, "k1")
 		xt.ErrorIs(t, err, ErrNil)
-		xt.Equal(t, 0, val)
+		xt.Equal(t, val, 0)
 
 		testSetKeyString(t, client, "k1")
 		val, err = client.TTL(ctx, "k1")
 		xt.NoError(t, err)
-		xt.Equal(t, time.Duration(-1), val)
+		xt.Equal(t, val, time.Duration(-1))
 
 		ok, err := client.Expire(ctx, "k1", 2*time.Second)
 		xt.NoError(t, err)
@@ -50,12 +50,12 @@ func TestClientKey(t *testing.T) {
 	t.Run("PTTL", func(t *testing.T) {
 		val, err := client.PTTL(ctx, "k2")
 		xt.ErrorIs(t, err, ErrNil)
-		xt.Equal(t, 0, val)
+		xt.Equal(t, val, 0)
 
 		testSetKeyString(t, client, "k2")
 		val, err = client.PTTL(ctx, "k2")
 		xt.NoError(t, err)
-		xt.Equal(t, time.Duration(-1), val)
+		xt.Equal(t, val, time.Duration(-1))
 
 		ok, err := client.Expire(ctx, "k2", 2*time.Second)
 		xt.NoError(t, err)
@@ -70,35 +70,35 @@ func TestClientKey(t *testing.T) {
 	t.Run("Del", func(t *testing.T) {
 		num, err := client.Del(ctx, "d1", "d2")
 		xt.NoError(t, err)
-		xt.Equal(t, 0, num)
+		xt.Equal(t, num, 0)
 
 		testSetKeyString(t, client, "d1")
 		num, err = client.Del(ctx, "d1", "d2")
 		xt.NoError(t, err)
-		xt.Equal(t, 1, num)
+		xt.Equal(t, num, 1)
 	})
 
 	t.Run("EXISTS", func(t *testing.T) {
 		num, err := client.EXISTS(ctx, "e1", "e2")
 		xt.NoError(t, err)
-		xt.Equal(t, 0, num)
+		xt.Equal(t, num, 0)
 
 		testSetKeyString(t, client, "e1")
 		num, err = client.EXISTS(ctx, "e1", "e2", "e1")
 		xt.NoError(t, err)
-		xt.Equal(t, 2, num)
+		xt.Equal(t, num, 2)
 	})
 
 	t.Run("Touch", func(t *testing.T) {
 		testDelKeys(t, client, "e1", "e2")
 		num, err := client.Touch(ctx, "e1", "e2")
 		xt.NoError(t, err)
-		xt.Equal(t, 0, num)
+		xt.Equal(t, num, 0)
 
 		testSetKeyString(t, client, "e1")
 		num, err = client.Touch(ctx, "e1", "e2")
 		xt.NoError(t, err)
-		xt.Equal(t, 1, num)
+		xt.Equal(t, num, 1)
 
 		vs, err := client.Keys(ctx, "e*")
 		xt.NoError(t, err)
@@ -120,12 +120,12 @@ func TestClientKey(t *testing.T) {
 	t.Run("Type", func(t *testing.T) {
 		val, err := client.Type(ctx, "k-not-found")
 		xt.ErrorIs(t, err, ErrNil)
-		xt.Equal(t, "none", val)
+		xt.Equal(t, val, "none")
 
 		testSetKeyString(t, client, "k1")
 		val, err = client.Type(ctx, "k1")
 		xt.NoError(t, err)
-		xt.Equal(t, "string", val)
+		xt.Equal(t, val, "string")
 	})
 
 	t.Run("Expire", func(t *testing.T) {
@@ -233,7 +233,7 @@ func TestClientKey(t *testing.T) {
 			return nil
 		})
 		xt.NoError(t, err)
-		xt.Equal(t, len(keys), num)
+		xt.Equal(t, num, len(keys))
 	})
 }
 

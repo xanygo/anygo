@@ -32,23 +32,23 @@ func TestClientHash(t *testing.T) {
 	t.Run("HSet", func(t *testing.T) {
 		num, err := client.HSet(ctx, "h1", "f1", "v1")
 		xt.NoError(t, err)
-		xt.Equal(t, 1, num)
+		xt.Equal(t, num, 1)
 
 		num, err = client.HSet(ctx, "h1", "f1", "v1")
 		xt.NoError(t, err)
-		xt.Equal(t, 0, num)
+		xt.Equal(t, num, 0)
 
 		testSetKeyString(t, client, "h1")
 
 		num, err = client.HSet(ctx, "h1", "f1", "v1")
 		xt.Error(t, err)
-		xt.Equal(t, 0, num)
+		xt.Equal(t, num, 0)
 	})
 
 	t.Run("HSetMap", func(t *testing.T) {
 		num, err := client.HSetMap(ctx, "h2", map[string]string{"f1": "v1", "f2": "v2"})
 		xt.NoError(t, err)
-		xt.Equal(t, 2, num)
+		xt.Equal(t, num, 2)
 	})
 
 	t.Run("HSetEX", func(t *testing.T) {
@@ -90,11 +90,11 @@ func TestClientHash(t *testing.T) {
 
 		num, err := client.HStrLen(ctx, "h5", "f1")
 		xt.NoError(t, err)
-		xt.Equal(t, 2, num)
+		xt.Equal(t, num, 2)
 
 		num, err = client.HDel(ctx, "h5", "f1", "f2")
 		xt.NoError(t, err)
-		xt.Equal(t, 1, num)
+		xt.Equal(t, num, 1)
 	})
 
 	t.Run("HExists", func(t *testing.T) {
@@ -114,11 +114,11 @@ func TestClientHash(t *testing.T) {
 
 		val, err := client.HGet(ctx, "h6", "f1")
 		xt.NoError(t, err)
-		xt.Equal(t, "v1", val)
+		xt.Equal(t, val, "v1")
 
 		val, err = client.HGet(ctx, "h6", "f2-not-exist")
 		xt.ErrorIs(t, err, ErrNil)
-		xt.Equal(t, "", val)
+		xt.Equal(t, val, "")
 	})
 
 	t.Run("HGetAll", func(t *testing.T) {
@@ -128,7 +128,7 @@ func TestClientHash(t *testing.T) {
 
 		val, err := client.HGetAll(ctx, "HGetAll-1")
 		xt.NoError(t, err)
-		xt.Equal(t, data, val)
+		xt.Equal(t, val, data)
 
 		val, err = client.HGetAll(ctx, "h6-not-exists")
 		xt.NoError(t, err)
@@ -148,11 +148,11 @@ func TestClientHash(t *testing.T) {
 
 		val, err := client.HGetDel(ctx, "h7", "f1")
 		xt.NoError(t, err)
-		xt.Equal(t, map[string]string{"f1": "v1"}, val)
+		xt.Equal(t, val, map[string]string{"f1": "v1"})
 
 		val, err = client.HGetDel(ctx, "h7", "f1", "f2")
 		xt.NoError(t, err)
-		xt.Equal(t, map[string]string{"f2": "v2"}, val)
+		xt.Equal(t, val, map[string]string{"f2": "v2"})
 	})
 
 	t.Run("HPersist", func(t *testing.T) {
@@ -166,31 +166,31 @@ func TestClientHash(t *testing.T) {
 	t.Run("HIncrBy", func(t *testing.T) {
 		num, err := client.HIncrBy(ctx, "h8", "f1", 2)
 		xt.NoError(t, err)
-		xt.Equal(t, 2, num)
+		xt.Equal(t, num, 2)
 
 		testSetKeyString(t, client, "h8")
 		num, err = client.HIncrBy(ctx, "h8", "f1", 2)
 		xt.Error(t, err)
-		xt.Equal(t, 0, num)
+		xt.Equal(t, num, 0)
 	})
 
 	t.Run("HIncrFloat", func(t *testing.T) {
 		num, err := client.HIncrFloat(ctx, "h9", "f1", 2)
 		xt.NoError(t, err)
-		xt.Equal(t, 2.0, num)
+		xt.Equal(t, num, 2.0)
 
 		keys, err := client.HKeys(ctx, "h9")
 		xt.NoError(t, err)
-		xt.Equal(t, []string{"f1"}, keys)
+		xt.Equal(t, keys, []string{"f1"})
 
 		num1, err := client.HLen(ctx, "h9")
 		xt.NoError(t, err)
-		xt.Equal(t, 1, num1)
+		xt.Equal(t, num1, 1)
 
 		testSetKeyString(t, client, "h9")
 		num, err = client.HIncrFloat(ctx, "h9", "f1", 2)
 		xt.Error(t, err)
-		xt.Equal(t, 0, num)
+		xt.Equal(t, num, 0)
 	})
 
 	t.Run("HKeys", func(t *testing.T) {
@@ -212,7 +212,7 @@ func TestClientHash(t *testing.T) {
 
 		val, err := client.HMGet(ctx, "h11", "f1", "f2", "f3")
 		xt.NoError(t, err)
-		xt.Equal(t, data, val)
+		xt.Equal(t, val, data)
 
 		val, err = client.HMGet(ctx, "h11-not-exists", "f1", "f2", "f3")
 		xt.NoError(t, err)
@@ -223,7 +223,7 @@ func TestClientHash(t *testing.T) {
 		got, err := client.HTTL(ctx, "HTTL-1", "f1", "f2")
 		xt.NoError(t, err)
 		xt.Len(t, got, 2)
-		xt.Equal(t, []time.Duration{-2, -2}, got)
+		xt.Equal(t, got, []time.Duration{-2, -2})
 
 		data := map[string]string{"f1": "v1", "f2": "v2"}
 		_, err = client.HSetMap(ctx, "HTTL-1", data)
@@ -232,18 +232,18 @@ func TestClientHash(t *testing.T) {
 		got, err = client.HTTL(ctx, "HTTL-1", "f1", "f2")
 		xt.NoError(t, err)
 		xt.Len(t, got, 2)
-		xt.Equal(t, []time.Duration{-1, -1}, got)
+		xt.Equal(t, got, []time.Duration{-1, -1})
 
 		nums, err := client.HExpireAt(ctx, "HTTL-1", time.Now().Add(time.Hour), "", "f1")
 		xt.NoError(t, err)
 		xt.Len(t, nums, 1)
-		xt.Equal(t, 1, nums[0])
+		xt.Equal(t, nums[0], 1)
 
 		got, err = client.HTTL(ctx, "HTTL-1", "f1", "f2")
 		xt.NoError(t, err)
 		xt.Len(t, got, 2)
 		xt.Greater(t, got[0], 50*time.Minute)
-		xt.Equal(t, time.Duration(-1), got[1])
+		xt.Equal(t, got[1], time.Duration(-1))
 	})
 
 	t.Run("HVals", func(t *testing.T) {
@@ -258,14 +258,14 @@ func TestClientHash(t *testing.T) {
 		vals, err = client.HVals(ctx, "HVals-1")
 		xt.NoError(t, err)
 		slices.Sort(vals)
-		xt.Equal(t, []string{"v1", "v2"}, vals)
+		xt.Equal(t, vals, []string{"v1", "v2"})
 	})
 
 	t.Run("HScan", func(t *testing.T) {
 		next, vals, err := client.HScan(ctx, "HScan-1", 0, "", 10)
 		xt.NoError(t, err)
 		xt.Empty(t, vals)
-		xt.Equal(t, 0, next)
+		xt.Equal(t, next, 0)
 
 		data := map[string]string{"f1": "v1", "f2": "v2"}
 		_, err = client.HSetMap(ctx, "HScan-1", data)
@@ -273,8 +273,8 @@ func TestClientHash(t *testing.T) {
 
 		next, vals, err = client.HScan(ctx, "HScan-1", 0, "", 10)
 		xt.NoError(t, err)
-		xt.Equal(t, data, vals)
-		xt.Equal(t, 0, next)
+		xt.Equal(t, vals, data)
+		xt.Equal(t, next, 0)
 
 		var count int
 		err = client.HScanWalk(ctx, "HScan-1", 0, "", 10, func(cursor uint64, data map[string]string) error {
@@ -282,14 +282,14 @@ func TestClientHash(t *testing.T) {
 			return nil
 		})
 		xt.NoError(t, err)
-		xt.Equal(t, len(vals), count)
+		xt.Equal(t, count, len(vals))
 	})
 
 	t.Run("HScanNoValues", func(t *testing.T) {
 		next, vals, err := client.HScanNoValues(ctx, "HScanNoValues-1", 0, "", 10)
 		xt.NoError(t, err)
 		xt.Empty(t, vals)
-		xt.Equal(t, 0, next)
+		xt.Equal(t, next, 0)
 
 		data := map[string]string{"f1": "v1", "f2": "v2"}
 		_, err = client.HSetMap(ctx, "HScanNoValues-1", data)
@@ -298,7 +298,7 @@ func TestClientHash(t *testing.T) {
 		next, vals, err = client.HScanNoValues(ctx, "HScanNoValues-1", 0, "", 10)
 		xt.NoError(t, err)
 		xt.SliceSortEqual(t, xmap.Keys(data), vals)
-		xt.Equal(t, 0, next)
+		xt.Equal(t, next, 0)
 
 		var count int
 		err = client.HScanNoValuesWalk(ctx, "HScan-1", 0, "", 10, func(cursor uint64, data []string) error {
@@ -306,6 +306,6 @@ func TestClientHash(t *testing.T) {
 			return nil
 		})
 		xt.NoError(t, err)
-		xt.Equal(t, len(vals), count)
+		xt.Equal(t, count, len(vals))
 	})
 }

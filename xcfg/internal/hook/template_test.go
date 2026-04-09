@@ -89,7 +89,7 @@ Z="z"
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			xt.Equal(t, string(tt.wantOutput), string(gotOutput))
+			xt.Equal(t, string(gotOutput), string(tt.wantOutput))
 		})
 	}
 }

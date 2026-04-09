@@ -107,7 +107,7 @@ func TestEncode(t *testing.T) {
 			"bs1":    "",
 			"id2":    0,
 		}
-		xt.Equal(t, want1, out1)
+		xt.Equal(t, out1, want1)
 	})
 
 	t.Run("testUser3", func(t *testing.T) {
@@ -127,7 +127,7 @@ func TestEncode(t *testing.T) {
 			"csv1": "1,2,3",
 			"mp1":  `{"key1":"value1"}`,
 		}
-		xt.Equal(t, want, out1)
+		xt.Equal(t, out1, want)
 	})
 	t.Run("testUser4", func(t *testing.T) {
 		u3 := testUser4{
@@ -146,7 +146,7 @@ func TestEncode(t *testing.T) {
 			"csv1": "1,2,3",
 			"mp1":  `{"key1":"value1"}`,
 		}
-		xt.Equal(t, want, out1)
+		xt.Equal(t, out1, want)
 	})
 
 	t.Run("TestUser22", func(t *testing.T) {
@@ -169,7 +169,7 @@ func TestEncode(t *testing.T) {
 			"csv1": "1,2,3",
 			"mp1":  `{"key1":"value1"}`,
 		}
-		xt.Equal(t, want, out1)
+		xt.Equal(t, out1, want)
 	})
 }
 

@@ -30,8 +30,8 @@ func TestAsyncWriter(t *testing.T) {
 			Wrote: 1,
 		}
 		got := <-aw.WriteStatus()
-		xt.Equal(t, want, got)
-		xt.Equal(t, 1000, mw.Len())
+		xt.Equal(t, got, want)
+		xt.Equal(t, mw.Len(), 1000)
 	})
 
 	t.Run("no write", func(t *testing.T) {

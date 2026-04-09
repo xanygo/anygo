@@ -43,12 +43,12 @@ func TestDialer_DialContext(t *testing.T) {
 			for j := 0; j < 3; j++ {
 				t.Run(fmt.Sprintf("inner_loop_%d", j), func(t *testing.T) {
 					n, err := fmt.Fprint(conn, "hello\n")
-					xt.Equal(t, 6, n)
+					xt.Equal(t, n, 6)
 					xt.NoError(t, err)
 
 					line, err := rd.ReadString('\n')
 					xt.NoError(t, err)
-					xt.Equal(t, "Ok: hello\n", line)
+					xt.Equal(t, line, "Ok: hello\n")
 				})
 			}
 

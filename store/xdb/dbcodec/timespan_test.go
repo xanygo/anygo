@@ -21,7 +21,7 @@ func TestTimeSpan_Encode(t *testing.T) {
 
 		got, err := de.Encode(tm)
 		xt.NoError(t, err)
-		xt.Equal(t, any(sec), got)
+		xt.Equal(t, got, any(sec))
 	})
 	t.Run("not-time", func(t *testing.T) {
 		got, err := de.Encode("string")
@@ -40,7 +40,7 @@ func TestTimeSpan_Decode(t *testing.T) {
 		var tm time.Time
 		err = de.Decode(strconv.FormatInt(sec, 10), &tm)
 		xt.NoError(t, err)
-		xt.Equal(t, 2006, tm.Year())
+		xt.Equal(t, tm.Year(), 2006)
 
 		err = de.Decode("hello", &tm)
 		xt.Error(t, err)

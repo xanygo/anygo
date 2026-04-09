@@ -29,14 +29,14 @@ func TestBit(t *testing.T) {
 	t.Run("BitCount", func(t *testing.T) {
 		got, err := client.BitCount(ctx, "BitCount-1")
 		xt.NoError(t, err)
-		xt.Equal(t, 0, got)
+		xt.Equal(t, got, 0)
 
 		err = client.Set(ctx, "BitCount-1", "demo")
 		xt.NoError(t, err)
 
 		got, err = client.BitCount(ctx, "BitCount-1")
 		xt.NoError(t, err)
-		xt.Equal(t, 18, got)
+		xt.Equal(t, got, 18)
 	})
 
 	t.Run("BitField", func(t *testing.T) {
@@ -52,7 +52,7 @@ func TestBit(t *testing.T) {
 			BitFieldGet{Encoding: "u8"})
 		xt.NoError(t, err)
 		zero := int64(0)
-		xt.Equal(t, []*int64{nil, &zero}, got)
+		xt.Equal(t, got, []*int64{nil, &zero})
 	})
 
 	t.Run("BitFieldRo", func(t *testing.T) {
@@ -62,20 +62,20 @@ func TestBit(t *testing.T) {
 
 		got, err = client.BitFieldRo(ctx, "BitFieldRo-1", BitFieldGet{Encoding: "u8"})
 		xt.NoError(t, err)
-		xt.Equal(t, []int64{0}, got)
+		xt.Equal(t, got, []int64{0})
 	})
 
 	t.Run("BitOP", func(t *testing.T) {
 		got, err := client.BitOP(ctx, "OR", "BitOPDest-1", "BitOP-1", "BitOP-2")
 		xt.NoError(t, err)
-		xt.Equal(t, 0, got)
+		xt.Equal(t, got, 0)
 
 		err = client.Set(ctx, "BitOP-1", "demo")
 		xt.NoError(t, err)
 
 		got, err = client.BitOP(ctx, "OR", "BitOPDest-1", "BitOP-1", "BitOP-2")
 		xt.NoError(t, err)
-		xt.Equal(t, 4, got)
+		xt.Equal(t, got, 4)
 	})
 
 	t.Run("BitPos invalid args", func(t *testing.T) {
@@ -98,48 +98,48 @@ func TestBit(t *testing.T) {
 	t.Run("BitPos-ok", func(t *testing.T) {
 		got, err := client.BitPos(ctx, "BitPos-1", 1)
 		xt.NoError(t, err)
-		xt.Equal(t, -1, got)
+		xt.Equal(t, got, -1)
 
 		got, err = client.BitPos(ctx, "BitPos-1", 0)
 		xt.NoError(t, err)
-		xt.Equal(t, 0, got)
+		xt.Equal(t, got, 0)
 
 		err = client.Set(ctx, "BitPos-1", "demo")
 		xt.NoError(t, err)
 
 		got, err = client.BitPos(ctx, "BitPos-1", 1)
 		xt.NoError(t, err)
-		xt.Equal(t, 1, got)
+		xt.Equal(t, got, 1)
 	})
 
 	t.Run("GetBit", func(t *testing.T) {
 		got, err := client.GetBit(ctx, "GetBit-1", 1)
 		xt.NoError(t, err)
-		xt.Equal(t, 0, got)
+		xt.Equal(t, got, 0)
 
 		err = client.Set(ctx, "GetBit-1", "demo")
 		xt.NoError(t, err)
 
 		got, err = client.GetBit(ctx, "GetBit-1", 1)
 		xt.NoError(t, err)
-		xt.Equal(t, 1, got)
+		xt.Equal(t, got, 1)
 	})
 
 	t.Run("SetBit", func(t *testing.T) {
 		got, err := client.SetBit(ctx, "SetBit-1", 1, 1)
 		xt.NoError(t, err)
-		xt.Equal(t, 0, got)
+		xt.Equal(t, got, 0)
 
 		got, err = client.GetBit(ctx, "SetBit-1", 1)
 		xt.NoError(t, err)
-		xt.Equal(t, 1, got)
+		xt.Equal(t, got, 1)
 
 		got, err = client.SetBit(ctx, "SetBit-1", 1, 0)
 		xt.NoError(t, err)
-		xt.Equal(t, 1, got)
+		xt.Equal(t, got, 1)
 
 		got, err = client.GetBit(ctx, "SetBit-1", 1)
 		xt.NoError(t, err)
-		xt.Equal(t, 0, got)
+		xt.Equal(t, got, 0)
 	})
 }

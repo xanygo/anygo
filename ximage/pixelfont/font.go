@@ -1190,4 +1190,3 @@ var asciiFonts = map[byte]Byte{
 		},
 	},
 }
-

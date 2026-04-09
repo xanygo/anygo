@@ -16,7 +16,7 @@ func TestGZipCompress(t *testing.T) {
 	xt.NoError(t, err1)
 	got2, err2 := GZipDecompress(got1)
 	xt.NoError(t, err2)
-	xt.Equal(t, string(got2), string(data1))
+	xt.Equal(t, string(data1), string(got2))
 }
 
 func TestZLibCompress(t *testing.T) {
@@ -25,7 +25,7 @@ func TestZLibCompress(t *testing.T) {
 	xt.NoError(t, err1)
 	got2, err2 := ZLibDecompress(got1)
 	xt.NoError(t, err2)
-	xt.Equal(t, string(got2), string(data1))
+	xt.Equal(t, string(data1), string(got2))
 }
 
 func TestFlateCompress(t *testing.T) {
@@ -34,5 +34,5 @@ func TestFlateCompress(t *testing.T) {
 	xt.NoError(t, err1)
 	got2, err2 := FlateDecompress(got1)
 	xt.NoError(t, err2)
-	xt.Equal(t, string(got2), string(data1))
+	xt.Equal(t, string(data1), string(got2))
 }

@@ -16,11 +16,11 @@ func TestLRU(t *testing.T) {
 	lru.Set("k1", "v1")
 	lru.Set("k2", "v2")
 	lru.Set("k3", "v3")
-	xt.Equal(t, []string{"k3", "k2", "k1"}, lru.Keys())
+	xt.Equal(t, lru.Keys(), []string{"k3", "k2", "k1"})
 
 	got, ok := lru.Get("k2")
-	xt.Equal(t, "v2", got)
-	xt.Equal(t, true, ok)
+	xt.Equal(t, got, "v2")
+	xt.Equal(t, ok, true)
 
-	xt.Equal(t, []string{"k2", "k3", "k1"}, lru.Keys())
+	xt.Equal(t, lru.Keys(), []string{"k2", "k3", "k1"})
 }

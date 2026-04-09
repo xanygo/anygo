@@ -32,7 +32,7 @@ func TestOrderCustomAsc(t *testing.T) {
 		),
 	)
 	want := []user{u2, u1}
-	xt.Equal(t, want, users1)
+	xt.Equal(t, users1, want)
 
 	users2 := slices.Clone(users)
 	slices.SortFunc(users2,
@@ -40,5 +40,5 @@ func TestOrderCustomAsc(t *testing.T) {
 			xcmp.OrderCustomAsc(func(t user) time.Time { return t.Ctime }),
 		),
 	)
-	xt.Equal(t, want, users2)
+	xt.Equal(t, users2, want)
 }

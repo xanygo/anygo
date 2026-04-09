@@ -13,34 +13,34 @@ import (
 
 func TestSetConnectTimeout(t *testing.T) {
 	doCheck := func(t *testing.T, opt Option) {
-		xt.Equal(t, DefaultRetry, Retry(opt))
+		xt.Equal(t, Retry(opt), DefaultRetry)
 		SetRetry(opt, 2)
-		xt.Equal(t, 2, Retry(opt))
+		xt.Equal(t, Retry(opt), 2)
 		opt.Delete(KeyRetry)
-		xt.Equal(t, DefaultRetry, Retry(opt))
+		xt.Equal(t, Retry(opt), DefaultRetry)
 
-		xt.Equal(t, DefaultReadTimeout, ReadTimeout(opt))
+		xt.Equal(t, ReadTimeout(opt), DefaultReadTimeout)
 		SetReadTimeout(opt, time.Hour)
-		xt.Equal(t, time.Hour, ReadTimeout(opt))
+		xt.Equal(t, ReadTimeout(opt), time.Hour)
 
-		xt.Equal(t, DefaultWriteTimeout, WriteTimeout(opt))
+		xt.Equal(t, WriteTimeout(opt), DefaultWriteTimeout)
 		SetWriteTimeout(opt, time.Minute)
-		xt.Equal(t, time.Minute, WriteTimeout(opt))
+		xt.Equal(t, WriteTimeout(opt), time.Minute)
 
-		xt.Equal(t, 64*1024*1024, MaxResponseSize(opt))
+		xt.Equal(t, MaxResponseSize(opt), 64*1024*1024)
 		SetMaxResponseSize(opt, 5)
-		xt.Equal(t, 5, MaxResponseSize(opt))
+		xt.Equal(t, MaxResponseSize(opt), 5)
 
-		xt.Equal(t, "RoundRobin", Balancer(opt))
+		xt.Equal(t, Balancer(opt), "RoundRobin")
 		SetBalancer(opt, "demo")
-		xt.Equal(t, "demo", Balancer(opt))
+		xt.Equal(t, Balancer(opt), "demo")
 
 		var total int
 		opt.Range(func(key Key, val any) bool {
 			total++
 			return true
 		})
-		xt.Equal(t, 4, total)
+		xt.Equal(t, total, 4)
 	}
 
 	opt1 := NewSimple()

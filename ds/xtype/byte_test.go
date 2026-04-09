@@ -18,7 +18,7 @@ func TestByteCount_MarshalText(t *testing.T) {
 	}
 	bf, err := json.Marshal(m)
 	xt.NoError(t, err)
-	xt.Equal(t, `{"A":100}`, string(bf))
+	xt.Equal(t, string(bf), `{"A":100}`)
 }
 
 func TestByteCount_String(t *testing.T) {
@@ -150,7 +150,7 @@ func TestByteCount_UnmarshalText(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("UnmarshalText() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			xt.Equal(t, tt.want, m1)
+			xt.Equal(t, m1, tt.want)
 		})
 	}
 }

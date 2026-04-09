@@ -24,7 +24,7 @@ func TestChain(t *testing.T) {
 		xcmp.OrderDesc[user, int](func(t user) int { return t.Age }),
 	))
 	want := []user{user2, user1, user4, user3, user5}
-	xt.Equal(t, want, users)
+	xt.Equal(t, users, want)
 }
 
 var user1 = user{

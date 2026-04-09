@@ -39,7 +39,7 @@ func TestTCPServer(t *testing.T) {
 			xt.NoError(t, err)
 			line, _, err := rd.ReadLine()
 			xt.NoError(t, err)
-			xt.Equal(t, `resp:"hello"`, string(line))
+			xt.Equal(t, string(line), `resp:"hello"`)
 		})
 	}
 	xt.NoError(t, conn.Close())

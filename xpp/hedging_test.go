@@ -23,7 +23,7 @@ func TestHedging_Run(t *testing.T) {
 		}
 		got, err := h1.Run(context.Background())
 		xt.NoError(t, err)
-		xt.Equal(t, 1, got)
+		xt.Equal(t, got, 1)
 	})
 	t.Run("no fn 2", func(t *testing.T) {
 		h1 := &xpp.Hedging[int]{
@@ -33,7 +33,7 @@ func TestHedging_Run(t *testing.T) {
 		}
 		got, err := h1.Run(context.Background())
 		xt.Error(t, err)
-		xt.Equal(t, 0, got)
+		xt.Equal(t, got, 0)
 	})
 	t.Run("fn 1", func(t *testing.T) {
 		h1 := &xpp.Hedging[int]{
@@ -52,7 +52,7 @@ func TestHedging_Run(t *testing.T) {
 		defer cancel()
 		got, err := h1.Run(ctx)
 		xt.NoError(t, err)
-		xt.Equal(t, 2, got)
+		xt.Equal(t, got, 2)
 	})
 
 	t.Run("fn 2", func(t *testing.T) {
@@ -79,7 +79,7 @@ func TestHedging_Run(t *testing.T) {
 		defer cancel()
 		got, err := h1.Run(ctx)
 		xt.NoError(t, err)
-		xt.Equal(t, 3, got)
+		xt.Equal(t, got, 3)
 	})
 
 	t.Run("fn 2 CallNext", func(t *testing.T) {
@@ -105,7 +105,7 @@ func TestHedging_Run(t *testing.T) {
 		defer cancel()
 		got, err := h1.Run(ctx)
 		xt.NoError(t, err)
-		xt.Equal(t, 3, got)
+		xt.Equal(t, got, 3)
 	})
 	t.Run("fn panic", func(t *testing.T) {
 		h1 := &xpp.Hedging[int]{
@@ -130,6 +130,6 @@ func TestHedging_Run(t *testing.T) {
 		defer cancel()
 		got, err := h1.Run(ctx)
 		xt.NoError(t, err)
-		xt.Equal(t, 3, got)
+		xt.Equal(t, got, 3)
 	})
 }

@@ -19,7 +19,7 @@ func TestReadEvent(t *testing.T) {
 		rd := bufio.NewReader(strings.NewReader(txt))
 		e1, err1 := ReadEvent(rd)
 		xt.NoError(t, err1)
-		xt.Equal(t, Event{Data: "hello"}, e1)
+		xt.Equal(t, e1, Event{Data: "hello"})
 
 		e2, err2 := ReadEvent(rd)
 		xt.Empty(t, e2)
@@ -31,11 +31,11 @@ func TestReadEvent(t *testing.T) {
 		rd := bufio.NewReader(strings.NewReader(txt))
 		e1, err1 := ReadEvent(rd)
 		xt.NoError(t, err1)
-		xt.Equal(t, Event{Data: "hello"}, e1)
+		xt.Equal(t, e1, Event{Data: "hello"})
 
 		e2, err2 := ReadEvent(rd)
 		xt.NoError(t, err2)
-		xt.Equal(t, Event{Data: "world"}, e2)
+		xt.Equal(t, e2, Event{Data: "world"})
 
 		e3, err3 := ReadEvent(rd)
 		xt.Empty(t, e3)
@@ -47,7 +47,7 @@ func TestReadEvent(t *testing.T) {
 		rd := bufio.NewReader(strings.NewReader(txt))
 		e1, err1 := ReadEvent(rd)
 		xt.NoError(t, err1)
-		xt.Equal(t, Event{Comment: "hello\nworld"}, e1)
+		xt.Equal(t, e1, Event{Comment: "hello\nworld"})
 
 		e2, err2 := ReadEvent(rd)
 		xt.Empty(t, e2)
@@ -59,7 +59,7 @@ func TestReadEvent(t *testing.T) {
 		rd := bufio.NewReader(strings.NewReader(txt))
 		e1, err1 := ReadEvent(rd)
 		xt.NoError(t, err1)
-		xt.Equal(t, Event{Data: "hello\nworld"}, e1)
+		xt.Equal(t, e1, Event{Data: "hello\nworld"})
 
 		e2, err2 := ReadEvent(rd)
 		xt.Empty(t, e2)

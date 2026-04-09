@@ -11,8 +11,8 @@ import (
 )
 
 func TestTernary(t *testing.T) {
-	xt.Equal(t, 1, Ternary(true, 1, 2))
-	xt.Equal(t, 2, Ternary(false, 1, 2))
+	xt.Equal(t, Ternary(true, 1, 2), 1)
+	xt.Equal(t, Ternary(false, 1, 2), 2)
 }
 
 func TestMust(t *testing.T) {
@@ -34,7 +34,7 @@ func TestMust1(t *testing.T) {
 	fn1 := func() (int, error) {
 		return 1, nil
 	}
-	xt.Equal(t, 1, Must1[int](fn1()))
+	xt.Equal(t, Must1[int](fn1()), 1)
 }
 
 func TestMust2(t *testing.T) {
@@ -48,8 +48,8 @@ func TestMust2(t *testing.T) {
 		return 1, 2, nil
 	}
 	v1, v2 := Must2[int, int](fn1())
-	xt.Equal(t, 1, v1)
-	xt.Equal(t, 2, v2)
+	xt.Equal(t, v1, 1)
+	xt.Equal(t, v2, 2)
 }
 
 func TestMust3(t *testing.T) {
@@ -63,7 +63,7 @@ func TestMust3(t *testing.T) {
 		return 1, 2, 3, nil
 	}
 	v1, v2, v3 := Must3[int, int, int](fn1())
-	xt.Equal(t, 1, v1)
-	xt.Equal(t, 2, v2)
-	xt.Equal(t, 3, v3)
+	xt.Equal(t, v1, 1)
+	xt.Equal(t, v2, 2)
+	xt.Equal(t, v3, 3)
 }

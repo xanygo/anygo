@@ -60,7 +60,7 @@ func TestSchemaUser1(t *testing.T) {
 				xt.NoError(t, err)
 				xt.NotEmpty(t, got.ReflectType)
 				got.ReflectType = nil
-				xt.Equal(t, col, got)
+				xt.Equal(t, got, col)
 			})
 		}
 		xt.Len(t, sc.Columns, len(testUser1Cols))
@@ -103,7 +103,7 @@ func TestSchemaAdmin1(t *testing.T) {
 				xt.NoError(t, err)
 				xt.NotEmpty(t, got.ReflectType)
 				got.ReflectType = nil
-				xt.Equal(t, col, got)
+				xt.Equal(t, got, col)
 			})
 		}
 		xt.Len(t, sc.Columns, len(cols))
