@@ -6,7 +6,9 @@ package xjsonrpc2
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"maps"
@@ -15,19 +17,66 @@ import (
 
 	"github.com/xanygo/anygo/ds/xctx"
 	"github.com/xanygo/anygo/ds/xsync"
-	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xcodec"
-	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xio"
 )
 
-type Handler interface {
-	Handle(ctx context.Context, req *Request) (result any, err error)
+type ResponseWriter interface {
+	Write(resp *Response) error
 }
 
-type HandlerFunc func(ctx context.Context, req *Request) (result any, err error)
+type Handler interface {
+	Handle(ctx context.Context, w ResponseWriter, req *Request) error
+}
 
-func (h HandlerFunc) Handle(ctx context.Context, req *Request) (result any, err error) {
+type HandlerFunc func(ctx context.Context, w ResponseWriter, req *Request) error
+
+func (f HandlerFunc) Handle(ctx context.Context, w ResponseWriter, req *Request) error {
+	return f(ctx, w, req)
+}
+
+type UnaryHandler interface {
+	HandleUnary(ctx context.Context, req *Request) (result any, err error)
+}
+
+type UnaryHandlerFunc func(ctx context.Context, req *Request) (result any, err error)
+
+func (h UnaryHandlerFunc) HandleUnary(ctx context.Context, req *Request) (result any, err error) {
 	return h(ctx, req)
+}
+
+func (h UnaryHandlerFunc) Handle(ctx context.Context, w ResponseWriter, req *Request) error {
+	data, err := h(ctx, req)
+	if req.NoReply() {
+		return err
+	}
+	resp, err1 := NewResponse(req.ID, data, err)
+	if err1 != nil {
+		return err1
+	}
+	return w.Write(resp)
+}
+
+var _ ResponseWriter = (*responseWriterImpl)(nil)
+
+type responseWriterImpl struct {
+	w io.Writer
+}
+
+func (rw *responseWriterImpl) Write(resp *Response) error {
+	_, err := resp.WriteTo(rw.w)
+	return err
+}
+
+func NotFound(ctx context.Context, w ResponseWriter, req *Request) error {
+	if req.NoReply() {
+		return nil
+	}
+	resp, err := NewResponse(req.ID, nil, ErrMethodNotFound)
+	if err != nil {
+		return err
+	}
+	return w.Write(resp)
 }
 
 var _ http.Handler = (*Router)(nil)
@@ -36,16 +85,13 @@ var _ Handler = (*Router)(nil)
 func NewRouter() *Router {
 	return &Router{
 		handlers: make(map[string]Handler),
+		notFound: HandlerFunc(NotFound),
 	}
 }
 
 type Router struct {
-	// Async 决定 Handler 逻辑是否异步
-	// 默认为 false，即依次读请求，Handler 处理，然后将结果发送。此时，请求和响应的顺序是一样的。
-	// 若为 true，则读取请求后，立即异步调用 Handler处理，然后将结果发送。此时请求和响应的顺序不是一样的。
-	Async bool
-
 	handlers map[string]Handler
+	notFound Handler
 }
 
 func (r *Router) Register(method string, h Handler) {
@@ -57,31 +103,34 @@ func (r *Router) Register(method string, h Handler) {
 
 func (r *Router) Clone() *Router {
 	return &Router{
-		Async:    r.Async,
 		handlers: maps.Clone(r.handlers),
+		notFound: r.notFound,
 	}
 }
 
-func (r *Router) RegisterFunc(method string, fn func(ctx context.Context, req *Request) (result any, err error)) {
-	r.Register(method, HandlerFunc(fn))
+func (r *Router) RegisterUnary(method string, fn func(ctx context.Context, req *Request) (result any, err error)) {
+	r.Register(method, UnaryHandlerFunc(fn))
 }
 
-func (r *Router) Handle(ctx context.Context, req *Request) (result any, err error) {
+func (r *Router) Handle(ctx context.Context, w ResponseWriter, req *Request) error {
 	if len(r.handlers) == 0 {
-		return nil, ErrMethodNotFound
+		return r.handleNotFound(ctx, w, req)
 	}
 	h, ok := r.handlers[req.Method]
 	if !ok {
-		return nil, ErrMethodNotFound
+		return r.handleNotFound(ctx, w, req)
 	}
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
-	result, err = h.Handle(ctx, req)
-	if req.NoReply() {
-		return nil, err
+	return h.Handle(ctx, w, req)
+}
+
+func (r *Router) handleNotFound(ctx context.Context, w ResponseWriter, req *Request) error {
+	if r.notFound != nil {
+		return r.notFound.Handle(ctx, w, req)
 	}
-	return result, err
+	return NotFound(ctx, w, req)
 }
 
 const upgradeResp = "HTTP/1.1 101 Switching Protocols\r\n" +
@@ -114,7 +163,10 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func (r *Router) Serve(ctx context.Context, rd io.Reader, w io.Writer) error {
 	br := bufio.NewReader(rd)
-	bw := bufio.NewWriter(w)
+	lbw := &xio.LockedWriter[*bufio.Writer]{
+		Writer: bufio.NewWriter(w),
+	}
+	var wg xsync.WaitGroup
 	for {
 		select {
 		case <-ctx.Done():
@@ -124,94 +176,65 @@ func (r *Router) Serve(ctx context.Context, rd io.Reader, w io.Writer) error {
 		reqs, batch, err := ReadRequests(br)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				return nil
+				break
 			}
-			err1 := r.sendError(bw, err)
+			err1 := r.sendError(lbw, err)
 			return errors.Join(err, err1)
 		}
-		if r.Async {
-			go safely.Run(func() {
-				if batch {
-					_ = r.serveBatch(ctx, bw, reqs)
-				} else {
-					_ = r.serveOne(ctx, bw, reqs[0])
-				}
-			})
-			continue
-		}
-		if batch {
-			err = r.serveBatch(ctx, bw, reqs)
-		} else {
-			err = r.serveOne(ctx, bw, reqs[0])
-		}
-		if err != nil {
-			return err
-		}
-	}
-}
-
-func (r *Router) sendError(w *bufio.Writer, err error) error {
-	el := envelope{}
-	if ee, ok := err.(*Error); ok {
-		el.Error = ee
-	} else {
-		el.Error = &Error{
-			Code:    xerror.ErrCode(err, -32000),
-			Message: err.Error(),
-		}
-	}
-	bf, _ := xcodec.JSON.Encode(el)
-	w.Write(bf)
-	w.Write([]byte("\n"))
-	return w.Flush()
-}
-
-func (r *Router) oneResponse(ctx context.Context, req *Request) *envelope {
-	result, err := r.Handle(ctx, req)
-	if req.NoReply() {
-		return nil
-	}
-	el := &envelope{
-		Version: Version,
-		ID:      idBytes(req.ID),
-	}
-	if err == nil {
-		el.Result, err = xcodec.JSON.Encode(result)
-	}
-
-	if err != nil {
-		if ee, ok := err.(*Error); ok {
-			el.Error = ee
-		} else {
-			el.Error = &Error{
-				Code:    xerror.ErrCode(err, -32000),
-				Message: err.Error(),
+		wg.GoCtx(ctx, func(ctx context.Context) {
+			if batch {
+				_ = r.serveBatch(ctx, lbw, reqs)
+			} else {
+				_ = r.serveOne(ctx, lbw, reqs[0])
 			}
+		})
+	}
+	return wg.Wait()
+}
+
+type lockedBW = xio.LockedWriter[*bufio.Writer]
+
+func (r *Router) sendError(w *lockedBW, err error) error {
+	resp, e := NewResponse(nil, nil, err)
+	if e != nil {
+		return e
+	}
+	err2 := w.WithLock(func(w *bufio.Writer) error {
+		if err1 := resp.Write(w); err1 != nil {
+			return err1
 		}
-	}
-	return el
+		return w.Flush()
+	})
+	return err2
 }
 
-func (r *Router) serveOne(ctx context.Context, w *bufio.Writer, req *Request) error {
-	el := r.oneResponse(ctx, req)
-	if el == nil {
-		return nil
+func (r *Router) serveOne(ctx context.Context, w *lockedBW, req *Request) error {
+	ww := &responseWriterImpl{
+		w: w,
 	}
-	bf, _ := xcodec.JSON.Encode(el)
-	bf = append(bf, '\n')
-	w.Write(bf)
-	return w.Flush()
+	err := r.Handle(ctx, ww, req)
+	if err != nil {
+		return err
+	}
+	return w.WithLock(func(w *bufio.Writer) error {
+		return w.Flush()
+	})
 }
 
-func (r *Router) serveBatch(ctx context.Context, w *bufio.Writer, reqs []*Request) error {
-	resps := make([]*envelope, 0, len(reqs))
+func (r *Router) serveBatch(ctx context.Context, w *lockedBW, reqs []*Request) error {
+	resps := make([]json.RawMessage, 0, len(reqs))
 	var mux sync.Mutex
 	var wg xsync.WaitGroup
 	for _, req := range reqs {
 		wg.GoCtx(ctx, func(ctx context.Context) {
-			if resp := r.oneResponse(ctx, req); resp != nil {
+			bf := bytes.NewBuffer(nil)
+			ww := &responseWriterImpl{
+				w: bf,
+			}
+			r.Handle(ctx, ww, req)
+			if bf.Len() > 0 {
 				mux.Lock()
-				resps = append(resps, resp)
+				resps = append(resps, bf.Bytes())
 				mux.Unlock()
 			}
 		})
@@ -227,9 +250,10 @@ func (r *Router) serveBatch(ctx context.Context, w *bufio.Writer, reqs []*Reques
 	if len(resps) == 0 {
 		return nil
 	}
-
 	bf, _ := xcodec.JSON.Encode(resps)
 	bf = append(bf, '\n')
-	w.Write(bf)
-	return w.Flush()
+	return w.WithLock(func(w *bufio.Writer) error {
+		w.Write(bf)
+		return w.Flush()
+	})
 }

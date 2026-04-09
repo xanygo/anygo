@@ -170,3 +170,20 @@ func (l *LineLengthWriter) Write(p []byte) (n int, err error) {
 	}
 	return n, nil
 }
+
+type LockedWriter[W io.Writer] struct {
+	Writer W
+	mux    sync.Mutex
+}
+
+func (lw *LockedWriter[W]) Write(p []byte) (n int, err error) {
+	lw.mux.Lock()
+	defer lw.mux.Unlock()
+	return lw.Writer.Write(p)
+}
+
+func (lw *LockedWriter[W]) WithLock(fn func(w W) error) error {
+	lw.mux.Lock()
+	defer lw.mux.Unlock()
+	return fn(lw.Writer)
+}

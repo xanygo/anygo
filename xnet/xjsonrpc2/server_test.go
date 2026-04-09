@@ -16,7 +16,7 @@ import (
 
 func TestRouter_Handle(t *testing.T) {
 	router := &xjsonrpc2.Router{}
-	router.Register("hello", xjsonrpc2.HandlerFunc(func(ctx context.Context, req *xjsonrpc2.Request) (result any, err error) {
+	router.Register("hello", xjsonrpc2.UnaryHandlerFunc(func(ctx context.Context, req *xjsonrpc2.Request) (result any, err error) {
 		return "world", nil
 	}))
 	t.Run("case 1", func(t *testing.T) {
@@ -28,10 +28,13 @@ func TestRouter_Handle(t *testing.T) {
 			w := &bytes.Buffer{}
 			err := router.Serve(context.Background(), bf, w)
 			xt.NoError(t, err)
-			want := `{"jsonrpc":"2.0","id":"1","result":"world"}
+			want1 := `{"jsonrpc":"2.0","id":"1","result":"world"}
 {"jsonrpc":"2.0","id":"2","result":"world"}
 `
-			xt.Equal(t, want, w.String())
+			want2 := `{"jsonrpc":"2.0","id":"2","result":"world"}
+{"jsonrpc":"2.0","id":"1","result":"world"}
+`
+			xt.EqualAny(t, w.String(), want1, want2)
 		}
 	})
 }

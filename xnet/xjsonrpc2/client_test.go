@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -28,6 +29,7 @@ import (
 func pingHandler(ctx context.Context, req *xjsonrpc2.Request) (result any, err error) {
 	var payload string
 	err = req.DecodeParams(&payload)
+	log.Println("call pingHandler, id=", req.ID, "payload=", payload)
 	if err != nil {
 		return nil, err
 	}
@@ -35,6 +37,7 @@ func pingHandler(ctx context.Context, req *xjsonrpc2.Request) (result any, err e
 }
 
 func infoHandler(ctx context.Context, req *xjsonrpc2.Request) (result any, err error) {
+	log.Println("call infoHandler")
 	cc := xctx.ClientConn[net.Conn](ctx)
 	if cc == nil {
 		return nil, errors.New("invalid client conn")
@@ -45,8 +48,8 @@ func infoHandler(ctx context.Context, req *xjsonrpc2.Request) (result any, err e
 
 func TestClientRequest1(t *testing.T) {
 	router := xjsonrpc2.NewRouter()
-	router.RegisterFunc("ping", pingHandler)
-	router.RegisterFunc("info", infoHandler)
+	router.RegisterUnary("ping", pingHandler)
+	router.RegisterUnary("info", infoHandler)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 

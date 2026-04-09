@@ -13,7 +13,7 @@ import (
 	"github.com/xanygo/anygo/internal/zreflect"
 )
 
-func sprintfDiff[T any](expected, actual T) string {
+func sprintfDiff[T any](actual T, expected T) string {
 	xcolor.SetColorable(true)
 	defer xcolor.SetColorable(false)
 
@@ -27,6 +27,7 @@ func sprintfDiff[T any](expected, actual T) string {
 
 	const format1 = " %12s : "
 	sb.WriteString(xcolor.GreenString(format1, "Expected"))
+
 	sb.WriteString(strExpected[:diffIndex])
 	sb.WriteString(xcolor.GreenString(strExpected[diffIndex:]))
 	sb.WriteString("\n")

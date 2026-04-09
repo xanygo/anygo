@@ -24,7 +24,7 @@ func main() {
 	anygo.Must(err)
 
 	router := xjsonrpc2.NewRouter()
-	router.RegisterFunc("ping", func(ctx context.Context, req *xjsonrpc2.Request) (result any, err error) {
+	router.RegisterUnary("ping", func(ctx context.Context, req *xjsonrpc2.Request) (result any, err error) {
 		var payload string
 		err = req.DecodeParams(&payload)
 		if err != nil {

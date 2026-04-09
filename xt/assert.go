@@ -15,17 +15,34 @@ import (
 	"github.com/xanygo/anygo/internal/zreflect"
 )
 
-func Equal[T any](t Testing, expected T, actual T) {
+func Equal[T any](t Testing, actual T, expected T) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
 	if !equal(expected, actual) {
 		var zero T
-		t.Fatalf("Not equal (%T): \n%s", zero, sprintfDiff(expected, actual))
+		t.Fatalf("Not equal (%T): \n%s", zero, sprintfDiff(actual, expected))
 	}
 }
 
-func NotEqual[T any](t Testing, expected T, actual T) {
+func EqualAny[T any](t Testing, actual T, expected ...T) {
+	if h, ok := t.(Helper); ok {
+		h.Helper()
+	}
+	for _, item := range expected {
+		if equal(actual, item) {
+			return
+		}
+	}
+	var zero T
+	var bf bytes.Buffer
+	for _, item := range expected {
+		bf.WriteString(sprintfDiff(actual, item))
+	}
+	t.Fatalf("Not equal anyof (%d %T): \n%s", len(expected), zero, bf.String())
+}
+
+func NotEqual[T any](t Testing, actual T, expected T) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
@@ -261,6 +278,7 @@ func NotSuffix[T StringByte](t Testing, s T, prefix T) {
 	t.Fatalf("Should not HasSuffix but yes\n content : %q\n prefix  : %q", s, prefix)
 }
 
+// Contains 是否包含子字符串
 func Contains[T StringByte](t Testing, s T, substr T) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
@@ -279,6 +297,7 @@ func Contains[T StringByte](t Testing, s T, substr T) {
 	t.Fatalf("%#v should not substr %#v", s, substr)
 }
 
+// NotContains 是否不包含子字符串
 func NotContains[T StringByte](t Testing, s T, substr T) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
@@ -297,7 +316,7 @@ func NotContains[T StringByte](t Testing, s T, substr T) {
 	t.Fatalf("%#v should not substr %#v", s, substr)
 }
 
-// SliceContains 检查 values 是否包含 items
+// SliceContains 检查 values 是否包含所有的 items
 func SliceContains[S ~[]E, E comparable](t Testing, values S, items ...E) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
@@ -312,7 +331,7 @@ func SliceContains[S ~[]E, E comparable](t Testing, values S, items ...E) {
 	}
 }
 
-// SliceNotContains 检查 values 没哟包含 items
+// SliceNotContains 检查 values 没哟包含任意的 items
 func SliceNotContains[S ~[]E, E comparable](t Testing, values S, items ...E) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
@@ -338,7 +357,7 @@ func SliceSortEqual[S ~[]E, E cmp.Ordered](t Testing, expected S, actual S) {
 	actual = slices.Clone(actual)
 	slices.Sort(actual)
 	if !equal(expected, actual) {
-		t.Fatalf("Not equal: \n%s", sprintfDiff(expected, actual))
+		t.Fatalf("Not equal: \n%s", sprintfDiff(actual, expected))
 	}
 }
 

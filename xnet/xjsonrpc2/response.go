@@ -13,14 +13,25 @@ import (
 	"io"
 
 	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xio"
 )
 
-func NewResponse(id ID, err *Error, data any) (*Response, error) {
+func NewResponse(id ID, data any, err error) (*Response, error) {
 	resp := &Response{
-		ID:    id,
-		Error: err,
+		ID: id,
 	}
+	if err != nil {
+		if re, ok := err.(*Error); ok {
+			resp.Error = re
+		} else {
+			resp.Error = &Error{
+				Code:    xerror.ErrCode(err, 1),
+				Message: err.Error(),
+			}
+		}
+	}
+
 	err1 := resp.WithResult(data)
 	return resp, err1
 }
@@ -29,6 +40,10 @@ type Response struct {
 	ID     ID
 	Error  *Error
 	Result json.RawMessage
+}
+
+func (res *Response) IsNotify() bool {
+	return res.ID == nil
 }
 
 func (res *Response) envelope() envelope {

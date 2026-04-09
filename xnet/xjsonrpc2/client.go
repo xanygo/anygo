@@ -78,10 +78,11 @@ func (c *ClientRequest[P]) WriteTo(ctx context.Context, w io.Writer, opt xoption
 var _ xrpc.Response = (*ClientResponse[any])(nil)
 
 type ClientResponse[P any] struct {
-	ID     ID
-	Error  *Error
-	Result P
-	raw    *Response
+	ID       ID
+	Error    *Error
+	Result   P
+	OnNotify func(resp *Response)
+	raw      *Response
 }
 
 func (c *ClientResponse[P]) String() string {
@@ -93,23 +94,36 @@ func (c *ClientResponse[P]) LoadFrom(_ context.Context, req xrpc.Request, r io.R
 	if nr, ok := req.(noReply); ok && nr.NoReply() {
 		return nil
 	}
-	if ds, ok := r.(xio.ReadDeadlineSetter); ok {
-		timeout := xoption.ReadTimeout(opt)
-		if err := ds.SetReadDeadline(time.Now().Add(timeout)); err != nil {
+
+	var resp *Response
+	var err error
+	for {
+		resp, err = c.readOne(r, opt)
+		if err != nil {
 			return err
 		}
-		defer ds.SetReadDeadline(time.Time{})
-	}
-
-	maxSize := xoption.MaxResponseSize(opt)
-	bio := bufio.NewReader(io.LimitReader(r, maxSize))
-
-	resp, err := ReadResponse(bio)
-	if err != nil {
-		return err
+		if !resp.IsNotify() {
+			break
+		}
+		if c.OnNotify != nil {
+			c.OnNotify(resp)
+		}
 	}
 	c.raw = resp
 	return resp.DecodeResult(&c.Result)
+}
+
+func (c *ClientResponse[P]) readOne(r io.Reader, opt xoption.Reader) (*Response, error) {
+	if ds, ok := r.(xio.ReadDeadlineSetter); ok {
+		timeout := xoption.ReadTimeout(opt)
+		if err := ds.SetReadDeadline(time.Now().Add(timeout)); err != nil {
+			return nil, err
+		}
+		defer ds.SetReadDeadline(time.Time{})
+	}
+	maxSize := xoption.MaxResponseSize(opt)
+	bio := bufio.NewReader(io.LimitReader(r, maxSize))
+	return ReadResponse(bio)
 }
 
 func (c *ClientResponse[P]) ErrCode() int64 {
