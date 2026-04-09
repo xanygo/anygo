@@ -25,7 +25,8 @@ func Equal[T any](t Testing, actual T, expected T) {
 	}
 }
 
-func EqualAny[T any](t Testing, actual T, expected ...T) {
+// AnyOf 获取到的值等于任意一个预期值
+func AnyOf[T any](t Testing, actual T, expected ...T) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
@@ -39,7 +40,7 @@ func EqualAny[T any](t Testing, actual T, expected ...T) {
 	for _, item := range expected {
 		bf.WriteString(sprintfDiff(actual, item))
 	}
-	t.Fatalf("Not equal anyof (%d %T): \n%s", len(expected), zero, bf.String())
+	t.Fatalf("Not AnyOf (%d %T): \n%s", len(expected), zero, bf.String())
 }
 
 func NotEqual[T any](t Testing, actual T, expected T) {
@@ -50,6 +51,20 @@ func NotEqual[T any](t Testing, actual T, expected T) {
 		str := zreflect.DumpString(actual)
 		var zero T
 		t.Fatalf("Should not equal (%T): %s", zero, str)
+	}
+}
+
+// NotAnyOf 获取到的值，必须不是任意输入值
+func NotAnyOf[T any](t Testing, actual T, expected ...T) {
+	if h, ok := t.(Helper); ok {
+		h.Helper()
+	}
+	for _, item := range expected {
+		if equal(actual, item) {
+			str := zreflect.DumpString(actual)
+			var zero T
+			t.Fatalf("Should not equal (%T): %s", zero, str)
+		}
 	}
 }
 

@@ -34,7 +34,7 @@ func TestRouter_Handle(t *testing.T) {
 			want2 := `{"jsonrpc":"2.0","id":"2","result":"world"}
 {"jsonrpc":"2.0","id":"1","result":"world"}
 `
-			xt.EqualAny(t, w.String(), want1, want2)
+			xt.AnyOf(t, w.String(), want1, want2)
 		}
 	})
 }

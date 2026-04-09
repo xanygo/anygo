@@ -27,6 +27,29 @@ func TestEqual(t *testing.T) {
 	})
 }
 
+func TestAnyOf(t *testing.T) {
+	mt := newMyTesting(t)
+	mt.Success(func(t Testing) {
+		AnyOf(t, 1, 1, 2)
+		AnyOf(t, "a", "b", "a")
+	})
+	mt.Fail(func(t Testing) {
+		AnyOf(t, "a", "b", "c")
+		AnyOf(t, 1, 2, 3)
+	})
+}
+
+func TestNotAnyOf(t *testing.T) {
+	mt := newMyTesting(t)
+	mt.Success(func(t Testing) {
+		NotAnyOf(t, 1, 0, 2)
+		NotAnyOf(t, "a", "b")
+	})
+	mt.Fail(func(t Testing) {
+		NotAnyOf(t, "a", "a", "c")
+	})
+}
+
 func TestEqualMap(t *testing.T) {
 	m1 := map[string]any{"k1": 1}
 	m2 := map[string]any{"k1": int64(1)}
