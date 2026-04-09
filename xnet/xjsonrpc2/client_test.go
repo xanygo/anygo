@@ -176,3 +176,71 @@ func TestClientRequest1(t *testing.T) {
 		})
 	})
 }
+
+func TestClient(t *testing.T) {
+	router := xjsonrpc2.NewRouter()
+	router.RegisterUnary("ping", pingHandler)
+	router.RegisterUnary("info", infoHandler)
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	srv, err := xservice.NewServiceByURL("test", ts.URL)
+	xt.NoError(t, err)
+	xt.NotNil(t, srv)
+	xt.NoError(t, srv.Start(ctx))
+	defer srv.Stop(ctx)
+
+	ss := dsession.HTTPUpgrade(http.MethodPost, "/", "json-rpc2")
+	client := &xjsonrpc2.Client{
+		Service: srv,
+		RPCOptions: []xrpc.Option{
+			xrpc.OptSessionInit(ss),
+		},
+	}
+	t.Run("InvokeUnary", func(t *testing.T) {
+		req, _ := xjsonrpc2.NewRequest(xjsonrpc2.Int64ID(1), "ping", "hello")
+		resp, err := client.InvokeUnary(ctx, req)
+		xt.NoError(t, err)
+		var str string
+		xt.NoError(t, resp.DecodeResult(&str))
+		xt.Equal(t, str, "Ok: hello")
+	})
+
+	t.Run("Stream", func(t *testing.T) {
+		ctx, cancel = context.WithCancel(ctx)
+		defer cancel()
+
+		sender := make(chan *xjsonrpc2.Request)
+		rec, err := client.Stream(ctx, sender)
+		xt.NoError(t, err)
+		xt.NotNil(t, rec)
+		go func() {
+			for i := 1; i <= 10; i++ {
+				req, _ := xjsonrpc2.NewRequest(xjsonrpc2.Int64ID(i), "ping", "hello")
+				sender <- req
+			}
+			close(sender)
+		}()
+		resps := make([]*xjsonrpc2.Response, 0)
+
+	Loop:
+		for i := 1; i <= 10; i++ {
+			select {
+			case <-ctx.Done():
+				break Loop
+			case resp, ok := <-rec:
+				if !ok {
+					break Loop
+				}
+				var str string
+				xt.NoError(t, resp.DecodeResult(&str))
+				xt.Equal(t, str, "Ok: hello")
+				resps = append(resps, resp)
+			}
+		}
+		xt.Len(t, resps, 10)
+	})
+}

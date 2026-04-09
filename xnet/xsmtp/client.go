@@ -87,7 +87,7 @@ func Send(ctx context.Context, service any, m *Mail, opts ...xrpc.Option) error 
 			yield(m)
 		},
 	}
-	return xrpc.Invoke(ctx, service, req, xrpc.DiscardResponse(), opts...)
+	return xrpc.Invoke(ctx, service, req, xrpc.NoResponse(), opts...)
 }
 
 // SendSeq 使用同一个连接，发送多封邮件
@@ -95,5 +95,5 @@ func SendSeq(ctx context.Context, service any, iter iter.Seq[*Mail], opts ...xrp
 	req := request{
 		mails: iter,
 	}
-	return xrpc.Invoke(ctx, service, req, xrpc.DiscardResponse(), opts...)
+	return xrpc.Invoke(ctx, service, req, xrpc.NoResponse(), opts...)
 }

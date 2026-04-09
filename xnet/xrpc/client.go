@@ -57,6 +57,7 @@ type config struct {
 	service     xservice.Service
 	registry    xservice.Registry
 	sessionInit dsession.Starter
+	fullDuplex  bool
 }
 
 func (cfg config) getService(srv any) (xservice.Service, error) {
@@ -203,5 +204,12 @@ func OptOptionSetter(fn func(o xoption.Option)) Option {
 func OptUseProxy(proxyURL string) Option {
 	return optionFunc(func(o *config) {
 		xoption.SetUseProxy(o.opt, proxyURL)
+	})
+}
+
+// OptFullDuplex 是否采用全双工模式，即发送数据同时接收数据
+func OptFullDuplex(enable bool) Option {
+	return optionFunc(func(o *config) {
+		o.fullDuplex = enable
 	})
 }

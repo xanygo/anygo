@@ -12,9 +12,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"time"
 
 	"github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xio"
 	"github.com/xanygo/anygo/xnet/xrpc"
@@ -138,6 +140,10 @@ func (c *ClientResponse[P]) ErrMsg() string {
 		return ""
 	}
 	return c.Error.Message
+}
+
+func (c *ClientResponse[P]) RawResponse() *Response {
+	return c.raw
 }
 
 func (c *ClientResponse[P]) Unwrap() any {
@@ -264,4 +270,166 @@ func (c *ClientResponses) Result() []*Response {
 
 func (c *ClientResponses) Unwrap() any {
 	return c.values
+}
+
+// Client 可以接收 server 推送消息的 Client
+type Client struct {
+	Service    any
+	RPCOptions []xrpc.Option
+}
+
+func (c *Client) Clone() *Client {
+	return &Client{
+		Service:    c.Service,
+		RPCOptions: slices.Clone(c.RPCOptions),
+	}
+}
+
+// InvokeUnary 发送同步的一元请求
+//
+// 该方法不可以和 Stream 同时使用，否则收到的消息可能会出现混乱
+func (c *Client) InvokeUnary(ctx context.Context, req *Request) (*Response, error) {
+	creq := &ClientRequest[json.RawMessage]{
+		ID:     req.ID,
+		Method: req.Method,
+		Params: req.Params,
+	}
+	cres := &ClientResponse[json.RawMessage]{}
+	err := xrpc.Invoke(ctx, c.Service, creq, cres, c.RPCOptions...)
+	if err != nil {
+		return nil, err
+	}
+	return cres.RawResponse(), nil
+}
+
+// SendNotify 发送通知消息
+func (c *Client) SendNotify(ctx context.Context, req *Request) error {
+	if !req.NoReply() {
+		return fmt.Errorf("has id=%v, not notify request", req.ID)
+	}
+	creq := &ClientRequest[json.RawMessage]{
+		Method: req.Method,
+		Params: req.Params,
+	}
+	return xrpc.Invoke(ctx, c.Service, creq, xrpc.NoResponse(), c.RPCOptions...)
+}
+
+// Stream 采用 stream 模式交互，异步的发送请求，异步读取响应
+func (c *Client) Stream(ctx context.Context, sender <-chan *Request) (receiver <-chan *Response, err error) {
+	req := &chatClientRequest{
+		ch: sender,
+	}
+	rec := make(chan *Response, 32)
+	resp := &chatClientResponse{
+		ch: rec,
+	}
+	opts := slices.Clone(c.RPCOptions)
+	opts = append(opts, xrpc.OptFullDuplex(true))
+	go safely.Run(func() {
+		defer close(rec)
+		err = xrpc.Invoke(ctx, c.Service, req, resp, opts...)
+	})
+	return rec, err
+}
+
+var _ xrpc.Request = (*chatClientRequest)(nil)
+
+type chatClientRequest struct {
+	ch <-chan *Request
+}
+
+func (c *chatClientRequest) String() string {
+	return "chatClientRequest"
+}
+
+func (c *chatClientRequest) Protocol() string {
+	return Protocol
+}
+
+func (c *chatClientRequest) APIName() string {
+	return ":stream"
+}
+
+func (c *chatClientRequest) WriteTo(ctx context.Context, w io.Writer, opt xoption.Reader) error {
+	for {
+		select {
+		case req, ok := <-c.ch:
+			if !ok {
+				return nil
+			}
+			if err := c.sendOne(req, w, opt); err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		}
+	}
+}
+
+func (c *chatClientRequest) sendOne(req *Request, w io.Writer, opt xoption.Reader) error {
+	if ds, ok := w.(xio.WriteDeadlineSetter); ok {
+		timeout := xoption.WriteTimeout(opt)
+		if err := ds.SetWriteDeadline(time.Now().Add(timeout)); err != nil {
+			return err
+		}
+		defer ds.SetWriteDeadline(time.Time{})
+	}
+	return req.Write(w)
+}
+
+var _ xrpc.Response = (*chatClientResponse)(nil)
+
+type chatClientResponse struct {
+	ch  chan *Response
+	err error
+}
+
+func (c *chatClientResponse) String() string {
+	return "chatClientResponse"
+}
+
+func (c *chatClientResponse) LoadFrom(ctx context.Context, req xrpc.Request, r io.Reader, opt xoption.Reader) error {
+	go safely.Run(func() {
+		<-ctx.Done()
+		if rc, ok := r.(io.ReadCloser); ok {
+			rc.Close()
+		}
+	})
+	br := bufio.NewReader(r)
+	for {
+		select {
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		default:
+		}
+		rr, _, err := ReadResponses(br) // 这里由于是同步的，会卡住，该如何实现
+		if err != nil {
+			return err
+		}
+		for _, r := range rr {
+			select {
+			case <-ctx.Done():
+				return context.Cause(ctx)
+			case c.ch <- r:
+			}
+		}
+	}
+}
+
+func (c *chatClientResponse) ErrCode() int64 {
+	if c.err == nil {
+		return 0
+	}
+	return xerror.ErrCode(c.err, 1)
+}
+
+func (c *chatClientResponse) ErrMsg() string {
+	if c.err == nil {
+		return ""
+	}
+	return c.err.Error()
+}
+
+func (c *chatClientResponse) Unwrap() any {
+	return nil
 }

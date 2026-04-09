@@ -101,7 +101,14 @@ func (r *Router) Register(method string, h Handler) {
 	r.handlers[method] = h
 }
 
+func (r *Router) SetNotFound(notFound Handler) {
+	r.notFound = notFound
+}
+
 func (r *Router) Clone() *Router {
+	if r == nil {
+		return nil
+	}
 	return &Router{
 		handlers: maps.Clone(r.handlers),
 		notFound: r.notFound,

@@ -228,7 +228,7 @@ func (c *Feilian) tryOnce(ctx context.Context, cfg *config, req Request, resp Re
 		_ = conn.Close()
 	}()
 
-	err = c.doWriteRead(wrCtx, req, resp, opt, conn)
+	err = c.doWriteRead(wrCtx, cfg, req, resp, opt, conn)
 	wrSpan.SetAttributes(
 		xmetric.AnyAttr("resp.code", resp.ErrCode()),
 		xmetric.AnyAttr("resp.msg", resp.ErrMsg()),
@@ -237,14 +237,28 @@ func (c *Feilian) tryOnce(ctx context.Context, cfg *config, req Request, resp Re
 	return err
 }
 
-func (c *Feilian) doWriteRead(ctx context.Context, req Request, resp Response, opt xoption.Reader, rw io.ReadWriteCloser) (err error) {
+func (c *Feilian) doWriteRead(ctx context.Context, cfg *config, req Request, resp Response, opt xoption.Reader, rw io.ReadWriteCloser) (err error) {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+	defer cancel()
+
 	start := time.Now()
-	// 暂时不将读写超时分开控制
-	err = req.WriteTo(ctx, rw, opt)
-	if err != nil {
-		return err
+	if cfg.fullDuplex {
+		var wg xsync.WaitGroup
+		wg.GoCtxErr(ctx, func(ctx context.Context) error {
+			return req.WriteTo(ctx, rw, opt)
+		})
+		wg.GoCtxErr(ctx, func(ctx context.Context) error {
+			return resp.LoadFrom(ctx, req, rw, opt)
+		})
+		err = wg.Wait()
+	} else {
+		err = req.WriteTo(ctx, rw, opt)
+		if err != nil {
+			return err
+		}
+		err = resp.LoadFrom(ctx, req, rw, opt)
 	}
-	err = resp.LoadFrom(ctx, req, rw, opt)
 	if err != nil {
 		return fmt.Errorf("read Response %w, cost=%s", err, time.Since(start).String())
 	}

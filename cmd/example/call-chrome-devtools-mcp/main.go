@@ -52,7 +52,7 @@ func main() {
 	req2 := &xjsonrpc2.ClientRequest[any]{
 		Method: "initialized",
 	}
-	anygo.Must(xrpc.Invoke(ctx, service, req2, xrpc.DiscardResponse()))
+	anygo.Must(xrpc.Invoke(ctx, service, req2, xrpc.NoResponse()))
 
 	req3 := &xjsonrpc2.ClientRequest[any]{
 		ID:     xjsonrpc2.Int64ID(2),
