@@ -33,7 +33,7 @@ func (c *connector) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption
 		conn, err = xdial.Connect(ctx, nil, addr, opt)
 	}
 	if err != nil {
-		return conn, err
+		return nil, err
 	}
 	// 目前只有普通网络连接，才需要 tls 握手
 	if tc, ok := conn.(*xnet.ConnNode); ok {

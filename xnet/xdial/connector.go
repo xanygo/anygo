@@ -65,7 +65,7 @@ func Connect(ctx context.Context, c Connector, addr xnet.AddrNode, opt xoption.R
 		if !span.IsRecording() {
 			return
 		}
-		if conn, ok := rw.(net.Conn); conn != nil && ok {
+		if conn, ok := rw.(net.Conn); err == nil && conn != nil && ok {
 			span.SetAttributes(
 				xmetric.AnyAttr("Remote", conn.RemoteAddr()),
 				xmetric.AnyAttr("Local", conn.LocalAddr()),
@@ -111,6 +111,9 @@ func DefaultConnector() Connector {
 func defaultConnect(ctx context.Context, addrNode xnet.AddrNode, opt xoption.Reader) (io.ReadWriteCloser, error) {
 	addr := addrNode.Addr
 	conn, err := xnet.DialContext(ctx, addr.Network(), addr.String())
+	if err != nil {
+		return nil, err
+	}
 	node := &xnet.ConnNode{
 		Addr:      addrNode,
 		Conn:      conn,
