@@ -137,15 +137,21 @@ func (r *Router) doNotFound(w http.ResponseWriter, req *http.Request) {
 //	Method: 请求方法，可选，支持一个或多个，如 “GET”，“GET,POST”
 //	若 Method 为空则不限定请求方法
 //
-//	Path: 请求地址，支持静态地址和通配符
+//	Path: 请求地址，支持静态地址和通配符，如 /,/user/*,/user/{s1:*}, 详见 Router 的文档
 //
 //	Meta：路由的其他元信息
 //	如 meta|id=123 或者 meta|id=123,type=user
+//
+// 需要注意：
+//
+// 由于路由匹配时，是按照注册时的顺序依次匹配。所以注册包含通配符的 Path 时，应确保匹配范围更大的通配符地址，注册在后面。
+// 如，/* 和 /user/* 两个 pattern path，/user/* 应在 /* 之前注册。
 func (r *Router) Handle(pattern string, handler http.Handler, mds ...MiddlewareFunc) error {
 	_, err := r.register(pattern, handler, mds...)
 	return err
 }
 
+// MustHandle 注册，若失败，会 panic。参数同  Handle 方法
 func (r *Router) MustHandle(pattern string, handler http.Handler, mds ...MiddlewareFunc) {
 	r.mustRegister(pattern, handler, mds...)
 }
@@ -161,16 +167,24 @@ func (r *Router) mustRegister(pattern string, handler http.Handler, mds ...Middl
 func (r *Router) register(pattern string, handler http.Handler, mds ...MiddlewareFunc) ([]RouteInfo, error) {
 	routes, err := zroute.ParserPattern(r.prefix, pattern)
 	if err != nil {
+		r.AutoLogger().Warn(context.Background(),
+			"register with invalid pattern",
+			xlog.String("Pattern", pattern),
+			xlog.ErrorAttr("Error", err))
 		return nil, err
 	}
 
 	if handler == nil {
+		r.AutoLogger().Warn(context.Background(),
+			"register with nil handler",
+			xlog.String("Pattern", pattern))
 		return nil, errors.New("register with a nil handler")
 	}
 
 	r.AutoLogger().Info(context.Background(), "Register http.Handler",
 		xlog.Int64("RouterID", r.id),
 		xlog.String("Pattern", pattern),
+		xlog.String("Prefix", r.prefix),
 		xlog.Int("Routes.cnt", len(routes)),
 	)
 

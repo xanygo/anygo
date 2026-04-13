@@ -14,9 +14,6 @@ func CleanPath(p string) string {
 	if p == "" {
 		return "/"
 	}
-	if p[0] != '/' {
-		p = "/" + p
-	}
 	np := path.Clean(p)
 	// path.CleanPath removes trailing slash except for root;
 	// put the trailing slash back if necessary.

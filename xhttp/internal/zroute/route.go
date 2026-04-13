@@ -25,12 +25,15 @@ const (
 	PatternRegexp                    // 正则匹配，/user/{category}/{id:[0-9]+}, /user/{id:[0-9]+}.html,
 )
 
-var patternReg = regexp.MustCompile(`^(([A-Za-z]+(,[A-Za-z]+)*\s+)?)(/\S*)(\s+meta\|(\S*))?$`)
+// 用于匹配：Method（如有）  Path  Meta （若有）
+// Path 可以是以 "/" 开头，也可以是其他字符,如 CONNECT  example.com:443  就不是 "/" 开头
+var patternReg = regexp.MustCompile(`^(([A-Za-z]+(,[A-Za-z]+)*\s+)?)(\S*)(\s+meta\|(\S*))?$`)
 
 // splitPattern 解析 pattern 中的 Method、Path、Meta 三部分
 func splitPattern(pattern string) ([]string, string, string) {
 	arr := patternReg.FindStringSubmatch(pattern)
-	if len(arr) == 0 {
+	// arr[4]  -> Path
+	if len(arr) == 0 || (len(arr) > 4 && arr[4] == "") {
 		return nil, "", ""
 	}
 

@@ -5,7 +5,10 @@
 package xhandler
 
 import (
+	"bufio"
 	"context"
+	"fmt"
+	"net"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -170,11 +173,20 @@ func (al *AccessLog) after(ctx context.Context, start time.Time, w *captureWrite
 	al.Logger.Info(ctx, "", fields...)
 }
 
+var _ http.Hijacker = (*captureWriter)(nil)
+
 type captureWriter struct {
 	http.ResponseWriter
 	statusCode atomic.Int32
 	wroteSize  atomic.Int64
 	body       []byte
+}
+
+func (w *captureWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hj, ok := w.ResponseWriter.(http.Hijacker); ok {
+		return hj.Hijack()
+	}
+	return nil, nil, fmt.Errorf("%T cannot be hijacked", w.ResponseWriter)
 }
 
 func (w *captureWriter) WriteHeader(code int) {
@@ -194,6 +206,10 @@ func (w *captureWriter) Write(b []byte) (int, error) {
 	n, err := w.ResponseWriter.Write(b)
 	w.wroteSize.Add(int64(n))
 	return n, err
+}
+
+func (w *captureWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
 }
 
 func isPrintable(b byte) bool {
