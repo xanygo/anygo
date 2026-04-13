@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -26,9 +27,14 @@ type AccessLog struct {
 	Logger xlog.Logger
 
 	// OnCookies 可选，处理 Cookie
+	// 当为 nil 时，使用默认规则处理：
+	// 所有的 cookie value 打码处理，如 sid=hello  -> sid=h3o, 即保留首尾字符，中间内容以长度替换
 	OnCookies func(cookies []*http.Cookie) []xlog.Attr
 
 	// OnHeaders 可选，处理 Header
+	// 当为 nil 时，使用默认规则处理:
+	// 对 "Authorization", "Proxy-Authenticate"，将value 打码处理,
+	// 如 sid=hello  -> sid=h3o, 即保留首尾字符，中间内容以长度替换
 	OnHeaders func(h http.Header) []xlog.Attr
 
 	// OnPanic 可选，panic 后，自定义输出
@@ -140,9 +146,24 @@ func (al *AccessLog) cookies(cookies []*http.Cookie) []xlog.Attr {
 	}
 	values := make([]xlog.Attr, len(cookies))
 	for idx, cookie := range cookies {
-		values[idx] = xlog.String(cookie.Name, cookie.Value)
+		values[idx] = xlog.String(cookie.Name, al.mask(cookie.Value))
 	}
 	return values
+}
+
+func (al *AccessLog) mask(str string) string {
+	runes := []rune(str)
+	n := len(runes)
+
+	if n <= 2 {
+		return str
+	}
+	buf := make([]byte, 0, 16)
+
+	buf = append(buf, string(runes[0])...)
+	buf = strconv.AppendInt(buf, int64(n-2), 10)
+	buf = append(buf, string(runes[n-1])...)
+	return string(buf)
 }
 
 func (al *AccessLog) headers(h http.Header) []xlog.Attr {
@@ -151,7 +172,15 @@ func (al *AccessLog) headers(h http.Header) []xlog.Attr {
 	}
 	values := make([]xlog.Attr, 0, len(h))
 	for key, value := range h {
-		values = append(values, xlog.Any(key, value))
+		if key == "Cookie" {
+			continue
+		}
+		str := strings.Join(value, ";")
+		switch key {
+		case "Authorization", "Proxy-Authenticate":
+			str = al.mask(str)
+		}
+		values = append(values, xlog.String(key, str))
 	}
 	return values
 }
