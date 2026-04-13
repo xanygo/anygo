@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"strings"
 )
 
 // ParseIPZone parses s as an IP address, return it and its associated zone
@@ -60,14 +61,32 @@ func HostPortFromURL(urlStr string) (string, error) {
 	host := u.Hostname()
 	port := u.Port()
 	if port == "" {
-		switch u.Scheme {
-		case "http":
-			port = "80"
-		case "https":
-			port = "443"
-		default:
-			return "", fmt.Errorf("invalid url %q, missing port", urlStr)
+		port, err = SchemePort(u.Scheme)
+		if err != nil {
+			return "", err
 		}
 	}
 	return net.JoinHostPort(host, port), nil
+}
+
+// 目前框架中会用到的
+var schemePort = map[string]string{
+	"http":   "80",
+	"https":  "443",
+	"ws":     "80",
+	"wss":    "443",
+	"socks5": "1080",
+	"socks4": "1080",
+	// "ftp":    "21",
+	// "sftp":   "22",
+}
+
+// SchemePort 获取这种 Schema 默认的端口号
+func SchemePort(scheme string) (string, error) {
+	key := strings.ToLower(scheme)
+	port, ok := schemePort[key]
+	if ok {
+		return port, nil
+	}
+	return "", fmt.Errorf("no default port for unkonwn schema %q", scheme)
 }

@@ -7,6 +7,7 @@ package xproxy
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/xanygo/anygo/ds/xoption"
@@ -64,20 +65,24 @@ type Driver interface {
 
 var drivers = map[string]Driver{}
 
+// Register 注册代理驱动，若重复会返回错误
 func Register(driver Driver) error {
 	protocol := driver.Protocol()
 	if protocol == "" {
 		return fmt.Errorf("invalid proxy protocol %q", protocol)
 	}
-	if _, ok := drivers[protocol]; ok {
-		return fmt.Errorf("proxy driver %q already registered", driver.Protocol())
+	key := strings.ToUpper(protocol)
+	if _, ok := drivers[key]; ok {
+		return fmt.Errorf("proxy driver %q already registered", protocol)
 	}
-	drivers[protocol] = driver
+	drivers[key] = driver
 	return nil
 }
 
+// Find 查找代理驱动，protocol 如  HTTP、HTTPS 等
 func Find(protocol string) (Driver, error) {
-	d, ok := drivers[protocol]
+	key := strings.ToUpper(protocol)
+	d, ok := drivers[key]
 	if ok {
 		return d, nil
 	}
@@ -92,11 +97,17 @@ func Find(protocol string) (Driver, error) {
 //
 // 返回值：被代理逻辑处理过后的连接对象
 func Proxy(ctx context.Context, d Driver, proxyConn *xnet.ConnNode, c *Config, target xnet.AddrNode, opt xoption.Reader) (*xnet.ConnNode, error) {
-	timeout := xoption.ReadTimeout(opt) + xoption.WriteReadTimeout(opt)
+	if opt == nil {
+		opt = xoption.ReaderFromContext(ctx)
+	}
+	timeout := xoption.TotalTimeout(opt)
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, timeout)
 	defer cancel()
-	_ = proxyConn.Conn.SetDeadline(time.Now().Add(timeout))
+
+	if err := proxyConn.Conn.SetDeadline(time.Now().Add(timeout)); err != nil {
+		return proxyConn, err
+	}
 	conn, err := d.Proxy(ctx, proxyConn, c, target.HostPort)
 	_ = proxyConn.SetDeadline(time.Time{})
 
