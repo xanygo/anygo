@@ -27,6 +27,10 @@ func (at *TimeStamp) Store(n time.Time) {
 	atomic.StoreInt64((*int64)(at), n.UnixNano())
 }
 
+func (at *TimeStamp) Add(n time.Duration) {
+	atomic.AddInt64((*int64)(at), int64(n))
+}
+
 // Sub returns the duration t-n
 func (at *TimeStamp) Sub(n time.Time) time.Duration {
 	v := atomic.LoadInt64((*int64)(at))
@@ -49,6 +53,80 @@ func (at *TimeStamp) Before(n time.Time) bool {
 func (at *TimeStamp) After(n time.Time) bool {
 	v := atomic.LoadInt64((*int64)(at))
 	return v > n.UnixNano()
+}
+
+// AfterNow 存储的时间，是否在当前时间之前
+func (at *TimeStamp) AfterNow() bool {
+	v := atomic.LoadInt64((*int64)(at))
+	if v == 0 {
+		return false
+	}
+	return v > time.Now().UnixNano()
+}
+
+// BeforeNow 存储的时间，是否在当前时间之后
+func (at *TimeStamp) BeforeNow() bool {
+	v := atomic.LoadInt64((*int64)(at))
+	if v == 0 {
+		return true
+	}
+	return v < time.Now().UnixNano()
+}
+
+func (at *TimeStamp) Compare(n *TimeStamp) int {
+	return at.Load().Compare(n.Load())
+}
+
+func (at *TimeStamp) IsZero() bool {
+	v := atomic.LoadInt64((*int64)(at))
+	return v == 0
+}
+
+func (at *TimeStamp) Equal(n *TimeStamp) bool {
+	return at.Load().Equal(n.Load())
+}
+
+func (at *TimeStamp) MarshalText() ([]byte, error) {
+	return at.Load().MarshalText()
+}
+
+func (at *TimeStamp) UnmarshalText(data []byte) error {
+	t := &time.Time{}
+	err := t.UnmarshalText(data)
+	at.Store(*t)
+	return err
+}
+
+func (at *TimeStamp) MarshalJSON() ([]byte, error) {
+	return at.Load().MarshalJSON()
+}
+
+func (at *TimeStamp) UnmarshalJSON(data []byte) error {
+	t := &time.Time{}
+	err := t.UnmarshalJSON(data)
+	at.Store(*t)
+	return err
+}
+
+func (at *TimeStamp) MarshalBinary() ([]byte, error) {
+	return at.Load().MarshalBinary()
+}
+
+func (at *TimeStamp) UnmarshalBinary(data []byte) error {
+	t := &time.Time{}
+	err := t.UnmarshalBinary(data)
+	at.Store(*t)
+	return err
+}
+
+// AfterPlus 判断是否在 now + d 之后（d 可正可负）
+func (at *TimeStamp) AfterPlus(d time.Duration) bool {
+	return at.After(time.Now().Add(d))
+}
+
+// BeforePlus 判断是否在 now + d 之前（d 可正可负）
+func (at *TimeStamp) BeforePlus(d time.Duration) bool {
+	return at.Before(time.Now().Add(d))
 }
 
 func (at *TimeStamp) CompareAndSwap(old time.Time, new time.Time) bool {

@@ -13,23 +13,38 @@ import (
 )
 
 func TestTimeStamp(t *testing.T) {
-	var a TimeStamp
-	got1 := a.Load()
-	xt.True(t, got1.IsZero())
-	now := time.Now()
-	a.Store(now)
-	got2 := a.Load()
-	xt.Equal(t, got2.UnixNano(), now.UnixNano())
+	t.Run("test 1", func(t *testing.T) {
+		var a TimeStamp
+		got1 := a.Load()
+		xt.True(t, got1.IsZero())
+		xt.True(t, a.BeforeNow())
 
-	t2 := now.Add(time.Second)
-	xt.True(t, a.Before(t2))
+		now := time.Now()
+		a.Store(now)
+		got2 := a.Load()
+		xt.Equal(t, got2.UnixNano(), now.UnixNano())
 
-	t3 := now.Add(-1 * time.Second)
-	xt.True(t, a.After(t3))
+		t2 := now.Add(time.Second)
+		xt.True(t, a.Before(t2))
 
-	xt.Equal(t, a.Sub(t3), time.Second)
+		t3 := now.Add(-1 * time.Second)
+		xt.True(t, a.After(t3))
 
-	xt.GreaterOrEqual(t, a.Since(time.Now()), time.Duration(0))
+		xt.Equal(t, a.Sub(t3), time.Second)
+
+		xt.GreaterOrEqual(t, a.Since(time.Now()), time.Duration(0))
+	})
+
+	t.Run("case 2", func(t *testing.T) {
+		var a TimeStamp
+		xt.True(t, a.BeforeNow())
+
+		a.Store(time.Now().Add(time.Hour))
+		xt.True(t, a.AfterNow())
+		xt.False(t, a.BeforeNow())
+		xt.False(t, a.BeforePlus(time.Second))
+		xt.True(t, a.AfterPlus(time.Second))
+	})
 }
 
 func BenchmarkTimeStamp_Load(b *testing.B) {
