@@ -80,7 +80,7 @@ func TestMatch(t *testing.T) {
 		{
 			name: "case 1",
 			args: args{
-				pattern: "star:hello *",
+				pattern: "wc:hello *",
 				str:     "hello world",
 			},
 			want: true,
@@ -88,7 +88,7 @@ func TestMatch(t *testing.T) {
 		{
 			name: "case 2",
 			args: args{
-				pattern: "star:hello *",
+				pattern: "wc:hello *",
 				str:     "hello",
 			},
 			want: false,
@@ -96,7 +96,7 @@ func TestMatch(t *testing.T) {
 		{
 			name: "case 3",
 			args: args{
-				pattern: `regexp:\d+`,
+				pattern: `re:\d+`,
 				str:     "hello",
 			},
 			want: false,
@@ -104,7 +104,7 @@ func TestMatch(t *testing.T) {
 		{
 			name: "case 4",
 			args: args{
-				pattern: `regexp:\d+`,
+				pattern: `re:\d+`,
 				str:     "123",
 			},
 			want: true,

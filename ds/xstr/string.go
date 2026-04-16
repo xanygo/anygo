@@ -5,11 +5,10 @@
 package xstr
 
 import (
-	"regexp"
-	"strings"
 	"unicode"
 
 	"github.com/xanygo/anygo/ds/xmap"
+	"github.com/xanygo/anygo/internal/zstr/zmatcher"
 )
 
 // ToSnakeCase 驼峰转换为下划线格式
@@ -43,43 +42,65 @@ func ToSnakeCase(s string) string {
 	return string(out)
 }
 
-var matchPool = xmap.NewLRU[string, *regexp.Regexp](256)
-
-// Match 判断字符串 str 适合和 pattern 匹配
+// Match 判断字符串 str 是否和 pattern 匹配
 //
 // pattern 的几种模式：
-//  1. 若有 "star:" 前缀，支持字符串中包含 * 通配符，* 可表示 >=0 个任意字符
-//  2. 若有 "regexp:" 前缀，则将后面的内容整个当做正则表达式，采用正则匹配
+//  1. 若有 "wc:" 前缀，支持字符串中包含 *?。* 匹配任意长度字符串（包含空字符串），? 匹配任意单个字符
+//  2. 若有 "re:" 前缀，则将后面的内容整个当做正则表达式，采用正则匹配
 //  3. 其他情况，当做普通字符串比较是否相等: return pattern == str
 //  4. 正则表达式会被缓存，缓存最近使用的 256 个
 func Match(pattern, str string) bool {
-	reCached, ok := matchPool.Get(pattern)
+	ok, _ := MatchE(pattern, str)
+	return ok
+}
+
+var matchPool = xmap.NewLRU[string, *patternCompile](2048)
+
+type patternCompile struct {
+	Match func(string) bool
+	Err   error
+}
+
+// MatchE 判断字符串 str 是否和 pattern 匹配
+//
+// 若 pattern 存在错误，会返回 error，pattern 规则详见 CompileMatch 的文档
+func MatchE(pattern, str string) (bool, error) {
+	val, ok := matchPool.Get(pattern)
 	if ok {
-		return reCached.MatchString(str)
+		return val.Match(str), val.Err
 	}
-	const regexpPrefix = `regexp:`
-	var found bool
-	pattern, found = strings.CutPrefix(pattern, regexpPrefix)
-	if found {
-		re, err := regexp.Compile(pattern)
-		if err != nil {
-			return false
-		}
-		matchPool.Set(pattern, re)
-		return re.MatchString(str)
-	}
-	const starPrefix = `star:`
-	pattern, found = strings.CutPrefix(pattern, starPrefix)
-	if !found {
-		return pattern == str
-	}
-	rePattern := regexp.QuoteMeta(pattern)
-	rePattern = strings.ReplaceAll(rePattern, `\*`, ".*")
-	rePattern = "^" + rePattern + "$"
-	re, err := regexp.Compile(rePattern)
-	if err != nil {
-		return false
-	}
-	matchPool.Set(pattern, re)
-	return re.MatchString(str)
+	fn, err := CompileMatch(pattern)
+	val = &patternCompile{Match: fn, Err: err}
+	matchPool.Set(pattern, val)
+	return fn(str), err
+}
+
+// CompileMatch 将字符串规则编译为一个可执行的匹配函数。
+//
+// 支持以下规则类型（通过前缀区分）：
+//
+//  1. 正则表达式（re: 前缀）。例如：re:^h.*o$
+//
+//  2. 通配符（wc: 前缀）。支持：* 匹配任意长度字符串（包含空字符串），? 匹配任意单个字符
+//     例如：wc:he*o ，wc:*ell*
+//
+//  3. 普通字符串（无前缀），表示完全匹配，例如：hello
+//
+// 返回值：
+//   - func(string) bool：匹配函数，输入字符串，返回是否匹配
+//   - error：当规则非法（如正则语法错误）时返回
+//
+// 行为说明：
+//   - 编译过程只执行一次，建议复用返回的函数以提升性能
+//   - 若 pattern 非法，返回的函数为 nil，同时返回 error
+//
+// 示例：
+//
+//	fn, err := CompileMatch("wc:he*o")
+//	if err != nil {
+//	    panic(err)
+//	}
+//	ok := fn("hello") // true
+func CompileMatch(pattern string) (func(string) bool, error) {
+	return zmatcher.Compile(pattern)
 }
