@@ -54,25 +54,19 @@ func Match(pattern, str string) bool {
 	return ok
 }
 
-var matchPool = xmap.NewLRU[string, *patternCompile](2048)
-
-type patternCompile struct {
-	Match func(string) bool
-	Err   error
-}
-
 // MatchE 判断字符串 str 是否和 pattern 匹配
 //
 // 若 pattern 存在错误，会返回 error，pattern 规则详见 CompileMatch 的文档
 func MatchE(pattern, str string) (bool, error) {
-	val, ok := matchPool.Get(pattern)
-	if ok {
-		return val.Match(str), val.Err
-	}
 	fn, err := CompileMatch(pattern)
-	val = &patternCompile{Match: fn, Err: err}
-	matchPool.Set(pattern, val)
 	return fn(str), err
+}
+
+var matchCompilePool = xmap.NewLRU[string, *patternCompile](2048)
+
+type patternCompile struct {
+	Match func(string) bool
+	Err   error
 }
 
 // CompileMatch 将字符串规则编译为一个可执行的匹配函数。
@@ -87,12 +81,13 @@ func MatchE(pattern, str string) (bool, error) {
 //  3. 普通字符串（无前缀），表示完全匹配，例如：hello
 //
 // 返回值：
-//   - func(string) bool：匹配函数，输入字符串，返回是否匹配
+//   - func(string) bool：匹配函数（总是不为 nil，当 err!=nil 时），输入字符串，返回是否匹配。
 //   - error：当规则非法（如正则语法错误）时返回
 //
 // 行为说明：
 //   - 编译过程只执行一次，建议复用返回的函数以提升性能
-//   - 若 pattern 非法，返回的函数为 nil，同时返回 error
+//   - 已对结果添加 LRU 缓存
+//   - 若 pattern 非法，返回的函数也不会为 nil （实际为 func(string)bool{ return false}），同时返回 error
 //
 // 示例：
 //
@@ -102,5 +97,12 @@ func MatchE(pattern, str string) (bool, error) {
 //	}
 //	ok := fn("hello") // true
 func CompileMatch(pattern string) (func(string) bool, error) {
-	return zmatcher.Compile(pattern)
+	val, ok := matchCompilePool.Get(pattern)
+	if ok {
+		return val.Match, val.Err
+	}
+	fn, err := zmatcher.Compile(pattern)
+	val = &patternCompile{Match: fn, Err: err}
+	matchCompilePool.Set(pattern, val)
+	return fn, err
 }

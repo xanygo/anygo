@@ -8,26 +8,18 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"sync"
 )
 
 type MatchFunc func(string) bool
 
-var cache sync.Map // map[string]MatchFunc
-
-// Compile 编译规则为 MatchFunc（带缓存）
+// Compile 编译规则为 MatchFunc
 func Compile(pattern string) (MatchFunc, error) {
-	if v, ok := cache.Load(pattern); ok {
-		return v.(MatchFunc), nil
-	}
-
 	fn, err := compile(pattern)
 	if err != nil {
 		// 即使编译失败，也要返回  fn
 		return AllFalse, err
 	}
 
-	cache.Store(pattern, fn)
 	return fn, nil
 }
 

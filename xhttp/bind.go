@@ -5,24 +5,73 @@
 package xhttp
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xvalidator"
 )
 
+func NewBinder(req *http.Request) *Binder {
+	return &Binder{
+		req: req,
+	}
+}
+
+type Binder struct {
+	req *http.Request
+
+	once sync.Once
+	body []byte
+	err  error
+}
+
+func (b *Binder) readBody() ([]byte, error) {
+	b.once.Do(func() {
+		if b.req.Body == nil {
+			return
+		}
+
+		b.body, b.err = io.ReadAll(b.req.Body)
+		b.req.Body = io.NopCloser(bytes.NewBuffer(b.body))
+	})
+
+	return b.body, b.err
+}
+
+func (b *Binder) Bind(obj any) error {
+	contentType := b.req.Header.Get("Content-Type")
+	if strings.HasPrefix(contentType, "application/json") {
+		return b.BinJSON(obj)
+	}
+	return fmt.Errorf("not support Content-Type: %s", contentType)
+}
+
+func (b *Binder) BinJSON(obj any) error {
+	data, err := b.readBody()
+	if err != nil {
+		return err
+	}
+	err = xcodec.Decode(xcodec.JSON, data, obj)
+	if err != nil {
+		return err
+	}
+	return xvalidator.Validate(obj)
+}
+
 func Bind(r *http.Request, obj any) error {
-	defer r.Body.Close()
 	ct := r.Header.Get("Content-Type")
 	if strings.HasPrefix(ct, "application/json") {
-		bf, err := io.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			return err
 		}
-		err = xcodec.Decode(xcodec.JSON, bf, obj)
+		r.Body = io.NopCloser(bytes.NewBuffer(body))
+		err = xcodec.Decode(xcodec.JSON, body, obj)
 		if err != nil {
 			return err
 		}
