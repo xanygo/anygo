@@ -10,6 +10,7 @@ import (
 	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/md5"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -350,4 +351,74 @@ func (a *AesOFB) Decrypt(src []byte) ([]byte, error) {
 	stream := cipher.NewCTR(block, a.iv)
 	rd := &cipher.StreamReader{S: stream, R: bytes.NewReader(src)}
 	return io.ReadAll(rd)
+}
+
+var _ Cipher = (*AesGCM)(nil)
+
+type AesGCM struct {
+	// Key 必填，加密秘钥，若长度为 16, 24, 32 会直接使用，否则会使用 md5 值
+	Key string
+
+	key []byte
+
+	once sync.Once
+}
+
+func (a *AesGCM) init() {
+	if len(a.Key) == 0 {
+		panic("empty Key")
+	}
+	key := []byte(a.Key)
+	switch len(key) {
+	case 16, 24, 32:
+		// 直接使用设置的 Key
+	default:
+		by1 := md5.Sum([]byte("anygo#" + a.Key))
+		key = []byte(hex.EncodeToString(by1[:]))
+	}
+	a.key = key
+}
+
+func (a *AesGCM) Encrypt(src []byte) ([]byte, error) {
+	if len(src) == 0 {
+		return nil, nil
+	}
+	a.once.Do(a.init)
+	block, err := aes.NewCipher(a.key)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	rand.Read(nonce)
+	ciphertext := gcm.Seal(nil, nonce, src, nil)
+
+	return append(nonce, ciphertext...), nil
+}
+
+func (a *AesGCM) Decrypt(src []byte) ([]byte, error) {
+	if len(src) == 0 {
+		return nil, nil
+	}
+	a.once.Do(a.init)
+	block, err := aes.NewCipher(a.key)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	nonceSize := gcm.NonceSize()
+	if len(src) < nonceSize {
+		return nil, errors.New("invalid data")
+	}
+
+	nonce := src[:nonceSize]
+	ciphertext := src[nonceSize:]
+
+	return gcm.Open(nil, nonce, ciphertext, nil)
 }

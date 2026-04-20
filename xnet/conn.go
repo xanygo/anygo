@@ -7,6 +7,7 @@ package xnet
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"net"
 	"slices"
 	"sync"
@@ -347,7 +348,12 @@ func (t *ConnNode) Write(b []byte) (n int, err error) {
 	return n, err
 }
 
+var errCloseOnNil = errors.New("close on nil connection")
+
 func (t *ConnNode) Close() error {
+	if t == nil {
+		return errCloseOnNil
+	}
 	// 回收到对象池的逻辑，这一部分只会运行一次
 	// 若连接有异常或者不需要了，对象池会负责关闭（再次调用 Close()）
 	if recycle := t.onRecycle.Load(); recycle != nil {

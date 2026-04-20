@@ -322,6 +322,7 @@ var FuncMap = template.FuncMap{
 	"xStrContains": strings.Contains,
 	"xStrSplit":    strings.Split,
 	"xStrFields":   strings.Fields,
+	"xStrCount":    strings.Count,
 
 	// 读取使用 SetConst 设置的常量值
 	"xConst": getConst,
