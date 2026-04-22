@@ -25,19 +25,20 @@ func Merge[S ~[]T, T any](items ...S) S {
 	return cp
 }
 
-// SafeMerge 安全的合并两个Slice,并且若其中一个为空，另一个不为空时，直接返回不为空的
-// 若两个都不为空，则返回一个全新的
-func SafeMerge[S ~[]T, T any](a S, b S) S {
-	if len(a) == 0 {
-		return b
+// SafeMerge 安全的合并两个Slice,总是返回一个全新的 slice,若为空，则返回 nil
+func SafeMerge[S ~[]T, T any](ss ...S) S {
+	var count int
+	for _, s := range ss {
+		count += len(s)
 	}
-	if len(b) == 0 {
-		return a
+	if count == 0 {
+		return nil
 	}
-	c := make(S, 0, len(a)+len(b))
-	c = append(c, a...)
-	c = append(c, b...)
-	return c
+	nc := make(S, 0, count)
+	for _, s := range ss {
+		nc = append(nc, s...)
+	}
+	return nc
 }
 
 // Unique 返回去重后的 slice

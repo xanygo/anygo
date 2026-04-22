@@ -4,7 +4,11 @@
 
 package xi18n
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/xanygo/anygo/xt"
+)
 
 func TestMessage_plural(t *testing.T) {
 	type args struct {
@@ -80,4 +84,70 @@ func TestMessage_plural(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMessage_Render(t *testing.T) {
+	t.Run("case 1", func(t *testing.T) {
+		m := &Message{
+			Key:   "demo",
+			Other: "hello world",
+		}
+		xt.NoError(t, m.initAndCheck())
+		got, err := m.Render()
+		xt.NoError(t, err)
+		xt.Equal(t, got, "hello world")
+
+		got, err = m.Render("abc")
+		xt.Error(t, err)
+		xt.Empty(t, got)
+	})
+	t.Run("case 2", func(t *testing.T) {
+		m := &Message{
+			Key:   "demo",
+			One:   "只有 {0} 个",
+			Two:   "共有 {0} 个",
+			Other: "有 {0} 个",
+		}
+		xt.NoError(t, m.initAndCheck())
+		got, err := m.Render()
+		xt.Error(t, err)
+		xt.Equal(t, got, "")
+
+		got, err = m.Render(0)
+		xt.NoError(t, err)
+		xt.Equal(t, got, "有 0 个")
+
+		got, err = m.Render(1)
+		xt.NoError(t, err)
+		xt.Equal(t, got, "只有 1 个")
+
+		got, err = m.Render(2)
+		xt.NoError(t, err)
+		xt.Equal(t, got, "共有 2 个")
+	})
+
+	t.Run("case 3", func(t *testing.T) {
+		m := &Message{
+			Key:   "demo",
+			Zero:  "zero books",
+			One:   "one book",
+			Other: "{0} books",
+		}
+		xt.NoError(t, m.initAndCheck())
+		got, err := m.Render()
+		xt.Error(t, err)
+		xt.Equal(t, got, "")
+
+		got, err = m.Render(0)
+		xt.NoError(t, err)
+		xt.Equal(t, got, "zero books")
+
+		got, err = m.Render(1)
+		xt.NoError(t, err)
+		xt.Equal(t, got, "one book")
+
+		got, err = m.Render(2)
+		xt.NoError(t, err)
+		xt.Equal(t, got, "2 books")
+	})
 }

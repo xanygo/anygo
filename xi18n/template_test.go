@@ -28,7 +28,7 @@ func TestTemplate(t *testing.T) {
 	}{
 		{
 			name: "case 1",
-			tpl:  `hello {{xi "index@k1"}}`,
+			tpl:  `hello {{xi "index/k1"}}`,
 			want: "hello 你好",
 		},
 		{
@@ -38,7 +38,7 @@ func TestTemplate(t *testing.T) {
 					LangEn,
 				},
 			},
-			tpl:  `hello {{"index@k1" | xi}}`,
+			tpl:  `hello {{"index/k1" | xi}}`,
 			want: "hello hello",
 		},
 		{
@@ -49,22 +49,22 @@ func TestTemplate(t *testing.T) {
 					LangZh,
 				},
 			},
-			tpl:  `hello {{"index@k1" | xi}}`,
+			tpl:  `hello {{"index/k1" | xi}}`,
 			want: "hello hello",
 		},
 		{
 			name: "case 4",
-			tpl:  `hello {{"index@k1" | xi}}`,
+			tpl:  `hello {{"index/k1" | xi}}`,
 			want: "hello 你好",
 		},
 		{
 			name: "case 5",
-			tpl:  `hello {{ xit "index@k1" "你好"}}`,
+			tpl:  `hello {{ xit "index/k1" "你好"}}`,
 			want: "hello 你好",
 		},
 		{
 			name: "case 6",
-			tpl:  `hello {{ "你好" | xit "index@k1"}}`,
+			tpl:  `hello {{ "你好" | xit "index/k1"}}`,
 			want: "hello 你好",
 		},
 		{
@@ -74,12 +74,12 @@ func TestTemplate(t *testing.T) {
 					LangEn,
 				},
 			},
-			tpl:  `hello {{ "你好" |xit "index@k1"}}`,
+			tpl:  `hello {{ "你好" |xit "index/k1"}}`,
 			want: "hello hello",
 		},
 		{
 			name: "case 8",
-			tpl:  `hello {{ "你好 {0}" | xit "index@k2" "demo"}}`,
+			tpl:  `hello {{ "你好 {0}" | xit "index/k2" "demo"}}`,
 			want: "hello 你好 demo",
 		},
 		{
@@ -89,27 +89,27 @@ func TestTemplate(t *testing.T) {
 					LangEn,
 				},
 			},
-			tpl:  `hello {{ "你好 {0}" | xit "index@k2" "demo"}}`,
+			tpl:  `hello {{ "你好 {0}" | xit "index/k2" "demo"}}`,
 			want: "hello hello demo",
 		},
 		{
 			name: "case 10",
-			tpl:  `hello {{xi "index@k2" "demo"}}`,
+			tpl:  `hello {{xi "index/k2" "demo"}}`,
 			want: "hello 你好 demo",
 		},
 		{
 			name:    "case 11",
-			tpl:     `hello {{xi "index@k_error"}}`, // key 不存在
+			tpl:     `hello {{xi "index/k_error"}}`, // key 不存在
 			wantErr: true,
 		},
 		{
 			name: "case 12",
-			tpl:  `hello {{ "你好 {0}" | xit "index@k_error" "demo"}}`,
+			tpl:  `hello {{ "你好 {0}" | xit "index/k_error" "demo"}}`,
 			want: "hello 你好 demo",
 		},
 		{
 			name:    "case 13",
-			tpl:     `hello {{ xit "index@k_error"}}`, // key 不存在
+			tpl:     `hello {{ xit "index/k_error"}}`, // key 不存在
 			wantErr: true,
 		},
 	}
@@ -151,21 +151,21 @@ func TestRA(t *testing.T) {
 	b.MustLocalize(LangZh).MustAdd("index", &Message{Key: "k2", Other: "你好 {0}"})
 	b.MustLocalize(LangEn).MustAdd("index", &Message{Key: "k2", Other: "hello {0}"})
 
-	_, err0 := RA(context.Background(), "index@k1")
+	_, err0 := RA(context.Background(), "index/k1")
 	xt.Error(t, err0)
 
 	ctx1 := ContextWithBundle(context.Background(), b, "")
-	xt.Equal(t, anygo.Must1(RA(ctx1, "index@k1")), "你好")
-	xt.Equal(t, anygo.Must1(RA(ctx1, "index@k2", "demo")), "你好 demo")
+	xt.Equal(t, anygo.Must1(RA(ctx1, "index/k1")), "你好")
+	xt.Equal(t, anygo.Must1(RA(ctx1, "index/k2", "demo")), "你好 demo")
 
 	t.Run("RB", func(t *testing.T) {
-		xt.Equal(t, anygo.Must1(RB(ctx1, "abc", "index@k1")), "你好")
+		xt.Equal(t, anygo.Must1(RB(ctx1, "abc", "index/k1")), "你好")
 
 		ctx2 := ContextWithLanguages(ctx1, []Language{"jp"})
-		xt.Equal(t, anygo.Must1(RB(ctx2, "abc", "index@k1")), "abc")
-		xt.Equal(t, anygo.Must1(RB(ctx2, "abc {0}", "index@k1", "demo")), "abc demo")
+		xt.Equal(t, anygo.Must1(RB(ctx2, "abc", "index/k1")), "abc")
+		xt.Equal(t, anygo.Must1(RB(ctx2, "abc {0}", "index/k1", "demo")), "abc demo")
 	})
 
 	ctx3 := ContextWithLanguages(ctx1, []Language{LangEn})
-	xt.Equal(t, anygo.Must1(RA(ctx3, "index@k1")), "hello")
+	xt.Equal(t, anygo.Must1(RA(ctx3, "index/k1")), "hello")
 }

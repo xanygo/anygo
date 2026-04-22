@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"path"
 
 	"github.com/xanygo/anygo/ds/xmap"
 )
@@ -22,8 +23,8 @@ type TemplateRender struct {
 
 // RA 在模版中加载渲染本地化内容
 //
-//	如  hello {{ .xi.RA "index@k1" }} 、 {{ .xi.RA "index@k1" arg1 arg2 }}
-//	第一个参数 "index@k1" 中 namespace = "index", key="k1"
+//	如  hello {{ .xi.RA "index/k1" }} 、 {{ .xi.RA "index/k1" arg1 arg2 }}
+//	第一个参数 "index/k1" 中 namespace = "index", key="k1"
 //	arg1 arg2 等是可选参数，支持 >=0 个
 //
 // 由于 xi 是通过 namespace + key 读取本地化内容的，所以要求所有的本地化资源都在 Bundle 中有定义
@@ -41,7 +42,7 @@ func renderA(b *Bundle, ls []Language, key string, args ...any) (string, error) 
 
 // RB 渲染本地化内容,若没有对应的语言内容，则使用传入的 text 渲染
 //
-//	如 {{ .xi.RB "你好" "index@k1" }} 或者 {{ .xi.RB "你好 {0}" "index@k1" "demo" }}
+//	如 {{ .xi.RB "你好" "index/k1" }} 或者 {{ .xi.RB "你好 {0}" "index/k1" "demo" }}
 //	在 “|” 前的内容是预定义的本地化模版信息,本地化信息中的变量使用 {number} 作为占位符，从 0 依次递增
 func (tr *TemplateRender) RB(text string, key string, args ...any) (string, error) {
 	return renderB(tr.Bundle, tr.Languages, text, key, args...)
@@ -84,7 +85,7 @@ func (tr *TemplateRender) BindXTT(b *Bundle, languages []Language, namespace str
 			return "", fmt.Errorf("i18n key=%q, missing text", key)
 		}
 		if namespace != "" {
-			key = namespace + "@" + key
+			key = path.Join(namespace, key)
 		}
 		return renderB(b, languages, text, key, args[:len(args)-1]...)
 	}
@@ -111,15 +112,15 @@ func (tr *TemplateRender) BindIs(languages []Language) func(lang string) bool {
 //
 //  1. xi: 在模版中加载渲染本地化内容
 //
-//     如  hello {{ xi "index@k1" }} 、 {{ xi "index@k1" arg1 arg2 }}
-//     第一个参数 "index@k1" 中 namespace = "index", key="k1"
+//     如  hello {{ xi "index/k1" }} 、 {{ xi "index/k1" arg1 arg2 }}
+//     第一个参数 "index/k1" 中 namespace = "index", key="k1"
 //     arg1 arg2 等是可选参数，支持 >=0 个
 //
 // 由于 xi 是通过 namespace + key 读取本地化内容的，所以要求所有的本地化资源都在 Bundle 中有定义
 //
 // 2. xit: 优先使用预定义本地化信息，并渲染本地化内容
 //
-//	如 {{ "你好" | xit "index@k1" }} 或者 {{ "你好 {0}" | xit "index@k1" "demo" }}
+//	如 {{ "你好" | xit "index/k1" }} 或者 {{ "你好 {0}" | xit "index/k1" "demo" }}
 //	在 “|” 前的内容是预定义的本地化模版信息,本地化信息中的变量使用 {number} 作为占位符，从 0 依次递增
 func FuncMap(b *Bundle, languages []Language, namespace string) map[string]any {
 	var rd TemplateRender
@@ -140,7 +141,7 @@ func RA(ctx context.Context, key string, args ...any) (string, error) {
 		return "", errNoBundleInCtx
 	}
 	if rr.namespace != "" {
-		key = rr.namespace + "@" + key
+		key = path.Join(rr.namespace, key)
 	}
 	return renderA(rr.bundle, LanguagesFromContext(ctx), key, args...)
 }
@@ -155,7 +156,7 @@ func RB(ctx context.Context, text string, key string, args ...any) (string, erro
 	}
 	languages := LanguagesFromContext(ctx)
 	if rr.namespace != "" {
-		key = rr.namespace + "@" + key
+		key = path.Join(rr.namespace, key)
 	}
 	return renderB(rr.bundle, languages, text, key, args...)
 }

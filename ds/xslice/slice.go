@@ -19,10 +19,9 @@ func Merge[S ~[]T, T any](items ...S) S {
 	return zslice.Merge(items...)
 }
 
-// SafeMerge 安全的合并两个Slice,并且若其中一个为空，另一个不为空时，直接返回不为空的
-// 若两个都不为空，则返回一个全新的
-func SafeMerge[S ~[]T, T any](a S, b S) S {
-	return zslice.SafeMerge(a, b)
+// SafeMerge 安全的合并 Slice,总是返回新的 slice，若为空，则返回 nil
+func SafeMerge[S ~[]T, T any](ss ...S) S {
+	return zslice.SafeMerge(ss...)
 }
 
 // Unique 返回去重后的 slice

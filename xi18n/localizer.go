@@ -7,7 +7,7 @@ package xi18n
 import (
 	"fmt"
 	"maps"
-	"strings"
+	"path"
 )
 
 // Localize 一个具体的本地化配置，如 zh(中文) 的本地化资源对于一个 Localize 对象
@@ -17,14 +17,14 @@ type Localize struct {
 
 // Add 注册资源，存储的时候以 namespace + msg.Key 作为存储的主键，若重复新的 message 会覆盖旧的
 //
-// namespace: 名字空间
+// namespace: 名字空间，可选，可以为空字符串
 // messages: 本地消息资源
 func (l *Localize) Add(namespace string, messages ...*Message) error {
 	if l.messages == nil {
 		l.messages = make(map[string]*Message)
 	}
 	for index, msg := range messages {
-		if err := msg.initAndCheck(); err != nil {
+		if err := msg.doInit(); err != nil {
 			return fmt.Errorf("namespace=%q, index=%d, %w", namespace, index, err)
 		}
 		path := l.keyJoin(namespace, msg.Key)
@@ -40,19 +40,28 @@ func (l *Localize) MustAdd(namespace string, messages ...*Message) {
 	}
 }
 
-const nameSpaceKeySep = "@"
-
 func (l *Localize) keyJoin(namespace string, key string) string {
-	return namespace + nameSpaceKeySep + key
+	return path.Join(namespace, key)
 }
 
-// Find 查找一条具体的消息，若查找不到会返回 nil
-func (l *Localize) Find(namespace string, key string) *Message {
+// FindNS 从 namespace 里查找一条具体的消息，若查找不到会返回 nil
+//
+// namespace: 命名空间，可以为空
+// key: 消息的 key，若包含 "/"，会认为前面部分是 namespace
+func (l *Localize) FindNS(namespace string, key string) *Message {
 	if len(l.messages) == 0 {
 		return nil
 	}
 	path := l.keyJoin(namespace, key)
 	return l.messages[path]
+}
+
+// Find 查找一条具体的消息，若查找不到会返回 nil。key 是完整的包含 namespace 的 path
+func (l *Localize) Find(key string) *Message {
+	if len(l.messages) == 0 {
+		return nil
+	}
+	return l.messages[key]
 }
 
 func (l *Localize) Clone() *Localize {
@@ -65,26 +74,24 @@ func (l *Localize) Clone() *Localize {
 //
 // languages: 待查找的语言列表，优先支持的排在前面，若 len=0 则，使用 Bundle 里所有的语言列表查询
 func FindMessage(b *Bundle, languages []Language, namespace string, key string) *Message {
-	ns1, key1, found := strings.Cut(key, nameSpaceKeySep)
-	if found {
-		namespace = ns1
-		key = key1
+	if namespace != "" {
+		key = path.Join(namespace, key)
 	}
 	if len(languages) == 0 {
 		languages = b.Languages()
 	}
 	for _, lang := range languages {
-		if msg := findMessage(b, lang, namespace, key); msg != nil {
+		if msg := findMessage(b, lang, key); msg != nil {
 			return msg
 		}
 	}
 	return nil
 }
 
-func findMessage(b *Bundle, lang Language, ns string, key string) *Message {
+func findMessage(b *Bundle, lang Language, key string) *Message {
 	l := b.Localize(lang)
 	if l == nil {
 		return nil
 	}
-	return l.Find(ns, key)
+	return l.Find(key)
 }

@@ -22,7 +22,7 @@ func ExampleRA() {
 
 	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// 从 context 里读取到 Bundle 和语言支持列表，并渲染内容
-		txt := anygo.Must1(xi18n.RA(r.Context(), "index@title", "AnyGo"))
+		txt := anygo.Must1(xi18n.RA(r.Context(), "index/title", "AnyGo"))
 		_, _ = w.Write([]byte(txt))
 	})
 
@@ -61,4 +61,29 @@ func ExampleRA() {
 	// ----
 	// Accept-Language: en,en-US;q=0.9,zh;q=0.8
 	// resp: hello AnyGo
+}
+
+func ExampleMessage_Render() {
+	m := &xi18n.Message{
+		Key:  "demo",
+		Zero: "zero books", // 当传入数字 0 时使用。可选
+		One:  "one book",   // 当传入数字 1 时使用。可选
+		// Two:   "two books",  // 当传入数字 2 时使用。可选
+		Few:   "few books", // 当传入数字 (2-10) 时使用。可选
+		Other: "{0} books", // 当传入其他数字时使用。兜底，必填字段
+	}
+
+	// 复数功能
+	fmt.Println(m.Render(0))
+	fmt.Println(m.Render(1))
+	fmt.Println(m.Render(2))
+	fmt.Println(m.Render(3))
+	fmt.Println(m.Render(20))
+
+	// Output:
+	// zero books <nil>
+	// one book <nil>
+	// 2 books <nil>
+	// few books <nil>
+	// 20 books <nil>
 }
