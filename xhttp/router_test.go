@@ -183,6 +183,7 @@ func TestRouter_Use(t *testing.T) {
 		})
 	})
 	ts := httptest.NewServer(router)
+	defer ts.Close()
 	resp, err := ts.Client().Get(ts.URL)
 	xt.NoError(t, err)
 	xt.NoError(t, iotest.TestReader(resp.Body, []byte("ok")))
@@ -226,8 +227,64 @@ func TestRouter_Prefix(t *testing.T) {
 		_, _ = w.Write([]byte("ok"))
 	})
 	ts := httptest.NewServer(router)
+	defer ts.Close()
 	resp, err := ts.Client().Get(ts.URL + "/api/index")
 	xt.NoError(t, err)
 	xt.NoError(t, iotest.TestReader(resp.Body, []byte("ok")))
 	defer resp.Body.Close()
+}
+
+func TestRouter_PrefixPrefix(t *testing.T) {
+	router := NewRouter()
+	var num1 atomic.Int64
+	router.Use(func(handler http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			num1.Add(1)
+			handler.ServeHTTP(w, r)
+		})
+	})
+	// 测试多层级 Prefix
+	p1 := router.Prefix("/api/")
+	p2 := p1.Prefix("/v1/")
+
+	var num2 atomic.Int64
+	p2.GetFunc("/hello", func(w http.ResponseWriter, request *http.Request) {
+		num2.Add(1)
+		w.WriteHeader(200)
+		w.Write([]byte("world"))
+	})
+
+	p3 := router.Prefix("/v3-")
+	p3.GetFunc("info", func(w http.ResponseWriter, request *http.Request) {
+		w.WriteHeader(200)
+		w.Write([]byte("hello-info"))
+	})
+
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	t.Run("api-v1-hello", func(t *testing.T) {
+		fullURL := ts.URL + "/api/v1/hello"
+		t.Logf("ts.Client().Get %q", fullURL)
+		resp, err := ts.Client().Get(fullURL)
+		xt.NoError(t, err)
+		xt.Equal(t, http.StatusOK, resp.StatusCode)
+		xt.Equal(t, num1.Load(), 1)
+		xt.Equal(t, num2.Load(), 1)
+
+		xt.NoError(t, iotest.TestReader(resp.Body, []byte("world")))
+		defer resp.Body.Close()
+	})
+
+	t.Run("v3-info", func(t *testing.T) {
+		fullURL := ts.URL + "/v3-info"
+		t.Logf("ts.Client().Get %q", fullURL)
+		resp, err := ts.Client().Get(fullURL)
+		xt.NoError(t, err)
+		xt.Equal(t, http.StatusOK, resp.StatusCode)
+		xt.Equal(t, num1.Load(), 2)
+
+		xt.NoError(t, iotest.TestReader(resp.Body, []byte("hello-info")))
+		defer resp.Body.Close()
+	})
 }

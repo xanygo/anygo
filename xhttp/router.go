@@ -7,6 +7,7 @@ package xhttp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -68,7 +69,7 @@ func NewRouter() *Router {
 //     Base64URL 匹配 [0-9a-zA-Z\-_]+
 //     除此之外，还可以使用 RegisterRegexpAlias 注册自定义的别名
 //
-//  4. *通配符（简化正则）(* 可以匹配包含 / 的所有字符)
+//  4. * 通配符（简化正则）(* 可以匹配包含 / 的所有字符)
 //     /user/*,  /user/*/detail, /user/*/detail/*, /user/*/detail/*.html
 //     /user/{s1:*},  /user/{s1:*}/detail,  /user/{s1:*}/detail/{s2:*}
 //
@@ -260,10 +261,20 @@ func (r *Router) Use(mds ...MiddlewareFunc) {
 }
 
 // Prefix 给地址前缀 prefix 生成一个独立的分组，
-// prefix 只能是静态地址，不能包含变量参数，如 /user/
+//
+// prefix: 前缀，只能是静态地址，不能包含变量参数，如 /user/，/user
+//
+// 注意：
+//  1. /user/ 和 /user 是不一样的，当 prefix=/user/ 时，明确表示是一个目录。
+//     比如 prefix="/user-“ 时（没有“/”后缀），依赖后续 pattern 的情况，如 pattern="info" 时，可以拼接为 "/user-info" 这个地址。
+//  2. 若 prefix 非法：不以 “/” 开头，或者包含 "*"，会 panic
+//  3. 新派生出的 Router 可以配置独立的 NotFound Handler，默认会继承当前父 Router
 func (r *Router) Prefix(prefix string, mds ...MiddlewareFunc) *Router {
-	if prefix == "" {
-		panic("prefix must not be empty")
+	if !strings.HasPrefix(prefix, "/") {
+		panic(fmt.Errorf("prefix=%q should HasPrefix '/'", prefix))
+	}
+	if strings.Contains(prefix, "*") {
+		panic(fmt.Errorf("prefix=%q cannot Contains '*'", prefix))
 	}
 	g := &Router{
 		pid:         r.id,
@@ -277,7 +288,7 @@ func (r *Router) Prefix(prefix string, mds ...MiddlewareFunc) *Router {
 	if r.notFoundRaw != nil {
 		g.NotFound(r.notFoundRaw)
 	}
-	r.Handle(g.prefix+"*", g)
+	r.MustHandle(prefix+"*", g)
 	return g
 }
 
