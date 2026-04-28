@@ -6,6 +6,15 @@ package xi18n
 
 import "slices"
 
+// NewBundle 初始化语言资源包，语言优先级顺序（当没有匹配的语言时候，按照此顺序读取消息）同传入的 languages 的顺序
+func NewBundle(languages ...Language) *Bundle {
+	b := &Bundle{}
+	for _, lang := range languages {
+		_ = b.MustLocalize(lang)
+	}
+	return b
+}
+
 // Bundle 用于存储所有本地化信息的组件，以支持的语言 ( Language )  为 key 存储和查询
 //
 // 比如在 Bundle 中，会同时存储 zh（中文-Chinese）、en （英文-English）的本地化信息

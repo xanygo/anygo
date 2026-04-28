@@ -440,23 +440,25 @@ var AdvancedFuncMap = map[string]func(tpl *template.Template) any{
 	},
 }
 
+// TemplateCore 用于 WalkParseFS 方法的约束，*html/template.Template 和 *text/template.Template 都是满足的
+type TemplateCore[T any] interface {
+	New(name string) T
+	Parse(string) (T, error)
+}
+
 // WalkParseFS 遍历读取 fsys ，并将符合 pattern 的文件解析
 //
-// pattern: 文件名的规则，不能包含目录，有效值，如 *.html
+// patterns: 文件名的规则，可选，不能包含目录，有效值如 *.html。若为空，则解析所有文件
 //
 // 注意：
 //  1. 所有 define 定义的块，全局应该不出现重名，在使用 template 方法渲染的时候，不应该添加其所在目录，
 //     如在 user/index.html 文件中有 {{ define "status.part" }} Ok {{ end }},
 //     不管是在那个目录的那个文件，渲染该块，都不能添加目录： {{ template "status.part" .User }}
 //  2. 使用 template 渲染的时候，需要使用完整的路径，如 {{ template "user/index.html" . }}
-func WalkParseFS(t *template.Template, fsys fs.FS, root string, patterns ...string) (*template.Template, error) {
-	if len(patterns) == 0 {
-		return nil, errors.New("no pattern")
-	}
-
+func WalkParseFS[T TemplateCore[T]](t T, fsys fs.FS, root string, patterns ...string) (emp T, err error) {
 	sub, err := fs.Sub(fsys, root)
 	if err != nil {
-		return nil, err
+		return emp, err
 	}
 	fsys = sub
 	parserOne := func(filename string) error {
@@ -478,6 +480,9 @@ func WalkParseFS(t *template.Template, fsys fs.FS, root string, patterns ...stri
 		}
 		if d.IsDir() {
 			return nil
+		}
+		if len(patterns) == 0 {
+			return parserOne(fp)
 		}
 		for _, pattern := range patterns {
 			if ok, _ := path.Match(pattern, path.Base(fp)); !ok {

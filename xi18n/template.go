@@ -18,7 +18,7 @@ import (
 // TemplateRender 渲染模版的辅助类
 type TemplateRender struct {
 	Bundle    *Bundle    // 语言资源包
-	Languages []Language // 有 http header accept-language 解析出的首选语言列表
+	Languages []Language // 由 http header accept-language 解析出的首选语言列表
 }
 
 // RA 在模版中加载渲染本地化内容
@@ -35,7 +35,7 @@ func (tr *TemplateRender) RA(key string, args ...any) (string, error) {
 func renderA(b *Bundle, ls []Language, key string, args ...any) (string, error) {
 	msg := FindMessage(b, ls, "", key)
 	if msg == nil {
-		return "", fmt.Errorf("cannot find %q", key)
+		return "", fmt.Errorf("cannot find %q, languages=%q", key, ls)
 	}
 	return msg.Render(args...)
 }
@@ -68,7 +68,7 @@ func (tr *TemplateRender) BindXI(b *Bundle, languages []Language, namespace stri
 	return func(key string, args ...any) (string, error) {
 		msg := FindMessage(b, languages, namespace, key)
 		if msg == nil {
-			return "", fmt.Errorf("cannot find i18n key %q", key)
+			return "", fmt.Errorf("cannot find i18n key %q, languages=%q", key, languages)
 		}
 		return msg.Render(args...)
 	}
@@ -161,13 +161,15 @@ func RB(ctx context.Context, text string, key string, args ...any) (string, erro
 	return renderB(rr.bundle, languages, text, key, args...)
 }
 
+var hh = &HTTPHandler{}
+
 func RC(b *Bundle, req *http.Request, key string, args ...any) (string, error) {
-	languages := HTTPHandler{}.Languages(req)
+	languages := hh.PreferredLanguage(req)
 	return renderA(b, languages, key, args...)
 }
 
 func RD(b *Bundle, req *http.Request, text string, key string, args ...any) (string, error) {
-	languages := HTTPHandler{}.Languages(req)
+	languages := hh.PreferredLanguage(req)
 	return renderB(b, languages, text, key, args...)
 }
 

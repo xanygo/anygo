@@ -34,6 +34,14 @@ func varDump(v any) string {
 	return bf.String()
 }
 
+var bgKindColor = map[reflect.Kind]string{
+	reflect.Array:   "background-color:#cce5ff;margin-top:5px",
+	reflect.Slice:   "background-color:#d4edda;margin-top:5px",
+	reflect.Struct:  "background-color:#fff3cd;margin-top:5px",
+	reflect.Map:     "background-color:#ffc107;margin-top:5px",
+	reflect.Pointer: "background-color:#f8d7da;margin-top:5px",
+}
+
 func printValue(v reflect.Value, w io.Writer, indent int, prefix string) {
 	indentation := strings.Repeat(" ", indent)
 
@@ -44,7 +52,16 @@ func printValue(v reflect.Value, w io.Writer, indent int, prefix string) {
 		typeStr = v.Kind().String()
 	}
 	typeStr += "  "
-	_, _ = fmt.Fprint(w, indentation+prefix+"<span style='color:blue'>"+typeStr+"</span>")
+
+	code := indentation + prefix + "<span style='color:blue'>" + typeStr + "</span>"
+	switch v.Kind() {
+	case reflect.Struct, reflect.Slice, reflect.Array, reflect.Map, reflect.Pointer:
+		style := bgKindColor[v.Kind()]
+		_, _ = fmt.Fprint(w, "<div style='"+style+"'>"+code) // div 的结尾在具体的类型逻辑里
+	default:
+		_, _ = fmt.Fprint(w, code)
+	}
+
 	switch v.Kind() {
 	case reflect.Invalid:
 		_, _ = fmt.Fprintln(w, indentation+"nil")
@@ -61,6 +78,7 @@ func printValue(v reflect.Value, w io.Writer, indent int, prefix string) {
 		str := v.String()
 		_, _ = fmt.Fprintf(w, "\t<span style='color:gray'>(%d)</span><span style='color:green'>%q</span>\n", len(str), str)
 	case reflect.Struct:
+		fmt.Fprint(w, "</div>")
 		if v.Type() == reflect.TypeFor[time.Time]() {
 			tm := v.Interface().(time.Time)
 			_, _ = fmt.Fprintf(w, indentation+"  Time.String   : %s\n", tm.String())
@@ -72,20 +90,22 @@ func printValue(v reflect.Value, w io.Writer, indent int, prefix string) {
 		for i := 0; i < v.NumField(); i++ {
 			maxLen = max(maxLen, len(v.Type().Field(i).Name))
 		}
-		fmt.Fprint(w, "\n")
+		fmt.Fprint(w, "<div data-dump-type='struct'>")
 		nameFmt := fmt.Sprintf("%%-%ds", maxLen+3)
 		for i := 0; i < v.NumField(); i++ {
 			pp := fmt.Sprintf("<span style='color:gray'>[%d]</span><span style='color:red'>"+nameFmt+"</span>", i, v.Type().Field(i).Name)
 			printValue(v.Field(i), w, indent+2, pp)
 		}
+		fmt.Fprint(w, "</div>")
 	case reflect.Array, reflect.Slice:
-		_, _ = fmt.Fprintf(w, "\t(len=%d)\n", v.Len())
+		_, _ = fmt.Fprintf(w, "\t(len=%d)</div><div data-dump-type='array'>", v.Len())
 		for i := 0; i < v.Len(); i++ {
-			printValue(v.Index(i), w, indent, fmt.Sprintf("<span style='color:gray'>[%d]</span>", i))
+			printValue(v.Index(i), w, indent+2, fmt.Sprintf("<span style='color:gray'>[%d]</span>", i))
 		}
+		fmt.Fprint(w, "</div>")
 	case reflect.Map:
 		// tt := "<span style='color:blue'>" + strings.ReplaceAll(v.Type().String(), "interface {}", "any") + "</span>"
-		_, _ = fmt.Fprintf(w, "&nbsp;<span style='color:gray'>(len=%d)</span>\n", v.Len())
+		_, _ = fmt.Fprintf(w, "&nbsp;<span style='color:gray'>(len=%d)</span></div><div data-dump-type='map'>", v.Len())
 		subIndentation := indentation[:len(indentation)*4/5]
 
 		bw := xsync.GetBytesBuffer()
@@ -107,13 +127,16 @@ func printValue(v reflect.Value, w io.Writer, indent int, prefix string) {
 
 			w.Write([]byte("\n"))
 		}
+		fmt.Fprint(w, "</div>")
 		xsync.PutBytesBuffer(bw)
 	case reflect.Pointer:
 		if v.IsNil() {
-			_, _ = fmt.Fprintln(w, "\tnil pointer")
+			_, _ = fmt.Fprintln(w, "\tnil pointer</div>")
 		} else {
-			_, _ = fmt.Fprintf(w, "\t%s\n", v.Type().String())
+			_, _ = fmt.Fprintf(w, "\t%s</div>\n", v.Type().String())
+			_, _ = fmt.Fprintln(w, "<div data-dump-type='pointer'>")
 			printValue(v.Elem(), w, indent+2, "")
+			_, _ = fmt.Fprintln(w, "</div>")
 		}
 	default:
 		if v.CanInterface() {

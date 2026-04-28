@@ -21,6 +21,9 @@ type Cache struct {
 	// Store 必填，缓存对象
 	Store xcache.Cache[string, string]
 
+	// Enable 是否允许请求缓存，可选，若为空，则判断只有 GET 请求才允许
+	Enable func(req *http.Request) bool
+
 	// Key 必填，缓存的 key，在 Handler 未执行前执行
 	// 返回值的第一个参数是缓存的 key，第二个参数是缓存有效期，若为 0 则不缓存
 	Key func(w http.ResponseWriter, r *http.Request) (string, time.Duration)
@@ -30,8 +33,11 @@ type Cache struct {
 	Log bool
 }
 
-func (c *Cache) checkCan(w http.ResponseWriter, r *http.Request) bool {
-	return r.Method == http.MethodGet && w.Header().Get("ETag") == ""
+func (c *Cache) checkCan(r *http.Request) bool {
+	if c.Enable != nil {
+		return c.Enable(r)
+	}
+	return r.Method == http.MethodGet
 }
 
 func (c *Cache) Next(handler http.Handler) http.Handler {
@@ -43,7 +49,7 @@ func (c *Cache) Next(handler http.Handler) http.Handler {
 	lfCachedRead := xlog.String("xch", "r")
 	lfCachedWrite := xlog.String("xch", "w")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !c.checkCan(w, r) {
+		if !c.checkCan(r) {
 			handler.ServeHTTP(w, r)
 			if c.Log {
 				xlog.AddAttr(r.Context(), lfCacheNo)

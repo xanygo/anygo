@@ -77,10 +77,17 @@ func FindMessage(b *Bundle, languages []Language, namespace string, key string) 
 	if namespace != "" {
 		key = path.Join(namespace, key)
 	}
-	if len(languages) == 0 {
-		languages = b.Languages()
-	}
+	cache := make(map[Language]bool, len(languages))
 	for _, lang := range languages {
+		if msg := findMessage(b, lang, key); msg != nil {
+			return msg
+		}
+		cache[lang] = true
+	}
+	for _, lang := range b.Languages() {
+		if cache[lang] {
+			continue
+		}
 		if msg := findMessage(b, lang, key); msg != nil {
 			return msg
 		}
