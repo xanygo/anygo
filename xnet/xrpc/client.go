@@ -7,6 +7,7 @@ package xrpc
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -58,6 +59,7 @@ type config struct {
 	registry    xservice.Registry
 	sessionInit dsession.Starter
 	fullDuplex  bool
+	toContext   []func(ctx context.Context) context.Context
 }
 
 func (cfg config) getService(srv any) (xservice.Service, error) {
@@ -212,4 +214,39 @@ func OptFullDuplex(enable bool) Option {
 	return optionFunc(func(o *config) {
 		o.fullDuplex = enable
 	})
+}
+
+// OptAfterResolver 在解析成功 IP 地址之后的回调，若返回 error!=nil 这表示拦截这次请求。
+// 可以对 host 解析出来的 IP 列表校验合法性
+func OptAfterResolver(fn func(ctx context.Context, network string, host string, ips []net.IP) error) Option {
+	it := &xnet.ResolverInterceptor{
+		AfterLookupIP: func(ctx context.Context, network string, host string, ips []net.IP, err error) ([]net.IP, error) {
+			if err != nil {
+				return nil, err
+			}
+			return ips, fn(ctx, network, host, ips)
+		},
+	}
+	setter := func(ctx context.Context) context.Context {
+		return xnet.ContextWithITs(ctx, it)
+	}
+	return optionFunc(func(o *config) {
+		o.toContext = append(o.toContext, setter)
+	})
+}
+
+var errAddressForbidden = errors.New("forbidden target address")
+
+var optBlockPrivateIPs = OptAfterResolver(func(ctx context.Context, network string, host string, ips []net.IP) error {
+	for _, ip := range ips {
+		if ip.IsPrivate() || ip.IsLoopback() {
+			return fmt.Errorf("%w: host=%q ip=%q", errAddressForbidden, host, ip.String())
+		}
+	}
+	return nil
+})
+
+// OptBlockPrivateIPs 在解析成功 IP 地址之后的回调，禁止 Client 访问内部私有网络和本地环回地址
+func OptBlockPrivateIPs() Option {
+	return optBlockPrivateIPs
 }

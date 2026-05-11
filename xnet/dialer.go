@@ -113,14 +113,11 @@ func (d *HedgingDialer) doDial(ctx context.Context, network string, address stri
 		if err != nil {
 			return nil, err
 		}
+		// 这里不直接解析判断 host 时 ip+port，而是全部走 Resolver 逻辑，以确保 ResolverInterceptor 都能执行
 		var ips []net.IP
-		if ip, _ := ParseIPZone(host); ip != nil {
-			ips = []net.IP{ip}
-		} else {
-			ips, err = LookupIPWith(ctx, d.Resolver, string(nt), host)
-			if err != nil {
-				return nil, err
-			}
+		ips, err = LookupIPWith(ctx, d.Resolver, string(nt), host)
+		if err != nil {
+			return nil, err
 		}
 		return d.dialHedging(ctx, network, ips, port)
 	}

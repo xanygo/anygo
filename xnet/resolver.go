@@ -235,11 +235,18 @@ func (a AfterLookupIPFunc) IT() *ResolverInterceptor {
 	}
 }
 
+// ResolverInterceptor 域名解析过程中的拦截器
+//
+// 目前定义了 3 个方法，每个方法都是可选的。执行顺序依次为：
+// ① BeforeLookupIP ② LookupIP ③ invoker（真实的查询） ④ AfterLookupIP
+//
+// 若查询的 host 已经是 IP 地址，Interceptor 的 三个方法也会执行，但是 invoker 会被替换为特殊的回调方法(直接返回 IP 地址)
 type ResolverInterceptor struct {
-	LookupIP func(ctx context.Context, network string, host string, invoker LookupIPFunc) ([]net.IP, error)
-
-	// BeforeLookupIP 解析前的回调，可以对 ctx、network、 host 更新
+	// BeforeLookupIP 解析前的回调，可以对 ctx、network、 host 更新/修改，若不修改，应原样返回
 	BeforeLookupIP func(ctx context.Context, network string, host string) (context.Context, string, string)
+
+	// LookupIP 执行查询的逻辑
+	LookupIP func(ctx context.Context, network string, host string, invoker LookupIPFunc) ([]net.IP, error)
 
 	// AfterLookupIP 解析完成后的回调，可以对 ips 和 err 更新
 	AfterLookupIP func(ctx context.Context, network string, host string, ips []net.IP, err error) ([]net.IP, error)
@@ -253,7 +260,10 @@ type resolverInterceptors []*ResolverInterceptor
 
 func (rhs resolverInterceptors) Execute(ctx context.Context, invoker LookupIPFunc, network string, host string) (ips []net.IP, err error) {
 	if ips, _ = beforeResolver(host); ips != nil {
-		return ips, nil
+		// 不可直接返回 ip，此次替换 invoker,以使 Interceptor 的方法会被正常调用
+		invoker = func(ctx context.Context, network string, host string) ([]net.IP, error) {
+			return ips, nil
+		}
 	}
 	lookIdx := -1
 	afterIdx := -1

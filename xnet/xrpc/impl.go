@@ -120,6 +120,10 @@ func (c *Feilian) Invoke(ctx context.Context, srv any, req Request, resp Respons
 
 	ctx = xoption.ContextWithReader(ctx, opt)
 
+	for _, setter := range cfg.toContext {
+		ctx = setter(ctx)
+	}
+
 	attemptTotal := xoption.Retry(opt) + 1
 
 	// 设置整体的超时时间

@@ -91,9 +91,21 @@ func (tr *TemplateRender) BindXTT(b *Bundle, languages []Language, namespace str
 	}
 }
 
+// BindIs 模版函数，判断是否是首选语言
+// {{ if xi_is "zh" }}
 func (tr *TemplateRender) BindIs(languages []Language) func(lang string) bool {
 	return func(lang string) bool {
 		return len(languages) > 0 && languages[0] == Language(lang)
+	}
+}
+
+// BindTr 模版函数，判断首选语言是否是lang，若是则输出text，否则输出 elseText
+func (tr *TemplateRender) BindTr(languages []Language) func(lang string, text string, elseText string) string {
+	return func(lang string, text string, elseText string) string {
+		if len(languages) > 0 && languages[0] == Language(lang) {
+			return text
+		}
+		return elseText
 	}
 }
 
@@ -128,6 +140,7 @@ func FuncMap(b *Bundle, languages []Language, namespace string) map[string]any {
 		"xi":    rd.BindXI(b, languages, namespace),
 		"xi_is": rd.BindIs(languages),
 		"xit":   rd.BindXTT(b, languages, namespace),
+		"xi_tr": rd.BindTr(languages),
 	}
 }
 

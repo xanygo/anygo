@@ -52,6 +52,16 @@ func Get(ctx context.Context, service any, url string, handler HandlerFunc, opts
 	return Invoke(ctx, service, req, handler, opts...)
 }
 
+// GetBody 使用 GET 读取 url 的内容（响应码必须为 200 ）
+func GetBody(ctx context.Context, service any, url string, opts ...xrpc.Option) (body []byte, err error) {
+	handler := Combine(StatusIn(200), func(ctx context.Context, resp *http.Response) error {
+		body, err = io.ReadAll(resp.Body)
+		return err
+	})
+	err = Get(ctx, service, url, handler, opts...)
+	return body, err
+}
+
 // GetAsJSON 使用 GET 读取 url 的内容（响应码必须为 200 ），并解析为 json 格式
 func GetAsJSON[T any](ctx context.Context, service any, url string, opts ...xrpc.Option) (obj *T, err error) {
 	obj = new(T)
