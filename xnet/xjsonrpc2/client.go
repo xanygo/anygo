@@ -104,14 +104,20 @@ func (c *ClientResponse[P]) LoadFrom(_ context.Context, req xrpc.Request, r io.R
 		if err != nil {
 			return err
 		}
-		if !resp.IsNotify() {
-			break
+		if resp.IsNotify() {
+			if c.OnNotify != nil {
+				c.OnNotify(resp)
+			}
+			continue
 		}
-		if c.OnNotify != nil {
-			c.OnNotify(resp)
-		}
+		break
 	}
 	c.raw = resp
+
+	if resp.Error != nil {
+		return resp.Error
+	}
+
 	return resp.DecodeResult(&c.Result)
 }
 

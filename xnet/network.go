@@ -66,6 +66,9 @@ func (nt Network) String() string {
 
 var networkDialer = map[string]Dialer{}
 
+// RegisterDialer 注册新的拨号类型
+//
+//	network: 交互协议，系统以内置所有的 NetworkXXX 的 网络类型
 func RegisterDialer(network string, d Dialer) error {
 	if _, ok := networkDialer[network]; ok {
 		return fmt.Errorf("network %s already registered", network)

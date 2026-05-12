@@ -56,7 +56,7 @@ func (res *Response) envelope() envelope {
 }
 
 func (res *Response) DecodeResult(obj any) error {
-	err := xcodec.JSON.Decode(res.Result, obj)
+	err := xcodec.Decode(xcodec.JSON, res.Result, obj)
 	if err == nil {
 		return nil
 	}
@@ -86,12 +86,12 @@ func (res *Response) Write(w io.Writer) error {
 	return err
 }
 
-func ReadResponse(rd xio.SliceReader) (*Response, error) {
+func ReadResponse(rd xio.BytesReader) (*Response, error) {
 	return readResponse(rd)
 }
 
-func readResponse(rd xio.SliceReader) (*Response, error) {
-	bf, err := rd.ReadSlice('\n')
+func readResponse(rd xio.BytesReader) (*Response, error) {
+	bf, err := rd.ReadBytes('\n')
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func readResponse(rd xio.SliceReader) (*Response, error) {
 
 func parserResponse(bf []byte) (*Response, error) {
 	el := &envelope{}
-	err := xcodec.JSON.Decode(bf, &el)
+	err := xcodec.Decode(xcodec.JSON, bf, &el)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func ReadResponses(rd *bufio.Reader) ([]*Response, bool, error) {
 	}
 	var bf bytes.Buffer
 	for {
-		line, err := rd.ReadSlice('\n')
+		line, err := rd.ReadBytes('\n')
 		if err != nil {
 			return nil, false, err
 		}
@@ -148,7 +148,7 @@ func ReadResponses(rd *bufio.Reader) ([]*Response, bool, error) {
 		}
 	}
 	var batch []json.RawMessage
-	err = xcodec.JSON.Decode(bf.Bytes(), &batch)
+	err = xcodec.Decode(xcodec.JSON, bf.Bytes(), &batch)
 	if err != nil {
 		return nil, true, err
 	}

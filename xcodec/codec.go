@@ -26,9 +26,14 @@ var (
 	Text = TextCodec{}
 )
 
+// Namer 名字
+type Namer interface {
+	Name() string
+}
+
 type (
 	Codec interface {
-		Name() string
+		Namer
 		Encoder
 		Decoder
 	}
@@ -45,6 +50,13 @@ type (
 		ContentType() string
 	}
 )
+
+func Name(obj any) string {
+	if hn, ok := obj.(Namer); ok {
+		return hn.Name()
+	}
+	return ""
+}
 
 type EncodeFunc func(any) ([]byte, error)
 
@@ -230,7 +242,7 @@ type DecodeExtra interface {
 func Decode(decoder Decoder, content []byte, obj any) error {
 	err := decoder.Decode(content, obj)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s/%d: %w", Name(decoder), len(content), err)
 	}
 	return doDecodeExtra(decoder, content, obj)
 }
@@ -298,4 +310,8 @@ func ContentType(c Encoder) (string, error) {
 		return hct.ContentType(), nil
 	}
 	return "", errNoCt
+}
+
+func Encode(enc Encoder, obj any) ([]byte, error) {
+	return enc.Encode(obj)
 }
