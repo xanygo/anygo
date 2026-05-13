@@ -222,8 +222,33 @@ func Join(value any, args ...string) string {
 	return strings.Join(ss, sep)
 }
 
-func NL2BR(s string) template.HTML {
-	escaped := template.HTMLEscapeString(s)
-	withBr := strings.ReplaceAll(escaped, "\n", "<br>")
-	return template.HTML(withBr)
+func NL2BR(s any) (template.HTML, error) {
+	var str string
+	var trusted bool
+
+	switch v := s.(type) {
+	case string:
+		str = v
+
+	case []byte:
+		str = string(v)
+
+	case template.HTML:
+		str = string(v)
+		trusted = true
+
+	default:
+		return "", fmt.Errorf("unsupported type: %T", s)
+	}
+
+	str = strings.ReplaceAll(str, "\r\n", "\n")
+	str = strings.ReplaceAll(str, "\r", "\n")
+
+	// 非可信内容先转义
+	if !trusted {
+		str = template.HTMLEscapeString(str)
+	}
+
+	str = strings.ReplaceAll(str, "\n", "<br>\n")
+	return template.HTML(str), nil
 }
