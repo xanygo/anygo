@@ -11,7 +11,35 @@ import (
 	"strings"
 )
 
+// Language 语言的类型，如 zh、zh-CN、en、en-US 等
 type Language string
+
+// SameFamily 判断语言是否是同语言族
+//
+//	如 “zh”，“zh-CN”，"zh-TW" 都是同语言族
+func (l Language) SameFamily(lang Language) bool {
+	if l == lang {
+		return true
+	}
+	return l.Base() == lang.Base()
+}
+
+// Base 返回语言的基础语言标签（primary language subtag）。
+//
+// 例如：
+//
+//	zh           -> zh
+//	zh-CN        -> zh
+//	zh-Hans-CN   -> zh
+//	en-US        -> en
+//
+// 该方法仅提取第一个 '-' 之前的部分，常用于判断两个语言是否属于同一语言族。
+func (l Language) Base() Language {
+	if p, _, ok := strings.Cut(string(l), "-"); ok {
+		return Language(p)
+	}
+	return l
+}
 
 const (
 	LangZh   Language = "zh"    // 中文

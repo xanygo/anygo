@@ -21,7 +21,7 @@ type Cache struct {
 	// Store 必填，缓存对象
 	Store xcache.Cache[string, string]
 
-	// Enable 是否允许请求缓存，可选，若为空，则判断只有 GET 请求才允许
+	// Enable 是否允许请求缓存，可选，若为空，则判断只有 GET 请求 并且 Upgrade 和 Query 参数为空才允许缓存
 	Enable func(req *http.Request) bool
 
 	// Key 必填，缓存的 key，在 Handler 未执行前执行
@@ -37,7 +37,7 @@ func (c *Cache) checkCan(r *http.Request) bool {
 	if c.Enable != nil {
 		return c.Enable(r)
 	}
-	return r.Method == http.MethodGet
+	return r.Method == http.MethodGet && r.Header.Get("Upgrade") == "" && r.URL.RawQuery == ""
 }
 
 func (c *Cache) Next(handler http.Handler) http.Handler {

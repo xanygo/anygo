@@ -99,13 +99,29 @@ func (tr *TemplateRender) BindIs(languages []Language) func(lang string) bool {
 	}
 }
 
-// BindTr 模版函数，判断首选语言是否是lang，若是则输出text，否则输出 elseText
-func (tr *TemplateRender) BindTr(languages []Language) func(lang string, text string, elseText string) string {
-	return func(lang string, text string, elseText string) string {
+// BindTr 模版函数，判断首选语言是否是 lang，若是则输出text，否则输出 elseText
+func (tr *TemplateRender) BindTr(languages []Language) func(lang string, text string, elseText string, args ...any) (string, error) {
+	return func(lang string, text string, elseText string, args ...any) (string, error) {
 		if len(languages) > 0 && languages[0] == Language(lang) {
-			return text
+			return renderMsgSlice(text, args...)
 		}
-		return elseText
+		return renderMsgSlice(elseText, args...)
+	}
+}
+
+// BindZh 模版函数，判断首选语言是否是 zh，若是则输出text，否则输出 elseText
+func (tr *TemplateRender) BindZh(languages []Language) func(text string, elseText string, args ...any) (string, error) {
+	fn := tr.BindTr(languages)
+	return func(text string, elseText string, args ...any) (string, error) {
+		return fn(string(LangZh), text, elseText)
+	}
+}
+
+// BindEn 模版函数，判断首选语言是否是 en，若是则输出 text，否则输出 elseText
+func (tr *TemplateRender) BindEn(languages []Language) func(text string, elseText string, args ...any) (string, error) {
+	fn := tr.BindTr(languages)
+	return func(text string, elseText string, args ...any) (string, error) {
+		return fn(string(LangEn), text, elseText)
 	}
 }
 
@@ -134,6 +150,18 @@ func (tr *TemplateRender) BindTr(languages []Language) func(lang string, text st
 //
 //	如 {{ "你好" | xit "index/k1" }} 或者 {{ "你好 {0}" | xit "index/k1" "demo" }}
 //	在 “|” 前的内容是预定义的本地化模版信息,本地化信息中的变量使用 {number} 作为占位符，从 0 依次递增
+//
+// 3. xi_tr: 判断首选语言是否是 lang，若是则输出 text，否则输出 elseText
+//
+//	如  {{ xi_tr "zh" "你好" “hello” }}、 {{ xi_tr "zh" "你好 {0}" “hello {0}” "参数"}}
+//
+// 4. xi_zh: 判断首选语言是否是 zh（中文），若是则输出 text，否则输出 elseText
+//
+//	如  {{ xi_zh  "你好" “hello” }}、 {{ xi_zh  "你好 {0}" “hello {0}” "HanMeiMei"}}
+//
+// 5. xi_en: 判断首选语言是否是 en（英文），若是则输出 text，否则输出 elseText
+//
+//	如  {{ xi_en  "hello" “你好” }}、 {{ xi_en  "hello {0}" “你好 {0}” "LiLei"}}
 func FuncMap(b *Bundle, languages []Language, namespace string) map[string]any {
 	var rd TemplateRender
 	return map[string]any{
@@ -141,6 +169,8 @@ func FuncMap(b *Bundle, languages []Language, namespace string) map[string]any {
 		"xi_is": rd.BindIs(languages),
 		"xit":   rd.BindXTT(b, languages, namespace),
 		"xi_tr": rd.BindTr(languages),
+		"xi_zh": rd.BindZh(languages),
+		"xi_en": rd.BindEn(languages),
 	}
 }
 
