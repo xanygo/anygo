@@ -120,7 +120,7 @@ func ExampleNewRing() {
 
 func ExampleFilter() {
 	arr := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	result := xslice.Filter(arr, func(index int, item int, ok int) bool {
+	result := xslice.Filter(arr, func(item int) bool {
 		return item%2 == 0
 	})
 	fmt.Println(result)

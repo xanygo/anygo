@@ -106,7 +106,7 @@ func (req *Mail) AddInlineFile(path string, cid string) error {
 	if stat.IsDir() {
 		return fmt.Errorf("file %q is a directory", path)
 	}
-	_, found := xslice.FilterOne(req.Inline, func(index int, item *InlineResource) bool {
+	_, found := xslice.Find(req.Inline, func(item *InlineResource) bool {
 		return item.CID == cid
 	})
 	if found {

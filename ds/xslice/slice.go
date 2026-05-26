@@ -226,52 +226,53 @@ func Join[E any](arr []E, sep string) string {
 // Filter 过滤删选出满足条件的元素
 //
 // filter: 过滤函数，参数依次为 index-元素索引、item 元素、okTotal-已过滤满足条件的个数
-func Filter[S ~[]E, E any](arr S, filter func(index int, item E, okTotal int) bool) S {
+func Filter[S ~[]E, E any](arr S, filter func(item E) bool) S {
 	if len(arr) == 0 {
 		return nil
 	}
 	var result S
 	for i := 0; i < len(arr); i++ {
-		if filter(i, arr[i], len(result)) {
+		if filter(arr[i]) {
 			result = append(result, arr[i])
 		}
 	}
 	return result
 }
 
-func FilterAs[E any, Y any](arr []E, filter func(index int, item E, ok int) (Y, bool)) []Y {
-	if len(arr) == 0 {
-		return nil
-	}
-	var result []Y
-	for i := range arr {
-		if item, ok := filter(i, arr[i], len(result)); ok {
-			result = append(result, item)
-		}
-	}
-	return result
-}
-
-func FilterOne[S ~[]E, E any](arr S, filter func(index int, item E) bool) (e E, ok bool) {
+// Find 查找首个匹配的结果
+func Find[S ~[]E, E any](arr S, match func(item E) bool) (e E, ok bool) {
 	if len(arr) == 0 {
 		return e, false
 	}
 	for i := 0; i < len(arr); i++ {
-		if filter(i, arr[i]) {
+		if match(arr[i]) {
 			return arr[i], true
 		}
 	}
 	return e, false
 }
 
-// MapFilter 使用回调函数 fn 依次对 slice 的元素处理，fn 返回的第二个值为 false 则丢弃该值，否则更新
-func MapFilter[S ~[]E, E any](arr S, fn func(index int, item E) (E, bool)) S {
+func FilterAs[E any, Y any](arr []E, filter func(item E) (Y, bool)) []Y {
+	if len(arr) == 0 {
+		return nil
+	}
+	var result []Y
+	for i := range arr {
+		if v, ok := filter(arr[i]); ok {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+// FilterMap 使用回调函数 fn 依次对 slice 的元素处理，fn 返回的第二个值为 false 则丢弃该值，否则更新
+func FilterMap[S ~[]E, E any](arr S, fn func(item E) (E, bool)) S {
 	if len(arr) == 0 {
 		return nil
 	}
 	result := make(S, 0, len(arr))
 	for i := 0; i < len(arr); i++ {
-		if nv, ok := fn(i, arr[i]); ok {
+		if nv, ok := fn(arr[i]); ok {
 			result = append(result, nv)
 		}
 	}
@@ -290,13 +291,13 @@ func MapFunc[S ~[]E, E any](arr S, fn func(item E) E) S {
 }
 
 // CountFunc 统计 slice 中满足条件的元素个数
-func CountFunc[S ~[]E, E any](arr S, fn func(index int, item E) bool) int64 {
+func CountFunc[S ~[]E, E any](arr S, fn func(item E) bool) int64 {
 	if len(arr) == 0 {
 		return 0
 	}
 	var result int64
 	for i := 0; i < len(arr); i++ {
-		if fn(i, arr[i]) {
+		if fn(arr[i]) {
 			result++
 		}
 	}

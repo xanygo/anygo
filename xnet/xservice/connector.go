@@ -110,7 +110,7 @@ func (c *connector) connectProxy(ctx context.Context, proxyName string, target x
 // UseProxy 也支持传入多个代理地址，如 UseProxy="http://127.0.0.1:3128,http://10.10.0.1:3128",若是多个，则每次随机使用一个
 func (c *connector) connectProxyURL(ctx context.Context, proxy string, target xnet.AddrNode, opt xoption.Reader) (nc *xnet.ConnNode, err error) {
 	items := strings.Split(proxy, ",")
-	items = xslice.MapFilter(items, func(index int, item string) (string, bool) {
+	items = xslice.FilterMap(items, func(item string) (string, bool) {
 		item = strings.TrimSpace(item)
 		return item, item != ""
 	})
