@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>WebSocket Demo</title>
+</head>
+<body>
+
+<div style="margin: 15%">
+    <div style="text-align: center">
+        <h2>WebSocket</h2>
+        <button onclick="connect()">连接</button>
+        <button onclick="sendJSON()">发送文本(echo)</button>
+        <button onclick="sendBinary()">发送二进制(ArrayBuffer)</button>
+        <button onclick="sendBlob()">发送Blob</button>
+        <button onclick="closeConn()">关闭连接</button>
+    </div>
+    <div style="margin-top: 50px;border:1px dashed gray;min-height: 50px">
+        <ol  id="log"></ol>
+    </div>
+</div>
+<script>
+    let ws = null;
+
+    function log(msg) {
+        let li=document.createElement("li")
+        li.innerText=msg;
+        document.getElementById("log").appendChild(li);
+    }
+
+    function connect() {
+        ws = new WebSocket(`ws://${location.host}/ws`);
+
+        // 指定二进制类型
+        ws.binaryType = "arraybuffer";
+
+        ws.onopen = function () {
+            log("onopen");
+        };
+
+        ws.onclose = function (event) {
+            log(`onclose code=${event.code} reason=${event.reason}`);
+        };
+
+        ws.onerror = function (err) {
+            log(`onerror: ${err}`);
+            console.error(err);
+        };
+
+        ws.onmessage = async function (event) {
+            log(`--------------------- onmessage start ---------------------`);
+            // 文本消息
+            if (typeof event.data === "string") {
+                log(`收到文本: ${event.data}`);
+
+                try {
+                    const obj = JSON.parse(event.data);
+                    log(`JSON 解析成功:${obj}`);
+                    console.log(obj);
+                } catch(e) {
+                    log(`JSON 解析失败:${e}`);
+                }
+            }else if (event.data instanceof ArrayBuffer) {
+                const bytes = new Uint8Array(event.data);
+                log( `收到 ArrayBuffer: ${event.data.byteLength} bytes, ${bytes}`);
+                console.log(bytes);
+            }else if (event.data instanceof Blob) {
+                const buffer = await event.data.arrayBuffer();
+                const b=new Uint8Array(buffer);
+                log(`收到Blob: ${event.data.size} bytes, ${b}`);
+                console.log( b);
+                return;
+            }
+
+            log(`--------------------- onmessage  end  ---------------------`);
+        };
+    }
+
+    function sendJSON() {
+        const msg = {
+            Method: "echo",
+            Payload: "hello-world"
+        };
+        const txt=JSON.stringify(msg);
+        ws.send(txt);
+
+        log(`发送JSON成功: ${txt}`);
+    }
+
+    function sendBinary() {
+        const bytes = new Uint8Array([ 1, 2, 3, 4, 5]);
+
+        ws.send(bytes.buffer);
+
+        log(`发送 ArrayBuffer 成功, ${bytes}`);
+    }
+
+    function sendBlob() {
+        const blob = new Blob([
+            new Uint8Array([10,20,30,40,50])
+        ]);
+
+        ws.send(blob);
+
+        log(`发送 Blob 成功: ${blob}`);
+    }
+
+    function closeConn() {
+        ws.close(1000,"normal close");
+    }
+</script>
+
+</body>
+</html>
