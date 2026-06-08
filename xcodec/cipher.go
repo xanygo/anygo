@@ -393,7 +393,9 @@ func (a *AesGCM) Encrypt(src []byte) ([]byte, error) {
 		return nil, err
 	}
 	nonce := make([]byte, gcm.NonceSize())
-	rand.Read(nonce)
+	if _, err = rand.Read(nonce); err != nil {
+		return nil, err
+	}
 	ciphertext := gcm.Seal(nil, nonce, src, nil)
 
 	return append(nonce, ciphertext...), nil

@@ -49,7 +49,7 @@ var hub = &xws.Hub{}
 var wsRouter = xws.NewRouter()
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
-	c, err := upgrader.Upgrade(w, r, nil)
+	c, err := upgrader.Upgrade(xhttp.ResponseWriterUnwrap(w), r, nil)
 	if err == nil {
 		err = hub.ServeWSUpgradeRaw(r.Context(), wsRouter, r, c)
 	}

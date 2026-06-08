@@ -5,10 +5,7 @@
 package xhandler
 
 import (
-	"bufio"
 	"context"
-	"fmt"
-	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -202,20 +199,13 @@ func (al *AccessLog) after(ctx context.Context, start time.Time, w *captureWrite
 	al.Logger.Info(ctx, "", fields...)
 }
 
-var _ http.Hijacker = (*captureWriter)(nil)
+var _ xhttp.WrappedResponseWriter = (*captureWriter)(nil)
 
 type captureWriter struct {
 	http.ResponseWriter
 	statusCode atomic.Int32
 	wroteSize  atomic.Int64
 	body       []byte
-}
-
-func (w *captureWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	if hj, ok := w.ResponseWriter.(http.Hijacker); ok {
-		return hj.Hijack()
-	}
-	return nil, nil, fmt.Errorf("%T cannot be hijacked", w.ResponseWriter)
 }
 
 func (w *captureWriter) WriteHeader(code int) {

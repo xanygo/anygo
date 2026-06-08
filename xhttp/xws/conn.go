@@ -75,7 +75,7 @@ func (c *wsConn) Write(ctx context.Context, msg *Message) error {
 	}
 }
 
-func (c *wsConn) loopWrite(writeFn func(*Message) error, retryFn func(*Message)) {
+func (c *wsConn) loopWrite(ctx context.Context, writeFn func(*Message) error, retryFn func(*Message)) {
 	for {
 		select {
 		case msg := <-c.send:
@@ -87,6 +87,8 @@ func (c *wsConn) loopWrite(writeFn func(*Message) error, retryFn func(*Message))
 			}
 
 		case <-c.quit:
+			return
+		case <-ctx.Done():
 			return
 		}
 	}
@@ -270,9 +272,10 @@ func (h *Hub) ServeWSUpgradeRaw(ctx context.Context, handler Handler, hr *http.R
 func (h *Hub) ServeWSUpgrade(ctx context.Context, handler Handler, hr *http.Request, rw ReadWriter) error {
 	id := ConnID(nextConnID.Add(1))
 	conn := newConn(id, 8, hr)
+	defer conn.Close()
 	go safely.Run(func() {
-		conn.loopWrite(func(m *Message) error {
-			return rw.WriteMessage(m.Type, m.Payload)
+		conn.loopWrite(ctx, func(m *Message) error {
+			return m.WriteTo(rw)
 		}, nil)
 
 		if wc, ok := rw.(io.Closer); ok {
@@ -331,7 +334,15 @@ func (h *Hub) ServeWSUpgrade(ctx context.Context, handler Handler, hr *http.Requ
 }
 
 type ReadWriter interface {
+	Reader
+	Writer
+}
+
+type Reader interface {
 	ReadMessage() (MessageType, []byte, error)
+}
+
+type Writer interface {
 	WriteMessage(MessageType, []byte) error
 }
 

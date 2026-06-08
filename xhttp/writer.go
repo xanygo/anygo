@@ -5,7 +5,10 @@
 package xhttp
 
 import (
+	"bufio"
 	"encoding/json"
+	"fmt"
+	"net"
 	"net/http"
 	"text/template"
 )
@@ -64,11 +67,20 @@ func WriteJSONPStatus(w http.ResponseWriter, status int, cb string, data any) {
 }
 
 var _ http.ResponseWriter = (*StatusWriter)(nil)
+var _ http.Hijacker = (*StatusWriter)(nil)
+var _ WrappedResponseWriter = (*StatusWriter)(nil)
 
 type StatusWriter struct {
 	W          http.ResponseWriter
 	statusCode int
 	wrote      int
+}
+
+func (w *StatusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if wh, ok := w.W.(http.Hijacker); ok {
+		return wh.Hijack()
+	}
+	return nil, nil, fmt.Errorf("%T does not implement http.Hijacker", w.W)
 }
 
 func (w *StatusWriter) Header() http.Header {
@@ -96,4 +108,18 @@ func (w *StatusWriter) StatusCode() int {
 
 func (w *StatusWriter) Unwrap() http.ResponseWriter {
 	return w.W
+}
+
+type WrappedResponseWriter interface {
+	Unwrap() http.ResponseWriter
+}
+
+func ResponseWriterUnwrap(w http.ResponseWriter) http.ResponseWriter {
+	for {
+		uw, ok := w.(WrappedResponseWriter)
+		if !ok {
+			return w
+		}
+		w = uw.Unwrap()
+	}
 }

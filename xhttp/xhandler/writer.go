@@ -7,9 +7,12 @@ package xhandler
 import (
 	"bytes"
 	"net/http"
+
+	"github.com/xanygo/anygo/xhttp"
 )
 
 var _ http.ResponseWriter = (*bufferedResponseWriter)(nil)
+var _ xhttp.WrappedResponseWriter = (*bufferedResponseWriter)(nil)
 
 type bufferedResponseWriter struct {
 	statusCode int
@@ -34,4 +37,8 @@ func (b *bufferedResponseWriter) GetStatusCode() int {
 		return http.StatusOK
 	}
 	return b.statusCode
+}
+
+func (b *bufferedResponseWriter) Unwrap() http.ResponseWriter {
+	return b.W
 }

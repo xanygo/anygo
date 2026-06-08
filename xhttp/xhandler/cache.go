@@ -21,7 +21,9 @@ type Cache struct {
 	// Store 必填，缓存对象
 	Store xcache.Cache[string, string]
 
-	// Enable 是否允许请求缓存，可选，若为空，则判断只有 GET 请求 并且 Upgrade 和 Query 参数为空才允许缓存
+	// Enable 是否允许请求缓存，可选，若为空，则判断:
+	//  1. 是 GET 请求 并且 Upgrade 和 Query 参数为空
+	//  2. 路由的 meta 信息里，不存在 cache=no 属性
 	Enable func(req *http.Request) bool
 
 	// Key 必填，缓存的 key，在 Handler 未执行前执行
@@ -37,7 +39,13 @@ func (c *Cache) checkCan(r *http.Request) bool {
 	if c.Enable != nil {
 		return c.Enable(r)
 	}
-	return r.Method == http.MethodGet && r.Header.Get("Upgrade") == "" && r.URL.RawQuery == ""
+	can := r.Method == http.MethodGet && r.Header.Get("Upgrade") == "" && r.URL.RawQuery == ""
+	if !can {
+		return false
+	}
+	ri := xhttp.ReadRouteInfo(r.Context())
+	val, has := ri.GetMeta("cache")
+	return !has || val != "no"
 }
 
 func (c *Cache) Next(handler http.Handler) http.Handler {

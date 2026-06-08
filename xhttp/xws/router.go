@@ -23,18 +23,26 @@ const (
 //
 // 若是传递给对端，此时消息类型只应该是 TextMessage。
 type Message struct {
-	Type MessageType
+	// Type 消息类型，由 ws conn 读取消息的时候获取，不需要通过 RPC 传递
+	Type MessageType `json:"-"`
 
-	//  Bin 后面是否紧接着附加二进制消息,当消息类型是 TextMessage 时，同时 More=true，则紧接着的 BinaryMessage 消息，
-	// 会继续交给前一个 TextMessage 对应的 Method 的 Handler 此处
-	// 取一个更好的名字
-	Bin bool
+	//  Bin 后面是否紧接着附加二进制消息,当消息类型是 TextMessage 时，同时 Bin=true，则紧接着的 BinaryMessage 消息
+	// 会继续交给前一个 TextMessage 对应的 Method 的 Handler 处理
+	Bin bool `json:"Bin,omitempty"`
 
-	// Method 请求方法
+	// Method 请求方法,用于路由查找，只有 TextMessage 类型生效。
+	// 发送此 Message 时，若 Method 为空，则直接发送 Payload,否则将整个 Message 使用 JSON encode 编码
 	Method string
 
 	// Payload 请求的消息文本
 	Payload json.RawMessage
+}
+
+func (m *Message) MessageType() MessageType {
+	if m.Type > 0 {
+		return m.Type
+	}
+	return TextMessage
 }
 
 // Decode 解析 Payload
@@ -49,10 +57,19 @@ func (m *Message) DecodeString() (string, error) {
 	return str, err
 }
 
+// WithPayload 将 obj 使用 JSON encode 编码，并设置为 Payload
 func (m *Message) WithPayload(obj any) error {
 	bf, err := xcodec.Encode(xcodec.JSON, obj)
 	m.Payload = bf
 	return err
+}
+
+func (m *Message) WriteTo(w Writer) error {
+	bf, err := encode(m)
+	if err != nil {
+		return err
+	}
+	return w.WriteMessage(m.MessageType(), bf)
 }
 
 type Request struct {
