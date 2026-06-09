@@ -5,11 +5,11 @@
 package xhttp
 
 import (
+	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xhttp/trustheader"
 	"net"
 	"net/http"
 	"strings"
-
-	"github.com/xanygo/anygo/xnet/trustip"
 )
 
 func IsAjax(r *http.Request) bool {
@@ -22,36 +22,61 @@ func IsAjax(r *http.Request) bool {
 	}
 }
 
-// ClientIP 获取用户真实 IP
+// ClientIP 获取用户真实 IP(不包括端口号，可能是 IPV4 和 IPV6 地址)，有可能返回空
 //
-// 会先拿 Request.RemoteAddr，使用 trustip.IsTrusted 来判断上游来源是可信的，
-//
-//	若不可信，直接返回 RemoteAddr。
-//	若可信，则尝试从 header： X-Real-IP、X-Forwarded-For 中读取，若没有值则最终使用 RemoteAddr。
-//
-// 所以，若是前端部署了 Nginx 等 LB，应确保 LB 能被 trustip 判断为是可行的，并让 LB 透传 X-Real-IP 字段作为用户真实 IP
+// 读取规则：
+//  1. 若 Header 中的  Cf-Connecting-Ip 是可信并且有值，直接返回
+//  2. 若 Header 中的  X-Real-IP 是可信并且有值，直接返回
+//  3. 若 Header 中的  X-Forwarded-For 是可信并且有值，返回第一个不为空的
+//  4. 读取 *http.Request.RemoteAddr,返回 ip 值
 func ClientIP(r *http.Request) string {
-	host, _, _ := net.SplitHostPort(r.RemoteAddr)
-	ip := net.ParseIP(host)
-	if !trustip.IsTrusted(ip) {
-		return host
+	if v, ok := trustheader.Get(r.Header, "Cf-Connecting-Ip"); ok {
+		return v
 	}
 
-	if cp := r.Header.Get("X-Real-IP"); cp != "" {
-		pp := net.ParseIP(cp)
-		if pp != nil {
-			return cp
-		}
+	if v, ok := trustheader.Get(r.Header, "X-Real-IP"); ok {
+		return v
 	}
-	xff := r.Header.Get("X-Forwarded-For")
-	if xff != "" {
+
+	if xff, ok := trustheader.Get(r.Header, "X-Forwarded-For"); ok {
 		arr := strings.Split(xff, ",")
-		if len(arr) > 0 {
-			pp := net.ParseIP(arr[0])
-			if pp != nil {
-				return arr[0]
+		for _, v := range arr {
+			ip := strings.TrimSpace(v)
+			if ip != "" {
+				return ip
 			}
 		}
 	}
+
+	host, _, _ := net.SplitHostPort(r.RemoteAddr)
 	return host
+}
+
+type cfVisitor struct {
+	Scheme string `json:"scheme"`
+}
+
+// ClientScheme 从请求中读取用户发起请求的  scheme，一般会返回 https 或者  http。
+//
+// 解析规则:
+//
+//  1. 若  X-Forwarded-Proto 是可信 header，并且有值，则返回。
+//  2. 若 Cf-Visitor 是可信 header（cloudflare 会传递 Header Cf-Visitor: '{"scheme":"https"}'），并且可解析出 scheme 值，则返回。
+//  3. 若 *http.Request.TLS != nil ，则返回 https，否则返回 http
+func ClientScheme(r *http.Request) string {
+	if v, ok := trustheader.Get(r.Header, "X-Forwarded-Proto"); ok {
+		return v
+	}
+
+	// cloudflare: Cf-Visitor: '{"scheme":"https"}'
+	if str, ok := trustheader.Get(r.Header, "Cf-Visitor"); ok && strings.Contains(str, "scheme") {
+		var cf cfVisitor
+		if err := xcodec.Decode(xcodec.JSON, []byte(str), &cf); err == nil && cf.Scheme != "" {
+			return cf.Scheme
+		}
+	}
+	if r.TLS != nil {
+		return "https"
+	}
+	return "http"
 }

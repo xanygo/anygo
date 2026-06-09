@@ -6,7 +6,6 @@ package xurl
 
 import (
 	"errors"
-	"net/http"
 	"net/url"
 	"path"
 	"strings"
@@ -91,14 +90,4 @@ func PathJoin(base string, rel string) (string, error) {
 	}
 	bu.Path = path.Join(bu.Path, rel)
 	return bu.String(), nil
-}
-
-func BaseURL(r *http.Request) string {
-	scheme := "http"
-
-	if r.TLS != nil {
-		scheme = "https"
-	}
-
-	return scheme + "://" + r.Host
 }
