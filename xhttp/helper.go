@@ -5,11 +5,12 @@
 package xhttp
 
 import (
-	"github.com/xanygo/anygo/xcodec"
-	"github.com/xanygo/anygo/xhttp/trustheader"
 	"net"
 	"net/http"
 	"strings"
+
+	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xhttp/trustheader"
 )
 
 func IsAjax(r *http.Request) bool {

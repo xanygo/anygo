@@ -41,6 +41,10 @@ func LimitBody(size int64) HandlerFunc {
 	}
 }
 
+func StatusOK() HandlerFunc {
+	return StatusIn(http.StatusOK)
+}
+
 func StatusIn(codes ...int) HandlerFunc {
 	mp := make(map[int]bool, len(codes))
 	for _, code := range codes {
@@ -119,7 +123,7 @@ func (sr *StoredResponse) Write(w http.ResponseWriter) {
 	}
 	w.Header().Set("Content-Length", strconv.Itoa(len(sr.Body)))
 	w.WriteHeader(sr.StatusCode)
-	w.Write(sr.Body)
+	_, _ = w.Write(sr.Body)
 }
 
 func (sr *StoredResponse) CreateTime() time.Time {
@@ -139,6 +143,18 @@ func FetchResponse(rr *http.Response) HandlerFunc {
 		resp.Body = io.NopCloser(bytes.NewBuffer(body))
 		*rr = *resp
 		rr.Body = io.NopCloser(bytes.NewBuffer(body))
+		return nil
+	}
+}
+
+func FetchResponseBody(w io.Writer) HandlerFunc {
+	return func(ctx context.Context, resp *http.Response) error {
+		defer resp.Body.Close()
+		var buf bytes.Buffer
+		if _, err := io.Copy(io.MultiWriter(w, &buf), resp.Body); err != nil {
+			return err
+		}
+		resp.Body = io.NopCloser(bytes.NewReader(buf.Bytes()))
 		return nil
 	}
 }

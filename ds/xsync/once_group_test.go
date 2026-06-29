@@ -23,7 +23,7 @@ func TestOnceGroup_Do(t *testing.T) {
 		return "bar", nil
 	})
 	if got, want := fmt.Sprintf("%v (%T)", v, v), "bar (string)"; got != want {
-		t.Errorf("Do = %v; want %v", got, want)
+		t.Errorf("Get = %v; want %v", got, want)
 	}
 	xt.NoError(t, err)
 }
@@ -65,7 +65,7 @@ func TestOnceGroup_DoDupSuppress(t *testing.T) {
 		v := <-c
 		c <- v // pump; make available for any future calls
 
-		time.Sleep(10 * time.Millisecond) // let more goroutines enter Do
+		time.Sleep(10 * time.Millisecond) // let more goroutines enter Get
 
 		return v, nil
 	}
@@ -78,17 +78,17 @@ func TestOnceGroup_DoDupSuppress(t *testing.T) {
 			wg1.Done()
 			v, err, _ := g.Do("key", fn)
 			if err != nil {
-				t.Errorf("Do error: %v", err)
+				t.Errorf("Get error: %v", err)
 				return
 			}
 			if s, _ := v.(string); s != "bar" {
-				t.Errorf("Do = %T %v; want %q", v, v, "bar")
+				t.Errorf("Get = %T %v; want %q", v, v, "bar")
 			}
 		})
 	}
 	wg1.Wait()
 	// At least one goroutine is in fn now and all of them have at
-	// least reached the line before the Do.
+	// least reached the line before the Get.
 	c <- "bar"
 	wg2.Wait()
 	if got := atomic.LoadInt32(&calls); got <= 0 || got >= n {

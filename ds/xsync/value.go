@@ -15,7 +15,8 @@ func NewValue[T any](defaultValue T) *Value[T] {
 	return v
 }
 
-// Value 有默认值的 Value
+// Value 泛型类型的 atomic.Value。
+// 泛型类型 T 支持 interface：即可以存储同一个 interface 不同的实现。
 type Value[T any] struct {
 	value atomic.Value
 	once  sync.Once
@@ -23,61 +24,45 @@ type Value[T any] struct {
 
 func (v *Value[T]) CompareAndSwap(old, new T) (swapped bool) {
 	v.once.Do(func() {
-		v.value.Store(baggage[T]{})
+		v.value.Store(baggage1[T]{})
 	})
-	return v.value.CompareAndSwap(baggage[T]{Value: old}, baggage[T]{Value: new})
+	return v.value.CompareAndSwap(baggage1[T]{Value: old}, baggage1[T]{Value: new})
 }
 
 func (v *Value[T]) Load() (val T) {
 	v.once.Do(func() {
-		v.value.Store(baggage[T]{})
+		v.value.Store(baggage1[T]{})
 	})
-	value, ok := v.value.Load().(baggage[T])
-	if ok {
-		return value.Value
-	}
-	return val
+	value, _ := v.value.Load().(baggage1[T])
+	return value.Value
 }
 
-func fnEmpty() {}
-
 func (v *Value[T]) Store(val T) {
-	v.once.Do(fnEmpty)
-	v.value.Store(baggage[T]{Value: val})
+	var set bool
+	v.once.Do(func() {
+		set = true
+		v.value.Store(baggage1[T]{Value: val})
+	})
+	if !set {
+		v.value.Store(baggage1[T]{Value: val})
+	}
 }
 
 func (v *Value[T]) Swap(new T) (old T) {
-	v.once.Do(fnEmpty)
-	value, ok := v.value.Swap(baggage[T]{Value: new}).(baggage[T])
-	if ok {
-		return value.Value
+	var set bool
+	v.once.Do(func() {
+		set = true
+		v.value.Swap(baggage1[T]{Value: new})
+	})
+	if set {
+		return old
 	}
-	return old
+	value, _ := v.value.Swap(baggage1[T]{Value: new}).(baggage1[T])
+	return value.Value
 }
 
 // Clear 用空值覆盖
 func (v *Value[T]) Clear() {
 	var emp T
 	v.Store(emp)
-}
-
-type baggage[T any] struct {
-	Value T
-}
-
-// OnceLoadValue 只允许 load 一次的 Value
-type OnceLoadValue[T any] struct {
-	value atomic.Value
-}
-
-func (l *OnceLoadValue[T]) Store(val T) {
-	l.value.Store(baggage[T]{Value: val})
-}
-
-func (l *OnceLoadValue[T]) Load() (val T) {
-	old, ok := l.value.Swap(baggage[T]{}).(baggage[T])
-	if ok {
-		return old.Value
-	}
-	return val
 }

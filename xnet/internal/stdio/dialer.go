@@ -105,7 +105,7 @@ type stdioConn struct {
 	rw        io.ReadWriteCloser
 	lastErr   xsync.Value[error]
 	meta      sync.Map
-	onRecycle xsync.OnceLoadValue[func()] // Load 一次后，再次 Load 读到的是 nil
+	onRecycle xsync.OnceRead[func()] // Load 一次后，再次 Load 读到的是 nil
 	remote    net.Addr
 	local     net.Addr
 }
@@ -152,7 +152,7 @@ func (s *stdioConn) Write(b []byte) (n int, err error) {
 func (s *stdioConn) Close() error {
 	// 回收到对象池的逻辑，这一部分只会运行一次
 	// 若连接有异常或者不需要了，对象池会负责关闭（再次调用 Close()）
-	if recycle := s.onRecycle.Load(); recycle != nil {
+	if recycle, ok := s.onRecycle.Read(); ok && recycle != nil {
 		recycle()
 		return nil
 	}

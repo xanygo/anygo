@@ -68,7 +68,7 @@ func (rd *Reader[K, V]) Get(ctx context.Context, key K) (v V, err error) {
 	if err == nil {
 		err = rd.Cache.Set(ctx, key, value, rd.TTL)
 	} else if rd.FailTTL > 0 {
-		rd.Cache.Set(ctx, key, value, rd.FailTTL)
+		_ = rd.Cache.Set(ctx, key, value, rd.FailTTL)
 	}
 	return v, err
 }
@@ -130,6 +130,7 @@ func (rd *MemReader1[V]) Read() (v V, err error) {
 func (rd *MemReader1[V]) Get(ctx context.Context) (v V, err error) {
 	rd.mux.Lock()
 	defer rd.mux.Unlock()
+
 	if rd.expire.After(time.Now()) {
 		return rd.value, rd.err
 	}
@@ -149,25 +150,26 @@ func (rd *MemReader1[V]) Get(ctx context.Context) (v V, err error) {
 // Flush 刷新缓存的数据
 func (rd *MemReader1[V]) Flush(ctx context.Context) (v V, err error) {
 	v, err = rd.New(ctx)
-	if err != nil {
-		return v, err
-	}
-	if err == nil || rd.FailTTL > 0 {
+
+	rd.mux.Lock()
+	defer rd.mux.Unlock()
+
+	if err == nil {
 		rd.value = v
 		rd.err = nil
-	}
-	if err == nil {
 		rd.expire = time.Now().Add(rd.TTL)
-	} else if rd.FailTTL > 0 {
+		return v, err
+	}
+
+	if rd.FailTTL > 0 {
+		rd.value = v
+		rd.err = err
 		rd.expire = time.Now().Add(rd.FailTTL)
 	}
 	return v, err
 }
 
 func (rd *MemReader1[V]) Clear() {
-	if rd == nil {
-		return
-	}
 	var emp V
 	rd.mux.Lock()
 	rd.expire = time.Time{}

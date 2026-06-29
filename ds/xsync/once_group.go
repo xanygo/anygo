@@ -16,7 +16,7 @@ import (
 // the user given function.
 var errGoexit = errors.New("runtime.Goexit was called")
 
-// call is an in-flight or completed singleflight.Do call
+// call is an in-flight or completed singleflight.Get call
 type call[V any] struct {
 	wg sync.WaitGroup
 
@@ -41,7 +41,7 @@ type OnceGroup[K comparable, V any] struct {
 	m  map[K]*call[V] // lazily initialized
 }
 
-// OnceGroupResult holds the results of Do, so they can be passed
+// OnceGroupResult holds the results of Get, so they can be passed
 // on a channel.
 type OnceGroupResult[V any] struct {
 	Val    V

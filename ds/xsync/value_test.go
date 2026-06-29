@@ -18,9 +18,11 @@ func TestValueErr(t *testing.T) {
 		xt.True(t, ev.CompareAndSwap(nil, io.EOF))
 		xt.False(t, ev.CompareAndSwap(nil, io.EOF))
 		xt.ErrorIs(t, ev.Load(), io.EOF)
+
 		err1 := errors.New("hello")
 		xt.ErrorIs(t, ev.Swap(err1), io.EOF)
 		xt.ErrorIs(t, ev.Load(), err1)
+
 		err2 := fmt.Errorf("world %w", io.EOF)
 		ev.Store(err2)
 		xt.ErrorIs(t, ev.Load(), err2)
@@ -45,6 +47,21 @@ func TestValueErr(t *testing.T) {
 		v1.Store(nil)
 		xt.NoError(t, v1.Load())
 		checkErrValue(t, v1)
+	})
+	t.Run("case 5", func(t *testing.T) {
+		var v1 Value[error]
+		xt.NoError(t, v1.Load())
+		v1.Store(nil)
+		xt.NoError(t, v1.Load())
+		checkErrValue(t, &v1)
+	})
+	t.Run("case 6", func(t *testing.T) {
+		var v1 Value[error]
+		xt.True(t, v1.CompareAndSwap(nil, io.EOF))
+		xt.Error(t, v1.Load())
+		v1.Store(nil)
+		xt.NoError(t, v1.Load())
+		checkErrValue(t, &v1)
 	})
 }
 
@@ -85,17 +102,36 @@ func TestValueInt(t *testing.T) {
 
 func TestOnceLoadValue_Store(t *testing.T) {
 	t.Run("case 1", func(t *testing.T) {
-		var vs OnceLoadValue[func()]
-		xt.Nil(t, vs.Load())
+		var vs OnceRead[func()]
+
+		got, ok := vs.Read()
+		xt.Nil(t, got)
+		xt.False(t, ok)
+
 		vs.Store(func() {})
-		xt.NotNil(t, vs.Load())
-		xt.Nil(t, vs.Load())
+
+		got, ok = vs.Read()
+		xt.NotNil(t, got)
+		xt.True(t, ok)
+
+		got, ok = vs.Read()
+		xt.Nil(t, got)
+		xt.False(t, ok)
 	})
 	t.Run("case 2", func(t *testing.T) {
-		var vs OnceLoadValue[int]
-		xt.Equal(t, vs.Load(), 0)
+		var vs OnceRead[int]
+		got, ok := vs.Read()
+		xt.Equal(t, got, 0)
+		xt.False(t, ok)
+
 		vs.Store(1)
-		xt.Equal(t, vs.Load(), 1)
-		xt.Equal(t, vs.Load(), 0)
+
+		got, ok = vs.Read()
+		xt.Equal(t, got, 1)
+		xt.True(t, ok)
+
+		got, ok = vs.Read()
+		xt.Equal(t, got, 0)
+		xt.False(t, ok)
 	})
 }

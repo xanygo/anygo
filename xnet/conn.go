@@ -270,7 +270,7 @@ type ConnNode struct {
 	CreatTime time.Time  // 创建时间
 
 	meta      sync.Map
-	onRecycle xsync.OnceLoadValue[func()]
+	onRecycle xsync.OnceRead[func()]
 
 	lastErr         xsync.Value[error]
 	readTotalBytes  atomic.Int64
@@ -356,7 +356,7 @@ func (t *ConnNode) Close() error {
 	}
 	// 回收到对象池的逻辑，这一部分只会运行一次
 	// 若连接有异常或者不需要了，对象池会负责关闭（再次调用 Close()）
-	if recycle := t.onRecycle.Load(); recycle != nil {
+	if recycle, ok := t.onRecycle.Read(); ok && recycle != nil {
 		recycle()
 		return nil
 	}

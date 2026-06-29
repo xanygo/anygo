@@ -37,12 +37,12 @@ func ExampleOnceDoValue2_Done() {
 	got := once.Do(func() int {
 		return 1
 	})
-	fmt.Println("Do:", got)
+	fmt.Println("Get:", got)
 	fmt.Println("Done:", once.Done())
 
 	// Output:
 	// Done: false
-	// Do: 1
+	// Get: 1
 	// Done: true
 }
 
@@ -53,13 +53,13 @@ func ExampleOnceDoValue2_DoneValue() {
 	got := once.Do(func() int {
 		return 1
 	})
-	fmt.Println("Do:", got)
+	fmt.Println("Get:", got)
 	fmt.Print("DoneValue: ")
 	fmt.Println(once.DoneValue())
 
 	// Output:
 	// DoneValue: false 0
-	// Do: 1
+	// Get: 1
 	// DoneValue: true 1
 }
 
