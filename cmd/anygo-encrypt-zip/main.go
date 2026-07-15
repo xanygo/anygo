@@ -141,7 +141,7 @@ func createZip() []byte {
 			// err = w.AddFS(os.DirFS(fp))
 			assert(err, "AddFS "+fp)
 		} else {
-			tw, err := zw.Create(fp)
+			tw, err := zw.Create(filepath.ToSlash(fp))
 			assert(err, "Create "+fp)
 			content, err := os.ReadFile(fp)
 			assert(err, "ReadFile "+fp)
@@ -166,7 +166,7 @@ func oneFile(zw *zip.Writer, name string) error {
 	if err != nil {
 		return err
 	}
-	h.Name = name
+	h.Name = filepath.ToSlash(name)
 	h.Method = zip.Deflate
 	fw, err := zw.CreateHeader(h)
 	if err != nil {
