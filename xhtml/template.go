@@ -18,6 +18,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -283,6 +284,8 @@ var FuncMap = template.FuncMap{
 		return string(bf), err
 	},
 
+	"xToPlainObject": zreflect.ToPlainObject, // 丢弃 json tag 属性(struct 会转换为 map)
+
 	"xDump": tplfn.Dump,
 
 	"xIsOdd":  tplfn.IsOddNumber,  //  判断是否是奇数
@@ -337,7 +340,7 @@ var FuncMap = template.FuncMap{
 	"xMathMul":        tplfn.MathMul,
 	"xMathDiv":        tplfn.MathDiv,
 	"xMathPercent":    tplfn.MathPercent,    // 将一个小数转换为百分比的字符串
-	"xMathComplement": tplfn.MathComplement, // (1-f)*100 %
+	"xMathComplement": tplfn.MathComplement, // 转换为百分比： (1-f)*100 %
 
 	"xCat": func(items ...string) string {
 		if len(items) == 0 {
@@ -358,6 +361,7 @@ var FuncMap = template.FuncMap{
 		n := strings.Count(str, "\n") + 1
 		return max(min, n)
 	},
+
 	"xPathDir": path.Dir,
 	"xPathDirN": func(p string, n int) string {
 		for range n {
@@ -369,12 +373,18 @@ var FuncMap = template.FuncMap{
 	"xPathJoin":  path.Join,
 	"xPathBase":  path.Base,
 	"xPathIsAbs": path.IsAbs,
+	"xPathExt":   path.Ext,
+
+	"xFilePathToSlash": filepath.ToSlash,
+
 	"xTernary": func(ok bool, x any, y any) any {
 		if ok {
 			return x
 		}
 		return y
 	},
+
+	"xSliceContains": zreflect.SliceContains,
 }
 
 func Dump(w io.Writer, obj any) {
