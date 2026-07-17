@@ -384,7 +384,7 @@ var FuncMap = template.FuncMap{
 		return y
 	},
 
-	"xSliceContains": zreflect.SliceContains,
+	"xSliceContains": zreflect.SliceContains, // 判断 slice 或者 array 是否包含特定的值
 }
 
 func Dump(w io.Writer, obj any) {
