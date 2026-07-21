@@ -63,7 +63,8 @@ func NewRouter() *Router {
 //     正则表达式别名：
 //     /{id:UUID} 、/{id:UINT}
 //     UUID 可匹配 xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx 这个格式的 UUID
-//     UINT 可匹配正整数
+//     UINT 可匹配正整数 （>=0）
+//     NZUInt 可匹配非0的正整数 （>0）
 //     Base62 匹配 [0-9a-zA-Z]+
 //     Base36 匹配 [0-9a-z]+
 //     Base64URL 匹配 [0-9a-zA-Z\-_]+
@@ -84,7 +85,8 @@ func NewRouter() *Router {
 //	在 Handler 中或者中间件中使用 ReadRouteInfo(http.Request.Context()) 可以读取此 Handler 注册的路由信息。
 //	如用于监控、鉴权等场景时，可以读取 RouteInfo 信息。
 //	在 Pattern 中，除了 Path 等其他元信息可以通过在 Pattern 中添加 (\s+meta|Meta) 段落内容添加。
-//	如 Handle("get /index meta|id=1,type=user")。id 字段时固定的字段，还可以添加其他任意 key 。
+//	如 Handle("get /index meta|id=1,type=user")。id 字段是固定的字段 ,后面可以使用英文逗号连接多个key-value 对。
+//	Handle("get /index meta|id=1,type=user|PathValues{k1=v1}"), PathValues{} 里的 key-value 将会设置到请求的 PathValues 里去。
 type Router struct {
 	id, pid int64 // 方便观察日志
 	xlog.WithLogger
@@ -104,8 +106,13 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	ctx := ContextWithRequest(req.Context(), req)
 	if sr != nil {
-		ctx = contextWithRouteInfo(ctx, sr.Info.(RouteInfo))
+		info := sr.Info.(RouteInfo)
+		ctx = contextWithRouteInfo(ctx, info)
 		req = req.WithContext(ctx)
+
+		for k, v := range info.metaPathValues {
+			req.SetPathValue(k, v)
+		}
 		sr.ServeHTTP(w, req)
 		return
 	}
@@ -195,11 +202,12 @@ func (r *Router) register(pattern string, handler http.Handler, mds ...Middlewar
 	for _, route := range routes {
 		route.Handler = handler
 		info := RouteInfo{
-			Method:    route.Method,
-			Pattern:   route.Pattern,
-			Path:      zroute.CleanPattern(route.Pattern),
-			MetaID:    route.Meta.ID,
-			MetaOther: route.Meta.Other,
+			Method:         route.Method,
+			Pattern:        route.Pattern,
+			Path:           zroute.CleanPattern(route.Pattern),
+			MetaID:         route.Meta.ID,
+			MetaOther:      route.Meta.Other,
+			metaPathValues: route.Meta.PathValues,
 		}
 		route.Info = info
 		r.subRoute = append(r.subRoute, route)
@@ -212,7 +220,7 @@ func (r *Router) register(pattern string, handler http.Handler, mds ...Middlewar
 
 // HandleFunc  注册路由， pattern 支持格式 (Method\s+)?(Path)(\s+meta|Meta)
 func (r *Router) HandleFunc(pattern string, handler http.HandlerFunc, mds ...MiddlewareFunc) {
-	r.Handle(pattern, handler, mds...)
+	_ = r.Handle(pattern, handler, mds...)
 }
 
 func (r *Router) handleMethod(method string, pattern string, handler http.Handler, mds ...MiddlewareFunc) RouteInfo {
@@ -377,6 +385,8 @@ type RouteInfo struct {
 
 	// MetaOther
 	MetaOther map[string]string
+
+	metaPathValues map[string]string
 }
 
 func (ri RouteInfo) Exists() bool {

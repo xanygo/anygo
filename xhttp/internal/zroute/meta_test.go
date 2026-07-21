@@ -5,8 +5,9 @@
 package zroute
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/xanygo/anygo/xt"
 )
 
 func Test_parserMeta(t *testing.T) {
@@ -57,6 +58,40 @@ func Test_parserMeta(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "case 5 PathValues 1",
+			args: args{
+				str: "id=1|PathValues{k1=v1}",
+			},
+			want: Meta{
+				ID: "1",
+				PathValues: map[string]string{
+					"k1": "v1",
+				},
+				Other: map[string]string{},
+			},
+		},
+		{
+			name: "case 6 PathValues 2",
+			args: args{
+				str: "id=1|PathValues{k1=v1,k2= v2}",
+			},
+			want: Meta{
+				ID: "1",
+				PathValues: map[string]string{
+					"k1": "v1",
+					"k2": "v2",
+				},
+				Other: map[string]string{},
+			},
+		},
+		{
+			name: "case 6 PathValues 3 error",
+			args: args{
+				str: "id=1|PathValues{k1=v1,k2= v2,=}",
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -65,8 +100,8 @@ func Test_parserMeta(t *testing.T) {
 				t.Errorf("parserMeta() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("parserMeta() got = %v, want %v", got, tt.want)
+			if !tt.wantErr {
+				xt.Equal(t, tt.want, got)
 			}
 		})
 	}

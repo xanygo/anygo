@@ -374,6 +374,8 @@ func parserRegexpPattern(pattern string) (string, error) {
 					reg = `0|[1-9][0-9]*`
 				case "INT":
 					reg = `[-]?(0|[1-9][0-9]*)`
+				case "NZUInt": // > 0
+					reg = `[1-9][0-9]*`
 				}
 			}
 			regPatternNew.WriteString(fmt.Sprintf("(?P<%s>%s)", name, reg))

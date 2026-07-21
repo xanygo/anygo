@@ -96,6 +96,10 @@ func (lru *LRU[K, V]) Has(ctx context.Context, key K) (bool, error) {
 }
 
 func (lru *LRU[K, V]) Get(_ context.Context, key K) (v V, err error) {
+	return lru.GetNoCtx(key)
+}
+
+func (lru *LRU[K, V]) GetNoCtx(key K) (v V, err error) {
 	lru.readCnt.Add(1)
 
 	lru.mux.Lock()
@@ -137,9 +141,13 @@ func (lru *LRU[K, V]) MGet(_ context.Context, keys ...K) (map[K]V, error) {
 }
 
 func (lru *LRU[K, V]) Set(_ context.Context, key K, value V, ttl time.Duration) error {
+	lru.SetNoCtx(key, value, ttl)
+	return nil
+}
+
+func (lru *LRU[K, V]) SetNoCtx(key K, value V, ttl time.Duration) {
 	lru.writeCnt.Add(1)
 	lru.doSet(key, value, ttl)
-	return nil
 }
 
 func (lru *LRU[K, V]) doSet(key K, value V, ttl time.Duration) {
@@ -183,11 +191,16 @@ func (lru *LRU[K, V]) weedOut() {
 	lru.list.Remove(el)
 }
 
-func (lru *LRU[K, V]) Delete(ctx context.Context, keys ...K) error {
+func (lru *LRU[K, V]) Delete(_ context.Context, keys ...K) error {
+	lru.DeleteNoCtx(keys...)
+	return nil
+}
+
+func (lru *LRU[K, V]) DeleteNoCtx(keys ...K) {
 	lru.deleteCnt.Add(uint64(len(keys)))
 
 	if len(keys) == 0 {
-		return nil
+		return
 	}
 	lru.mux.Lock()
 	defer lru.mux.Unlock()
@@ -199,7 +212,6 @@ func (lru *LRU[K, V]) Delete(ctx context.Context, keys ...K) error {
 		delete(lru.data, key)
 		lru.list.Remove(el)
 	}
-	return nil
 }
 
 // Clear 重置、清空所有缓存
@@ -332,7 +344,11 @@ func (m *MemoryXIFO[K, V]) Has(ctx context.Context, key K) (bool, error) {
 	return true, nil
 }
 
-func (m *MemoryXIFO[K, V]) Get(ctx context.Context, key K) (value V, err error) {
+func (m *MemoryXIFO[K, V]) Get(_ context.Context, key K) (value V, err error) {
+	return m.GetNoCtx(key)
+}
+
+func (m *MemoryXIFO[K, V]) GetNoCtx(key K) (value V, err error) {
 	m.readCnt.Add(1)
 
 	m.mux.Lock()
@@ -356,9 +372,12 @@ func (m *MemoryXIFO[K, V]) getLocked(key K) (v V, rr error) {
 }
 
 func (m *MemoryXIFO[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration) error {
+	m.SetNoCtx(key, value, ttl)
+	return nil
+}
+func (m *MemoryXIFO[K, V]) SetNoCtx(key K, value V, ttl time.Duration) {
 	m.writeCnt.Add(1)
 	m.doSet(key, value, ttl)
-	return nil
 }
 
 func (m *MemoryXIFO[K, V]) doSet(key K, value V, ttl time.Duration) {
@@ -398,11 +417,15 @@ func (m *MemoryXIFO[K, V]) weedOut() {
 	m.list.Remove(el)
 }
 
-func (m *MemoryXIFO[K, V]) Delete(ctx context.Context, keys ...K) error {
-	if len(keys) == 0 {
-		return nil
-	}
+func (m *MemoryXIFO[K, V]) Delete(_ context.Context, keys ...K) error {
+	m.DeleteNoCtx(keys...)
+	return nil
+}
 
+func (m *MemoryXIFO[K, V]) DeleteNoCtx(keys ...K) {
+	if len(keys) == 0 {
+		return
+	}
 	m.deleteCnt.Add(uint64(len(keys)))
 
 	m.mux.Lock()
@@ -415,10 +438,9 @@ func (m *MemoryXIFO[K, V]) Delete(ctx context.Context, keys ...K) error {
 		delete(m.data, key)
 		m.list.Remove(el)
 	}
-	return nil
 }
 
-func (m *MemoryXIFO[K, V]) MSet(ctx context.Context, values map[K]V, ttl time.Duration) error {
+func (m *MemoryXIFO[K, V]) MSet(_ context.Context, values map[K]V, ttl time.Duration) error {
 	m.writeCnt.Add(uint64(len(values)))
 	for k, v := range values {
 		m.doSet(k, v, ttl)
@@ -426,7 +448,7 @@ func (m *MemoryXIFO[K, V]) MSet(ctx context.Context, values map[K]V, ttl time.Du
 	return nil
 }
 
-func (m *MemoryXIFO[K, V]) MGet(ctx context.Context, keys ...K) (map[K]V, error) {
+func (m *MemoryXIFO[K, V]) MGet(_ context.Context, keys ...K) (map[K]V, error) {
 	m.readCnt.Add(uint64(len(keys)))
 
 	m.mux.Lock()

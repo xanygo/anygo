@@ -351,7 +351,7 @@ func (fc *File[K, V]) doCompact() int64 {
 	}
 	var fileTotal int
 	start := time.Now()
-	filepath.WalkDir(fc.Dir, func(path string, d fs.DirEntry, err error) error {
+	_ = filepath.WalkDir(fc.Dir, func(path string, d fs.DirEntry, err error) error {
 		if fc.Dir == path {
 			return nil
 		}

@@ -5,6 +5,7 @@
 package xcast
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 )
@@ -22,6 +23,22 @@ type (
 func ToInteger[T IntegerTypes](v any) T {
 	z, _ := Integer[T](v)
 	return z
+}
+
+func IntegerE[T IntegerTypes](v any) (zero T, err error) {
+	nv, ok := Integer[T](v)
+	if ok {
+		return nv, nil
+	}
+	return zero, fmt.Errorf("cannot convert %v to integer", v)
+}
+
+func IntegerDefault[T IntegerTypes](v any, def T) T {
+	num, ok := Integer[T](v)
+	if ok {
+		return num
+	}
+	return def
 }
 
 // Integer 将任意类型 v 转换为目标整数类型 T。
@@ -202,6 +219,14 @@ func floatToInt64(f float64) (int64, bool) {
 func ToFloat[T FloatTypes](v any) T {
 	z, _ := Float[T](v)
 	return z
+}
+
+func FloatE[T FloatTypes](v any) (zero T, err error) {
+	nv, ok := Float[T](v)
+	if ok {
+		return nv, nil
+	}
+	return zero, fmt.Errorf("cannot convert %v to float", v)
 }
 
 // Float 将任意类型 v 转换为浮点类型 T（float32/float64）

@@ -25,6 +25,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/xanygo/anygo/ds/xcast"
 	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xstr"
 	"github.com/xanygo/anygo/ds/xsync"
@@ -341,6 +342,19 @@ var FuncMap = template.FuncMap{
 	"xMathDiv":        tplfn.MathDiv,
 	"xMathPercent":    tplfn.MathPercent,    // 将一个小数转换为百分比的字符串
 	"xMathComplement": tplfn.MathComplement, // 转换为百分比： (1-f)*100 %
+
+	"xInt":     xcast.IntegerE[int], // 类型转换，将其他类型的数值转换为 int
+	"xInt8":    xcast.IntegerE[int8],
+	"xInt16":   xcast.IntegerE[int16],
+	"xInt32":   xcast.IntegerE[int32],
+	"xInt64":   xcast.IntegerE[int64],
+	"xUInt":    xcast.IntegerE[uint],
+	"xUInt8":   xcast.IntegerE[uint8],
+	"xUInt16":  xcast.IntegerE[uint16],
+	"xUInt32":  xcast.IntegerE[uint32],
+	"xUInt64":  xcast.IntegerE[uint64],
+	"xFloat32": xcast.FloatE[float32],
+	"xFloat64": xcast.FloatE[float64],
 
 	"xCat": func(items ...string) string {
 		if len(items) == 0 {
