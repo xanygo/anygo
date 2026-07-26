@@ -17,12 +17,16 @@ import (
 
 // Migrate 自动创建、添加字段（非生产环境使用）
 func Migrate(db DBCore, obj any) error {
-	return MigrateWithTable(db, obj, "")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	return MigrateWithTable(ctx, db, obj, "")
 }
 
-func MigrateWithTable(db DBCore, obj any, table string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
+// MigrateWithTable 自动创建、添加字段（非生产环境使用）
+//
+// obj:模型对象
+// table: 表名，可选，若传入为空，则自动尝试从 obj.TableName() 读取
+func MigrateWithTable(ctx context.Context, db DBCore, obj any, table string) error {
 	if err := doMigrate(ctx, db, obj, table); err != nil {
 		return fmt.Errorf("%T: %w", obj, err)
 	}

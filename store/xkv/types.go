@@ -18,6 +18,7 @@ type String[V any] interface {
 
 	// Get 获取字符串的值（类似 Redis 的 GET 命令）
 	// 返回：值，是否存在，错误
+	// key 不存在时，会返回 zero,false,nil
 	Get(ctx context.Context) (V, bool, error)
 
 	// Incr 将字符串中的数字自增 1（类似 Redis 的 INCR 命令）
@@ -55,8 +56,8 @@ type List[V any] interface {
 	RPop(ctx context.Context) (V, bool, error)
 
 	// LRem 从存储在键（key）的列表中删除等于元素（ element ）的前 count 个元素。count 参数以以下方式影响操作：
-	// count > 0: 从头部到尾部移除等于 element 的元素。
-	// count < 0: 从尾部到头部移除等于 element 的元素。
+	// count > 0: 从头部到尾部移除 count 个等于 element 的元素。
+	// count < 0: 从尾部到头部移除 abs(count) 个等于 element 的元素。
 	// count = 0: 移除所有等于 element 的元素。
 	// 例如，LREM list -2 "hello" 将从存储在 list 中的列表中删除 "hello" 的最后两个出现。
 	// 请注意，不存在的键被视为空列表，因此当键不存在时，命令将始终返回0

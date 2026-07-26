@@ -24,6 +24,8 @@ type HasTable interface {
 	TableName() string
 }
 
+// NewMode 生成一个 T 类型的 简单 ORM Model
+// T 类型建议传入 struct 而不是 *struct，兼容性更好
 func NewMode[T any](client HasDriver) *Model[T] {
 	m := &Model[T]{
 		client: client,
@@ -62,6 +64,10 @@ func (m *Model[T]) init() {
 			m.pk = &pk
 		}
 	}
+}
+
+func (m *Model[T]) Client() HasDriver {
+	return m.client
 }
 
 func (m *Model[T]) Reset() *Model[T] {
@@ -286,6 +292,7 @@ func (m *Model[T]) Upsert(ctx context.Context, conflictCols []string, updateCols
 	if !ok {
 		return 0, fmt.Errorf("client (%T) is not Execer", m.client)
 	}
+
 	kvSlice, err := m.getEncoder().EncodeBatch(values...)
 	if err != nil {
 		return 0, err

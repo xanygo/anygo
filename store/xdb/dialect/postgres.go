@@ -114,14 +114,18 @@ func (d Postgres) UpsertSQL(table string, count int, cols, conflictCols, updateC
 		updateAssignments[i] = fmt.Sprintf("%s = EXCLUDED.%s", c, c)
 	}
 
-	sqlStr := fmt.Sprintf(
-		"INSERT INTO %s (%s) VALUES %s ON CONFLICT (%s) DO UPDATE SET %s",
+	sqlStr := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s ON CONFLICT (%s)",
 		table,
 		colList,
 		strings.Join(valPlaceholders, ","),
 		strings.Join(conflictCols, ", "),
-		strings.Join(updateAssignments, ", "),
 	)
+
+	if len(updateAssignments) > 0 {
+		sqlStr += " DO UPDATE SET " + strings.Join(updateAssignments, ", ")
+	} else {
+		sqlStr += " DO NOTHING "
+	}
 
 	if len(returningCols) > 0 {
 		sqlStr += " RETURNING " + strings.Join(returningCols, ", ")
@@ -225,12 +229,25 @@ func (d Postgres) ColumnString(fs dbtype.ColumnSchema) string {
 	return sb.String()
 }
 
+func (d Postgres) UniqIndex(name string, columns []string) string {
+	return fmt.Sprintf("CONSTRAINT %s UNIQUE(%s)", name, strings.Join(columns, ","))
+}
+
+func (d Postgres) AlterCreateIndex(indexType string, name string, table string, columns []string) string {
+	name += "_" + table // 避免不同表的索引名称重复
+	return fmt.Sprintf("CREATE %s IF NOT EXISTS %s on %s(%s)",
+		indexType, d.QuoteIdentifier(name), table, strings.Join(columns, ","))
+}
+
 var _ dbtype.MigrateDialect = Postgres{}
 
 func (d Postgres) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.TableSchema) error {
 	sqlStr := createTableSQL(schema, d, d)
 	_, err := db.ExecContext(ctx, sqlStr)
-	return err
+	if err != nil {
+		return fmt.Errorf("postgres Migrate SQL %q: %w", sqlStr, err)
+	}
+	return nil
 }
 
 var _ dbtype.CoderDialect = Postgres{}

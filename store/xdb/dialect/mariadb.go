@@ -94,13 +94,17 @@ func (d MariaDB) UpsertSQL(table string, count int, columns, conflictCols, updat
 		updateAssignments[i] = fmt.Sprintf("%s = VALUES(%s)", c, c)
 	}
 
-	sqlStr := fmt.Sprintf(
-		"INSERT INTO %s (%s) VALUES %s ON DUPLICATE KEY UPDATE %s",
+	sqlStr := fmt.Sprintf("INTO %s (%s) VALUES %s",
 		table,
 		colList,
 		strings.Join(xslice.Repeat(valPlaceholders, count), ","),
-		strings.Join(updateAssignments, ", "),
 	)
+	if len(updateAssignments) > 0 {
+		sqlStr = "INSERT " + sqlStr
+		sqlStr += " ON DUPLICATE KEY UPDATE " + strings.Join(updateAssignments, ", ")
+	} else {
+		sqlStr = "INSERT IGNORE " + sqlStr
+	}
 
 	return sqlStr
 }
@@ -119,6 +123,16 @@ func (d MariaDB) CreateTableIfNotExists(table string) string {
 	return "CREATE TABLE IF NOT EXISTS " + d.QuoteIdentifier(table)
 }
 
+func (d MariaDB) UniqIndex(name string, columns []string) string {
+	return fmt.Sprintf("UNIQUE KEY %s(%s)", name, strings.Join(columns, ","))
+}
+
+func (d MariaDB) AlterCreateIndex(indexType string, name string, table string, columns []string) string {
+	// 不支持 IF NOT EXISTS
+	return fmt.Sprintf(`ALTER TABLE %s ADD %s %s(%s)`,
+		table, indexType, name, strings.Join(columns, ","))
+}
+
 //	func (d MariaDB) addColumnIfNotExists(table string, col string) string {
 //		return fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s", d.QuoteIdentifier(table), d.QuoteIdentifier(col))
 //	}
@@ -127,5 +141,8 @@ var _ dbtype.MigrateDialect = MariaDB{}
 func (d MariaDB) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.TableSchema) error {
 	sqlStr := createTableSQL(schema, d, d)
 	_, err := db.ExecContext(ctx, sqlStr)
-	return err
+	if err != nil {
+		return fmt.Errorf("mariadb Migrate SQL %q: %w", sqlStr, err)
+	}
+	return nil
 }

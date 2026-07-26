@@ -36,7 +36,8 @@ type schemaParser struct {
 
 func (sp schemaParser) Parser(obj any) (*dbtype.TableSchema, error) {
 	rt := reflect.TypeOf(obj)
-	if rt.Kind() == reflect.Pointer {
+	isPtr := rt.Kind() == reflect.Pointer
+	if isPtr {
 		rt = rt.Elem()
 	}
 	if rt.Kind() != reflect.Struct {
@@ -46,6 +47,16 @@ func (sp schemaParser) Parser(obj any) (*dbtype.TableSchema, error) {
 	if ht, ok := obj.(hasTable); ok {
 		table = ht.TableName()
 	}
+
+	if table == "" && !isPtr {
+		rv := reflect.ValueOf(obj)
+		ptr := reflect.New(rv.Type())
+		ptr.Elem().Set(rv)
+		if ht, ok := ptr.Interface().(hasTable); ok {
+			table = ht.TableName()
+		}
+	}
+
 	value := schemaCache.Get2(rt, sp.getSchemaCacheValue)
 	if value.Err != nil {
 		return nil, value.Err
@@ -209,6 +220,7 @@ func findCodec(d dbtype.Dialect, name string) (dbtype.Codec, error) {
 	return dbcodec.Find(name+"@"+d.Name(), name)
 }
 
+// parserIndex 解析定义的索引字段
 func (sp schemaParser) parserIndex(fieldName string, tag xstruct.Tag, isUniq bool) (*dbtype.IndexSchema, error) {
 	indexTagName := TagIndex
 	indexNamePrefix := "idx_"
@@ -223,6 +235,7 @@ func (sp schemaParser) parserIndex(fieldName string, tag xstruct.Tag, isUniq boo
 
 	if index == "" {
 		return &dbtype.IndexSchema{
+			FieldName:  fieldName,
 			IndexName:  indexNamePrefix + fieldName,
 			FieldOrder: -1,
 		}, nil
@@ -235,12 +248,14 @@ func (sp schemaParser) parserIndex(fieldName string, tag xstruct.Tag, isUniq boo
 			return nil, fmt.Errorf("invalid field order in: %q", order)
 		}
 		return &dbtype.IndexSchema{
+			FieldName:  fieldName,
 			IndexName:  idxName,
 			FieldOrder: num,
 		}, nil
 	}
 
 	return &dbtype.IndexSchema{
+		FieldName:  fieldName,
 		IndexName:  index,
 		FieldOrder: 0,
 	}, nil

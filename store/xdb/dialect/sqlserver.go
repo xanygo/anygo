@@ -154,19 +154,21 @@ func (d SQLServerDialect) UpsertSQL(table string, count int, cols, conflictCols,
 	sqlStr := fmt.Sprintf(
 		`MERGE INTO %s AS target
 USING (VALUES %s) AS source (%s)
-ON %s
-WHEN MATCHED THEN UPDATE SET %s
-WHEN NOT MATCHED THEN INSERT (%s) VALUES (%s)
-%s;`,
+ON %s`,
 		table,
 		strings.Join(valPlaceholders, ","), // VALUES 占位
 		strings.Join(cols, ", "),           // source 列
 		strings.Join(onCond, " AND "),      // ON 条件
-		strings.Join(assigns, ", "),        // UPDATE
-		strings.Join(cols, ", "),           // INSERT 列
-		strings.Join(placeholders, ", "),   // INSERT VALUES
-		output,                             // OUTPUT
 	)
+	if len(assigns) > 0 {
+		sqlStr += " WHEN MATCHED THEN UPDATE SET " + strings.Join(assigns, ", ") // UPDATE
+	}
+
+	sqlStr += fmt.Sprintf(`WHEN NOT MATCHED THEN INSERT (%s) VALUES (%s)`,
+		strings.Join(cols, ", "),         // INSERT 列
+		strings.Join(placeholders, ", "), // INSERT VALUES
+	)
+	sqlStr += output // OUTPUT
 
 	return sqlStr
 }
@@ -251,10 +253,23 @@ func (d SQLServerDialect) ColumnString(fs dbtype.ColumnSchema) string {
 	return sb.String()
 }
 
+func (d SQLServerDialect) UniqIndex(name string, columns []string) string {
+	return fmt.Sprintf("CONSTRAINT %s UNIQUE(%s)", name, strings.Join(columns, ","))
+}
+func (d SQLServerDialect) AlterCreateIndex(indexType string, name string, table string, columns []string) string {
+	// 不支持 IF NOT EXISTS
+	name += "_" + table // 避免不同表的索引名称重复
+	return fmt.Sprintf("CREATE %s %s on %s(%s)",
+		indexType, d.QuoteIdentifier(name), table, strings.Join(columns, ","))
+}
+
 var _ dbtype.MigrateDialect = SQLServerDialect{}
 
 func (d SQLServerDialect) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.TableSchema) error {
 	sqlStr := createTableSQL(schema, d, d)
 	_, err := db.ExecContext(ctx, sqlStr)
-	return err
+	if err != nil {
+		return fmt.Errorf("sqlserver Migrate SQL %q: %w", sqlStr, err)
+	}
+	return nil
 }

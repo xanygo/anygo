@@ -66,7 +66,7 @@ func (a Admin)TableName()string{
 index 示例： 
   1. index                 -> 创建独立索引，索引名称为 idx_字段名
   2. index:idx_uid         -> 创建独立索引，索引名称为 idx_uid
-  3. iex:idx_uid_class,1   -> 创建联合索引，索引名称为 idx_uid_class，此字段在索引中排序为 1
+  3. index:idx_uid_class,1   -> 创建联合索引，索引名称为 idx_uid_class，此字段在索引中排序为 1
 
 uniqueIndex 示例：
   1. unique_index                         -> 创建独立索引，索引名称为 idx_uniq_字段名

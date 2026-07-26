@@ -120,10 +120,12 @@ func (d SQLite3) UpsertSQL(table string, count int, columns, conflictCols, updat
 		c = d.QuoteIdentifier(c)
 		updateAssignments[i] = fmt.Sprintf("%s = excluded.%s", c, c)
 	}
-	sqlStr += fmt.Sprintf(" ON CONFLICT (%s) DO UPDATE SET %s",
-		strings.Join(xslice.MapFunc(conflictCols, d.QuoteIdentifier), ", "),
-		strings.Join(updateAssignments, ", "),
-	)
+	sqlStr += fmt.Sprintf(" ON CONFLICT (%s) ", strings.Join(xslice.MapFunc(conflictCols, d.QuoteIdentifier), ", "))
+	if len(updateAssignments) > 0 {
+		sqlStr += " DO UPDATE SET " + strings.Join(updateAssignments, ", ")
+	} else {
+		sqlStr += " DO NOTHING "
+	}
 
 	if len(returningCols) > 0 {
 		sqlStr += " RETURNING " + strings.Join(returningCols, ", ")
@@ -186,14 +188,29 @@ func (d SQLite3) ColumnString(fs dbtype.ColumnSchema) string {
 	return sb.String()
 }
 
+func (d SQLite3) UniqIndex(name string, columns []string) string {
+	return fmt.Sprintf("CONSTRAINT %s UNIQUE(%s)", name, strings.Join(columns, ","))
+}
+
 func (d SQLite3) CreateTableIfNotExists(table string) string {
 	return "CREATE TABLE IF NOT EXISTS " + d.QuoteIdentifier(table)
+}
+
+func (d SQLite3) AlterCreateIndex(indexType string, name string, table string, columns []string) string {
+	name += "_" + table // 避免不同表的索引名称重复
+	return fmt.Sprintf("CREATE %s IF NOT EXISTS %s on %s(%s)",
+		indexType, d.QuoteIdentifier(name), table, strings.Join(columns, ","))
 }
 
 var _ dbtype.MigrateDialect = SQLite3{}
 
 func (d SQLite3) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.TableSchema) error {
-	sqlStr := createTableSQL(schema, d, d)
-	_, err := db.ExecContext(ctx, sqlStr)
-	return err
+	sqls := createTableSQLList(schema, d, d)
+	for _, sql := range sqls {
+		_, err := db.ExecContext(ctx, sql)
+		if err != nil {
+			return fmt.Errorf("sqlite3 migrate SQL %q: %w", sql, err)
+		}
+	}
+	return nil
 }

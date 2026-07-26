@@ -194,6 +194,23 @@ func (t *TPLRequest) DirN(n int) string {
 	return p
 }
 
+// IsWeXin 是否微信环境
+func (t *TPLRequest) IsWeXin() bool {
+	return strings.Contains(t.Request.UserAgent(), "MicroMessenger/")
+}
+
+var mobileKeywords = []string{"Android", "iPhone", "iPad", "iPod"}
+
+func (t *TPLRequest) IsMobile() bool {
+	ua := t.Request.UserAgent()
+	for _, k := range mobileKeywords {
+		if strings.Contains(ua, k) {
+			return true
+		}
+	}
+	return false
+}
+
 // FuncMap 用于模版的辅助方法
 var FuncMap = template.FuncMap{
 	// 渲染一个 Element 为 HTML 字符串
@@ -304,6 +321,9 @@ var FuncMap = template.FuncMap{
 	},
 	"xJs": func(str string) template.JS {
 		return template.JS(str)
+	},
+	"xURL": func(str string) template.URL {
+		return template.URL(str)
 	},
 
 	"xNewInts": func(start int, end int) []int {

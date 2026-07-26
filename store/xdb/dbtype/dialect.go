@@ -79,6 +79,20 @@ type SchemaDialect interface {
 
 	// CreateTableIfNotExists 返回 CREATE TABLE ... IF NOT EXISTS 的片段（或空串如果不支持）。
 	CreateTableIfNotExists(table string) string
+
+	// UniqIndex 联合唯一索引
+	UniqIndex(name string, columns []string) string
+
+	// AlterCreateIndex 返回 CREATE INDEX IF NOT EXISTS idx_users_name，若不支持，则返回普通的不带判断的创建语句
+	//
+	// indexType：索引类型： INDEX-普通索引，UNIQUE INDEX- 唯一索引
+	// name：索引名称
+	// table：表名
+	// columns：字段名列表
+	//
+	// 大部分数据库支持：
+	// CREATE INDEX IF NOT EXISTS idx_users_name ON users(name);
+	AlterCreateIndex(indexType string, name string, table string, columns []string) string
 }
 
 type MigrateDialect interface {

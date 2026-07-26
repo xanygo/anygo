@@ -14,6 +14,10 @@ import (
 )
 
 func IsAjax(r *http.Request) bool {
+	hx := r.Header.Get("Hx-Request")
+	if hx == "true" {
+		return true
+	}
 	switch r.Header.Get("X-Requested-With") {
 	case "XMLHttpRequest",
 		"Fetch":

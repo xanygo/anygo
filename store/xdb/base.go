@@ -7,6 +7,9 @@ package xdb
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
+	"github.com/xanygo/anygo/xattr"
 	"iter"
 
 	"github.com/xanygo/anygo/safely"
@@ -113,14 +116,21 @@ func QueryManyIter[T any](ctx context.Context, q Queryer, query string, args ...
 func QueryOne[T any](ctx context.Context, q Queryer, query string, args ...any) (v T, ok bool, err error) {
 	rows, err := q.QueryContext(ctx, query, args...)
 	if err != nil {
+		if xattr.IsDebugMode() {
+			return v, false, fmt.Errorf("queryOne:%q: %w", query, err)
+		}
 		return v, false, err
 	}
 	return ScanRowsFirst[T](q, rows)
 }
 
 // Exec 执行写语句(insert、update、delete)
-func Exec(ctx context.Context, eq Execer, query string, args ...any) (sql.Result, error) {
-	return eq.ExecContext(ctx, query, args...)
+func Exec(ctx context.Context, eq Execer, query string, args ...any) (ret sql.Result, err error) {
+	ret, err = eq.ExecContext(ctx, query, args...)
+	if err != nil && xattr.IsDebugMode() {
+		err = fmt.Errorf("exec:%q: %w", query, err)
+	}
+	return ret, err
 }
 
 func LastInsertID(ret sql.Result, err error) (int64, error) {
@@ -144,7 +154,8 @@ func WithTx(ctx context.Context, tx TxExecutor, do func(ctx context.Context, tx 
 	if err == nil {
 		return tx.Commit()
 	}
-	return tx.Rollback()
+	err1 := tx.Rollback()
+	return errors.Join(err, err1)
 }
 
 func StmtQueryMany[T any](ctx context.Context, q Statement, args ...any) ([]T, error) {

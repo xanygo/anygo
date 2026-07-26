@@ -105,9 +105,14 @@ func (ib *InsertBuilder) Values(values ...map[string]any) {
 			ib.err = err
 			return
 		}
-		str := "(" + strings.Join(xslice.Repeat("?", len(ib.fields)), ",") + ")"
+		str := "(" + Placeholder(len(ib.fields)) + ")"
 		ib.values = append(ib.values, str)
 	}
+}
+
+// Placeholder 生成 N 个连接在一起的 ”?“ 占位符
+func Placeholder(n int) string {
+	return strings.Join(xslice.Repeat("?", n), ",")
 }
 
 func (ib *InsertBuilder) doFields() {

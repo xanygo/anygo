@@ -7,6 +7,7 @@ package dbschema_test
 import (
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/xanygo/anygo/store/xdb/dbcodec"
 	"github.com/xanygo/anygo/store/xdb/dbschema"
@@ -120,4 +121,74 @@ func TestSchemaAdmin1(t *testing.T) {
 		xt.NoError(t, err)
 		check(t, sc)
 	})
+}
+
+type userTable2 struct {
+	ID string `db:"id,pk"`
+}
+
+func (ut *userTable2) TableName() string {
+	return "ut2"
+}
+
+func TestSchemaUser2(t *testing.T) {
+	t.Run("case 1 struct", func(t *testing.T) {
+		var u userTable2
+		sc, err := dbschema.Schema(dialect.MySQL{}, u)
+		xt.NoError(t, err)
+		xt.Equal(t, sc.Table, "ut2")
+	})
+
+	t.Run("case 2 struct ptr", func(t *testing.T) {
+		var u *userTable2
+		sc, err := dbschema.Schema(dialect.MySQL{}, u)
+		xt.NoError(t, err)
+		xt.Equal(t, sc.Table, "ut2")
+	})
+}
+
+type userTable3 struct {
+	ID string `db:"id,pk"`
+}
+
+func (ut userTable3) TableName() string {
+	return "ut3"
+}
+
+func TestSchemaUser3(t *testing.T) {
+	t.Run("case 1 struct", func(t *testing.T) {
+		var u userTable3
+		sc, err := dbschema.Schema(dialect.MySQL{}, u)
+		xt.NoError(t, err)
+		xt.Equal(t, sc.Table, "ut3")
+	})
+
+	xt.Panic(t, func() {
+		var u *userTable3
+		// 目前不支持这样用
+		dbschema.Schema(dialect.MySQL{}, u)
+	})
+
+	t.Run("case 3 struct ptr", func(t *testing.T) {
+		u := &userTable3{}
+		sc, err := dbschema.Schema(dialect.MySQL{}, u)
+		xt.NoError(t, err)
+		xt.Equal(t, sc.Table, "ut3")
+	})
+}
+
+type userTable4 struct {
+	Table     string
+	Key       string    `db:"k,unique_index:k_idx"`
+	Index     int64     `db:"idx,unique_index:k_idx"`
+	Value     string    `db:"v"`
+	CreatedAt time.Time `db:"created_at"`
+}
+
+func TestSchemaUser4(t *testing.T) {
+	u := &userTable4{}
+	sc, err := dbschema.Schema(dialect.MySQL{}, u)
+	xt.NoError(t, err)
+	xt.Equal(t, sc.Table, "")
+	// todo:check uniq_index
 }
