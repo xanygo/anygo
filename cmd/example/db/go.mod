@@ -1,4 +1,4 @@
-module db-example
+module cmd/example/db
 
 go 1.26.1
 

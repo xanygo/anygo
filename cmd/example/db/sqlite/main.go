@@ -15,7 +15,7 @@ import (
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/xlog"
 
-	"db-example/model"
+	"cmd/example/db/model"
 )
 
 func main() {
