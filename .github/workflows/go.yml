@@ -76,7 +76,7 @@ jobs:
     - name: Test
       run: |
         go test -v -timeout=120s  -race ./...
-        cd cmd/example/db/ && go test -v -timeout=120s  -race  ./...
+        ( cd cmd/example/db/ && go test -v -timeout=120s  -race  ./... )
 
   cross:
     strategy:
@@ -107,5 +107,5 @@ jobs:
       - name: Test
         run: |
           go test -v -timeout=120s  -race ./...
-          go test -v -timeout=120s  -race  ./cmd/example/db/...
+          ( cd cmd/example/db/ && go test -v -timeout=120s  -race  ./... )
 
