@@ -3,9 +3,6 @@ package file
 import (
 	"context"
 	"errors"
-	"github.com/xanygo/anygo/ds/xcmp"
-	"github.com/xanygo/anygo/safely"
-	"github.com/xanygo/anygo/store/xkv/internal"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -13,6 +10,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/xanygo/anygo/ds/xcmp"
+	"github.com/xanygo/anygo/safely"
+	"github.com/xanygo/anygo/store/xkv/internal"
 )
 
 type List struct {

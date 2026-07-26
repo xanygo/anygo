@@ -2,16 +2,17 @@ package xkvut
 
 import (
 	"context"
-	"github.com/xanygo/anygo/store/xkv"
-	"github.com/xanygo/anygo/xt"
 	"sync"
 	"time"
+
+	"github.com/xanygo/anygo/store/xkv"
+	"github.com/xanygo/anygo/xt"
 )
 
 var flags sync.Map
 
 func ClearFlags() {
-	flags.Range(func(k, v interface{}) bool {
+	flags.Range(func(k, v any) bool {
 		flags.Delete(k)
 		return true
 	})
@@ -287,7 +288,6 @@ func checkList(t xt.TB, xkv xkv.StringStorage) {
 		xt.NoError(t, err)
 		xt.Equal(t, num, 2)
 	})
-
 }
 
 func checkHash(t xt.TB, xkv xkv.StringStorage) {
@@ -417,7 +417,6 @@ func checkSet(t xt.TB, xkv xkv.StringStorage) {
 }
 
 func checkZSet(t xt.TB, xkv xkv.StringStorage) {
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
@@ -444,7 +443,6 @@ func checkZSet(t xt.TB, xkv xkv.StringStorage) {
 		xt.NoError(t, err)
 		xt.False(t, found)
 		xt.Equal(t, score, 0)
-
 	})
 
 	t.Run("delete1", func(t xt.TB) {

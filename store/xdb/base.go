@@ -9,10 +9,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/xanygo/anygo/xattr"
 	"iter"
 
 	"github.com/xanygo/anygo/safely"
+	"github.com/xanygo/anygo/xattr"
 )
 
 type DBCore interface {

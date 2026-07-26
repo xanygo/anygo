@@ -10,7 +10,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/xanygo/anygo/store/xkv/internal"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -18,6 +17,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/xanygo/anygo/store/xkv/internal"
 	"github.com/xanygo/anygo/xio/xfs"
 )
 

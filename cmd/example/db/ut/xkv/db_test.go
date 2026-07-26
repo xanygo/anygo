@@ -3,14 +3,15 @@ package xkv
 import (
 	"context"
 	"database/sql"
-	_ "github.com/mattn/go-sqlite3" // sqlite driver
-	"github.com/xanygo/anygo/store/xdb"
-	"github.com/xanygo/anygo/store/xkv/xkvx"
-	"github.com/xanygo/anygo/xt"
 	"log"
 	"os"
 	"testing"
 	"time"
+
+	_ "github.com/mattn/go-sqlite3" // sqlite driver
+	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/store/xkv/xkvx"
+	"github.com/xanygo/anygo/xt"
 )
 
 func getDB(name string) *xdb.Client {
@@ -163,7 +164,6 @@ func TestList(t *testing.T) {
 		xt.NoError(t, err)
 		xt.Equal(t, num, 2)
 	})
-
 }
 
 func TestHash(t *testing.T) {
@@ -330,7 +330,6 @@ func TestZSet(t *testing.T) {
 		xt.NoError(t, err)
 		xt.False(t, found)
 		xt.Equal(t, score, 0)
-
 	})
 
 	t.Run("delete1", func(t *testing.T) {

@@ -6,10 +6,10 @@ package xkv_test
 
 import (
 	"context"
-	"github.com/xanygo/anygo/internal/ut/xkvut"
 	"path/filepath"
 	"testing"
 
+	"github.com/xanygo/anygo/internal/ut/xkvut"
 	"github.com/xanygo/anygo/store/xkv"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xt"

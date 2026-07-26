@@ -6,11 +6,11 @@ package xkv_test
 
 import (
 	"context"
-	"github.com/xanygo/anygo/internal/ut/xkvut"
-	"github.com/xanygo/anygo/xt"
 	"testing"
 
+	"github.com/xanygo/anygo/internal/ut/xkvut"
 	"github.com/xanygo/anygo/store/xkv"
+	"github.com/xanygo/anygo/xt"
 )
 
 type testT struct {

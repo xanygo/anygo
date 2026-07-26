@@ -375,6 +375,7 @@ func (m *MemoryXIFO[K, V]) Set(ctx context.Context, key K, value V, ttl time.Dur
 	m.SetNoCtx(key, value, ttl)
 	return nil
 }
+
 func (m *MemoryXIFO[K, V]) SetNoCtx(key K, value V, ttl time.Duration) {
 	m.writeCnt.Add(1)
 	m.doSet(key, value, ttl)

@@ -18,7 +18,6 @@ func IsUintKind(k reflect.Kind) bool {
 	default:
 		return false
 	}
-
 }
 
 func IsBasicKind(k reflect.Kind) bool {

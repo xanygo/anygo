@@ -256,6 +256,7 @@ func (d SQLServerDialect) ColumnString(fs dbtype.ColumnSchema) string {
 func (d SQLServerDialect) UniqIndex(name string, columns []string) string {
 	return fmt.Sprintf("CONSTRAINT %s UNIQUE(%s)", name, strings.Join(columns, ","))
 }
+
 func (d SQLServerDialect) AlterCreateIndex(indexType string, name string, table string, columns []string) string {
 	// 不支持 IF NOT EXISTS
 	name += "_" + table // 避免不同表的索引名称重复

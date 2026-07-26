@@ -37,7 +37,6 @@ func convertValue(v reflect.Value) any {
 	}
 
 	switch v.Kind() {
-
 	case reflect.Struct:
 		return convertStruct(v)
 

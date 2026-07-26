@@ -1,9 +1,10 @@
 package xvalidator_test
 
 import (
+	"testing"
+
 	"github.com/xanygo/anygo/xt"
 	"github.com/xanygo/anygo/xvalidator"
-	"testing"
 )
 
 func TestCheckHTTPURL(t *testing.T) {

@@ -1,9 +1,10 @@
 package zreflect_test
 
 import (
+	"testing"
+
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/xt"
-	"testing"
 )
 
 func TestSliceContains(t *testing.T) {

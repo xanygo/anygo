@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"database/sql"
+	"log"
+	"os"
+	"time"
+
 	_ "github.com/mattn/go-sqlite3" // sqlite driver
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xkv/xkvx"
 	"github.com/xanygo/anygo/xlog"
-	"log"
-	"os"
-	"time"
 )
 
 func main() {
