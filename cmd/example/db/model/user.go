@@ -22,7 +22,7 @@ type User struct {
 	Status       Status    `db:"status,not-null"`
 	RegisterTime time.Time `db:"register_time,codec:date_time,default:fn|CURRENT_TIMESTAMP"`
 	Idx          *int64    `db:"idx,not-null"`
-	Scores       []int     `db:"scores,codec:auto_json,native:int[]"`
+	Scores       []int     `db:"scores,codec:auto_json,native:varchar(2048)"`
 	Enable       bool      `db:"enable,not-null"`
 	a            int
 	UserEmb1

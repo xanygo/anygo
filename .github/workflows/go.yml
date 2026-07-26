@@ -73,8 +73,11 @@ jobs:
           sleep 1
         done
 
-    - name: Test
+    - name: Main Test
       run: go test -v -timeout=120s  -race ./...
+
+    - name: xkv Test
+      run: go test -v -timeout=120s  -race  db-example/ut/xkv
 
   cross:
     strategy:
@@ -102,6 +105,9 @@ jobs:
         run: go build -v ./...
 
 
-      - name: Test
+      - name: Main Test
         run: go test -v -timeout=120s  -race ./...
+
+      - name: xkv Test
+        run: go test -v -timeout=120s  -race  db-example/ut/xkv
 

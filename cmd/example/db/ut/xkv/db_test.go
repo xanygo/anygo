@@ -9,7 +9,8 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib" // db driver
+	_ "github.com/go-sql-driver/mysql" // mysql driver
+	_ "github.com/jackc/pgx/v5/stdlib" // pgx driver
 	_ "github.com/mattn/go-sqlite3"    // sqlite driver
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xkv"
@@ -54,28 +55,56 @@ func checkDB(t *testing.T, db *xdb.Client) {
 	checkZSet(t, kvs)
 }
 
-var tebles = []string{"xkv_meta", "xkv_hash", "xkv_list", "xkv_set", "xkv_zset"}
+var tables = []string{"xkv_meta", "xkv_hash", "xkv_list", "xkv_set", "xkv_zset"}
 
 func TestPostgres(t *testing.T) {
-	// 环境变量 export ANYGO_UT_PG="user=work password=123456 host=127.0.0.1 port=5432 database=mydb sslmode=disable"
-	const key = "ANYGO_UT_PG"
-	pg := os.Getenv(key)
-	if pg == "" {
-		t.Skipf("env %q is empty, no Postgres is ready, skipped", key)
-		return
-	}
-
-	db, err := sql.Open("pgx", pg)
+	const dsn = `user=work password=123456 host=127.0.0.1 port=5432 database=mydb sslmode=disable`
+	db, err := sql.Open("pgx", dsn)
 	xt.NoError(t, err)
 	defer db.Close()
 
-	client := xdb.NewClient("pgx", "demo", db)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	for _, table := range tebles {
+	if err = db.PingContext(ctx); err != nil {
+		t.Skipf("PingContext failed: %s ,skipped", err.Error())
+		return
+	}
+
+	client := xdb.NewClient("pgx", "demo", db)
+	for _, table := range tables {
 		_, err = xdb.Exec(ctx, client, fmt.Sprintf("DROP TABLE IF EXISTS %q", table))
+		xt.NoError(t, err)
+	}
+
+	checkDB(t, client)
+}
+
+func TestMySQL(t *testing.T) {
+	checkMySQLBase(t, "mysql")
+}
+
+func TestMariaDB(t *testing.T) {
+	checkMySQLBase(t, "mariadb")
+}
+
+func checkMySQLBase(t *testing.T, dialect string) {
+	const dsn = `work:123456@tcp(127.0.0.1)/demo`
+	db, err := sql.Open("mysql", dsn)
+	xt.NoError(t, err)
+	defer db.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err = db.PingContext(ctx); err != nil {
+		t.Skipf("PingContext failed: %s ,skipped", err.Error())
+		return
+	}
+
+	client := xdb.NewClient(dialect, "demo", db)
+	for _, table := range tables {
+		_, err = xdb.Exec(ctx, client, fmt.Sprintf("DROP TABLE IF EXISTS `%s`", table))
 		xt.NoError(t, err)
 	}
 

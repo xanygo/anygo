@@ -20,7 +20,10 @@ import (
 
 func main() {
 	xdb.RegisterIT((&xdb.Logger{Logger: xlog.NewSimple(os.Stderr)}).ToInterceptor())
-	db, err := sql.Open("mysql", "mss_test:mss_test_pass@tcp(127.0.0.1)/mss_test_db0")
+	dsn := `work:123456@tcp(127.0.0.1)/demo`
+	log.Println("Using DSN:", dsn)
+
+	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		log.Fatalln(err)
 	}

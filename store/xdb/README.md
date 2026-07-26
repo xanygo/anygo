@@ -83,6 +83,9 @@ uniqueIndex 示例：
   4. 默认值为数据库函数：“name,default:fn|CURRENT_TIMESTAMP”
 
 
+#### native
+设置数据库中字段类型使用原始类型，如 `native:varchar(32)`
+
 ### codec 参数
 数据编解码的方式：
 

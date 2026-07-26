@@ -21,7 +21,7 @@ import (
 func main() {
 	xdb.RegisterIT((&xdb.Logger{Logger: xlog.NewSimple(os.Stderr)}).ToInterceptor())
 
-	db, err := sql.Open("pgx", "user=work password=123456 host=127.0.0.1 port=5432 database=mydb sslmode=disable")
+	db, err := sql.Open("pgx", "user=work password=123456 host=127.0.0.1 port=5432 database=demo sslmode=disable")
 
 	if err != nil {
 		log.Fatalln(err)
