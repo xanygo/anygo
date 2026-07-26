@@ -25,6 +25,7 @@ type Helper interface {
 type TB interface {
 	Run(name string, fn func(t TB))
 	TestReporter
+	Helper
 }
 
 type TestReporter interface {

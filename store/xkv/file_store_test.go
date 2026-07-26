@@ -6,6 +6,7 @@ package xkv_test
 
 import (
 	"context"
+	"github.com/xanygo/anygo/internal/ut/xkvut"
 	"path/filepath"
 	"testing"
 
@@ -19,6 +20,10 @@ func TestFileStorage(t *testing.T) {
 	ff := &xkv.FileStore{
 		DataDir: dir,
 	}
+
+	xkvut.SetFlag("SMembers-NotSorted")
+	defer xkvut.ClearFlags()
+
 	testStringStorage(t, ff)
 }
 

@@ -67,9 +67,10 @@ func (l *List) xxPush(ctx context.Context, field string, dealt int64, values ...
 		}
 		orm := xdb.NewMode[ListModel](tx)
 		_, err1 = orm.InsertBatch(ctx, items...)
-		if err1 == nil {
-			num = int64(len(items))
+		if err1 != nil {
+			return err1
 		}
+		num, err1 = orm.Count(ctx, "*", "k=?", l.Key)
 		return err1
 	})
 	return num, err

@@ -7,7 +7,7 @@ import (
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xkv"
 	"github.com/xanygo/anygo/store/xkv/internal"
-	"github.com/xanygo/anygo/store/xkv/xkvx/internal/db"
+	"github.com/xanygo/anygo/store/xkv/internal/db"
 )
 
 var _ xkv.StringStorage = (*DatabaseStorage)(nil)

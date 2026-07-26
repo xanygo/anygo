@@ -6,136 +6,27 @@ package xkv_test
 
 import (
 	"context"
+	"github.com/xanygo/anygo/internal/ut/xkvut"
+	"github.com/xanygo/anygo/xt"
 	"testing"
 
 	"github.com/xanygo/anygo/store/xkv"
-	"github.com/xanygo/anygo/xt"
 )
 
+type testT struct {
+	*testing.T
+}
+
+func (t testT) Run(name string, fn func(tb xt.TB)) {
+	t.T.Run(name, func(tt *testing.T) {
+		fn(testT{T: tt})
+	})
+}
+
 func testStringStorage(t *testing.T, ff xkv.StringStorage) {
-	t.Run("string", func(t *testing.T) {
-		ss1 := ff.String("hello")
-		got1, found1, err1 := ss1.Get(context.Background())
-		xt.NoError(t, err1)
-		xt.False(t, found1)
-		xt.Equal(t, got1, "")
-		xt.NoError(t, ss1.Set(context.Background(), "world"))
-		got2, found2, err2 := ss1.Get(context.Background())
-		xt.True(t, found2)
-		xt.NoError(t, err2)
-		xt.Equal(t, got2, "world")
-
-		got3, err3 := ff.Has(context.Background(), "hello")
-		xt.NoError(t, err3)
-		xt.True(t, got3)
-
-		xt.NoError(t, ff.Delete(context.Background(), "hello"))
-	})
-
-	t.Run("list", func(t *testing.T) {
-		list := ff.List("list1")
-		_, err1 := list.RPush(context.Background(), "1")
-		xt.NoError(t, err1)
-
-		_, err2 := list.RPush(context.Background(), "2")
-		xt.NoError(t, err2)
-		var values []string
-		err3 := list.RRange(context.Background(), func(val string) bool {
-			values = append(values, val)
-			return true
-		})
-		xt.NoError(t, err3)
-		xt.Equal(t, values, []string{"2", "1"})
-
-		values = nil
-		err4 := list.LRange(context.Background(), func(val string) bool {
-			values = append(values, val)
-			return true
-		})
-		xt.NoError(t, err4)
-		xt.Equal(t, values, []string{"1", "2"})
-
-		values = nil
-		err5 := list.Range(context.Background(), func(val string) bool {
-			values = append(values, val)
-			return true
-		})
-		xt.NoError(t, err5)
-		xt.Len(t, values, 2)
-	})
-
-	t.Run("Hash", func(t *testing.T) {
-		hh := ff.Hash("hash1")
-		xt.NoError(t, hh.HSet(context.Background(), "key1", "value1"))
-		value1, found1, err1 := hh.HGet(context.Background(), "key1")
-		xt.NoError(t, err1)
-		xt.True(t, found1)
-		xt.Equal(t, value1, "value1")
-
-		value2, found2, err2 := hh.HGet(context.Background(), "key2")
-		xt.NoError(t, err2)
-		xt.False(t, found2)
-		xt.Equal(t, value2, "")
-
-		all, err4 := hh.HGetAll(context.Background())
-		xt.NoError(t, err4)
-		xt.Equal(t, all, map[string]string{"key1": "value1"})
-
-		xt.NoError(t, hh.HDel(context.Background(), "key1"))
-		value3, found3, err3 := hh.HGet(context.Background(), "key2")
-		xt.NoError(t, err3)
-		xt.False(t, found3)
-		xt.Equal(t, value3, "")
-	})
-
-	t.Run("Set", func(t *testing.T) {
-		set := ff.Set("set1")
-		_, err1 := set.SAdd(context.Background(), "v1")
-		xt.NoError(t, err1)
-
-		got1, err2 := set.SMembers(context.Background())
-		xt.NoError(t, err2)
-		xt.Equal(t, got1, []string{"v1"})
-
-		_, err3 := set.SAdd(context.Background(), "v2")
-		xt.NoError(t, err3)
-
-		got2, err4 := set.SMembers(context.Background())
-		xt.NoError(t, err4)
-		xt.Equal(t, got2, []string{"v1", "v2"})
-
-		xt.NoError(t, set.SRem(context.Background(), "v1"))
-		got3, err3 := set.SMembers(context.Background())
-		xt.NoError(t, err3)
-		xt.Equal(t, got3, []string{"v2"})
-	})
-
-	t.Run("ZSet", func(t *testing.T) {
-		zset := ff.ZSet("zset1")
-		xt.NoError(t, zset.ZAdd(context.Background(), 1, "m1"))
-		got1, found1, err1 := zset.ZScore(context.Background(), "m1")
-		xt.NoError(t, err1)
-		xt.True(t, found1)
-		xt.Equal(t, got1, 1)
-
-		xt.NoError(t, zset.ZAdd(context.Background(), 2, "m2"))
-		xt.NoError(t, zset.ZAdd(context.Background(), 1.5, "m3"))
-		var members []string
-		var scores []float64
-		zset.ZRange(context.Background(), func(member string, score float64) bool {
-			members = append(members, member)
-			scores = append(scores, score)
-			return true
-		})
-		xt.Equal(t, members, []string{"m1", "m3", "m2"})
-		xt.Equal(t, scores, []float64{1, 1.5, 2})
-
-		xt.NoError(t, zset.ZRem(context.Background(), "m2"))
-		got2, found2, err2 := zset.ZScore(context.Background(), "m2")
-		xt.NoError(t, err2)
-		xt.False(t, found2)
-		xt.Equal(t, got2, 0)
-	})
+	tb := testT{T: t}
+	xkvut.TestStringStorage1(tb, ff)
+	xkvut.TestStringStorage2(tb, ff)
 }
 
 func benchStorage(b *testing.B, st xkv.StringStorage) {

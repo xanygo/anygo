@@ -112,7 +112,10 @@ func (m *memString) Incr(ctx context.Context) (result int64, err error) {
 		if tp != internal.DataTypeString {
 			val = "0"
 		}
-		result, _ = strconv.ParseInt(val, 10, 64)
+		result, err = strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return
+		}
 		result++
 		db[m.key] = strconv.FormatInt(result, 10)
 		tps[m.key] = internal.DataTypeString
@@ -133,7 +136,10 @@ func (m *memString) Decr(ctx context.Context) (result int64, err error) {
 		if tp != internal.DataTypeString {
 			val = "0"
 		}
-		result, _ = strconv.ParseInt(val, 10, 64)
+		result, err = strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return
+		}
 		result--
 		db[m.key] = strconv.FormatInt(result, 10)
 		tps[m.key] = internal.DataTypeString

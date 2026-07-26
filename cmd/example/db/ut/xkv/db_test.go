@@ -130,7 +130,7 @@ func TestList(t *testing.T) {
 
 		num, err = li.LPush(ctx, "v2")
 		xt.NoError(t, err)
-		xt.Equal(t, num, 1)
+		xt.Equal(t, num, 2)
 
 		num, err = li.LLen(ctx)
 		xt.NoError(t, err)
