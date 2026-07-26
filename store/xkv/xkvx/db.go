@@ -17,6 +17,7 @@ type TableProvider struct {
 	Resolve func(key string) string
 
 	// 可选，只有在需要 Migrate 的时候才需要
+	// 若是定义了 Resolve，若需要  Migrate，则 Names 应为所有可能的表名
 	Names []string
 }
 
@@ -27,9 +28,9 @@ func (tr *TableProvider) getTable(key string) string {
 	return tr.Resolve(key)
 }
 
-func (tr *TableProvider) migrate(ctx context.Context, db xdb.DBCore, obj any) error {
+func (tr *TableProvider) migrate(ctx context.Context, db xdb.DBCore, obj any, defaultTable string) error {
 	if tr == nil || len(tr.Names) == 0 {
-		return xdb.MigrateWithTable(ctx, db, obj, "")
+		return xdb.MigrateWithTable(ctx, db, obj, defaultTable)
 	}
 	for _, name := range tr.Names {
 		if err := xdb.MigrateWithTable(ctx, db, obj, name); err != nil {
@@ -90,77 +91,76 @@ type DatabaseStorage struct {
 }
 
 func (d *DatabaseStorage) String(key string) xkv.String[string] {
+	return d.getString(key)
+}
+
+func (d *DatabaseStorage) getString(key string) *db.String {
 	return &db.String{
-		Meta: db.MetaModel{
-			Table:    d.MetaTable.getTable(key),
-			Key:      key,
-			DB:       d.DB,
-			DataType: internal.DataTypeString,
-		},
+		Meta:  d.getMeta(key, internal.DataTypeString),
 		Table: d.StringTable.getTable(key),
 		Key:   key,
 	}
 }
 
+func (d *DatabaseStorage) getMeta(key string, dt internal.DataType) *db.Meta {
+	return &db.Meta{
+		Table:    d.MetaTable.getTable(key),
+		Key:      key,
+		DB:       d.DB,
+		DataType: internal.DataTypeString,
+	}
+}
+
 func (d *DatabaseStorage) List(key string) xkv.List[string] {
+	return d.getList(key)
+}
+
+func (d *DatabaseStorage) getList(key string) *db.List {
 	return &db.List{
-		Meta: db.MetaModel{
-			Table:    d.MetaTable.getTable(key),
-			Key:      key,
-			DB:       d.DB,
-			DataType: internal.DataTypeList,
-		},
+		Meta:  d.getMeta(key, internal.DataTypeList),
 		Table: d.ListTable.getTable(key),
 		Key:   key,
 	}
 }
 
 func (d *DatabaseStorage) Hash(key string) xkv.Hash[string] {
+	return d.getHash(key)
+}
+
+func (d *DatabaseStorage) getHash(key string) *db.Hash {
 	return &db.Hash{
-		Meta: db.MetaModel{
-			Table:    d.MetaTable.getTable(key),
-			Key:      key,
-			DB:       d.DB,
-			DataType: internal.DataTypeHash,
-		},
+		Meta:  d.getMeta(key, internal.DataTypeHash),
 		Table: d.HashTable.getTable(key),
 		Key:   key,
 	}
 }
 
 func (d *DatabaseStorage) Set(key string) xkv.Set[string] {
+	return d.getSet(key)
+}
+
+func (d *DatabaseStorage) getSet(key string) *db.Set {
 	return &db.Set{
-		Meta: db.MetaModel{
-			Table:    d.MetaTable.getTable(key),
-			Key:      key,
-			DB:       d.DB,
-			DataType: internal.DataTypeSet,
-		},
+		Meta:  d.getMeta(key, internal.DataTypeSet),
 		Table: d.SetTable.getTable(key),
 		Key:   key,
 	}
 }
 
 func (d *DatabaseStorage) ZSet(key string) xkv.ZSet[string] {
+	return d.getZSet(key)
+}
+
+func (d *DatabaseStorage) getZSet(key string) *db.ZSet {
 	return &db.ZSet{
-		Meta: db.MetaModel{
-			Table:    d.MetaTable.getTable(key),
-			Key:      key,
-			DB:       d.DB,
-			DataType: internal.DataTypeZSet,
-		},
+		Meta:  d.getMeta(key, internal.DataTypeZSet),
 		Table: d.ZSetTable.getTable(key),
 		Key:   key,
 	}
 }
 
 func (d *DatabaseStorage) Has(ctx context.Context, key string) (bool, error) {
-	m := db.MetaModel{
-		Table:    d.MetaTable.getTable(key),
-		Key:      key,
-		DB:       d.DB,
-		DataType: internal.DataTypeAny, // 可以是任意类型
-	}
+	m := d.getMeta(key, internal.DataTypeAny) // 可以是任意类型
 	var has bool
 	err := m.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
 		has = hasMeta
@@ -176,11 +176,12 @@ func (d *DatabaseStorage) Delete(ctx context.Context, keys ...string) error {
 	var ms []db.DeleteItem
 	for _, key := range keys {
 		di := db.DeleteItem{
-			Meta: db.MetaModel{
-				Table: d.MetaTable.getTable(key),
-				Key:   key,
-				DB:    d.DB,
-			},
+			Meta:        d.getMeta(key, internal.DataTypeAny),
+			StringTable: d.StringTable.getTable(key),
+			ListTable:   d.ListTable.getTable(key),
+			HashTable:   d.HashTable.getTable(key),
+			SetTable:    d.SetTable.getTable(key),
+			ZSetTable:   d.ZSetTable.getTable(key),
 		}
 		ms = append(ms, di)
 	}
@@ -193,28 +194,29 @@ func (d *DatabaseStorage) Delete(ctx context.Context, keys ...string) error {
 }
 
 func (d *DatabaseStorage) Migrate(ctx context.Context) error {
-	meta := db.MetaModel{}
-	if err := d.MetaTable.migrate(ctx, d.DB, meta); err != nil {
+	metaModel := db.MetaModel{}
+	meta := d.getMeta("", internal.DataTypeAny)
+	if err := d.MetaTable.migrate(ctx, d.DB, metaModel, meta.GetTable()); err != nil {
 		return err
 	}
 	stringModel := db.StringModel{}
-	if err := d.MetaTable.migrate(ctx, d.DB, stringModel); err != nil {
+	if err := d.MetaTable.migrate(ctx, d.DB, stringModel, d.getString("").GetTable()); err != nil {
 		return err
 	}
 	listModel := db.ListModel{}
-	if err := d.MetaTable.migrate(ctx, d.DB, listModel); err != nil {
+	if err := d.MetaTable.migrate(ctx, d.DB, listModel, d.getList("").GetTable()); err != nil {
 		return err
 	}
 	hashModel := db.HashModel{}
-	if err := d.MetaTable.migrate(ctx, d.DB, hashModel); err != nil {
+	if err := d.MetaTable.migrate(ctx, d.DB, hashModel, d.getHash("").GetTable()); err != nil {
 		return err
 	}
 	setModel := db.SetModel{}
-	if err := d.MetaTable.migrate(ctx, d.DB, setModel); err != nil {
+	if err := d.MetaTable.migrate(ctx, d.DB, setModel, d.getSet("").GetTable()); err != nil {
 		return err
 	}
 	zsetModel := db.ZSetModel{}
-	if err := d.MetaTable.migrate(ctx, d.DB, zsetModel); err != nil {
+	if err := d.MetaTable.migrate(ctx, d.DB, zsetModel, d.getZSet("").GetTable()); err != nil {
 		return err
 	}
 	return nil

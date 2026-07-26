@@ -27,15 +27,18 @@ func (d Delete) Delete(ctx context.Context) error {
 }
 
 type DeleteItem struct {
-	Meta        MetaModel
+	Meta        *Meta
 	StringTable string
 	ListTable   string
+	HashTable   string
+	SetTable    string
+	ZSetTable   string
 }
 
 func (d DeleteItem) deleteAll(ctx context.Context, tx xdb.TxCore) error {
 	key := d.Meta.Key
-	mod := xdb.NewMode[MetaModel](tx)
-	value, found, err := mod.First(ctx, "k=?", key)
+	orm := d.Meta.orm(tx)
+	value, found, err := orm.First(ctx, "k=?", key)
 	if err != nil {
 		return err
 	}
@@ -44,32 +47,32 @@ func (d DeleteItem) deleteAll(ctx context.Context, tx xdb.TxCore) error {
 	}
 	switch value.DataType {
 	case internal.DataTypeString:
-		data := StringModel{
+		data := &String{
 			Table: d.StringTable,
 			Key:   key,
 		}
 		err = data.deleteWithKey(ctx, tx)
 	case internal.DataTypeList:
-		data := ListModel{
-			Table: d.StringTable,
+		data := &List{
+			Table: d.ListTable,
 			Key:   key,
 		}
 		err = data.deleteWithKey(ctx, tx)
 	case internal.DataTypeHash:
-		data := HashModel{
-			Table: d.StringTable,
+		data := &Hash{
+			Table: d.HashTable,
 			Key:   key,
 		}
 		err = data.deleteWithKey(ctx, tx)
 	case internal.DataTypeSet:
-		data := SetModel{
-			Table: d.StringTable,
+		data := &Set{
+			Table: d.SetTable,
 			Key:   key,
 		}
 		err = data.deleteWithKey(ctx, tx)
 	case internal.DataTypeZSet:
-		data := ZSetModel{
-			Table: d.StringTable,
+		data := ZSet{
+			Table: d.ZSetTable,
 			Key:   key,
 		}
 		err = data.deleteWithKey(ctx, tx)

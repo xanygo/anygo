@@ -155,7 +155,7 @@ func (d SQLServerDialect) UpsertSQL(table string, count int, cols, conflictCols,
 		`MERGE INTO %s AS target
 USING (VALUES %s) AS source (%s)
 ON %s`,
-		table,
+		d.QuoteIdentifier(table),
 		strings.Join(valPlaceholders, ","), // VALUES 占位
 		strings.Join(cols, ", "),           // source 列
 		strings.Join(onCond, " AND "),      // ON 条件

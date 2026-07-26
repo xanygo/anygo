@@ -10,10 +10,7 @@ import (
 	"github.com/xanygo/anygo/store/xkv"
 )
 
-var _ xdb.HasTable = ZSetModel{}
-
 type ZSetModel struct {
-	Table   string
 	Key     string  `db:"k,unique_index:idx_k_m,index:idx_k_i"`
 	Member  string  `db:"m,unique_index:idx_k_m"`
 	Score   float64 `db:"s,index:idx_k_i"`
@@ -21,33 +18,34 @@ type ZSetModel struct {
 	Updated int64   `db:"u"`
 }
 
-func (dt ZSetModel) TableName() string {
-	if dt.Table == "" {
-		return "xkv_zset"
-	}
-	return dt.Table
-}
-
-func (dt ZSetModel) deleteWithKey(ctx context.Context, tx xdb.TxCore) error {
-	ms := xdb.NewMode[ZSetModel](tx)
-	_, err := ms.Delete(ctx, "k=?", dt.Key)
-	return err
-}
-
 var _ xkv.ZSet[string] = (*ZSet)(nil)
 
 type ZSet struct {
 	Table string
 	Key   string
-	Meta  MetaModel
+	Meta  *Meta
+}
+
+func (z *ZSet) GetTable() string {
+	if z.Table == "" {
+		return "xkv_zset"
+	}
+	return z.Table
+}
+
+func (z *ZSet) deleteWithKey(ctx context.Context, tx xdb.TxCore) error {
+	orm := xdb.NewMode[ZSetModel](tx)
+	orm.Table(z.GetTable())
+	_, err := orm.Delete(ctx, "k=?", z.Key)
+	return err
 }
 
 func (z *ZSet) ZAdd(ctx context.Context, score float64, member string) error {
 	now := time.Now().Unix()
 	return z.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[ZSetModel](tx)
+		orm.Table(z.GetTable())
 		data := ZSetModel{
-			Table:   z.Table,
 			Key:     z.Key,
 			Member:  member,
 			Score:   score,
@@ -65,6 +63,7 @@ func (z *ZSet) ZScore(ctx context.Context, member string) (score float64, found 
 			return nil
 		}
 		orm := xdb.NewMode[ZSetModel](tx)
+		orm.Table(z.GetTable())
 		orm.OnlyFields("s")
 		item, ok, err1 := orm.First(ctx, "k=? and m=?", z.Key, member)
 		if err1 != nil || !ok {
@@ -83,6 +82,7 @@ func (z *ZSet) ZRange(ctx context.Context, fn func(member string, score float64)
 			return nil
 		}
 		orm := xdb.NewMode[ZSetModel](tx)
+		orm.Table(z.GetTable())
 		orm.OnlyFields("m", "s")
 		for item, err := range orm.ListIter(ctx, "k=?", z.Key) {
 			if err != nil {
@@ -113,6 +113,7 @@ func (z *ZSet) ZRem(ctx context.Context, members ...string) error {
 			return err
 		}
 		orm := xdb.NewMode[ZSetModel](tx)
+		orm.Table(z.GetTable())
 		_, err = orm.Delete(ctx, where, args...)
 		if err != nil {
 			return err
@@ -124,6 +125,7 @@ func (z *ZSet) ZRem(ctx context.Context, members ...string) error {
 // checkExists 检查 key 是否还存在，若不存在，则删除 meta
 func (z *ZSet) checkExists(ctx context.Context, orm *xdb.Model[ZSetModel]) error {
 	orm = orm.Clone().Reset().OnlyFields("c")
+	orm.Table(z.GetTable())
 	_, found, err := orm.First(ctx, "k=?", z.Key)
 	if err != nil {
 		return err

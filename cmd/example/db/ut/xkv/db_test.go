@@ -3,16 +3,24 @@ package xkv
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3" // sqlite driver
+	_ "github.com/jackc/pgx/v5/stdlib" // db driver
+	_ "github.com/mattn/go-sqlite3"    // sqlite driver
 	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/store/xkv"
 	"github.com/xanygo/anygo/store/xkv/xkvx"
+	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xt"
 )
+
+func init() {
+	xdb.RegisterIT((&xdb.Logger{Logger: xlog.NewSimple(os.Stderr)}).ToInterceptor())
+}
 
 func getDB(name string) *xdb.Client {
 	_ = os.Remove(name)
@@ -25,17 +33,58 @@ func getDB(name string) *xdb.Client {
 	return xdb.NewClient("sqlite3", "demo", db)
 }
 
-func TestString(t *testing.T) {
-	db := getDB("string.db")
-	xkv := xkvx.DatabaseStorage{
+func TestSQLite(t *testing.T) {
+	db := getDB("ut.db")
+	checkDB(t, db)
+}
+
+func checkDB(t *testing.T, db *xdb.Client) {
+	kvs := &xkvx.DatabaseStorage{
 		DB: db,
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	xt.NoError(t, kvs.Migrate(ctx))
+
+	checkString(t, kvs)
+	checkList(t, kvs)
+	checkHash(t, kvs)
+	checkSet(t, kvs)
+	checkZSet(t, kvs)
+}
+
+var tebles = []string{"xkv_meta", "xkv_hash", "xkv_list", "xkv_set", "xkv_zset"}
+
+func TestPostgres(t *testing.T) {
+	// 环境变量 export ANYGO_UT_PG="user=work password=123456 host=127.0.0.1 port=5432 database=mydb sslmode=disable"
+	const key = "ANYGO_UT_PG"
+	pg := os.Getenv(key)
+	if pg == "" {
+		t.Skipf("env %q is empty, no Postgres is ready, skipped", key)
+		return
+	}
+
+	db, err := sql.Open("pgx", pg)
+	xt.NoError(t, err)
+	defer db.Close()
+
+	client := xdb.NewClient("pgx", "demo", db)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	xt.NoError(t, xkv.Migrate(ctx))
+	for _, table := range tebles {
+		_, err = xdb.Exec(ctx, client, fmt.Sprintf("DROP TABLE IF EXISTS %q", table))
+		xt.NoError(t, err)
+	}
 
+	checkDB(t, client)
+}
+
+func checkString(t *testing.T, xkv xkv.StringStorage) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
 	t.Run("k1", func(t *testing.T) {
 		ks := xkv.String("k1")
 
@@ -89,19 +138,12 @@ func TestString(t *testing.T) {
 	})
 }
 
-func TestList(t *testing.T) {
-	db := getDB("list.db")
-	xkv := xkvx.DatabaseStorage{
-		DB: db,
-	}
-
+func checkList(t *testing.T, kvs xkv.StringStorage) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	xt.NoError(t, xkv.Migrate(ctx))
-
 	t.Run("list1", func(t *testing.T) {
-		l1 := xkv.List("list1")
+		l1 := kvs.List("list1")
 		var values []string
 		err := l1.Range(ctx, func(val string) bool {
 			values = append(values, val)
@@ -120,7 +162,7 @@ func TestList(t *testing.T) {
 	})
 
 	t.Run("list2", func(t *testing.T) {
-		li := xkv.List("list2")
+		li := kvs.List("list2")
 		num, err := li.LPush(ctx, "v1")
 		xt.NoError(t, err)
 		xt.Equal(t, num, 1)
@@ -155,7 +197,7 @@ func TestList(t *testing.T) {
 	})
 
 	t.Run("list3", func(t *testing.T) {
-		li := xkv.List("list3")
+		li := kvs.List("list3")
 		num, err := li.RPush(ctx, "v1", "v2")
 		xt.NoError(t, err)
 		xt.Equal(t, num, 2)
@@ -166,19 +208,12 @@ func TestList(t *testing.T) {
 	})
 }
 
-func TestHash(t *testing.T) {
-	db := getDB("hash.db")
-	xkv := xkvx.DatabaseStorage{
-		DB: db,
-	}
-
+func checkHash(t *testing.T, kvs xkv.StringStorage) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	xt.NoError(t, xkv.Migrate(ctx))
-
 	t.Run("hash1", func(t *testing.T) {
-		ha := xkv.Hash("hash1")
+		ha := kvs.Hash("hash1")
 		value, found, err := ha.HGet(ctx, "f1")
 		xt.NoError(t, err)
 		xt.False(t, found)
@@ -202,7 +237,7 @@ func TestHash(t *testing.T) {
 	})
 
 	t.Run("hash2", func(t *testing.T) {
-		ha := xkv.Hash("hash2")
+		ha := kvs.Hash("hash2")
 		err := ha.HDel(ctx, "f1")
 		xt.NoError(t, err)
 
@@ -240,25 +275,18 @@ func TestHash(t *testing.T) {
 		checkGet(t, "f2", "v2")
 		checkGet(t, "f3", "")
 
-		has, err := xkv.Has(ctx, "hash2")
+		has, err := kvs.Has(ctx, "hash2")
 		xt.NoError(t, err)
 		xt.True(t, has)
 	})
 }
 
-func TestSet(t *testing.T) {
-	db := getDB("set.db")
-	xkv := xkvx.DatabaseStorage{
-		DB: db,
-	}
-
+func checkSet(t *testing.T, kvs xkv.StringStorage) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	xt.NoError(t, xkv.Migrate(ctx))
-
 	t.Run("set1", func(t *testing.T) {
-		se := xkv.Set("set1")
+		se := kvs.Set("set1")
 		num, err := se.SAdd(ctx, "m1")
 		xt.NoError(t, err)
 		xt.Equal(t, num, 1)
@@ -296,19 +324,12 @@ func TestSet(t *testing.T) {
 	})
 }
 
-func TestZSet(t *testing.T) {
-	db := getDB("zset.db")
-	xkv := xkvx.DatabaseStorage{
-		DB: db,
-	}
-
+func checkZSet(t *testing.T, kvs xkv.StringStorage) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	xt.NoError(t, xkv.Migrate(ctx))
-
 	t.Run("zset1", func(t *testing.T) {
-		zs := xkv.ZSet("zset1")
+		zs := kvs.ZSet("zset1")
 		err := zs.ZAdd(ctx, 1, "m1")
 		xt.NoError(t, err)
 
@@ -333,15 +354,24 @@ func TestZSet(t *testing.T) {
 	})
 
 	t.Run("delete1", func(t *testing.T) {
-		has, err := xkv.Has(ctx, "zset1")
+		has, err := kvs.Has(ctx, "zset1")
 		xt.NoError(t, err)
 		xt.True(t, has)
 
-		err = xkv.Delete(ctx, "zset1")
+		err = kvs.Delete(ctx, "zset1")
 		xt.NoError(t, err)
 
-		has, err = xkv.Has(ctx, "zset1")
+		has, err = kvs.Has(ctx, "zset1")
 		xt.NoError(t, err)
 		xt.False(t, has)
+	})
+
+	t.Run("zset2", func(t *testing.T) {
+		zs := kvs.ZSet("zset2")
+		for i := 0; i < 10; i++ {
+			member := fmt.Sprintf("m%d", i)
+			err := zs.ZAdd(ctx, float64(i)+10.1, member)
+			xt.NoError(t, err)
+		}
 	})
 }

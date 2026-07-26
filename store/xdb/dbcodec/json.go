@@ -23,14 +23,7 @@ func (j JSON) Name() string {
 }
 
 func (j JSON) Encode(obj any) (any, error) {
-	if obj == nil {
-		return "", nil
-	}
-	str, err := xcodec.EncodeToString(xcodec.JSON, obj)
-	if str == "null" {
-		return "", err
-	}
-	return str, err
+	return xcodec.EncodeToString(xcodec.JSON, obj)
 }
 
 func (j JSON) Decode(str string, obj any) error {

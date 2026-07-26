@@ -95,7 +95,7 @@ func (d MariaDB) UpsertSQL(table string, count int, columns, conflictCols, updat
 	}
 
 	sqlStr := fmt.Sprintf("INTO %s (%s) VALUES %s",
-		table,
+		d.QuoteIdentifier(table),
 		colList,
 		strings.Join(xslice.Repeat(valPlaceholders, count), ","),
 	)

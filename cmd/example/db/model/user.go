@@ -45,7 +45,10 @@ func (u User) TableName() string {
 type Status uint
 
 func WithUser(ctx context.Context, client *xdb.Client) {
-	xdb.Migrate(client, User{})
+	err := xdb.Migrate(client, User{})
+	if err != nil {
+		log.Fatalln("Migrate:", errorText(err))
+	}
 
 	orm := xdb.NewMode[User](client)
 	u := User{

@@ -250,12 +250,17 @@ func (m *Model[T]) InsertBatch(ctx context.Context, vs ...T) (int64, error) {
 	}
 
 	qCols := xslice.MapFunc(cols, m.dialect.QuoteIdentifier)
-	holder := "(" + m.dialect.PlaceholderList(len(cols), 1) + ")"
+
+	valuePlaceHolders := make([]string, len(values))
+	for i := range len(values) {
+		valuePlaceHolders[i] = "(" + m.dialect.PlaceholderList(len(cols), i*len(cols)+1) + ")"
+	}
+
 	sqlStr := fmt.Sprintf(
 		"INSERT INTO %s (%s) VALUES %s",
 		m.dialect.QuoteIdentifier(m.table),
 		strings.Join(qCols, ","),
-		strings.Join(xslice.Repeat(holder, len(values)), ", "),
+		strings.Join(valuePlaceHolders, ", "),
 	)
 	if r, ok := any(m.dialect).(dbtype.ReturningDialect); ok {
 		sqlStr += " " + r.ReturningClause()

@@ -11,26 +11,10 @@ import (
 	"github.com/xanygo/anygo/store/xkv"
 )
 
-var _ xdb.HasTable = SetModel{}
-
 type SetModel struct {
-	Table   string
 	Key     string `db:"k,unique_index:idx_k_m"`
 	Member  string `db:"m,unique_index:idx_k_m"`
 	Created int64  `db:"c"`
-}
-
-func (dt SetModel) TableName() string {
-	if dt.Table == "" {
-		return "xkv_set"
-	}
-	return dt.Table
-}
-
-func (dt SetModel) deleteWithKey(ctx context.Context, tx xdb.TxCore) error {
-	ms := xdb.NewMode[SetModel](tx)
-	_, err := ms.Delete(ctx, "k=?", dt.Key)
-	return err
 }
 
 var _ xkv.Set[string] = (*Set)(nil)
@@ -38,7 +22,21 @@ var _ xkv.Set[string] = (*Set)(nil)
 type Set struct {
 	Table string
 	Key   string
-	Meta  MetaModel
+	Meta  *Meta
+}
+
+func (s *Set) GetTable() string {
+	if s.Table == "" {
+		return "xkv_set"
+	}
+	return s.Table
+}
+
+func (s *Set) deleteWithKey(ctx context.Context, tx xdb.TxCore) error {
+	orm := xdb.NewMode[SetModel](tx)
+	orm.Table(s.GetTable())
+	_, err := orm.Delete(ctx, "k=?", s.Key)
+	return err
 }
 
 func (s *Set) SAdd(ctx context.Context, members ...string) (num int64, err error) {
@@ -48,10 +46,10 @@ func (s *Set) SAdd(ctx context.Context, members ...string) (num int64, err error
 	now := time.Now().Unix()
 	err = s.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[SetModel](tx)
+		orm.Table(s.GetTable())
 		items := make([]SetModel, 0, len(members))
 		for _, member := range members {
 			item := SetModel{
-				Table:   s.Table,
 				Key:     s.Key,
 				Member:  member,
 				Created: now,
@@ -81,6 +79,7 @@ func (s *Set) SRem(ctx context.Context, members ...string) error {
 			return err
 		}
 		orm := xdb.NewMode[SetModel](tx)
+		orm.Table(s.GetTable())
 		_, err = orm.Delete(ctx, where, args...)
 		if err != nil {
 			return err
@@ -92,6 +91,7 @@ func (s *Set) SRem(ctx context.Context, members ...string) error {
 // checkExists 检查 key 是否还存在，若不存在，则删除 meta
 func (s *Set) checkExists(ctx context.Context, orm *xdb.Model[SetModel]) error {
 	orm = orm.Clone().Reset().OnlyFields("c")
+	orm.Table(s.GetTable())
 	_, found, err := orm.First(ctx, "k=?", s.Key)
 	if err != nil {
 		return err
@@ -105,6 +105,7 @@ func (s *Set) checkExists(ctx context.Context, orm *xdb.Model[SetModel]) error {
 func (s *Set) SRange(ctx context.Context, fn func(member string) bool) error {
 	return s.Meta.WithReadTx(ctx, func(as context.Context, tx xdb.TxCore, hasMeta bool) error {
 		orm := xdb.NewMode[SetModel](tx)
+		orm.Table(s.GetTable())
 		orm.OnlyFields("m")
 		for item, err1 := range orm.ListIter(ctx, "k=?", s.Key) {
 			if err1 != nil {
@@ -133,6 +134,7 @@ func (s *Set) SCard(ctx context.Context) (num int64, err error) {
 			return nil
 		}
 		orm := xdb.NewMode[SetModel](tx)
+		orm.Table(s.GetTable())
 		var err1 error
 		num, err1 = orm.Count(ctx, "*", "k=?", s.Key)
 		return err1

@@ -10,29 +10,12 @@ import (
 	"github.com/xanygo/anygo/store/xkv/internal"
 )
 
-var _ xdb.HasTable = (*MetaModel)(nil)
-
 type MetaModel struct {
-	Table    string
-	DB       *xdb.Client
 	Key      string            `db:"k,pk"`
 	DataType internal.DataType `db:"dt"`
 	Created  int64             `db:"c"`
 	Updated  int64             `db:"u"`
 	Meta     map[string]any    `db:"meta,codec:json"`
-}
-
-func (m MetaModel) TableName() string {
-	if m.Table == "" {
-		return "xkv_meta"
-	}
-	return m.Table
-}
-
-func (m MetaModel) delete(ctx context.Context, tx xdb.HasDriver) error {
-	orm := xdb.NewMode[MetaModel](tx)
-	_, err := orm.Delete(ctx, "k=?", m.Key)
-	return err
 }
 
 func (m MetaModel) incr(field string, dealt int64) (nm MetaModel, num int64) {
@@ -50,14 +33,42 @@ func (m MetaModel) incr(field string, dealt int64) (nm MetaModel, num int64) {
 	return m, num
 }
 
-func (m MetaModel) save(ctx context.Context, tx xdb.TxCore, data MetaModel) error {
-	mod := xdb.NewMode[MetaModel](tx)
-	data.Updated = time.Now().Unix()
-	_, err := mod.Upsert(ctx, []string{"k"}, []string{"meta", "u"}, data)
+type Meta struct {
+	Table    string
+	DB       *xdb.Client
+	Key      string
+	DataType internal.DataType
+}
+
+func (m *Meta) GetTable() string {
+	if m.Table == "" {
+		return "xkv_meta"
+	}
+	return m.Table
+}
+
+func (m *Meta) orm(tx xdb.HasDriver) *xdb.Model[MetaModel] {
+	orm := xdb.NewMode[MetaModel](tx)
+	orm.Table(m.GetTable())
+	return orm
+}
+
+func (m *Meta) delete(ctx context.Context, tx xdb.HasDriver) error {
+	orm := m.orm(tx)
+	_, err := orm.Delete(ctx, "k=?", m.Key)
 	return err
 }
 
-func (m MetaModel) WithWriteTx(ctx context.Context, do func(ctx context.Context, tx xdb.TxCore) error) error {
+func (m *Meta) save(ctx context.Context, tx xdb.TxCore, data MetaModel) error {
+	now := time.Now().Unix()
+	orm := m.orm(tx)
+	data.Created = now
+	data.Updated = now
+	_, err := orm.Upsert(ctx, []string{"k"}, []string{"meta", "u"}, data)
+	return err
+}
+
+func (m *Meta) WithWriteTx(ctx context.Context, do func(ctx context.Context, tx xdb.TxCore) error) error {
 	return m.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		if err1 := m.checkWriteType(ctx, tx); err1 != nil {
 			return err1
@@ -66,7 +77,7 @@ func (m MetaModel) WithWriteTx(ctx context.Context, do func(ctx context.Context,
 	})
 }
 
-func (m MetaModel) WithReadTx(ctx context.Context, do func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error) error {
+func (m *Meta) WithReadTx(ctx context.Context, do func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error) error {
 	return m.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		found, err1 := m.checkReadType(ctx, tx)
 		if err1 != nil {
@@ -76,7 +87,7 @@ func (m MetaModel) WithReadTx(ctx context.Context, do func(ctx context.Context, 
 	})
 }
 
-func (m MetaModel) WithTx(ctx context.Context, do func(ctx context.Context, tx xdb.TxCore) error) error {
+func (m *Meta) WithTx(ctx context.Context, do func(ctx context.Context, tx xdb.TxCore) error) error {
 	te, err := m.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -86,9 +97,9 @@ func (m MetaModel) WithTx(ctx context.Context, do func(ctx context.Context, tx x
 	})
 }
 
-func (m MetaModel) checkWriteType(ctx context.Context, tx xdb.TxCore) error {
-	mod := xdb.NewMode[MetaModel](tx)
-	value, found, err := mod.First(ctx, "k=?", m.Key)
+func (m *Meta) checkWriteType(ctx context.Context, tx xdb.TxCore) error {
+	orm := m.orm(tx)
+	value, found, err := orm.First(ctx, "k=?", m.Key)
 	if err != nil {
 		return err
 	}
@@ -98,27 +109,36 @@ func (m MetaModel) checkWriteType(ctx context.Context, tx xdb.TxCore) error {
 		}
 		return fmt.Errorf("canot write %s on type %s", m.DataType.String(), value.DataType.String())
 	}
-	return mod.Insert(ctx, m)
+	now := time.Now().Unix()
+	data := MetaModel{
+		Key:      m.Key,
+		DataType: m.DataType,
+		Created:  now,
+		Updated:  now,
+	}
+	return orm.Insert(ctx, data)
 }
 
-func (m MetaModel) load(ctx context.Context, tx xdb.TxCore) (MetaModel, error) {
-	orm := xdb.NewMode[MetaModel](tx)
+func (m *Meta) load(ctx context.Context, tx xdb.TxCore) (MetaModel, error) {
+	orm := m.orm(tx)
 	value, found, err := orm.First(ctx, "k=?", m.Key)
 	if err != nil {
 		return MetaModel{}, err
 	}
 	if found {
 		if value.DataType == m.DataType {
-			value.Table = m.Table
 			return value, nil
 		}
 		return MetaModel{}, fmt.Errorf("canot load %s on type %s", m.DataType.String(), value.DataType.String())
 	}
-	return m, nil
+	return MetaModel{
+		Key:      m.Key,
+		DataType: m.DataType,
+	}, nil
 }
 
-func (m MetaModel) checkReadType(ctx context.Context, tx xdb.TxCore) (bool, error) {
-	orm := xdb.NewMode[MetaModel](tx)
+func (m *Meta) checkReadType(ctx context.Context, tx xdb.TxCore) (bool, error) {
+	orm := m.orm(tx)
 	orm.OnlyFields("dt")
 	value, found, err := orm.First(ctx, "k=?", m.Key)
 	if err != nil {

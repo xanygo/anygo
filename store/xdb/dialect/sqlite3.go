@@ -128,7 +128,7 @@ func (d SQLite3) UpsertSQL(table string, count int, columns, conflictCols, updat
 	}
 
 	if len(returningCols) > 0 {
-		sqlStr += " RETURNING " + strings.Join(returningCols, ", ")
+		sqlStr += " RETURNING " + strings.Join(xslice.MapFunc(returningCols, d.QuoteIdentifier), ",")
 	}
 	return sqlStr
 }

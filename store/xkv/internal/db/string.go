@@ -9,49 +9,47 @@ import (
 	"github.com/xanygo/anygo/store/xkv"
 )
 
-var _ xdb.HasTable = (*StringModel)(nil)
-
 type StringModel struct {
-	Table   string
 	Key     string `db:"k,pk"`
 	Value   string `db:"v"`
 	Created int64  `db:"c"`
 	Updated int64  `db:"u"`
 }
 
-func (dt StringModel) TableName() string {
-	if dt.Table == "" {
-		return "xkv_string"
-	}
-	return dt.Table
-}
-
-func (dt StringModel) deleteWithKey(ctx context.Context, tx xdb.TxCore) error {
-	ms := xdb.NewMode[StringModel](tx)
-	_, err := ms.DeleteByPK(ctx, dt)
-	return err
-}
-
 var _ xkv.String[string] = (*String)(nil)
 
 type String struct {
-	Meta  MetaModel
 	Key   string
 	Table string
+	Meta  *Meta
+}
+
+func (d *String) GetTable() string {
+	if d.Table == "" {
+		return "xkv_string"
+	}
+	return d.Table
+}
+
+func (d *String) deleteWithKey(ctx context.Context, tx xdb.TxCore) error {
+	orm := xdb.NewMode[StringModel](tx)
+	orm.Table(d.GetTable())
+	_, err := orm.Delete(ctx, "k=?", d.Key)
+	return err
 }
 
 func (d *String) Set(ctx context.Context, value string) error {
 	now := time.Now().Unix()
 	return d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		data := StringModel{
-			Table:   d.Table,
 			Key:     d.Key,
 			Value:   value,
 			Created: now,
 			Updated: now,
 		}
-		mod := xdb.NewMode[StringModel](tx)
-		_, err := mod.Upsert(ctx, []string{"k"}, []string{"v", "u"}, data)
+		orm := xdb.NewMode[StringModel](tx)
+		orm.Table(d.GetTable())
+		_, err := orm.Upsert(ctx, []string{"k"}, []string{"v", "u"}, data)
 		return err
 	})
 }
@@ -62,6 +60,7 @@ func (d *String) Get(ctx context.Context) (val string, ok bool, err error) {
 			return nil
 		}
 		orm := xdb.NewMode[StringModel](tx)
+		orm.Table(d.GetTable())
 		orm.OnlyFields("v")
 		value, found, err1 := orm.First(ctx, "k=?", d.Key)
 		if err1 != nil {
@@ -82,6 +81,7 @@ func (d *String) Incr(ctx context.Context) (num int64, err error) {
 	now := time.Now().Unix()
 	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[StringModel](tx)
+		orm.Table(d.GetTable())
 		orm.OnlyFields("v")
 		val, found, err1 := orm.First(ctx, "k=?", d.Key)
 		if err1 != nil {
@@ -101,13 +101,13 @@ func (d *String) Incr(ctx context.Context) (num int64, err error) {
 			strVal = "1"
 		}
 		data := StringModel{
-			Table:   d.Table,
 			Key:     d.Key,
 			Value:   strVal,
 			Created: now,
 			Updated: now,
 		}
 		orm.Reset()
+		orm.Table(d.GetTable())
 		_, err1 = orm.Upsert(ctx, []string{"k"}, []string{"v", "u"}, data)
 		return err1
 	})
@@ -118,6 +118,7 @@ func (d *String) Decr(ctx context.Context) (num int64, err error) {
 	now := time.Now().Unix()
 	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[StringModel](tx)
+		orm.Table(d.GetTable())
 		orm.OnlyFields("v")
 		val, found, err1 := orm.First(ctx, "k=?", d.Key)
 		if err1 != nil {
@@ -137,13 +138,13 @@ func (d *String) Decr(ctx context.Context) (num int64, err error) {
 			strVal = "-1"
 		}
 		data := StringModel{
-			Table:   d.Table,
 			Key:     d.Key,
 			Value:   strVal,
 			Created: now,
 			Updated: now,
 		}
 		orm.Reset()
+		orm.Table(d.GetTable())
 		_, err1 = orm.Upsert(ctx, []string{"k"}, []string{"v", "u"}, data)
 		return err1
 	})

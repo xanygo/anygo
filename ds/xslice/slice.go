@@ -279,6 +279,8 @@ func FilterMap[S ~[]E, E any](arr S, fn func(item E) (E, bool)) S {
 	return result
 }
 
+// MapFunc 对传入的 slice 使用 fn 处理，并返回新的 slice。
+// 不改变传入的 slice
 func MapFunc[S ~[]E, E any](arr S, fn func(item E) E) S {
 	if len(arr) == 0 {
 		return nil

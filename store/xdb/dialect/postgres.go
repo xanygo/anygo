@@ -60,6 +60,7 @@ func (Postgres) LimitOffsetClause(limit, offset int) string {
 }
 
 // PlaceholderList 返回 n 个占位符 ($1, $2, ...)
+// start 应从 1 开始计数
 func (Postgres) PlaceholderList(n, start int) string {
 	if n <= 0 {
 		return ""
@@ -98,13 +99,9 @@ var _ dbtype.UpsertDialect = (*Postgres)(nil)
 func (d Postgres) UpsertSQL(table string, count int, cols, conflictCols, updateCols []string, returningCols []string) string {
 	colList := strings.Join(xslice.MapFunc(cols, d.QuoteIdentifier), ",")
 
-	valPlaceholders := make([]string, len(cols))
+	valPlaceholders := make([]string, 0, len(cols))
 	for c := range count {
-		tmp := make([]string, len(cols))
-		for i := range cols {
-			tmp[i] = fmt.Sprintf("$%d", c*i+1)
-		}
-		str := "(" + strings.Join(tmp, ",") + ")"
+		str := "(" + d.PlaceholderList(len(cols), c*len(cols)+1) + ")"
 		valPlaceholders = append(valPlaceholders, str)
 	}
 
@@ -115,10 +112,10 @@ func (d Postgres) UpsertSQL(table string, count int, cols, conflictCols, updateC
 	}
 
 	sqlStr := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s ON CONFLICT (%s)",
-		table,
+		d.QuoteIdentifier(table),
 		colList,
 		strings.Join(valPlaceholders, ","),
-		strings.Join(conflictCols, ", "),
+		strings.Join(xslice.MapFunc(conflictCols, d.QuoteIdentifier), ","),
 	)
 
 	if len(updateAssignments) > 0 {
@@ -242,10 +239,12 @@ func (d Postgres) AlterCreateIndex(indexType string, name string, table string, 
 var _ dbtype.MigrateDialect = Postgres{}
 
 func (d Postgres) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.TableSchema) error {
-	sqlStr := createTableSQL(schema, d, d)
-	_, err := db.ExecContext(ctx, sqlStr)
-	if err != nil {
-		return fmt.Errorf("postgres Migrate SQL %q: %w", sqlStr, err)
+	sqls := createTableSQLList(schema, d, d)
+	for _, sql := range sqls {
+		_, err := db.ExecContext(ctx, sql)
+		if err != nil {
+			return fmt.Errorf("postgres migrate SQL %q: %w", sql, err)
+		}
 	}
 	return nil
 }

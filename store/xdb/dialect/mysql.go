@@ -99,7 +99,7 @@ func (d MySQL) UpsertSQL(table string, count int, columns, conflictCols, updateC
 	}
 
 	sqlStr := fmt.Sprintf("INTO %s (%s) VALUES %s",
-		table,
+		d.QuoteIdentifier(table),
 		colList,
 		strings.Join(xslice.Repeat(valPlaceholders, count), ","),
 	)
@@ -175,7 +175,7 @@ func (d MySQL) UniqIndex(name string, columns []string) string {
 func (d MySQL) AlterCreateIndex(indexType string, name string, table string, columns []string) string {
 	// 不支持 IF NOT EXISTS
 	return fmt.Sprintf(`ALTER TABLE %s ADD %s %s(%s)`,
-		table, indexType, name, strings.Join(columns, ","))
+		d.QuoteIdentifier(table), indexType, name, strings.Join(columns, ","))
 }
 
 //	func (d MySQL) addColumnIfNotExists(table string, col string) string {
