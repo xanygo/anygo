@@ -102,7 +102,7 @@ func TestEncode(t *testing.T) {
 			"score":  120.1,
 			"ids1":   "[1,2,3]",
 			"ids2":   "[1,5,3]",
-			"md1":    "", // 本来是 null
+			"md1":    "null",
 			"md2":    `{"key1":"value1"}`,
 			"bs1":    "",
 			"id2":    0,
