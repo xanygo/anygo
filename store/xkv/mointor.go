@@ -274,6 +274,11 @@ func (mz *monitorZSet[V]) ZScore(ctx context.Context, member V) (float64, bool, 
 	mz.monitor.doAfterRead(ctx, mz.key, err)
 	return val, ok, err
 }
+func (mz *monitorZSet[V]) ZIncrBy(ctx context.Context, incr float64, member V) (float64, error) {
+	val, err := mz.store.ZIncrBy(ctx, incr, member)
+	mz.monitor.doAfterWrite(ctx, mz.key, err)
+	return val, err
+}
 
 func (mz *monitorZSet[V]) ZRange(ctx context.Context, fn func(member V, score float64) bool) error {
 	err := mz.store.ZRange(ctx, fn)

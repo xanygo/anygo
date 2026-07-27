@@ -6,9 +6,9 @@ package xkv
 
 import (
 	"context"
+	"github.com/xanygo/anygo/store/xkv/internal/mem"
 	"maps"
 	"slices"
-	"sort"
 	"strconv"
 	"sync"
 
@@ -519,7 +519,7 @@ type memZSet struct {
 	key   string
 }
 
-func (m *memZSet) withLocked(fn func(*memZSetValue) (*memZSetValue, bool)) error {
+func (m *memZSet) withLocked(fn func(*mem.ZSetValue) (*mem.ZSetValue, bool)) error {
 	var err error
 	m.store.withLock(func(db map[string]string, tps map[string]internal.DataType) {
 		str, found := db[m.key]
@@ -528,7 +528,7 @@ func (m *memZSet) withLocked(fn func(*memZSetValue) (*memZSetValue, bool)) error
 			err = ErrInvalidType
 			return
 		}
-		result := &memZSetValue{}
+		result := &mem.ZSetValue{}
 		if found {
 			xcodec.JSON.Decode([]byte(str), result)
 		}
@@ -543,8 +543,8 @@ func (m *memZSet) withLocked(fn func(*memZSetValue) (*memZSetValue, bool)) error
 }
 
 func (m *memZSet) ZAdd(ctx context.Context, score float64, member string) error {
-	return m.withLocked(func(zv *memZSetValue) (*memZSetValue, bool) {
-		zv.add(score, member)
+	return m.withLocked(func(zv *mem.ZSetValue) (*mem.ZSetValue, bool) {
+		zv.Add(score, member)
 		return zv, true
 	})
 }
@@ -552,16 +552,25 @@ func (m *memZSet) ZAdd(ctx context.Context, score float64, member string) error 
 func (m *memZSet) ZScore(ctx context.Context, member string) (float64, bool, error) {
 	var score float64
 	var found bool
-	err := m.withLocked(func(zv *memZSetValue) (*memZSetValue, bool) {
-		score, found = zv.score(member)
+	err := m.withLocked(func(zv *mem.ZSetValue) (*mem.ZSetValue, bool) {
+		score, found = zv.Score(member)
 		return zv, false
 	})
 	return score, found, err
 }
 
+func (m *memZSet) ZIncrBy(ctx context.Context, incr float64, member string) (float64, error) {
+	var score float64
+	err := m.withLocked(func(zv *mem.ZSetValue) (*mem.ZSetValue, bool) {
+		score = zv.IncrBy(member, incr)
+		return zv, true
+	})
+	return score, err
+}
+
 func (m *memZSet) ZRange(ctx context.Context, fn func(member string, score float64) bool) error {
-	var value *memZSetValue
-	err := m.withLocked(func(zv *memZSetValue) (*memZSetValue, bool) {
+	var value *mem.ZSetValue
+	err := m.withLocked(func(zv *mem.ZSetValue) (*mem.ZSetValue, bool) {
 		value = zv
 		return zv, false
 	})
@@ -579,67 +588,15 @@ func (m *memZSet) ZRange(ctx context.Context, fn func(member string, score float
 }
 
 func (m *memZSet) ZRem(ctx context.Context, members ...string) error {
-	return m.withLocked(func(value *memZSetValue) (*memZSetValue, bool) {
+	return m.withLocked(func(value *mem.ZSetValue) (*mem.ZSetValue, bool) {
 		var changed bool
 		for _, member := range members {
-			if value.remove(member) {
+			if value.Remove(member) {
 				changed = true
 			}
 		}
 		return value, changed
 	})
-}
-
-type memZSetValue struct {
-	Members []string           `json:"m"` // 按照 score 升序排序的 members 集合
-	Scores  map[string]float64 `json:"s"`
-}
-
-func (mz *memZSetValue) add(score float64, member string) {
-	if mz.Scores == nil {
-		mz.Scores = make(map[string]float64)
-	}
-	mz.Scores[member] = score
-	list := make([]memMemberScore, 0, len(mz.Scores))
-	for k, v := range mz.Scores {
-		list = append(list, memMemberScore{
-			member: k,
-			score:  v,
-		})
-	}
-	sort.Slice(list, func(i, j int) bool {
-		return list[i].score < list[j].score
-	})
-	mz.Members = make([]string, 0, len(mz.Scores))
-	for _, item := range list {
-		mz.Members = append(mz.Members, item.member)
-	}
-}
-
-type memMemberScore struct {
-	member string
-	score  float64
-}
-
-func (mz *memZSetValue) score(member string) (float64, bool) {
-	if len(mz.Scores) == 0 {
-		return 0, false
-	}
-	score, found := mz.Scores[member]
-	return score, found
-}
-
-func (mz *memZSetValue) remove(member string) bool {
-	if len(mz.Members) == 0 {
-		return false
-	}
-	_, found := mz.Scores[member]
-	if !found {
-		return false
-	}
-	delete(mz.Scores, member)
-	mz.Members = xslice.DeleteValue(mz.Members, member)
-	return true
 }
 
 func (m *MemoryStore) Delete(ctx context.Context, keys ...string) error {

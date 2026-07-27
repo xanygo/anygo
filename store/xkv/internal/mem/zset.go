@@ -1,0 +1,74 @@
+package mem
+
+import (
+	"github.com/xanygo/anygo/ds/xcmp"
+	"github.com/xanygo/anygo/ds/xslice"
+	"slices"
+)
+
+type ZSetValue struct {
+	Members []string           `json:"m"` // 按照 score 升序排序的 members 集合
+	Scores  map[string]float64 `json:"s"`
+}
+
+type memberScore struct {
+	member string
+	score  float64
+}
+
+func (mz *ZSetValue) Add(score float64, member string) {
+	if mz.Scores == nil {
+		mz.Scores = make(map[string]float64)
+	}
+	mz.Scores[member] = score
+	mz.sort()
+}
+
+var memberScoreSortFn = xcmp.OrderAsc(func(t memberScore) float64 {
+	return t.score
+})
+
+func (mz *ZSetValue) sort() {
+	list := make([]memberScore, 0, len(mz.Scores))
+	for k, v := range mz.Scores {
+		list = append(list, memberScore{
+			member: k,
+			score:  v,
+		})
+	}
+	slices.SortFunc(list, memberScoreSortFn)
+	mz.Members = make([]string, 0, len(mz.Scores))
+	for _, item := range list {
+		mz.Members = append(mz.Members, item.member)
+	}
+}
+
+func (mz *ZSetValue) IncrBy(member string, add float64) float64 {
+	if mz.Scores == nil {
+		mz.Scores = make(map[string]float64)
+	}
+	mz.Scores[member] += add
+	mz.sort()
+	return mz.Scores[member]
+}
+
+func (mz *ZSetValue) Score(member string) (float64, bool) {
+	if len(mz.Scores) == 0 {
+		return 0, false
+	}
+	score, found := mz.Scores[member]
+	return score, found
+}
+
+func (mz *ZSetValue) Remove(member string) bool {
+	if len(mz.Members) == 0 {
+		return false
+	}
+	_, found := mz.Scores[member]
+	if !found {
+		return false
+	}
+	delete(mz.Scores, member)
+	mz.Members = xslice.DeleteValue(mz.Members, member)
+	return true
+}

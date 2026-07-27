@@ -360,6 +360,13 @@ func (t transZSet[V]) ZScore(ctx context.Context, member V) (float64, bool, erro
 	}
 	return t.ss.ZScore(ctx, str)
 }
+func (t transZSet[V]) ZIncrBy(ctx context.Context, incr float64, member V) (float64, error) {
+	str, err := xcodec.EncodeToString(t.codec, member)
+	if err != nil {
+		return 0, err
+	}
+	return t.ss.ZIncrBy(ctx, incr, str)
+}
 
 func (t transZSet[V]) ZRange(ctx context.Context, fn func(member V, score float64) bool) error {
 	var decodeErr error

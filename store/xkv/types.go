@@ -125,6 +125,9 @@ type ZSet[V any] interface {
 	// 返回：值，是否存在，错误
 	ZScore(ctx context.Context, member V) (float64, bool, error)
 
+	// ZIncrBy 给 member 添加分数，返回新的分数
+	ZIncrBy(ctx context.Context, increment float64, member V) (float64, error)
+
 	// ZRange 按分数升序返回所有元素（类似 Redis 的 ZRANGE 命令）
 	ZRange(ctx context.Context, fn func(member V, score float64) bool) error
 

@@ -57,6 +57,37 @@ func (z *ZSet) ZAdd(ctx context.Context, score float64, member string) error {
 	})
 }
 
+func (z *ZSet) ZIncrBy(ctx context.Context, inc float64, member string) (num float64, err error) {
+	now := time.Now().Unix()
+	err = z.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+		orm := xdb.NewMode[ZSetModel](tx)
+		orm.Table(z.GetTable())
+
+		orm1 := orm.Clone()
+		orm1 = orm1.OnlyFields("s")
+		item, ok, err1 := orm1.First(ctx, "k=? and m=?", z.Key, member)
+		if err1 != nil {
+			return err1
+		}
+		var old float64
+		if ok {
+			old = item.Score
+		}
+		num = old + inc
+		data := ZSetModel{
+			Key:     z.Key,
+			Member:  member,
+			Score:   num,
+			Created: now,
+			Updated: now,
+		}
+		_, err = orm.Upsert(ctx, []string{"k", "m"}, []string{"s", "u"}, data)
+		return err
+	})
+
+	return num, err
+}
+
 func (z *ZSet) ZScore(ctx context.Context, member string) (score float64, found bool, err error) {
 	err = z.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
 		if !hasMeta {

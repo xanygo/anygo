@@ -403,4 +403,15 @@ func checkZSet(t *testing.T, kvs xkv.StringStorage) {
 			xt.NoError(t, err)
 		}
 	})
+
+	t.Run("zincr", func(t *testing.T) {
+		zs := kvs.ZSet("t1-zincr1")
+		num, err := zs.ZIncrBy(ctx, 1.1, "m1")
+		xt.NoError(t, err)
+		xt.Equal(t, num, 1.1)
+
+		num, err = zs.ZIncrBy(ctx, 2.1, "m1")
+		xt.NoError(t, err)
+		xt.Equal(t, num, 3.2)
+	})
 }

@@ -34,6 +34,16 @@ func (f ZSet) ZAdd(ctx context.Context, score float64, member string) error {
 	return f.WriteKVDataFile(f.Md5(member), string(bf))
 }
 
+func (f ZSet) ZIncrBy(ctx context.Context, score float64, member string) (float64, error) {
+	old, _, err := f.ZScore(ctx, member)
+	if err != nil {
+		return 0, err
+	}
+	newScore := old + score
+	err = f.ZAdd(ctx, newScore, member)
+	return newScore, err
+}
+
 func (f ZSet) ZScore(ctx context.Context, member string) (float64, bool, error) {
 	str, found, err := f.CheckReadKVDataFile(f.Md5(member), internal.DataTypeZSet, false)
 	if err != nil || !found {

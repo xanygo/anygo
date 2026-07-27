@@ -453,4 +453,15 @@ func checkZSet(t xt.TB, xkv xkv.StringStorage) {
 		xt.NoError(t, err)
 		xt.False(t, has)
 	})
+
+	t.Run("zincr", func(t xt.TB) {
+		zs := xkv.ZSet("t2-zincr1")
+		num, err := zs.ZIncrBy(ctx, 1.1, "m1")
+		xt.NoError(t, err)
+		xt.Equal(t, num, 1.1)
+
+		num, err = zs.ZIncrBy(ctx, 2.1, "m1")
+		xt.NoError(t, err)
+		xt.Equal(t, num, 3.2)
+	})
 }

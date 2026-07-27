@@ -263,6 +263,11 @@ func (kvz *kvZSet) ZAdd(ctx context.Context, score float64, member string) error
 	return err
 }
 
+func (kvz *kvZSet) ZIncrBy(ctx context.Context, score float64, member string) (float64, error) {
+	num, err := kvz.client.ZIncrBy(ctx, kvz.key, score, member)
+	return num, err
+}
+
 func (kvz *kvZSet) ZScore(ctx context.Context, member string) (float64, bool, error) {
 	value, err := kvz.client.ZScore(ctx, kvz.key, member)
 	if errors.Is(err, xredis.ErrNil) {
