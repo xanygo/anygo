@@ -58,7 +58,7 @@ func checkDB(t *testing.T, db *xdb.Client) {
 var tables = []string{"xkv_meta", "xkv_hash", "xkv_list", "xkv_set", "xkv_zset"}
 
 func TestPostgres(t *testing.T) {
-	const dsn = `user=work password=123456 host=127.0.0.1 port=5432 database=mydb sslmode=disable`
+	const dsn = `user=work password=123456 host=127.0.0.1 port=5432 database=demo sslmode=disable`
 	db, err := sql.Open("pgx", dsn)
 	xt.NoError(t, err)
 	defer db.Close()
