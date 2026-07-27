@@ -10,6 +10,7 @@ import (
 	"sort"
 	"unsafe"
 
+	"github.com/xanygo/anygo/ds/xcmp"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/store/xkv/internal"
 )
@@ -55,19 +56,30 @@ func (f ZSet) ZScore(ctx context.Context, member string) (float64, bool, error) 
 	return m.Score, err == nil, err
 }
 
-func (f ZSet) ZRange(ctx context.Context, fn func(member string, score float64) bool) error {
-	var list []*fileZSetMember
-	err := f.RangeKVFiles(ctx, internal.DataTypeZSet, func(path string, d fs.DirEntry) error {
+func (f ZSet) rangeFiles(ctx context.Context, fn func(item *fileZSetMember) bool) error {
+	return f.RangeKVFiles(ctx, internal.DataTypeZSet, func(path string, d fs.DirEntry) error {
 		bf, err := os.ReadFile(filepath.Join(f.Dir, d.Name()))
 		if err != nil {
 			return err
 		}
 		m := &fileZSetMember{}
 		err = json.Unmarshal(bf, m)
-		if err == nil {
-			list = append(list, m)
+		if err != nil {
+			return err
 		}
-		return err
+		if !fn(m) {
+			return fs.SkipAll
+		}
+
+		return nil
+	})
+}
+
+func (f ZSet) ZRange(ctx context.Context, fn func(member string, score float64) bool) error {
+	var list []*fileZSetMember
+	err := f.rangeFiles(ctx, func(item *fileZSetMember) bool {
+		list = append(list, item)
+		return true
 	})
 	if err != nil {
 		return err
@@ -95,6 +107,27 @@ func (f ZSet) ZRem(ctx context.Context, members ...string) error {
 		return nil
 	}
 	return errors.Join(errs...)
+}
+
+func (f ZSet) ZCount(ctx context.Context, min, max string) (num int64, err error) {
+	minBound := &xcmp.Bound[float64]{}
+	if err = minBound.ParserMin(min); err != nil {
+		return 0, err
+	}
+
+	maxBound := &xcmp.Bound[float64]{}
+	if err = maxBound.ParserMax(max); err != nil {
+		return 0, err
+	}
+
+	err = f.rangeFiles(ctx, func(item *fileZSetMember) bool {
+		match := minBound.MatchMin(item.Score) && maxBound.MatchMax(item.Score)
+		if match {
+			num++
+		}
+		return true
+	})
+	return num, err
 }
 
 type fileZSetMember struct {

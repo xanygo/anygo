@@ -414,4 +414,25 @@ func checkZSet(t *testing.T, kvs xkv.StringStorage) {
 		xt.NoError(t, err)
 		xt.Equal(t, num, 3.2)
 	})
+
+	t.Run("zcount", func(t *testing.T) {
+		zs := kvs.ZSet("t1-zcount1")
+
+		for i := 0; i < 100; i++ {
+			err := zs.ZAdd(ctx, float64(i), fmt.Sprintf("m%d", i))
+			xt.NoError(t, err)
+		}
+
+		num, err := zs.ZCount(ctx, "-inf", "+inf")
+		xt.NoError(t, err)
+		xt.Equal(t, num, 100)
+
+		num, err = zs.ZCount(ctx, "1", "5")
+		xt.NoError(t, err)
+		xt.Equal(t, num, 5)
+
+		num, err = zs.ZCount(ctx, "(1", "(5")
+		xt.NoError(t, err)
+		xt.Equal(t, num, 3)
+	})
 }

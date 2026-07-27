@@ -20,6 +20,10 @@ func (n ZSet[V]) ZIncrBy(ctx context.Context, score float64, member V) (float64,
 	return 0, nil
 }
 
+func (n ZSet[V]) ZCount(ctx context.Context, min, max string) (int64, error) {
+	return 0, nil
+}
+
 func (n ZSet[V]) ZRem(ctx context.Context, members ...V) error {
 	return nil
 }

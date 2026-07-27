@@ -102,7 +102,7 @@ func TestClientZSet(t *testing.T) {
 	})
 
 	t.Run("ZCount", func(t *testing.T) {
-		num, err := client.ZCount(ctx, "ZCount-1", 0, math.Inf(1))
+		num, err := client.ZCount(ctx, "ZCount-1", "0", "+inf")
 		xt.NoError(t, err)
 		xt.Equal(t, num, 0)
 
@@ -110,7 +110,7 @@ func TestClientZSet(t *testing.T) {
 		xt.NoError(t, err)
 		xt.True(t, ok)
 
-		num, err = client.ZCount(ctx, "ZCount-1", 0, math.Inf(1))
+		num, err = client.ZCount(ctx, "ZCount-1", "0", "+inf")
 		xt.NoError(t, err)
 		xt.Equal(t, num, 1)
 	})

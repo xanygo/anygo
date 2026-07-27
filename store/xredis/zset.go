@@ -117,7 +117,10 @@ func (c *Client) ZCard(ctx context.Context, key string) (int64, error) {
 }
 
 // ZCount 返回键所存储的有序集合中，分数在 min 和 max 范围内的元素数量
-func (c *Client) ZCount(ctx context.Context, key string, min float64, max float64) (int64, error) {
+//
+// min: 最小分数，如 "2"表示 >=2，"(2" 表示 >2，"-inf" 表示无穷小
+// max: 最大分数，如 "2"表示 <=2，"(2" 表示 <2，"+inf" 表示无穷大
+func (c *Client) ZCount(ctx context.Context, key string, min string, max string) (int64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "ZCOUNT", key, min, max)
 	resp := c.do(ctx, cmd)
 	return resp3.ToInt64(resp.result, resp.err)

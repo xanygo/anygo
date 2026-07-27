@@ -274,6 +274,7 @@ func (mz *monitorZSet[V]) ZScore(ctx context.Context, member V) (float64, bool, 
 	mz.monitor.doAfterRead(ctx, mz.key, err)
 	return val, ok, err
 }
+
 func (mz *monitorZSet[V]) ZIncrBy(ctx context.Context, incr float64, member V) (float64, error) {
 	val, err := mz.store.ZIncrBy(ctx, incr, member)
 	mz.monitor.doAfterWrite(ctx, mz.key, err)
@@ -290,6 +291,12 @@ func (mz *monitorZSet[V]) ZRem(ctx context.Context, members ...V) error {
 	err := mz.store.ZRem(ctx, members...)
 	mz.monitor.doAfterWrite(ctx, mz.key, err)
 	return err
+}
+
+func (mz *monitorZSet[V]) ZCount(ctx context.Context, min, max string) (int64, error) {
+	num, err := mz.store.ZCount(ctx, min, max)
+	mz.monitor.doAfterWrite(ctx, mz.key, err)
+	return num, err
 }
 
 func (m *Monitor[V]) Delete(ctx context.Context, keys ...string) error {

@@ -2,6 +2,7 @@ package xkvut
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -463,5 +464,32 @@ func checkZSet(t xt.TB, xkv xkv.StringStorage) {
 		num, err = zs.ZIncrBy(ctx, 2.1, "m1")
 		xt.NoError(t, err)
 		xt.Equal(t, num, 3.2)
+	})
+
+	t.Run("zcount", func(t xt.TB) {
+		zs := xkv.ZSet("t2-zcount1")
+
+		for i := 0; i < 100; i++ {
+			err := zs.ZAdd(ctx, float64(i), fmt.Sprintf("m%d", i))
+			xt.NoError(t, err)
+		}
+
+		t.Run("inf", func(t xt.TB) {
+			num, err := zs.ZCount(ctx, "-inf", "+inf")
+			xt.NoError(t, err)
+			xt.Equal(t, num, 100)
+		})
+
+		t.Run("1-5-1", func(t xt.TB) {
+			num, err := zs.ZCount(ctx, "1", "5")
+			xt.NoError(t, err)
+			xt.Equal(t, num, 5)
+		})
+
+		t.Run("1-5-2", func(t xt.TB) {
+			num, err := zs.ZCount(ctx, "(1", "(5")
+			xt.NoError(t, err)
+			xt.Equal(t, num, 3)
+		})
 	})
 }

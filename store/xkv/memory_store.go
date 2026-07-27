@@ -6,14 +6,15 @@ package xkv
 
 import (
 	"context"
-	"github.com/xanygo/anygo/store/xkv/internal/mem"
 	"maps"
 	"slices"
 	"strconv"
 	"sync"
 
+	"github.com/xanygo/anygo/ds/xcmp"
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xkv/internal"
+	"github.com/xanygo/anygo/store/xkv/internal/mem"
 	"github.com/xanygo/anygo/xcodec"
 )
 
@@ -566,6 +567,23 @@ func (m *memZSet) ZIncrBy(ctx context.Context, incr float64, member string) (flo
 		return zv, true
 	})
 	return score, err
+}
+
+func (m *memZSet) ZCount(ctx context.Context, min, max string) (num int64, err error) {
+	minBound := &xcmp.Bound[float64]{}
+	if err = minBound.ParserMin(min); err != nil {
+		return 0, err
+	}
+
+	maxBound := &xcmp.Bound[float64]{}
+	if err = maxBound.ParserMax(max); err != nil {
+		return 0, err
+	}
+	err = m.withLocked(func(zv *mem.ZSetValue) (*mem.ZSetValue, bool) {
+		num = zv.Count(minBound, maxBound)
+		return zv, false
+	})
+	return num, err
 }
 
 func (m *memZSet) ZRange(ctx context.Context, fn func(member string, score float64) bool) error {

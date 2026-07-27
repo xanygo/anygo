@@ -268,6 +268,11 @@ func (kvz *kvZSet) ZIncrBy(ctx context.Context, score float64, member string) (f
 	return num, err
 }
 
+func (kvz *kvZSet) ZCount(ctx context.Context, min, max string) (int64, error) {
+	num, err := kvz.client.ZCount(ctx, kvz.key, min, max)
+	return num, err
+}
+
 func (kvz *kvZSet) ZScore(ctx context.Context, member string) (float64, bool, error) {
 	value, err := kvz.client.ZScore(ctx, kvz.key, member)
 	if errors.Is(err, xredis.ErrNil) {

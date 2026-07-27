@@ -1,9 +1,10 @@
 package mem
 
 import (
+	"slices"
+
 	"github.com/xanygo/anygo/ds/xcmp"
 	"github.com/xanygo/anygo/ds/xslice"
-	"slices"
 )
 
 type ZSetValue struct {
@@ -71,4 +72,16 @@ func (mz *ZSetValue) Remove(member string) bool {
 	delete(mz.Scores, member)
 	mz.Members = xslice.DeleteValue(mz.Members, member)
 	return true
+}
+
+func (mz *ZSetValue) Count(min, max *xcmp.Bound[float64]) (num int64) {
+	if len(mz.Scores) == 0 {
+		return 0
+	}
+	for _, s := range mz.Scores {
+		if min.MatchMin(s) && max.MatchMax(s) {
+			num++
+		}
+	}
+	return num
 }

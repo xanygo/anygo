@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/xanygo/anygo"
+	"github.com/xanygo/anygo/ds/xcmp"
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xkv"
@@ -85,6 +87,45 @@ func (z *ZSet) ZIncrBy(ctx context.Context, inc float64, member string) (num flo
 		return err
 	})
 
+	return num, err
+}
+
+func (z *ZSet) ZCount(ctx context.Context, min, max string) (num int64, err error) {
+	err = z.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+		if !hasMeta {
+			return nil
+		}
+
+		minBound := &xcmp.Bound[float64]{}
+		if err1 := minBound.ParserMin(min); err1 != nil {
+			return err1
+		}
+
+		maxBound := &xcmp.Bound[float64]{}
+		if err1 := maxBound.ParserMin(max); err1 != nil {
+			return err1
+		}
+
+		cond := xdb.Condition{}
+		cond.And("k=?", z.Key)
+		if !minBound.Inf {
+			op := anygo.Ternary(minBound.Exclude, ">", ">=")
+			cond.And(fmt.Sprintf("s %s ?", op), minBound.Value)
+		}
+		if !maxBound.Inf {
+			op := anygo.Ternary(minBound.Exclude, "<", "<=")
+			cond.And(fmt.Sprintf("s %s ?", op), maxBound.Value)
+		}
+		where, args, err2 := cond.Build()
+		if err2 != nil {
+			return err2
+		}
+
+		orm := xdb.NewMode[ZSetModel](tx)
+		orm.Table(z.GetTable())
+		num, err2 = orm.Count(ctx, "*", where, args...)
+		return err2
+	})
 	return num, err
 }
 

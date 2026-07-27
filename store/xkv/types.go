@@ -131,6 +131,11 @@ type ZSet[V any] interface {
 	// ZRange 按分数升序返回所有元素（类似 Redis 的 ZRANGE 命令）
 	ZRange(ctx context.Context, fn func(member V, score float64) bool) error
 
+	// ZCount 统计 score 在 min 和 max 之间的元素个数
+	// min: 最小分数，如 "2"表示 >=2，"(2" 表示 >2，"-inf" 表示无穷小
+	// max: 最大分数，如 "2"表示 <=2，"(2" 表示 <2，"+inf" 表示无穷大
+	ZCount(ctx context.Context, min string, max string) (int64, error)
+
 	// ZRem 移除有序集合中的指定成员（类似 Redis 的 ZREM 命令）
 	ZRem(ctx context.Context, members ...V) error
 }

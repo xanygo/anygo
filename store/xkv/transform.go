@@ -360,6 +360,7 @@ func (t transZSet[V]) ZScore(ctx context.Context, member V) (float64, bool, erro
 	}
 	return t.ss.ZScore(ctx, str)
 }
+
 func (t transZSet[V]) ZIncrBy(ctx context.Context, incr float64, member V) (float64, error) {
 	str, err := xcodec.EncodeToString(t.codec, member)
 	if err != nil {
@@ -390,6 +391,10 @@ func (t transZSet[V]) ZRem(ctx context.Context, members ...V) error {
 		return errors.Join(errs...)
 	}
 	return t.ss.ZRem(ctx, ms...)
+}
+
+func (t transZSet[V]) ZCount(ctx context.Context, min, max string) (int64, error) {
+	return t.ss.ZCount(ctx, min, max)
 }
 
 func (tr Transformer[V]) Delete(ctx context.Context, keys ...string) error {
