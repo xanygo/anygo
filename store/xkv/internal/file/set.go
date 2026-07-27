@@ -6,7 +6,9 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 
+	"github.com/xanygo/anygo/ds/xcmp"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/store/xkv/internal"
 )
@@ -50,7 +52,7 @@ func (f Set) SRem(ctx context.Context, members ...string) error {
 	return errors.Join(errs...)
 }
 
-// SRange 返回结果是无序的
+// SRange 返回结果是无序的（没有按照写入顺序排序）
 func (f Set) SRange(ctx context.Context, fn func(val string) bool) error {
 	err := f.RangeKVFiles(ctx, internal.DataTypeSet, func(path string, d fs.DirEntry) error {
 		bf, err1 := os.ReadFile(filepath.Join(f.Dir, d.Name()))
@@ -65,13 +67,40 @@ func (f Set) SRange(ctx context.Context, fn func(val string) bool) error {
 	return err
 }
 
-// SMembers 返回结果是无序的
+type memberWithMeta struct {
+	Member string
+	Mtime  int64
+}
+
+var memberSortFn = xcmp.OrderAsc(func(m memberWithMeta) int64 {
+	return m.Mtime
+})
+
+// SMembers 返回所有 member，结果按照写入时间顺序正序排列
 func (f Set) SMembers(ctx context.Context) ([]string, error) {
-	var result []string
-	err := f.SRange(ctx, func(val string) bool {
-		result = append(result, val)
-		return true
+	var list []memberWithMeta
+
+	err := f.RangeKVFiles(ctx, internal.DataTypeSet, func(path string, d fs.DirEntry) error {
+		bf, err1 := os.ReadFile(filepath.Join(f.Dir, d.Name()))
+		if err1 != nil {
+			return err1
+		}
+		info, err2 := d.Info()
+		if err2 != nil {
+			return err2
+		}
+		list = append(list, memberWithMeta{
+			Member: string(bf),
+			Mtime:  info.ModTime().UnixNano(),
+		})
+		return nil
 	})
+
+	var result []string
+	slices.SortFunc(list, memberSortFn)
+	for _, m := range list {
+		result = append(result, m.Member)
+	}
 	return result, err
 }
 

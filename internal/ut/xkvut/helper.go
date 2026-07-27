@@ -389,11 +389,7 @@ func checkSet(t xt.TB, xkv xkv.StringStorage) {
 		gots, err := se.SMembers(ctx)
 		xt.NoError(t, err)
 
-		if hasFlag("SMembers-NotSorted") {
-			xt.SliceSortEqual(t, gots, []string{"m1", "m2"})
-		} else {
-			xt.Equal(t, gots, []string{"m1", "m2"})
-		}
+		xt.Equal(t, gots, []string{"m1", "m2"})
 
 		var values []string
 		err = se.SRange(ctx, func(member string) bool {
@@ -401,7 +397,7 @@ func checkSet(t xt.TB, xkv xkv.StringStorage) {
 			return true
 		})
 		xt.NoError(t, err)
-		if hasFlag("SMembers-NotSorted") {
+		if hasFlag("SRange-NotSorted") {
 			xt.SliceSortEqual(t, values, []string{"m1", "m2"})
 		} else {
 			xt.Equal(t, values, []string{"m1", "m2"})

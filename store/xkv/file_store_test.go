@@ -21,7 +21,7 @@ func TestFileStorage(t *testing.T) {
 		DataDir: dir,
 	}
 
-	xkvut.SetFlag("SMembers-NotSorted")
+	xkvut.SetFlag("SRange-NotSorted")
 	defer xkvut.ClearFlags()
 
 	testStringStorage(t, ff)

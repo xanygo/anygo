@@ -5,6 +5,7 @@
 package file
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"encoding/hex"
@@ -64,7 +65,7 @@ func (fb Base) SaveMeta(tp internal.DataType) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(fp, bf, 0666)
+	return os.WriteFile(fp, bf, 0644)
 }
 
 func (fb Base) loadMeta() (Meta, error) {
@@ -73,7 +74,7 @@ func (fb Base) loadMeta() (Meta, error) {
 		return Meta{}, err
 	}
 	meta := &Meta{}
-	if err := json.Unmarshal(bf, meta); err != nil {
+	if err = json.Unmarshal(bf, meta); err != nil {
 		return Meta{}, err
 	}
 	return *meta, nil
@@ -84,6 +85,7 @@ func (fb Base) WriteKVDataFile(baseName string, data string) (err error) {
 	return fb.WriteFile(baseName+kvDataFileExt, data)
 }
 
+// WriteKVDataFile2 写入，返回：(新写入/更新，错误)
 func (fb Base) WriteKVDataFile2(baseName string, data string) (added bool, err error) {
 	baseName = baseName + kvDataFileExt
 	fp := filepath.Join(fb.Dir, baseName)
@@ -91,11 +93,18 @@ func (fb Base) WriteKVDataFile2(baseName string, data string) (added bool, err e
 	if err = xfs.KeepDirExists(dir); err != nil {
 		return false, err
 	}
-	info, err := os.Stat(fp)
-	// 判断此文件是否新增
-	added = info == nil && errors.Is(err, fs.ErrNotExist)
 	bf := unsafe.Slice(unsafe.StringData(data), len(data))
-	return added, os.WriteFile(fp, bf, 0666)
+	old, err := os.ReadFile(fp)
+	if err == nil {
+		if bytes.Equal(old, bf) {
+			// 文件内容没有变化
+			return false, nil
+		}
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return false, err
+	}
+	// 是否新增
+	return true, os.WriteFile(fp, bf, 0644)
 }
 
 func (fb Base) WriteFile(baseName string, data string) error {
@@ -105,7 +114,7 @@ func (fb Base) WriteFile(baseName string, data string) error {
 		return err
 	}
 	bf := unsafe.Slice(unsafe.StringData(data), len(data))
-	return os.WriteFile(fp, bf, 0666)
+	return os.WriteFile(fp, bf, 0644)
 }
 
 // CheckReadKVDataFile 检查并读取 kv 文件，
