@@ -46,6 +46,14 @@ func (ts transString[V]) Set(ctx context.Context, value V) error {
 	return ts.ss.Set(ctx, str)
 }
 
+func (ts transString[V]) SetNX(ctx context.Context, value V) (bool, error) {
+	str, err := xcodec.EncodeToString(ts.codec, value)
+	if err != nil {
+		return false, err
+	}
+	return ts.ss.SetNX(ctx, str)
+}
+
 func (ts transString[V]) Get(ctx context.Context) (v V, found bool, err error) {
 	str, found, err := ts.ss.Get(ctx)
 	if err != nil {
@@ -55,10 +63,20 @@ func (ts transString[V]) Get(ctx context.Context) (v V, found bool, err error) {
 		return v, false, nil
 	}
 	err = xcodec.DecodeFromString(ts.codec, str, &v)
+	return v, err == nil, err
+}
+
+func (ts transString[V]) GetSet(ctx context.Context, value V) (v V, found bool, err error) {
+	str, err := xcodec.EncodeToString(ts.codec, value)
 	if err != nil {
 		return v, false, err
 	}
-	return v, true, err
+	oldStr, found, err := ts.ss.GetSet(ctx, str)
+	if err != nil || !found {
+		return v, false, err
+	}
+	err = xcodec.DecodeFromString(ts.codec, oldStr, &v)
+	return v, err == nil, err
 }
 
 func (ts transString[V]) GetDel(ctx context.Context) (v V, found bool, err error) {
@@ -286,6 +304,10 @@ func (t transHash[V]) HExists(ctx context.Context, field string) (bool, error) {
 
 func (t transHash[V]) HIncrBy(ctx context.Context, field string, increment int64) (int64, error) {
 	return t.ss.HIncrBy(ctx, field, increment)
+}
+
+func (t transHash[V]) HLen(ctx context.Context) (int64, error) {
+	return t.ss.HLen(ctx)
 }
 
 func (tr Transformer[V]) Set(key string) Set[V] {

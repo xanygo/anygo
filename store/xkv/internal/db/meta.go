@@ -62,8 +62,12 @@ func (m *Meta) delete(ctx context.Context, tx xdb.HasDriver) error {
 func (m *Meta) save(ctx context.Context, tx xdb.TxCore, data MetaModel) error {
 	now := time.Now().Unix()
 	orm := m.orm(tx)
-	data.Created = now
-	data.Updated = now
+	if data.Created == 0 {
+		data.Created = now
+	}
+	if data.Updated == 0 {
+		data.Updated = now
+	}
 	_, err := orm.Upsert(ctx, []string{"k"}, []string{"meta", "u"}, data)
 	return err
 }

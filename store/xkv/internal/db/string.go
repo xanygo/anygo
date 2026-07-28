@@ -7,6 +7,7 @@ import (
 
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xkv"
+	"github.com/xanygo/anygo/store/xkv/internal"
 )
 
 type StringModel struct {
@@ -54,6 +55,37 @@ func (d *String) Set(ctx context.Context, value string) error {
 	})
 }
 
+func (d *String) SetNX(ctx context.Context, value string) (ok bool, err error) {
+	now := time.Now().Unix()
+	err = d.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+		_, has, err1 := d.Meta.loadExists(ctx, tx)
+		if err1 != nil || has {
+			return err1
+		}
+		meta := MetaModel{
+			Key:      d.Key,
+			DataType: internal.DataTypeString,
+			Created:  now,
+			Updated:  now,
+		}
+		if err1 = d.Meta.save(ctx, tx, meta); err1 != nil {
+			return err1
+		}
+		data := StringModel{
+			Key:     d.Key,
+			Value:   value,
+			Created: now,
+			Updated: now,
+		}
+		orm := xdb.NewMode[StringModel](tx)
+		orm.Table(d.GetTable())
+		_, err2 := orm.Upsert(ctx, []string{"k"}, []string{"v", "u"}, data)
+		ok = err2 == nil
+		return err2
+	})
+	return ok, err
+}
+
 func (d *String) Get(ctx context.Context) (val string, ok bool, err error) {
 	err = d.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
 		if !hasMeta {
@@ -69,9 +101,7 @@ func (d *String) Get(ctx context.Context) (val string, ok bool, err error) {
 		if found {
 			val = value.Value
 			ok = true
-			return nil
 		}
-
 		return nil
 	})
 	return val, ok, err
@@ -96,6 +126,35 @@ func (d *String) GetDel(ctx context.Context) (val string, ok bool, err error) {
 		return err
 	})
 	return val, ok, err
+}
+
+func (d *String) GetSet(ctx context.Context, value string) (old string, ok bool, err error) {
+	now := time.Now().Unix()
+	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+		orm := xdb.NewMode[StringModel](tx)
+		orm.Table(d.GetTable())
+		item, found, err2 := orm.First(ctx, "k=?", d.Key)
+		if err2 != nil {
+			return err2
+		}
+
+		nv := StringModel{
+			Key:     d.Key,
+			Value:   value,
+			Created: now,
+			Updated: now,
+		}
+		_, err3 := orm.Upsert(ctx, []string{"k"}, []string{"v", "u"}, nv)
+		if err3 != nil {
+			return err3
+		}
+		if found {
+			old = item.Value
+			ok = true
+		}
+		return nil
+	})
+	return old, ok, err
 }
 
 func (d *String) Incr(ctx context.Context) (num int64, err error) {

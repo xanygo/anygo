@@ -213,3 +213,19 @@ func (h *Hash) HIncrBy(ctx context.Context, field string, increment int64) (num 
 	})
 	return num, err
 }
+
+func (h *Hash) HLen(ctx context.Context) (num int64, err error) {
+	err = h.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+		if !hasMeta {
+			return nil
+		}
+		orm := xdb.NewMode[HashModel](tx)
+		orm.Table(h.GetTable())
+		count, err1 := orm.Count(ctx, "*", "k=?", h.Key)
+		if err1 == nil {
+			num = count
+		}
+		return err1
+	})
+	return num, err
+}

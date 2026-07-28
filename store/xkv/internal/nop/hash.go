@@ -37,3 +37,7 @@ func (n Hash[V]) HExists(ctx context.Context, field string) (bool, error) {
 func (n Hash[V]) HIncrBy(ctx context.Context, field string, increment int64) (int64, error) {
 	return increment, nil
 }
+
+func (n Hash[V]) HLen(ctx context.Context) (int64, error) {
+	return 0, nil
+}

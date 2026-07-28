@@ -39,12 +39,24 @@ func (kvs *kvString) Set(ctx context.Context, value string) error {
 	return kvs.client.Set(ctx, kvs.key, value)
 }
 
+func (kvs *kvString) SetNX(ctx context.Context, value string) (bool, error) {
+	return kvs.client.SetNX(ctx, kvs.key, value, 0)
+}
+
 func (kvs *kvString) Get(ctx context.Context) (string, bool, error) {
 	value, err := kvs.client.Get(ctx, kvs.key)
 	if errors.Is(err, xredis.ErrNil) {
 		return "", false, nil
 	}
 	return value, err == nil, err
+}
+
+func (kvs *kvString) GetSet(ctx context.Context, value string) (string, bool, error) {
+	old, err := kvs.client.GetSet(ctx, kvs.key, value)
+	if errors.Is(err, xredis.ErrNil) {
+		return "", false, nil
+	}
+	return old, err == nil, err
 }
 
 func (kvs *kvString) GetDel(ctx context.Context) (string, bool, error) {
@@ -217,6 +229,10 @@ func (kvh *kvHash) HExists(ctx context.Context, field string) (bool, error) {
 
 func (kvh *kvHash) HIncrBy(ctx context.Context, field string, increment int64) (int64, error) {
 	return kvh.client.HIncrBy(ctx, kvh.key, field, increment)
+}
+
+func (kvh *kvHash) HLen(ctx context.Context) (int64, error) {
+	return kvh.client.HLen(ctx, kvh.key)
 }
 
 func (kv *RedisStore) Set(key string) xkv.Set[string] {

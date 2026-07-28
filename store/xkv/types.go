@@ -16,10 +16,19 @@ type String[V any] interface {
 	// Set 设置字符串的值（类似 Redis 的 SET 命令）
 	Set(ctx context.Context, value V) error
 
+	// SetNX 若 key 不存在则设置
+	SetNX(ctx context.Context, value V) (bool, error)
+
 	// Get 获取字符串的值（类似 Redis 的 GET 命令）
+	//
 	// 返回：值，是否存在，错误
 	// key 不存在时，会返回 zero,false,nil
 	Get(ctx context.Context) (V, bool, error)
+
+	// GetSet 读取值，并将新的值写入
+	//
+	// 返回：旧值，旧值是否存在，错误，
+	GetSet(ctx context.Context, value V) (V, bool, error)
 
 	// GetDel 读取然后删除值
 	//
@@ -111,6 +120,9 @@ type Hash[V any] interface {
 
 	// HGetAll 返回哈希表中的所有字段和值（类似 Redis 的 HGETALL 命令）
 	HGetAll(ctx context.Context) (map[string]V, error)
+
+	// HLen 返回哈希表的长度
+	HLen(ctx context.Context) (int64, error)
 }
 
 // Set 无序、唯一元素集合

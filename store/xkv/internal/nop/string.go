@@ -10,11 +10,19 @@ func (n String[V]) Set(ctx context.Context, value V) error {
 	return nil
 }
 
+func (n String[V]) SetNX(ctx context.Context, value V) (bool, error) {
+	return true, nil
+}
+
 func (n String[V]) Get(ctx context.Context) (v V, found bool, err error) {
 	return v, false, nil
 }
 
 func (n String[V]) GetDel(ctx context.Context) (v V, found bool, err error) {
+	return v, false, nil
+}
+
+func (n String[V]) GetSet(ctx context.Context, value V) (v V, found bool, err error) {
 	return v, false, nil
 }
 

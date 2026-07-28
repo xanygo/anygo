@@ -59,6 +59,12 @@ func (ms *monitorString[V]) Set(ctx context.Context, value V) error {
 	return err
 }
 
+func (ms *monitorString[V]) SetNX(ctx context.Context, value V) (bool, error) {
+	ok, err := ms.store.SetNX(ctx, value)
+	ms.monitor.doAfterWrite(ctx, ms.key, err)
+	return ok, err
+}
+
 func (ms *monitorString[V]) Get(ctx context.Context) (V, bool, error) {
 	v, ok, err := ms.store.Get(ctx)
 	ms.monitor.doAfterRead(ctx, ms.key, err)
@@ -68,6 +74,12 @@ func (ms *monitorString[V]) Get(ctx context.Context) (V, bool, error) {
 func (ms *monitorString[V]) GetDel(ctx context.Context) (V, bool, error) {
 	v, ok, err := ms.store.GetDel(ctx)
 	ms.monitor.doAfterDelete(ctx, ms.key, err)
+	return v, ok, err
+}
+
+func (ms *monitorString[V]) GetSet(ctx context.Context, value V) (V, bool, error) {
+	v, ok, err := ms.store.GetSet(ctx, value)
+	ms.monitor.doAfterWrite(ctx, ms.key, err)
 	return v, ok, err
 }
 
@@ -228,6 +240,12 @@ func (mh *monitorHash[V]) HExists(ctx context.Context, field string) (bool, erro
 func (mh *monitorHash[V]) HIncrBy(ctx context.Context, field string, increment int64) (int64, error) {
 	num, err := mh.store.HIncrBy(ctx, field, increment)
 	mh.monitor.doAfterWrite(ctx, mh.key, err)
+	return num, err
+}
+
+func (mh *monitorHash[V]) HLen(ctx context.Context) (int64, error) {
+	num, err := mh.store.HLen(ctx)
+	mh.monitor.doAfterRead(ctx, mh.key, err)
 	return num, err
 }
 

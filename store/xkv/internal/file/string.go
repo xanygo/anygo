@@ -18,12 +18,39 @@ func (f *String) Set(ctx context.Context, value string) error {
 	return f.WriteKVDataFile("value", value)
 }
 
+func (f *String) SetNX(ctx context.Context, value string) (ok bool, err error) {
+	if err = f.SaveMeta(internal.DataTypeString); err != nil {
+		return false, err
+	}
+	_, found, err := f.Get(ctx)
+	if err != nil || found {
+		return false, err
+	}
+	err = f.WriteKVDataFile("value", value)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (f *String) Get(ctx context.Context) (string, bool, error) {
 	return f.CheckReadKVDataFile("value", internal.DataTypeString, false)
 }
 
 func (f *String) GetDel(ctx context.Context) (string, bool, error) {
 	return f.CheckReadKVDataFile("value", internal.DataTypeString, true)
+}
+
+func (f *String) GetSet(ctx context.Context, value string) (string, bool, error) {
+	old, found, err := f.Get(ctx)
+	if err != nil {
+		return "", false, err
+	}
+	err = f.Set(ctx, value)
+	if err != nil {
+		return "", false, err
+	}
+	return old, found, nil
 }
 
 func (f *String) Incr(ctx context.Context) (num int64, err error) {

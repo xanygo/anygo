@@ -149,3 +149,11 @@ func (f Hash) HIncrBy(ctx context.Context, field string, increment int64) (int64
 	}
 	return num, nil
 }
+
+func (f Hash) HLen(ctx context.Context) (num int64, err error) {
+	err = f.RangeKVFiles(ctx, internal.DataTypeHash, func(path string, d fs.DirEntry) error {
+		num++
+		return nil
+	})
+	return num, err
+}

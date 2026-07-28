@@ -210,6 +210,8 @@ func (c *Client) GetRange(ctx context.Context, key string, start int, end int) (
 // GetSet 原子地将指定键（key）设置为给定值（value），并返回该键原先存储的值。
 //
 // 如果键存在但不是字符串类型，则返回错误。如果设置成功，键之前的任何过期时间（TTL）都会保持。
+//
+// 若 key 不存在，会返回 ErrNil 错误，并将值写入，下次访问时会读取到
 func (c *Client) GetSet(ctx context.Context, key string, value string) (string, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeBulkString, "SET", key, value, "GET", "KEEPTTL")
 	resp := c.do(ctx, cmd)

@@ -13,8 +13,23 @@ type String struct {
 }
 
 func (m *String) Set(ctx context.Context, value string) error {
-	m.Base.setLocked(m.Key, value, internal.DataTypeString)
-	return nil
+	return m.withWrite(func(v string, h bool) error {
+		m.Base.values[m.Key] = value
+		m.Base.keyTypes[m.Key] = internal.DataTypeString
+		return nil
+	})
+}
+
+func (m *String) SetNX(ctx context.Context, value string) (ok bool, err error) {
+	err = m.withWrite(func(old string, found bool) error {
+		if !found {
+			m.Base.values[m.Key] = value
+			m.Base.keyTypes[m.Key] = internal.DataTypeString
+			ok = true
+		}
+		return nil
+	})
+	return ok, err
 }
 
 func (m *String) Get(ctx context.Context) (string, bool, error) {
@@ -34,6 +49,18 @@ func (m *String) GetDel(ctx context.Context) (value string, found bool, err erro
 		return nil
 	})
 	return value, found, err
+}
+
+func (m *String) GetSet(ctx context.Context, value string) (old string, found bool, err error) {
+	err = m.withWrite(func(val string, has bool) error {
+		found = has
+		old = val
+
+		m.Base.values[m.Key] = value
+		m.Base.keyTypes[m.Key] = internal.DataTypeString
+		return nil
+	})
+	return old, found, err
 }
 
 func (m *String) withWrite(fn func(value string, found bool) error) error {

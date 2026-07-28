@@ -139,6 +139,34 @@ func checkString(t *testing.T, kvs xkv.StringStorage) {
 			xt.Error(t, err)
 			xt.Equal(t, num, 0)
 		})
+
+		t.Run("setnx", func(t *testing.T) {
+			ok, err := ks.SetNX(ctx, "abc")
+			xt.NoError(t, err)
+			xt.False(t, ok)
+		})
+	})
+
+	t.Run("setnx", func(t *testing.T) {
+		ks2 := kvs.String("t2-setnx-1")
+
+		ok, err := ks2.SetNX(ctx, "abc")
+		xt.NoError(t, err)
+		xt.True(t, ok)
+
+		value, found, err := ks2.Get(ctx)
+		xt.NoError(t, err)
+		xt.Equal(t, value, "abc")
+		xt.True(t, found)
+
+		ok, err = ks2.SetNX(ctx, "hello")
+		xt.NoError(t, err)
+		xt.False(t, ok)
+
+		value, found, err = ks2.Get(ctx)
+		xt.NoError(t, err)
+		xt.True(t, found)
+		xt.Equal(t, value, "abc")
 	})
 
 	t.Run("k2", func(t *testing.T) {
@@ -217,6 +245,24 @@ func checkString(t *testing.T, kvs xkv.StringStorage) {
 		xt.NoError(t, err)
 		xt.True(t, found)
 		xt.Equal(t, value, "3.1")
+	})
+
+	t.Run("k5-getset", func(t *testing.T) {
+		ks := kvs.String("t2-str-k5")
+		value, found, err := ks.GetSet(ctx, "hello")
+		xt.NoError(t, err)
+		xt.False(t, found)
+		xt.Equal(t, value, "")
+
+		value, found, err = ks.GetSet(ctx, "world")
+		xt.NoError(t, err)
+		xt.True(t, found)
+		xt.Equal(t, value, "hello")
+
+		value, found, err = ks.GetSet(ctx, "abc")
+		xt.NoError(t, err)
+		xt.True(t, found)
+		xt.Equal(t, value, "world")
 	})
 }
 
@@ -381,6 +427,23 @@ func checkHash(t *testing.T, kvs xkv.StringStorage) {
 		xt.NoError(t, err)
 		xt.Equal(t, num, 4)
 		checkGetHa(t, ha, "f1", "4")
+	})
+
+	t.Run("hash4-hlen", func(t *testing.T) {
+		ha := kvs.Hash("t2-hash4")
+		num, err := ha.HLen(ctx)
+		xt.NoError(t, err)
+		xt.Equal(t, num, 0)
+
+		for i := 0; i < 10; i++ {
+			num, err = ha.HIncrBy(ctx, fmt.Sprintf("f-%d", i), int64(i))
+			xt.NoError(t, err)
+			xt.Equal(t, num, int64(i))
+
+			num, err = ha.HLen(ctx)
+			xt.NoError(t, err)
+			xt.Equal(t, num, int64(i)+1)
+		}
 	})
 }
 

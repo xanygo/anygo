@@ -114,3 +114,11 @@ func (m *Hash) HIncrBy(ctx context.Context, field string, increment int64) (num 
 	})
 	return num, err
 }
+
+func (m *Hash) HLen(ctx context.Context) (num int64, err error) {
+	err = m.withLocked(func(m map[string]string) (map[string]string, operate, error) {
+		num = int64(len(m))
+		return m, opSkip, nil
+	})
+	return num, err
+}

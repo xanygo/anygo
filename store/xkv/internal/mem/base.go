@@ -28,22 +28,13 @@ func (m *Base) deleteNoLock(key string) {
 func (m *Base) getLocked(key string, wantType internal.DataType) (value any, found bool, err error) {
 	var tp internal.DataType
 	m.mux.RLock()
-	if len(m.values) > 0 {
-		value, found = m.values[key]
-		tp = m.keyTypes[key]
-	}
+	value, found = m.values[key]
+	tp = m.keyTypes[key]
 	m.mux.RUnlock()
 	if found && tp != wantType {
 		return "", false, internal.ErrInvalidType
 	}
 	return value, found, nil
-}
-
-func (m *Base) setLocked(key string, value any, tp internal.DataType) {
-	m.mux.Lock()
-	m.values[key] = value
-	m.keyTypes[key] = tp
-	m.mux.Unlock()
 }
 
 func (m *Base) withLock(fn func() error) error {
@@ -67,7 +58,7 @@ func (m *Base) Has(ctx context.Context, key string) (found bool, err error) {
 		_, found = m.values[key]
 		return nil
 	})
-	return found, nil
+	return found, err
 }
 
 type operate uint8
