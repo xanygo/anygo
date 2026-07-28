@@ -19,8 +19,10 @@ import (
 	"github.com/xanygo/anygo/xt"
 )
 
+var logWriter = &xt.TLogWriter{}
+
 func init() {
-	xdb.RegisterIT((&xdb.Logger{Logger: xlog.NewSimple(os.Stderr)}).ToInterceptor())
+	xdb.RegisterIT((&xdb.Logger{Logger: xlog.NewSimple(logWriter)}).ToInterceptor())
 }
 
 func getDB(name string) *xdb.Client {
@@ -35,7 +37,17 @@ func getDB(name string) *xdb.Client {
 }
 
 func TestSQLite(t *testing.T) {
+	logWriter.Switch(t)
+
 	db := getDB("ut.db")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	for _, table := range tables {
+		_, err := db.ExecContext(ctx, fmt.Sprintf("DROP TABLE IF EXISTS %q", table))
+		xt.NoError(t, err)
+	}
+
 	checkDB(t, db)
 }
 
@@ -55,9 +67,11 @@ func checkDB(t *testing.T, db *xdb.Client) {
 	checkZSet(t, kvs)
 }
 
-var tables = []string{"xkv_meta", "xkv_hash", "xkv_list", "xkv_set", "xkv_zset"}
+var tables = []string{"xkv_meta", "xkv_string", "xkv_hash", "xkv_list", "xkv_set", "xkv_zset"}
 
 func TestPostgres(t *testing.T) {
+	logWriter.Switch(t)
+
 	const dsn = `user=work password=123456 host=127.0.0.1 port=5432 database=demo sslmode=disable`
 	db, err := sql.Open("pgx", dsn)
 	xt.NoError(t, err)
@@ -81,10 +95,12 @@ func TestPostgres(t *testing.T) {
 }
 
 func TestMySQL(t *testing.T) {
+	logWriter.Switch(t)
 	checkMySQLBase(t, "mysql")
 }
 
 func TestMariaDB(t *testing.T) {
+	logWriter.Switch(t)
 	checkMySQLBase(t, "mariadb")
 }
 
@@ -228,23 +244,23 @@ func checkString(t *testing.T, kvs xkv.StringStorage) {
 
 	t.Run("k4-incrFloat", func(t *testing.T) {
 		ks := kvs.String("t2-str-k4")
-		num, err := ks.IncrByFloat(ctx, 1.1)
+		num, err := ks.IncrByFloat(ctx, 1.2)
 		xt.NoError(t, err)
-		xt.Equal(t, num, 1.1)
+		xt.Equal(t, num, 1.2)
 
 		value, found, err := ks.Get(ctx)
 		xt.NoError(t, err)
 		xt.True(t, found)
-		xt.Equal(t, value, "1.1")
+		xt.Equal(t, value, "1.2")
 
 		num, err = ks.IncrByFloat(ctx, 2)
 		xt.NoError(t, err)
-		xt.Equal(t, num, 3.1)
+		xt.Equal(t, num, 3.2)
 
 		value, found, err = ks.Get(ctx)
 		xt.NoError(t, err)
 		xt.True(t, found)
-		xt.Equal(t, value, "3.1")
+		xt.Equal(t, value, "3.2")
 	})
 
 	t.Run("k5-getset", func(t *testing.T) {

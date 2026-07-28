@@ -204,7 +204,6 @@ func (d *String) IncrByFloat(ctx context.Context, incr float64) (num float64, er
 	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[StringModel](tx)
 		orm.Table(d.GetTable())
-		orm.OnlyFields("v")
 		val, found, err1 := orm.First(ctx, "k=?", d.Key)
 		if err1 != nil {
 			return err1
@@ -229,8 +228,6 @@ func (d *String) IncrByFloat(ctx context.Context, incr float64) (num float64, er
 			Created: now,
 			Updated: now,
 		}
-		orm.Reset()
-		orm.Table(d.GetTable())
 		_, err1 = orm.Upsert(ctx, []string{"k"}, []string{"v", "u"}, data)
 		return err1
 	})
