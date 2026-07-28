@@ -40,7 +40,7 @@ func TestSQLite(t *testing.T) {
 }
 
 func checkDB(t *testing.T, db *xdb.Client) {
-	kvs := &xkvx.DatabaseStorage{
+	kvs := &xkvx.DatabaseStore{
 		DB: db,
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -111,11 +111,11 @@ func checkMySQLBase(t *testing.T, dialect string) {
 	checkDB(t, client)
 }
 
-func checkString(t *testing.T, xkv xkv.StringStorage) {
+func checkString(t *testing.T, kvs xkv.StringStorage) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	t.Run("k1", func(t *testing.T) {
-		ks := xkv.String("k1")
+		ks := kvs.String("k1")
 
 		t.Run("get1", func(t *testing.T) {
 			value, found, err := ks.Get(ctx)
@@ -142,7 +142,7 @@ func checkString(t *testing.T, xkv xkv.StringStorage) {
 	})
 
 	t.Run("k2", func(t *testing.T) {
-		ks := xkv.String("k2")
+		ks := kvs.String("k2")
 		checkGet := func(t *testing.T, want string) {
 			t.Helper()
 			value, found, err := ks.Get(ctx)
@@ -164,6 +164,28 @@ func checkString(t *testing.T, xkv xkv.StringStorage) {
 			xt.Equal(t, num, 9-i)
 		}
 		checkGet(t, "0")
+	})
+
+	t.Run("k3", func(t *testing.T) {
+		ks := kvs.String("t2-str-k3")
+
+		num, err := ks.IncrBy(ctx, 2)
+		xt.NoError(t, err)
+		xt.Equal(t, num, 2)
+
+		value, found, err := ks.Get(ctx)
+		xt.NoError(t, err)
+		xt.True(t, found)
+		xt.Equal(t, value, "2")
+
+		num, err = ks.IncrBy(ctx, 3)
+		xt.NoError(t, err)
+		xt.Equal(t, num, 5)
+
+		value, found, err = ks.Get(ctx)
+		xt.NoError(t, err)
+		xt.True(t, found)
+		xt.Equal(t, value, "5")
 	})
 }
 

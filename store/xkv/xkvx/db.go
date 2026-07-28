@@ -10,7 +10,7 @@ import (
 	"github.com/xanygo/anygo/store/xkv/internal/db"
 )
 
-var _ xkv.StringStorage = (*DatabaseStorage)(nil)
+var _ xkv.StringStorage = (*DatabaseStore)(nil)
 
 type TableProvider struct {
 	// 可选，自定义依据 key 获取数据表名
@@ -40,7 +40,7 @@ func (tr *TableProvider) migrate(ctx context.Context, db xdb.DBCore, obj any, de
 	return nil
 }
 
-// DatabaseStorage 使用数据库存储 KV 类型的数据
+// DatabaseStore 使用数据库存储 KV 类型的数据
 //
 //	以下是 SQLite 的表结构：
 //
@@ -67,7 +67,7 @@ func (tr *TableProvider) migrate(ctx context.Context, db xdb.DBCore, obj any, de
 // CREATE TABLE IF NOT EXISTS xkv_zset (k TEXT,m TEXT,s REAL,c INTEGER,u INTEGER);
 // CREATE INDEX IF NOT EXISTS idx_k_i on xkv_zset(k,s);
 // CREATE UNIQUE INDEX IF NOT EXISTS idx_k_m on xkv_zset(k,m);
-type DatabaseStorage struct {
+type DatabaseStore struct {
 	// DB 必填字段
 	DB *xdb.Client
 
@@ -90,11 +90,11 @@ type DatabaseStorage struct {
 	ZSetTable *TableProvider
 }
 
-func (d *DatabaseStorage) String(key string) xkv.String[string] {
+func (d *DatabaseStore) String(key string) xkv.String[string] {
 	return d.getString(key)
 }
 
-func (d *DatabaseStorage) getString(key string) *db.String {
+func (d *DatabaseStore) getString(key string) *db.String {
 	return &db.String{
 		Meta:  d.getMeta(key, internal.DataTypeString),
 		Table: d.StringTable.getTable(key),
@@ -102,7 +102,7 @@ func (d *DatabaseStorage) getString(key string) *db.String {
 	}
 }
 
-func (d *DatabaseStorage) getMeta(key string, dt internal.DataType) *db.Meta {
+func (d *DatabaseStore) getMeta(key string, dt internal.DataType) *db.Meta {
 	return &db.Meta{
 		Table:    d.MetaTable.getTable(key),
 		Key:      key,
@@ -111,11 +111,11 @@ func (d *DatabaseStorage) getMeta(key string, dt internal.DataType) *db.Meta {
 	}
 }
 
-func (d *DatabaseStorage) List(key string) xkv.List[string] {
+func (d *DatabaseStore) List(key string) xkv.List[string] {
 	return d.getList(key)
 }
 
-func (d *DatabaseStorage) getList(key string) *db.List {
+func (d *DatabaseStore) getList(key string) *db.List {
 	return &db.List{
 		Meta:  d.getMeta(key, internal.DataTypeList),
 		Table: d.ListTable.getTable(key),
@@ -123,11 +123,11 @@ func (d *DatabaseStorage) getList(key string) *db.List {
 	}
 }
 
-func (d *DatabaseStorage) Hash(key string) xkv.Hash[string] {
+func (d *DatabaseStore) Hash(key string) xkv.Hash[string] {
 	return d.getHash(key)
 }
 
-func (d *DatabaseStorage) getHash(key string) *db.Hash {
+func (d *DatabaseStore) getHash(key string) *db.Hash {
 	return &db.Hash{
 		Meta:  d.getMeta(key, internal.DataTypeHash),
 		Table: d.HashTable.getTable(key),
@@ -135,11 +135,11 @@ func (d *DatabaseStorage) getHash(key string) *db.Hash {
 	}
 }
 
-func (d *DatabaseStorage) Set(key string) xkv.Set[string] {
+func (d *DatabaseStore) Set(key string) xkv.Set[string] {
 	return d.getSet(key)
 }
 
-func (d *DatabaseStorage) getSet(key string) *db.Set {
+func (d *DatabaseStore) getSet(key string) *db.Set {
 	return &db.Set{
 		Meta:  d.getMeta(key, internal.DataTypeSet),
 		Table: d.SetTable.getTable(key),
@@ -147,11 +147,11 @@ func (d *DatabaseStorage) getSet(key string) *db.Set {
 	}
 }
 
-func (d *DatabaseStorage) ZSet(key string) xkv.ZSet[string] {
+func (d *DatabaseStore) ZSet(key string) xkv.ZSet[string] {
 	return d.getZSet(key)
 }
 
-func (d *DatabaseStorage) getZSet(key string) *db.ZSet {
+func (d *DatabaseStore) getZSet(key string) *db.ZSet {
 	return &db.ZSet{
 		Meta:  d.getMeta(key, internal.DataTypeZSet),
 		Table: d.ZSetTable.getTable(key),
@@ -159,7 +159,7 @@ func (d *DatabaseStorage) getZSet(key string) *db.ZSet {
 	}
 }
 
-func (d *DatabaseStorage) Has(ctx context.Context, key string) (bool, error) {
+func (d *DatabaseStore) Has(ctx context.Context, key string) (bool, error) {
 	m := d.getMeta(key, internal.DataTypeAny) // 可以是任意类型
 	var has bool
 	err := m.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
@@ -169,7 +169,7 @@ func (d *DatabaseStorage) Has(ctx context.Context, key string) (bool, error) {
 	return has, err
 }
 
-func (d *DatabaseStorage) Delete(ctx context.Context, keys ...string) error {
+func (d *DatabaseStore) Delete(ctx context.Context, keys ...string) error {
 	if len(keys) == 0 {
 		return nil
 	}
@@ -193,7 +193,7 @@ func (d *DatabaseStorage) Delete(ctx context.Context, keys ...string) error {
 	return dm.Delete(ctx)
 }
 
-func (d *DatabaseStorage) Migrate(ctx context.Context) error {
+func (d *DatabaseStore) Migrate(ctx context.Context) error {
 	metaModel := db.MetaModel{}
 	meta := d.getMeta("", internal.DataTypeAny)
 	if err := d.MetaTable.migrate(ctx, d.DB, metaModel, meta.GetTable()); err != nil {

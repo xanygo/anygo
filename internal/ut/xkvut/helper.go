@@ -219,6 +219,28 @@ func checkString(t xt.TB, kvs xkv.StringStorage) {
 		}
 		checkGet(t, "0")
 	})
+
+	t.Run("k3", func(t xt.TB) {
+		ks := kvs.String("t2-str-k3")
+
+		num, err := ks.IncrBy(ctx, 2)
+		xt.NoError(t, err)
+		xt.Equal(t, num, 2)
+
+		value, found, err := ks.Get(ctx)
+		xt.NoError(t, err)
+		xt.True(t, found)
+		xt.Equal(t, value, "2")
+
+		num, err = ks.IncrBy(ctx, 3)
+		xt.NoError(t, err)
+		xt.Equal(t, num, 5)
+
+		value, found, err = ks.Get(ctx)
+		xt.NoError(t, err)
+		xt.True(t, found)
+		xt.Equal(t, value, "5")
+	})
 }
 
 func checkList(t xt.TB, kvs xkv.StringStorage) {

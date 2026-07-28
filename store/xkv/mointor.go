@@ -70,6 +70,11 @@ func (ms *monitorString[V]) Incr(ctx context.Context) (int64, error) {
 	ms.monitor.doAfterWrite(ctx, ms.key, err)
 	return v, err
 }
+func (ms *monitorString[V]) IncrBy(ctx context.Context, incr int64) (int64, error) {
+	v, err := ms.store.IncrBy(ctx, incr)
+	ms.monitor.doAfterWrite(ctx, ms.key, err)
+	return v, err
+}
 
 func (ms *monitorString[V]) Decr(ctx context.Context) (int64, error) {
 	v, err := ms.store.Decr(ctx)

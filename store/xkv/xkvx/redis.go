@@ -13,15 +13,15 @@ import (
 	"github.com/xanygo/anygo/store/xredis"
 )
 
-var _ xkv.StringStorage = (*RedisStorage)(nil)
+var _ xkv.StringStorage = (*RedisStore)(nil)
 
-// RedisStorage 基于 redis 的 xkv StringStorage 实现
-type RedisStorage struct {
-	KeyPrefix string
+// RedisStore 基于 redis 的 xkv StringStorage 实现
+type RedisStore struct {
+	KeyPrefix string // 可选，key 前缀
 	Client    *xredis.Client
 }
 
-func (kv *RedisStorage) String(key string) xkv.String[string] {
+func (kv *RedisStore) String(key string) xkv.String[string] {
 	return &kvString{
 		key:    kv.KeyPrefix + key,
 		client: kv.Client,
@@ -51,11 +51,15 @@ func (kvs *kvString) Incr(ctx context.Context) (int64, error) {
 	return kvs.client.Incr(ctx, kvs.key)
 }
 
+func (kvs *kvString) IncrBy(ctx context.Context, incr int64) (int64, error) {
+	return kvs.client.IncrBy(ctx, kvs.key, incr)
+}
+
 func (kvs *kvString) Decr(ctx context.Context) (int64, error) {
 	return kvs.client.Decr(ctx, kvs.key)
 }
 
-func (kv *RedisStorage) List(key string) xkv.List[string] {
+func (kv *RedisStore) List(key string) xkv.List[string] {
 	return &kvList{
 		key:    kv.KeyPrefix + key,
 		client: kv.Client,
@@ -141,7 +145,7 @@ func (kvl *kvList) LLen(ctx context.Context) (int64, error) {
 	return kvl.client.LLen(ctx, kvl.key)
 }
 
-func (kv *RedisStorage) Hash(key string) xkv.Hash[string] {
+func (kv *RedisStore) Hash(key string) xkv.Hash[string] {
 	return &kvHash{
 		client: kv.Client,
 		key:    kv.KeyPrefix + key,
@@ -203,7 +207,7 @@ func (kvh *kvHash) HIncrBy(ctx context.Context, field string, increment int64) (
 	return kvh.client.HIncrBy(ctx, kvh.key, field, increment)
 }
 
-func (kv *RedisStorage) Set(key string) xkv.Set[string] {
+func (kv *RedisStore) Set(key string) xkv.Set[string] {
 	return &kvSet{
 		client: kv.Client,
 		key:    kv.KeyPrefix + key,
@@ -252,7 +256,7 @@ func (kvs *kvSet) SCard(ctx context.Context) (int64, error) {
 	return kvs.client.SCard(ctx, kvs.key)
 }
 
-func (kv *RedisStorage) ZSet(key string) xkv.ZSet[string] {
+func (kv *RedisStore) ZSet(key string) xkv.ZSet[string] {
 	return &kvZSet{
 		client: kv.Client,
 		key:    kv.KeyPrefix + key,
@@ -313,7 +317,7 @@ func (kvz *kvZSet) ZRem(ctx context.Context, members ...string) error {
 	return err
 }
 
-func (kv *RedisStorage) Delete(ctx context.Context, keys ...string) error {
+func (kv *RedisStore) Delete(ctx context.Context, keys ...string) error {
 	if kv.KeyPrefix != "" {
 		for i := range keys {
 			keys[i] = kv.KeyPrefix + keys[i]
@@ -323,7 +327,7 @@ func (kv *RedisStorage) Delete(ctx context.Context, keys ...string) error {
 	return err
 }
 
-func (kv *RedisStorage) Has(ctx context.Context, key string) (bool, error) {
+func (kv *RedisStore) Has(ctx context.Context, key string) (bool, error) {
 	num, err := kv.Client.EXISTS(ctx, kv.KeyPrefix+key)
 	return num == 1, err
 }

@@ -18,6 +18,10 @@ func (n String[V]) Incr(ctx context.Context) (int64, error) {
 	return 1, nil
 }
 
+func (n String[V]) IncrBy(ctx context.Context, incr int64) (int64, error) {
+	return incr, nil
+}
+
 func (n String[V]) Decr(ctx context.Context) (int64, error) {
-	return 0, nil
+	return -1, nil
 }

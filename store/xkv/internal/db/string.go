@@ -78,6 +78,10 @@ func (d *String) Get(ctx context.Context) (val string, ok bool, err error) {
 }
 
 func (d *String) Incr(ctx context.Context) (num int64, err error) {
+	return d.IncrBy(ctx, 1)
+}
+
+func (d *String) IncrBy(ctx context.Context, incr int64) (num int64, err error) {
 	now := time.Now().Unix()
 	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[StringModel](tx)
@@ -94,12 +98,13 @@ func (d *String) Incr(ctx context.Context) (num int64, err error) {
 			if err1 != nil {
 				return err1
 			}
-			num = num + 1
-			strVal = strconv.FormatInt(num, 10)
+			num = num + incr
 		} else {
-			num = 1
-			strVal = "1"
+			num = incr
 		}
+
+		strVal = strconv.FormatInt(num, 10)
+
 		data := StringModel{
 			Key:     d.Key,
 			Value:   strVal,
@@ -115,38 +120,5 @@ func (d *String) Incr(ctx context.Context) (num int64, err error) {
 }
 
 func (d *String) Decr(ctx context.Context) (num int64, err error) {
-	now := time.Now().Unix()
-	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
-		orm := xdb.NewMode[StringModel](tx)
-		orm.Table(d.GetTable())
-		orm.OnlyFields("v")
-		val, found, err1 := orm.First(ctx, "k=?", d.Key)
-		if err1 != nil {
-			return err1
-		}
-
-		var strVal string
-		if found {
-			num, err1 = strconv.ParseInt(val.Value, 10, 64)
-			if err1 != nil {
-				return err1
-			}
-			num = num - 1
-			strVal = strconv.FormatInt(num, 10)
-		} else {
-			num = -1
-			strVal = "-1"
-		}
-		data := StringModel{
-			Key:     d.Key,
-			Value:   strVal,
-			Created: now,
-			Updated: now,
-		}
-		orm.Reset()
-		orm.Table(d.GetTable())
-		_, err1 = orm.Upsert(ctx, []string{"k"}, []string{"v", "u"}, data)
-		return err1
-	})
-	return num, err
+	return d.IncrBy(ctx, -1)
 }

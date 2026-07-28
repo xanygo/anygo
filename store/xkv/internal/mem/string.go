@@ -38,10 +38,14 @@ func (m *String) withWrite(fn func(value string, found bool) error) error {
 }
 
 func (m *String) Incr(ctx context.Context) (result int64, err error) {
+	return m.IncrBy(ctx, 1)
+}
+
+func (m *String) IncrBy(ctx context.Context, incr int64) (result int64, err error) {
 	err = m.withWrite(func(value string, found bool) error {
 		if !found {
-			result = 1
-			m.Base.values[m.Key] = "1"
+			result = incr
+			m.Base.values[m.Key] = strconv.FormatInt(result, 10)
 			m.Base.keyTypes[m.Key] = internal.DataTypeString
 			return nil
 		}
@@ -49,7 +53,7 @@ func (m *String) Incr(ctx context.Context) (result int64, err error) {
 		if err1 != nil {
 			return err1
 		}
-		result = old + 1
+		result = old + incr
 		m.Base.values[m.Key] = strconv.FormatInt(result, 10)
 		return nil
 	})
@@ -57,20 +61,5 @@ func (m *String) Incr(ctx context.Context) (result int64, err error) {
 }
 
 func (m *String) Decr(ctx context.Context) (result int64, err error) {
-	err = m.withWrite(func(value string, found bool) error {
-		if !found {
-			result = -1
-			m.Base.values[m.Key] = "-1"
-			m.Base.keyTypes[m.Key] = internal.DataTypeString
-			return nil
-		}
-		old, err1 := strconv.ParseInt(value, 10, 64)
-		if err1 != nil {
-			return err1
-		}
-		result = old - 1
-		m.Base.values[m.Key] = strconv.FormatInt(result, 10)
-		return nil
-	})
-	return result, err
+	return m.IncrBy(ctx, -1)
 }

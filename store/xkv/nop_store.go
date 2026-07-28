@@ -10,35 +10,35 @@ import (
 	"github.com/xanygo/anygo/store/xkv/internal/nop"
 )
 
-var _ Storage[any] = (*NopStorage[any])(nil)
+var _ Storage[any] = (*NopStore[any])(nil)
 
-// NopStorage 一个黑洞存储实现
-type NopStorage[V any] struct{}
+// NopStore 一个黑洞存储实现
+type NopStore[V any] struct{}
 
-func (n NopStorage[V]) String(key string) String[V] {
+func (n NopStore[V]) String(key string) String[V] {
 	return nop.String[V]{}
 }
 
-func (n NopStorage[V]) List(key string) List[V] {
+func (n NopStore[V]) List(key string) List[V] {
 	return nop.List[V]{}
 }
 
-func (n NopStorage[V]) Hash(key string) Hash[V] {
+func (n NopStore[V]) Hash(key string) Hash[V] {
 	return nop.Hash[V]{}
 }
 
-func (n NopStorage[V]) Set(key string) Set[V] {
+func (n NopStore[V]) Set(key string) Set[V] {
 	return nop.Set[V]{}
 }
 
-func (n NopStorage[V]) ZSet(key string) ZSet[V] {
+func (n NopStore[V]) ZSet(key string) ZSet[V] {
 	return nop.ZSet[V]{}
 }
 
-func (n NopStorage[V]) Delete(ctx context.Context, keys ...string) error {
+func (n NopStore[V]) Delete(ctx context.Context, keys ...string) error {
 	return nil
 }
 
-func (n NopStorage[V]) Has(ctx context.Context, key string) (bool, error) {
+func (n NopStore[V]) Has(ctx context.Context, key string) (bool, error) {
 	return false, nil
 }

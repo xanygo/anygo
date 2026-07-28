@@ -24,6 +24,9 @@ type String[V any] interface {
 	// Incr 将字符串中的数字自增 1（类似 Redis 的 INCR 命令）
 	Incr(ctx context.Context) (int64, error)
 
+	// IncrBy 将字符串中的数字自增 increment
+	IncrBy(ctx context.Context, increment int64) (int64, error)
+
 	// Decr 将字符串中的数字自减 1（类似 Redis 的 DECR 命令）
 	Decr(ctx context.Context) (int64, error)
 }

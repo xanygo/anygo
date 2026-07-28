@@ -23,6 +23,10 @@ func (f *String) Get(ctx context.Context) (string, bool, error) {
 }
 
 func (f *String) Incr(ctx context.Context) (num int64, err error) {
+	return f.IncrBy(ctx, 1)
+}
+
+func (f *String) IncrBy(ctx context.Context, incr int64) (num int64, err error) {
 	value, _, err := f.Get(ctx)
 	if err != nil {
 		return 0, err
@@ -35,7 +39,7 @@ func (f *String) Incr(ctx context.Context) (num int64, err error) {
 			return 0, err
 		}
 	}
-	num++
+	num = num + incr
 	err = f.Set(ctx, strconv.FormatInt(num, 10))
 	if err != nil {
 		return 0, err
@@ -44,23 +48,5 @@ func (f *String) Incr(ctx context.Context) (num int64, err error) {
 }
 
 func (f *String) Decr(ctx context.Context) (num int64, err error) {
-	value, _, err := f.Get(ctx)
-	if err != nil {
-		return 0, err
-	}
-	if value == "" {
-		num = 0
-	} else {
-		num, err = strconv.ParseInt(value, 10, 64)
-		if err != nil {
-			return 0, err
-		}
-	}
-
-	num--
-	err = f.Set(ctx, strconv.FormatInt(num, 10))
-	if err != nil {
-		return 0, err
-	}
-	return num, nil
+	return f.IncrBy(ctx, -1)
 }

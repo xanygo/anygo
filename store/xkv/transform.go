@@ -65,6 +65,10 @@ func (ts transString[V]) Incr(ctx context.Context) (int64, error) {
 	return ts.ss.Incr(ctx)
 }
 
+func (ts transString[V]) IncrBy(ctx context.Context, incr int64) (int64, error) {
+	return ts.ss.IncrBy(ctx, incr)
+}
+
 func (ts transString[V]) Decr(ctx context.Context) (int64, error) {
 	return ts.ss.Decr(ctx)
 }
