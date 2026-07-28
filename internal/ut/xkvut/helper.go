@@ -331,6 +331,10 @@ func checkHash(t xt.TB, kvs xkv.StringStorage) {
 			xt.NoError(t, err1)
 			xt.Equal(t, value, want)
 			xt.Equal(t, found, want != "")
+
+			found2, err2 := ha.HExists(ctx, field)
+			xt.NoError(t, err2)
+			xt.Equal(t, found2, want != "")
 		}
 
 		vs := map[string]string{"f1": "v1", "f2": "v2"}

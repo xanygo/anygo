@@ -29,3 +29,7 @@ func (n Hash[V]) HRange(ctx context.Context, fn func(field string, value V) bool
 func (n Hash[V]) HGetAll(ctx context.Context) (map[string]V, error) {
 	return nil, nil
 }
+
+func (n Hash[V]) HExists(ctx context.Context, field string) (bool, error) {
+	return false, nil
+}

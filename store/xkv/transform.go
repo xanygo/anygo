@@ -257,6 +257,10 @@ func (t transHash[V]) HGetAll(ctx context.Context) (map[string]V, error) {
 	return result, err
 }
 
+func (t transHash[V]) HExists(ctx context.Context, field string) (bool, error) {
+	return t.ss.HExists(ctx, field)
+}
+
 func (tr Transformer[V]) Set(key string) Set[V] {
 	return AsSet[V](tr.Storage, tr.Codec, key)
 }

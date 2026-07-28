@@ -201,6 +201,12 @@ func (mh *monitorHash[V]) HGetAll(ctx context.Context) (map[string]V, error) {
 	return val, err
 }
 
+func (mh *monitorHash[V]) HExists(ctx context.Context, field string) (bool, error) {
+	found, err := mh.store.HExists(ctx, field)
+	mh.monitor.doAfterRead(ctx, mh.key, err)
+	return found, err
+}
+
 func (m *Monitor[V]) Set(key string) Set[V] {
 	return &monitorSet[V]{
 		monitor: m,

@@ -165,3 +165,20 @@ func (h *Hash) HGetAll(ctx context.Context) (map[string]string, error) {
 	})
 	return result, err
 }
+
+func (h *Hash) HExists(ctx context.Context, field string) (found bool, err error) {
+	err = h.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+		if !hasMeta {
+			return nil
+		}
+		orm := xdb.NewMode[HashModel](tx)
+		orm.Table(h.GetTable())
+		orm.OnlyFields("c")
+		_, ok, err1 := orm.First(ctx, "k=? and f=?", h.Key, field)
+		if ok {
+			found = true
+		}
+		return err1
+	})
+	return found, err
+}

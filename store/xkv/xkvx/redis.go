@@ -195,6 +195,10 @@ func (kvh *kvHash) HGetAll(ctx context.Context) (map[string]string, error) {
 	return kvh.client.HGetAll(ctx, kvh.key)
 }
 
+func (kvh *kvHash) HExists(ctx context.Context, field string) (bool, error) {
+	return kvh.client.HExists(ctx, kvh.key, field)
+}
+
 func (kv *RedisStorage) Set(key string) xkv.Set[string] {
 	return &kvSet{
 		client: kv.Client,

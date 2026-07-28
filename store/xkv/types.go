@@ -80,11 +80,15 @@ type Hash[V any] interface {
 	// HSet 设置哈希表字段的值（类似 Redis 的 HSET 命令）
 	HSet(ctx context.Context, field string, value V) error
 
+	// HMSet 批量设置
 	HMSet(ctx context.Context, data map[string]V) error
 
 	// HGet 获取哈希表字段的值（类似 Redis 的 HGET 命令）
 	// 返回：值，是否存在，错误
 	HGet(ctx context.Context, field string) (V, bool, error)
+
+	// HExists 判断 field 是否存在
+	HExists(ctx context.Context, field string) (bool, error)
 
 	// HDel 删除哈希表中的某个字段（类似 Redis 的 HDEL 命令）
 	HDel(ctx context.Context, fields ...string) error

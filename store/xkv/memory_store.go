@@ -411,6 +411,14 @@ func (m *memHash) HGetAll(ctx context.Context) (map[string]string, error) {
 	return result, err
 }
 
+func (m *memHash) HExists(ctx context.Context, field string) (found bool, err error) {
+	err = m.withMapLocked(func(m map[string]string) (map[string]string, bool) {
+		_, found = m[field]
+		return m, false
+	})
+	return found, err
+}
+
 func (m *MemoryStore) Set(key string) Set[string] {
 	return &memSet{
 		store: m,

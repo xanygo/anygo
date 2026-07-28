@@ -118,3 +118,11 @@ func (f Hash) HGetAll(ctx context.Context) (map[string]string, error) {
 	})
 	return result, err
 }
+
+func (f Hash) HExists(ctx context.Context, field string) (bool, error) {
+	_, found, err := f.CheckReadKVDataFile(f.Md5(field), internal.DataTypeHash, false)
+	if err != nil || !found {
+		return false, err
+	}
+	return true, nil
+}
