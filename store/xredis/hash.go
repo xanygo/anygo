@@ -212,7 +212,7 @@ func (c *Client) HPersist(ctx context.Context, key string, fields ...string) (in
 //
 // 参数 key 为哈希表键，field 为要增加的字段，increment 为增量值（可为负数）。
 // 对应 Redis 的 HINCRBY 命令。
-func (c *Client) HIncrBy(ctx context.Context, key string, field string, increment int) (int64, error) {
+func (c *Client) HIncrBy(ctx context.Context, key string, field string, increment int64) (int64, error) {
 	cmd := resp3.NewRequest(resp3.DataTypeInteger, "HINCRBY", key, field, increment)
 	resp := c.do(ctx, cmd)
 	return resp3.ToInt64(resp.result, resp.err)

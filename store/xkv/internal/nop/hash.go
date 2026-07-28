@@ -33,3 +33,7 @@ func (n Hash[V]) HGetAll(ctx context.Context) (map[string]V, error) {
 func (n Hash[V]) HExists(ctx context.Context, field string) (bool, error) {
 	return false, nil
 }
+
+func (n Hash[V]) HIncrBy(ctx context.Context, field string, increment int64) (int64, error) {
+	return increment, nil
+}

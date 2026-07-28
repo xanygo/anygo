@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/xanygo/anygo/ds/xslice"
@@ -181,4 +182,34 @@ func (h *Hash) HExists(ctx context.Context, field string) (found bool, err error
 		return err1
 	})
 	return found, err
+}
+
+func (h *Hash) HIncrBy(ctx context.Context, field string, increment int64) (num int64, err error) {
+	now := time.Now().Unix()
+	err = h.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+		orm := xdb.NewMode[HashModel](tx)
+		orm.Table(h.GetTable())
+		old, found, err1 := orm.First(ctx, "k=? and f=?", h.Key, field)
+		if err1 != nil {
+			return err1
+		}
+		num = increment
+		if found {
+			oldNum, err2 := strconv.ParseInt(old.Value, 10, 64)
+			if err2 != nil {
+				return err2
+			}
+			num += oldNum
+		}
+		data := HashModel{
+			Key:     h.Key,
+			Field:   field,
+			Value:   strconv.FormatInt(num, 10),
+			Created: now,
+			Updated: now,
+		}
+		_, err3 := orm.Upsert(ctx, []string{"k", "f"}, []string{"v", "u"}, data)
+		return err3
+	})
+	return num, err
 }

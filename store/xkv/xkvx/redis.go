@@ -199,6 +199,10 @@ func (kvh *kvHash) HExists(ctx context.Context, field string) (bool, error) {
 	return kvh.client.HExists(ctx, kvh.key, field)
 }
 
+func (kvh *kvHash) HIncrBy(ctx context.Context, field string, increment int64) (int64, error) {
+	return kvh.client.HIncrBy(ctx, kvh.key, field, increment)
+}
+
 func (kv *RedisStorage) Set(key string) xkv.Set[string] {
 	return &kvSet{
 		client: kv.Client,

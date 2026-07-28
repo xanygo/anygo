@@ -261,6 +261,10 @@ func (t transHash[V]) HExists(ctx context.Context, field string) (bool, error) {
 	return t.ss.HExists(ctx, field)
 }
 
+func (t transHash[V]) HIncrBy(ctx context.Context, field string, increment int64) (int64, error) {
+	return t.ss.HIncrBy(ctx, field, increment)
+}
+
 func (tr Transformer[V]) Set(key string) Set[V] {
 	return AsSet[V](tr.Storage, tr.Codec, key)
 }

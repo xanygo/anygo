@@ -319,27 +319,31 @@ func checkHash(t xt.TB, kvs xkv.StringStorage) {
 		xt.Equal(t, value, "v2")
 	})
 
+	checkGetHa := func(t xt.TB, ha xkv.Hash[string], field string, want string) {
+		t.Helper()
+		value, found, err1 := ha.HGet(ctx, field)
+		xt.NoError(t, err1)
+		xt.Equal(t, value, want)
+		xt.Equal(t, found, want != "")
+
+		found2, err2 := ha.HExists(ctx, field)
+		xt.NoError(t, err2)
+		xt.Equal(t, found2, want != "")
+	}
+
 	t.Run("hash2", func(t xt.TB) {
 		const key = "t2-hash2"
 		ha := kvs.Hash(key)
 		err := ha.HDel(ctx, "f1")
 		xt.NoError(t, err)
 
-		checkGet := func(t xt.TB, field string, want string) {
-			t.Helper()
-			value, found, err1 := ha.HGet(ctx, field)
-			xt.NoError(t, err1)
-			xt.Equal(t, value, want)
-			xt.Equal(t, found, want != "")
-
-			found2, err2 := ha.HExists(ctx, field)
-			xt.NoError(t, err2)
-			xt.Equal(t, found2, want != "")
-		}
-
 		vs := map[string]string{"f1": "v1", "f2": "v2"}
 		err = ha.HMSet(ctx, vs)
 		xt.NoError(t, err)
+
+		checkGet := func(t xt.TB, field, want string) {
+			checkGetHa(t, ha, field, want)
+		}
 
 		checkGet(t, "f1", "v1")
 		checkGet(t, "f2", "v2")
@@ -366,6 +370,19 @@ func checkHash(t xt.TB, kvs xkv.StringStorage) {
 		has, err := kvs.Has(ctx, key)
 		xt.NoError(t, err)
 		xt.True(t, has)
+	})
+
+	t.Run("hash3-HIncrBy", func(t xt.TB) {
+		ha := kvs.Hash("t2-hash3")
+		num, err := ha.HIncrBy(ctx, "f1", 1)
+		xt.NoError(t, err)
+		xt.Equal(t, num, 1)
+		checkGetHa(t, ha, "f1", "1")
+
+		num, err = ha.HIncrBy(ctx, "f1", 3)
+		xt.NoError(t, err)
+		xt.Equal(t, num, 4)
+		checkGetHa(t, ha, "f1", "4")
 	})
 }
 

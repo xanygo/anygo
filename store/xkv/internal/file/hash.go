@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"unsafe"
 
 	"github.com/xanygo/anygo/safely"
@@ -125,4 +126,26 @@ func (f Hash) HExists(ctx context.Context, field string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func (f Hash) HIncrBy(ctx context.Context, field string, increment int64) (int64, error) {
+	old, found, err := f.HGet(ctx, field)
+	if err != nil {
+		return 0, err
+	}
+	var num int64
+	if !found {
+		num = increment
+	} else {
+		oldNum, err := strconv.ParseInt(old, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		num = oldNum + increment
+	}
+	err = f.HSet(ctx, field, strconv.FormatInt(num, 10))
+	if err != nil {
+		return 0, err
+	}
+	return num, nil
 }

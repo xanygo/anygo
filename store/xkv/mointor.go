@@ -207,6 +207,12 @@ func (mh *monitorHash[V]) HExists(ctx context.Context, field string) (bool, erro
 	return found, err
 }
 
+func (mh *monitorHash[V]) HIncrBy(ctx context.Context, field string, increment int64) (int64, error) {
+	num, err := mh.store.HIncrBy(ctx, field, increment)
+	mh.monitor.doAfterWrite(ctx, mh.key, err)
+	return num, err
+}
+
 func (m *Monitor[V]) Set(key string) Set[V] {
 	return &monitorSet[V]{
 		monitor: m,

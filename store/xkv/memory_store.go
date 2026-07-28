@@ -419,6 +419,25 @@ func (m *memHash) HExists(ctx context.Context, field string) (found bool, err er
 	return found, err
 }
 
+func (m *memHash) HIncrBy(ctx context.Context, field string, increment int64) (num int64, err error) {
+	err = m.withMapLocked(func(m map[string]string) (map[string]string, bool) {
+		value, found := m[field]
+		if !found {
+			num = increment
+			m[field] = strconv.FormatInt(increment, 10)
+		} else {
+			old, err2 := strconv.ParseInt(value, 10, 64)
+			if err2 != nil {
+				// todo
+			}
+			num = old + increment
+			m[field] = strconv.FormatInt(num, 10)
+		}
+		return m, true
+	})
+	return num, err
+}
+
 func (m *MemoryStore) Set(key string) Set[string] {
 	return &memSet{
 		store: m,

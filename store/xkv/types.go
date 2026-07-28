@@ -83,6 +83,8 @@ type Hash[V any] interface {
 	// HMSet 批量设置
 	HMSet(ctx context.Context, data map[string]V) error
 
+	HIncrBy(ctx context.Context, field string, increment int64) (int64, error)
+
 	// HGet 获取哈希表字段的值（类似 Redis 的 HGET 命令）
 	// 返回：值，是否存在，错误
 	HGet(ctx context.Context, field string) (V, bool, error)

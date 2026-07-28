@@ -15,7 +15,7 @@ func (n String[V]) Get(ctx context.Context) (v V, found bool, err error) {
 }
 
 func (n String[V]) Incr(ctx context.Context) (int64, error) {
-	return 0, nil
+	return 1, nil
 }
 
 func (n String[V]) Decr(ctx context.Context) (int64, error) {
