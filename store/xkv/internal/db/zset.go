@@ -207,3 +207,27 @@ func (z *ZSet) checkExists(ctx context.Context, orm *xdb.Model[ZSetModel]) error
 	}
 	return z.Meta.delete(ctx, orm.Client())
 }
+
+func (z *ZSet) ZRank(ctx context.Context, member string) (index int64, score float64, err error) {
+	index = -1
+	err = z.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+		orm := xdb.NewMode[ZSetModel](tx)
+		orm.Table(z.GetTable())
+		one, found, err1 := orm.First(ctx, "k=? and m=?", z.Key, member)
+		if err1 != nil || !found {
+			return err1
+		}
+		score = one.Score
+
+		cond := xdb.Condition{}
+		cond.And("k=?", z.Key)
+		cond.And("( s<? or ( s=? and m<? ) )", score, score, member)
+		where, args, err2 := cond.Build()
+		if err2 != nil {
+			return err2
+		}
+		index, err2 = orm.Count(ctx, "*", where, args...)
+		return err2
+	})
+	return index, score, err
+}

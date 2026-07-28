@@ -25,9 +25,15 @@ func (mz *ZSetValue) Add(score float64, member string) {
 	mz.sort()
 }
 
-var memberScoreSortFn = xcmp.OrderAsc(func(t memberScore) float64 {
-	return t.score
-})
+// 排序：先按照分数升序，若分数相同，则按照 member 升序
+var memberScoreSortFn = xcmp.Chain(
+	xcmp.OrderAsc(func(t memberScore) float64 {
+		return t.score
+	}),
+	xcmp.OrderAsc(func(t memberScore) string {
+		return t.member
+	}),
+)
 
 func (mz *ZSetValue) sort() {
 	list := make([]memberScore, 0, len(mz.Scores))
@@ -84,4 +90,16 @@ func (mz *ZSetValue) Count(min, max *xcmp.Bound[float64]) (num int64) {
 		}
 	}
 	return num
+}
+
+func (mz *ZSetValue) Rank(member string) (int64, float64) {
+	if len(mz.Scores) == 0 {
+		return -1, 0
+	}
+	score, found := mz.Scores[member]
+	if !found {
+		return -1, 0
+	}
+	index := slices.Index(mz.Members, member)
+	return int64(index), score
 }

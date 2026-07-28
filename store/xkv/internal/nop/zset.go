@@ -27,3 +27,7 @@ func (n ZSet[V]) ZCount(ctx context.Context, min, max string) (int64, error) {
 func (n ZSet[V]) ZRem(ctx context.Context, members ...V) error {
 	return nil
 }
+
+func (n ZSet[V]) ZRank(ctx context.Context, member V) (int64, float64, error) {
+	return 0, 0, nil
+}

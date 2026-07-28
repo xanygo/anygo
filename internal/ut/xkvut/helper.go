@@ -28,10 +28,10 @@ func hasFlag(flag string) bool {
 	return ok
 }
 
-func TestStringStorage1(t xt.TB, ff xkv.StringStorage) {
+func TestStringStorage1(t xt.TB, kvs xkv.StringStorage) {
 	t.Run("string", func(t xt.TB) {
 		const key = "t1-hello"
-		ss1 := ff.String(key)
+		ss1 := kvs.String(key)
 		got1, found1, err1 := ss1.Get(context.Background())
 		xt.NoError(t, err1)
 		xt.False(t, found1)
@@ -42,16 +42,16 @@ func TestStringStorage1(t xt.TB, ff xkv.StringStorage) {
 		xt.NoError(t, err2)
 		xt.Equal(t, got2, "world")
 
-		got3, err3 := ff.Has(context.Background(), key)
+		got3, err3 := kvs.Has(context.Background(), key)
 		xt.NoError(t, err3)
 		xt.True(t, got3)
 
-		xt.NoError(t, ff.Delete(context.Background(), key))
+		xt.NoError(t, kvs.Delete(context.Background(), key))
 	})
 
 	t.Run("list", func(t xt.TB) {
 		const key = "t1-list1"
-		list := ff.List(key)
+		list := kvs.List(key)
 		_, err1 := list.RPush(context.Background(), "1")
 		xt.NoError(t, err1)
 
@@ -83,7 +83,7 @@ func TestStringStorage1(t xt.TB, ff xkv.StringStorage) {
 	})
 
 	t.Run("Hash", func(t xt.TB) {
-		hh := ff.Hash("t1-hash1")
+		hh := kvs.Hash("t1-hash1")
 		xt.NoError(t, hh.HSet(context.Background(), "key1", "value1"))
 		value1, found1, err1 := hh.HGet(context.Background(), "key1")
 		xt.NoError(t, err1)
@@ -107,7 +107,7 @@ func TestStringStorage1(t xt.TB, ff xkv.StringStorage) {
 	})
 
 	t.Run("Set", func(t xt.TB) {
-		set := ff.Set("t1-set1")
+		set := kvs.Set("t1-set1")
 		_, err1 := set.SAdd(context.Background(), "v1")
 		xt.NoError(t, err1)
 
@@ -129,7 +129,7 @@ func TestStringStorage1(t xt.TB, ff xkv.StringStorage) {
 	})
 
 	t.Run("ZSet", func(t xt.TB) {
-		zset := ff.ZSet("t1-zset1")
+		zset := kvs.ZSet("t1-zset1")
 		xt.NoError(t, zset.ZAdd(context.Background(), 1, "m1"))
 		got1, found1, err1 := zset.ZScore(context.Background(), "m1")
 		xt.NoError(t, err1)
@@ -156,20 +156,20 @@ func TestStringStorage1(t xt.TB, ff xkv.StringStorage) {
 	})
 }
 
-func TestStringStorage2(t xt.TB, ff xkv.StringStorage) {
-	checkString(t, ff)
-	checkHash(t, ff)
-	checkList(t, ff)
-	checkSet(t, ff)
-	checkZSet(t, ff)
+func TestStringStorage2(t xt.TB, kvs xkv.StringStorage) {
+	checkString(t, kvs)
+	checkHash(t, kvs)
+	checkList(t, kvs)
+	checkSet(t, kvs)
+	checkZSet(t, kvs)
 }
 
-func checkString(t xt.TB, xkv xkv.StringStorage) {
+func checkString(t xt.TB, kvs xkv.StringStorage) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	t.Run("k1", func(t xt.TB) {
-		ks := xkv.String("t2-str-k1")
+		ks := kvs.String("t2-str-k1")
 
 		t.Run("get1", func(t xt.TB) {
 			value, found, err := ks.Get(ctx)
@@ -196,7 +196,7 @@ func checkString(t xt.TB, xkv xkv.StringStorage) {
 	})
 
 	t.Run("k2", func(t xt.TB) {
-		ks := xkv.String("t2-str-k2")
+		ks := kvs.String("t2-str-k2")
 		checkGet := func(t xt.TB, want string) {
 			t.Helper()
 			value, found, err := ks.Get(ctx)
@@ -221,12 +221,12 @@ func checkString(t xt.TB, xkv xkv.StringStorage) {
 	})
 }
 
-func checkList(t xt.TB, xkv xkv.StringStorage) {
+func checkList(t xt.TB, kvs xkv.StringStorage) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	t.Run("list1", func(t xt.TB) {
-		l1 := xkv.List("t2-list1")
+		l1 := kvs.List("t2-list1")
 		var values []string
 		err := l1.Range(ctx, func(val string) bool {
 			values = append(values, val)
@@ -245,7 +245,7 @@ func checkList(t xt.TB, xkv xkv.StringStorage) {
 	})
 
 	t.Run("list2", func(t xt.TB) {
-		li := xkv.List("t2-list2")
+		li := kvs.List("t2-list2")
 		num, err := li.LPush(ctx, "v1")
 		xt.NoError(t, err)
 		xt.Equal(t, num, 1)
@@ -280,7 +280,7 @@ func checkList(t xt.TB, xkv xkv.StringStorage) {
 	})
 
 	t.Run("list3", func(t xt.TB) {
-		li := xkv.List("t2-list3")
+		li := kvs.List("t2-list3")
 		num, err := li.RPush(ctx, "v1", "v2")
 		xt.NoError(t, err)
 		xt.Equal(t, num, 2)
@@ -291,12 +291,12 @@ func checkList(t xt.TB, xkv xkv.StringStorage) {
 	})
 }
 
-func checkHash(t xt.TB, xkv xkv.StringStorage) {
+func checkHash(t xt.TB, kvs xkv.StringStorage) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	t.Run("hash1", func(t xt.TB) {
-		ha := xkv.Hash("t2-hash1")
+		ha := kvs.Hash("t2-hash1")
 		value, found, err := ha.HGet(ctx, "f1")
 		xt.NoError(t, err)
 		xt.False(t, found)
@@ -321,7 +321,7 @@ func checkHash(t xt.TB, xkv xkv.StringStorage) {
 
 	t.Run("hash2", func(t xt.TB) {
 		const key = "t2-hash2"
-		ha := xkv.Hash(key)
+		ha := kvs.Hash(key)
 		err := ha.HDel(ctx, "f1")
 		xt.NoError(t, err)
 
@@ -359,18 +359,18 @@ func checkHash(t xt.TB, xkv xkv.StringStorage) {
 		checkGet(t, "f2", "v2")
 		checkGet(t, "f3", "")
 
-		has, err := xkv.Has(ctx, key)
+		has, err := kvs.Has(ctx, key)
 		xt.NoError(t, err)
 		xt.True(t, has)
 	})
 }
 
-func checkSet(t xt.TB, xkv xkv.StringStorage) {
+func checkSet(t xt.TB, kvs xkv.StringStorage) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	t.Run("set1", func(t xt.TB) {
-		se := xkv.Set("t2-set1")
+		se := kvs.Set("t2-set1")
 		num, err := se.SAdd(ctx, "m1")
 		xt.NoError(t, err)
 		xt.Equal(t, num, 1)
@@ -413,12 +413,12 @@ func checkSet(t xt.TB, xkv xkv.StringStorage) {
 	})
 }
 
-func checkZSet(t xt.TB, xkv xkv.StringStorage) {
+func checkZSet(t xt.TB, kvs xkv.StringStorage) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	t.Run("zset1", func(t xt.TB) {
-		zs := xkv.ZSet("t2-zset1")
+		zs := kvs.ZSet("t2-zset1")
 		err := zs.ZAdd(ctx, 1, "m1")
 		xt.NoError(t, err)
 
@@ -443,20 +443,20 @@ func checkZSet(t xt.TB, xkv xkv.StringStorage) {
 	})
 
 	t.Run("delete1", func(t xt.TB) {
-		has, err := xkv.Has(ctx, "t2-zset1")
+		has, err := kvs.Has(ctx, "t2-zset1")
 		xt.NoError(t, err)
 		xt.True(t, has)
 
-		err = xkv.Delete(ctx, "zset1")
+		err = kvs.Delete(ctx, "zset1")
 		xt.NoError(t, err)
 
-		has, err = xkv.Has(ctx, "zset1")
+		has, err = kvs.Has(ctx, "zset1")
 		xt.NoError(t, err)
 		xt.False(t, has)
 	})
 
 	t.Run("zincr", func(t xt.TB) {
-		zs := xkv.ZSet("t2-zincr1")
+		zs := kvs.ZSet("t2-zincr1")
 		num, err := zs.ZIncrBy(ctx, 1.1, "m1")
 		xt.NoError(t, err)
 		xt.Equal(t, num, 1.1)
@@ -467,7 +467,7 @@ func checkZSet(t xt.TB, xkv xkv.StringStorage) {
 	})
 
 	t.Run("zcount", func(t xt.TB) {
-		zs := xkv.ZSet("t2-zcount1")
+		zs := kvs.ZSet("t2-zcount1")
 
 		for i := 0; i < 100; i++ {
 			err := zs.ZAdd(ctx, float64(i), fmt.Sprintf("m%d", i))
@@ -491,5 +491,41 @@ func checkZSet(t xt.TB, xkv xkv.StringStorage) {
 			xt.NoError(t, err)
 			xt.Equal(t, num, 3)
 		})
+	})
+
+	t.Run("zrank", func(t xt.TB) {
+		zs := kvs.ZSet("t2-rank1")
+		for i := 0; i < 100; i++ {
+			err := zs.ZAdd(ctx, float64(i), fmt.Sprintf("m%d", i))
+			xt.NoError(t, err)
+		}
+
+		index, score, err := zs.ZRank(ctx, "m1")
+		xt.NoError(t, err)
+		xt.Equal(t, index, 1)
+		xt.Equal(t, score, 1)
+
+		index, score, err = zs.ZRank(ctx, "m99")
+		xt.NoError(t, err)
+		xt.Equal(t, index, 99)
+		xt.Equal(t, score, 99)
+
+		index, score, err = zs.ZRank(ctx, "10000")
+		xt.NoError(t, err)
+		xt.Equal(t, index, -1)
+		xt.Equal(t, score, 0)
+
+		err = zs.ZAdd(ctx, 2, "f100") // 和 m2 相同的 score
+		xt.NoError(t, err)
+
+		index, score, err = zs.ZRank(ctx, "m2")
+		xt.NoError(t, err)
+		xt.Equal(t, index, 3)
+		xt.Equal(t, score, 2)
+
+		index, score, err = zs.ZRank(ctx, "f100")
+		xt.NoError(t, err)
+		xt.Equal(t, index, 2)
+		xt.Equal(t, score, 2)
 	})
 }

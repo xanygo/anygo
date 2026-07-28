@@ -8,7 +8,11 @@ vars:
 tasks:
   default:
     cmds:
+      - echo "hello"
+  test:
+    cmds:
       - go test -race ./...
+      - cd cmd/example/db && go test -race ./...
   trs:
     env:
       anygo-ut-redis: redis://127.0.0.1:6379

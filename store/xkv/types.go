@@ -125,6 +125,10 @@ type ZSet[V any] interface {
 	// 返回：值，是否存在，错误
 	ZScore(ctx context.Context, member V) (float64, bool, error)
 
+	// ZRank 查找 member 的索引顺序并返回分数
+	// 返回值：索引位置(若为-1 则表示不存在,0-表示首位)，分数，错误
+	ZRank(ctx context.Context, member V) (int64, float64, error)
+
 	// ZIncrBy 给 member 添加分数，返回新的分数
 	ZIncrBy(ctx context.Context, increment float64, member V) (float64, error)
 

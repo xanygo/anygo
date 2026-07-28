@@ -295,8 +295,14 @@ func (mz *monitorZSet[V]) ZRem(ctx context.Context, members ...V) error {
 
 func (mz *monitorZSet[V]) ZCount(ctx context.Context, min, max string) (int64, error) {
 	num, err := mz.store.ZCount(ctx, min, max)
-	mz.monitor.doAfterWrite(ctx, mz.key, err)
+	mz.monitor.doAfterRead(ctx, mz.key, err)
 	return num, err
+}
+
+func (mz *monitorZSet[V]) ZRank(ctx context.Context, member V) (int64, float64, error) {
+	index, score, err := mz.store.ZRank(ctx, member)
+	mz.monitor.doAfterRead(ctx, mz.key, err)
+	return index, score, err
 }
 
 func (m *Monitor[V]) Delete(ctx context.Context, keys ...string) error {

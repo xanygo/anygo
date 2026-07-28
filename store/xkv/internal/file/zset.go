@@ -130,6 +130,21 @@ func (f ZSet) ZCount(ctx context.Context, min, max string) (num int64, err error
 	return num, err
 }
 
+func (f ZSet) ZRank(ctx context.Context, member string) (index int64, score float64, err error) {
+	index = -1
+	var idx int64
+	err = f.ZRange(ctx, func(name string, sc float64) bool {
+		if member == name {
+			index = idx
+			score = sc
+			return false
+		}
+		idx++
+		return true
+	})
+	return index, score, err
+}
+
 type fileZSetMember struct {
 	Member []byte  `json:"m"`
 	Score  float64 `json:"s"`

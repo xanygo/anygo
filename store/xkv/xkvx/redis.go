@@ -292,6 +292,14 @@ func (kvz *kvZSet) ZRange(ctx context.Context, fn func(member string, score floa
 	})
 }
 
+func (kvz *kvZSet) ZRank(ctx context.Context, member string) (int64, float64, error) {
+	index, score, err := kvz.client.ZRankWithScore(ctx, kvz.key, member)
+	if errors.Is(err, xredis.ErrNil) {
+		return -1, score, nil
+	}
+	return index, score, err
+}
+
 func (kvz *kvZSet) ZRem(ctx context.Context, members ...string) error {
 	_, err := kvz.client.ZRem(ctx, kvz.key, members...)
 	return err

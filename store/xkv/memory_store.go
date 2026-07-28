@@ -605,6 +605,14 @@ func (m *memZSet) ZRange(ctx context.Context, fn func(member string, score float
 	return nil
 }
 
+func (m *memZSet) ZRank(ctx context.Context, member string) (index int64, score float64, err error) {
+	err = m.withLocked(func(zv *mem.ZSetValue) (*mem.ZSetValue, bool) {
+		index, score = zv.Rank(member)
+		return zv, false
+	})
+	return index, score, err
+}
+
 func (m *memZSet) ZRem(ctx context.Context, members ...string) error {
 	return m.withLocked(func(value *mem.ZSetValue) (*mem.ZSetValue, bool) {
 		var changed bool

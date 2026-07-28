@@ -435,4 +435,40 @@ func checkZSet(t *testing.T, kvs xkv.StringStorage) {
 		xt.NoError(t, err)
 		xt.Equal(t, num, 3)
 	})
+
+	t.Run("zrank", func(t *testing.T) {
+		zs := kvs.ZSet("t2-rank1")
+		for i := 0; i < 100; i++ {
+			err := zs.ZAdd(ctx, float64(i), fmt.Sprintf("m%d", i))
+			xt.NoError(t, err)
+		}
+
+		index, score, err := zs.ZRank(ctx, "m1")
+		xt.NoError(t, err)
+		xt.Equal(t, index, 1)
+		xt.Equal(t, score, 1)
+
+		index, score, err = zs.ZRank(ctx, "m99")
+		xt.NoError(t, err)
+		xt.Equal(t, index, 99)
+		xt.Equal(t, score, 99)
+
+		index, score, err = zs.ZRank(ctx, "10000")
+		xt.NoError(t, err)
+		xt.Equal(t, index, -1)
+		xt.Equal(t, score, 0)
+
+		err = zs.ZAdd(ctx, 2, "f100") // 和 m2 相同的 score
+		xt.NoError(t, err)
+
+		index, score, err = zs.ZRank(ctx, "m2")
+		xt.NoError(t, err)
+		xt.Equal(t, index, 3)
+		xt.Equal(t, score, 2)
+
+		index, score, err = zs.ZRank(ctx, "f100")
+		xt.NoError(t, err)
+		xt.Equal(t, index, 2)
+		xt.Equal(t, score, 2)
+	})
 }

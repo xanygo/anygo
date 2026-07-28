@@ -397,6 +397,14 @@ func (t transZSet[V]) ZCount(ctx context.Context, min, max string) (int64, error
 	return t.ss.ZCount(ctx, min, max)
 }
 
+func (t transZSet[V]) ZRank(ctx context.Context, member V) (int64, float64, error) {
+	str, err := xcodec.EncodeToString(t.codec, member)
+	if err != nil {
+		return 0, 0, err
+	}
+	return t.ss.ZRank(ctx, str)
+}
+
 func (tr Transformer[V]) Delete(ctx context.Context, keys ...string) error {
 	return tr.Storage.Delete(ctx, keys...)
 }
