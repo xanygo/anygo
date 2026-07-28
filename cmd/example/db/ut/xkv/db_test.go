@@ -186,6 +186,37 @@ func checkString(t *testing.T, kvs xkv.StringStorage) {
 		xt.NoError(t, err)
 		xt.True(t, found)
 		xt.Equal(t, value, "5")
+
+		value, found, err = ks.GetDel(ctx)
+		xt.NoError(t, err)
+		xt.True(t, found)
+		xt.Equal(t, value, "5")
+
+		value, found, err = ks.GetDel(ctx) // 已被删除
+		xt.NoError(t, err)
+		xt.False(t, found)
+		xt.Equal(t, value, "")
+	})
+
+	t.Run("k4-incrFloat", func(t *testing.T) {
+		ks := kvs.String("t2-str-k4")
+		num, err := ks.IncrByFloat(ctx, 1.1)
+		xt.NoError(t, err)
+		xt.Equal(t, num, 1.1)
+
+		value, found, err := ks.Get(ctx)
+		xt.NoError(t, err)
+		xt.True(t, found)
+		xt.Equal(t, value, "1.1")
+
+		num, err = ks.IncrByFloat(ctx, 2)
+		xt.NoError(t, err)
+		xt.Equal(t, num, 3.1)
+
+		value, found, err = ks.Get(ctx)
+		xt.NoError(t, err)
+		xt.True(t, found)
+		xt.Equal(t, value, "3.1")
 	})
 }
 

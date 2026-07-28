@@ -22,6 +22,10 @@ func (f *String) Get(ctx context.Context) (string, bool, error) {
 	return f.CheckReadKVDataFile("value", internal.DataTypeString, false)
 }
 
+func (f *String) GetDel(ctx context.Context) (string, bool, error) {
+	return f.CheckReadKVDataFile("value", internal.DataTypeString, true)
+}
+
 func (f *String) Incr(ctx context.Context) (num int64, err error) {
 	return f.IncrBy(ctx, 1)
 }
@@ -41,6 +45,27 @@ func (f *String) IncrBy(ctx context.Context, incr int64) (num int64, err error) 
 	}
 	num = num + incr
 	err = f.Set(ctx, strconv.FormatInt(num, 10))
+	if err != nil {
+		return 0, err
+	}
+	return num, nil
+}
+
+func (f *String) IncrByFloat(ctx context.Context, incr float64) (num float64, err error) {
+	value, _, err := f.Get(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if value == "" {
+		num = 0
+	} else {
+		num, err = strconv.ParseFloat(value, 64)
+		if err != nil {
+			return 0, err
+		}
+	}
+	num = num + incr
+	err = f.Set(ctx, strconv.FormatFloat(num, 'g', -1, 64))
 	if err != nil {
 		return 0, err
 	}

@@ -20,6 +20,11 @@ type Base struct {
 	mux      sync.RWMutex
 }
 
+func (m *Base) deleteNoLock(key string) {
+	delete(m.values, key)
+	delete(m.keyTypes, key)
+}
+
 func (m *Base) getLocked(key string, wantType internal.DataType) (value any, found bool, err error) {
 	var tp internal.DataType
 	m.mux.RLock()

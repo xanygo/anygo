@@ -65,13 +65,26 @@ func (ms *monitorString[V]) Get(ctx context.Context) (V, bool, error) {
 	return v, ok, err
 }
 
+func (ms *monitorString[V]) GetDel(ctx context.Context) (V, bool, error) {
+	v, ok, err := ms.store.GetDel(ctx)
+	ms.monitor.doAfterDelete(ctx, ms.key, err)
+	return v, ok, err
+}
+
 func (ms *monitorString[V]) Incr(ctx context.Context) (int64, error) {
 	v, err := ms.store.Incr(ctx)
 	ms.monitor.doAfterWrite(ctx, ms.key, err)
 	return v, err
 }
+
 func (ms *monitorString[V]) IncrBy(ctx context.Context, incr int64) (int64, error) {
 	v, err := ms.store.IncrBy(ctx, incr)
+	ms.monitor.doAfterWrite(ctx, ms.key, err)
+	return v, err
+}
+
+func (ms *monitorString[V]) IncrByFloat(ctx context.Context, incr float64) (float64, error) {
+	v, err := ms.store.IncrByFloat(ctx, incr)
 	ms.monitor.doAfterWrite(ctx, ms.key, err)
 	return v, err
 }

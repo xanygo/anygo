@@ -14,11 +14,19 @@ func (n String[V]) Get(ctx context.Context) (v V, found bool, err error) {
 	return v, false, nil
 }
 
+func (n String[V]) GetDel(ctx context.Context) (v V, found bool, err error) {
+	return v, false, nil
+}
+
 func (n String[V]) Incr(ctx context.Context) (int64, error) {
 	return 1, nil
 }
 
 func (n String[V]) IncrBy(ctx context.Context, incr int64) (int64, error) {
+	return incr, nil
+}
+
+func (n String[V]) IncrByFloat(ctx context.Context, incr float64) (float64, error) {
 	return incr, nil
 }
 

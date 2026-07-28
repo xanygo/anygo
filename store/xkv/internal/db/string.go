@@ -77,6 +77,27 @@ func (d *String) Get(ctx context.Context) (val string, ok bool, err error) {
 	return val, ok, err
 }
 
+func (d *String) GetDel(ctx context.Context) (val string, ok bool, err error) {
+	err = d.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+		_, has, err1 := d.Meta.loadExists(ctx, tx)
+		if err1 != nil || !has {
+			return err1
+		}
+		orm := xdb.NewMode[StringModel](tx)
+		orm.Table(d.GetTable())
+		orm.OnlyFields("v")
+		value, found, err2 := orm.First(ctx, "k=?", d.Key)
+		if err2 != nil || !found {
+			return err2
+		}
+		val = value.Value
+		ok = true
+		_, err = orm.Delete(ctx, "k=?", d.Key)
+		return err
+	})
+	return val, ok, err
+}
+
 func (d *String) Incr(ctx context.Context) (num int64, err error) {
 	return d.IncrBy(ctx, 1)
 }
@@ -104,6 +125,44 @@ func (d *String) IncrBy(ctx context.Context, incr int64) (num int64, err error) 
 		}
 
 		strVal = strconv.FormatInt(num, 10)
+
+		data := StringModel{
+			Key:     d.Key,
+			Value:   strVal,
+			Created: now,
+			Updated: now,
+		}
+		orm.Reset()
+		orm.Table(d.GetTable())
+		_, err1 = orm.Upsert(ctx, []string{"k"}, []string{"v", "u"}, data)
+		return err1
+	})
+	return num, err
+}
+
+func (d *String) IncrByFloat(ctx context.Context, incr float64) (num float64, err error) {
+	now := time.Now().Unix()
+	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+		orm := xdb.NewMode[StringModel](tx)
+		orm.Table(d.GetTable())
+		orm.OnlyFields("v")
+		val, found, err1 := orm.First(ctx, "k=?", d.Key)
+		if err1 != nil {
+			return err1
+		}
+
+		var strVal string
+		if found {
+			num, err1 = strconv.ParseFloat(val.Value, 64)
+			if err1 != nil {
+				return err1
+			}
+			num = num + incr
+		} else {
+			num = incr
+		}
+
+		strVal = strconv.FormatFloat(num, 'g', -1, 64)
 
 		data := StringModel{
 			Key:     d.Key,

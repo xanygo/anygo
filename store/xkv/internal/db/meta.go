@@ -120,21 +120,26 @@ func (m *Meta) checkWriteType(ctx context.Context, tx xdb.TxCore) error {
 }
 
 func (m *Meta) load(ctx context.Context, tx xdb.TxCore) (MetaModel, error) {
+	v, _, err := m.loadExists(ctx, tx)
+	return v, err
+}
+
+func (m *Meta) loadExists(ctx context.Context, tx xdb.TxCore) (MetaModel, bool, error) {
 	orm := m.orm(tx)
 	value, found, err := orm.First(ctx, "k=?", m.Key)
 	if err != nil {
-		return MetaModel{}, err
+		return MetaModel{}, false, err
 	}
 	if found {
 		if value.DataType == m.DataType {
-			return value, nil
+			return value, true, nil
 		}
-		return MetaModel{}, fmt.Errorf("canot load %s on type %s", m.DataType.String(), value.DataType.String())
+		return MetaModel{}, false, fmt.Errorf("canot load %s on type %s", m.DataType.String(), value.DataType.String())
 	}
 	return MetaModel{
 		Key:      m.Key,
 		DataType: m.DataType,
-	}, nil
+	}, false, nil
 }
 
 func (m *Meta) checkReadType(ctx context.Context, tx xdb.TxCore) (bool, error) {

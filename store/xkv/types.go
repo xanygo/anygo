@@ -21,11 +21,19 @@ type String[V any] interface {
 	// key 不存在时，会返回 zero,false,nil
 	Get(ctx context.Context) (V, bool, error)
 
+	// GetDel 读取然后删除值
+	//
+	// 返回：值，是否存在，错误
+	// key 不存在时，会返回 zero,false,nil
+	GetDel(ctx context.Context) (V, bool, error)
+
 	// Incr 将字符串中的数字自增 1（类似 Redis 的 INCR 命令）
 	Incr(ctx context.Context) (int64, error)
 
 	// IncrBy 将字符串中的数字自增 increment
 	IncrBy(ctx context.Context, increment int64) (int64, error)
+
+	IncrByFloat(ctx context.Context, increment float64) (float64, error)
 
 	// Decr 将字符串中的数字自减 1（类似 Redis 的 DECR 命令）
 	Decr(ctx context.Context) (int64, error)

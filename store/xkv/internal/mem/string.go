@@ -23,6 +23,19 @@ func (m *String) Get(ctx context.Context) (string, bool, error) {
 	return str, found, err
 }
 
+func (m *String) GetDel(ctx context.Context) (value string, found bool, err error) {
+	err = m.withWrite(func(val string, has bool) error {
+		if !has {
+			return nil
+		}
+		found = true
+		value = val
+		m.Base.deleteNoLock(m.Key)
+		return nil
+	})
+	return value, found, err
+}
+
 func (m *String) withWrite(fn func(value string, found bool) error) error {
 	return m.Base.withLock(func() error {
 		value, found := m.Base.values[m.Key]
@@ -55,6 +68,25 @@ func (m *String) IncrBy(ctx context.Context, incr int64) (result int64, err erro
 		}
 		result = old + incr
 		m.Base.values[m.Key] = strconv.FormatInt(result, 10)
+		return nil
+	})
+	return result, err
+}
+
+func (m *String) IncrByFloat(ctx context.Context, incr float64) (result float64, err error) {
+	err = m.withWrite(func(value string, found bool) error {
+		if !found {
+			result = incr
+			m.Base.values[m.Key] = strconv.FormatFloat(result, 'g', -1, 64)
+			m.Base.keyTypes[m.Key] = internal.DataTypeString
+			return nil
+		}
+		old, err1 := strconv.ParseFloat(value, 64)
+		if err1 != nil {
+			return err1
+		}
+		result = old + incr
+		m.Base.values[m.Key] = strconv.FormatFloat(result, 'g', -1, 64)
 		return nil
 	})
 	return result, err

@@ -47,12 +47,24 @@ func (kvs *kvString) Get(ctx context.Context) (string, bool, error) {
 	return value, err == nil, err
 }
 
+func (kvs *kvString) GetDel(ctx context.Context) (string, bool, error) {
+	value, err := kvs.client.GetDel(ctx, kvs.key)
+	if errors.Is(err, xredis.ErrNil) {
+		return "", false, nil
+	}
+	return value, err == nil, err
+}
+
 func (kvs *kvString) Incr(ctx context.Context) (int64, error) {
 	return kvs.client.Incr(ctx, kvs.key)
 }
 
 func (kvs *kvString) IncrBy(ctx context.Context, incr int64) (int64, error) {
 	return kvs.client.IncrBy(ctx, kvs.key, incr)
+}
+
+func (kvs *kvString) IncrByFloat(ctx context.Context, incr float64) (float64, error) {
+	return kvs.client.IncrByFloat(ctx, kvs.key, incr)
 }
 
 func (kvs *kvString) Decr(ctx context.Context) (int64, error) {
