@@ -292,6 +292,26 @@ func (kvs *kvSet) SCard(ctx context.Context) (int64, error) {
 	return kvs.client.SCard(ctx, kvs.key)
 }
 
+func (kvs *kvSet) SPop(ctx context.Context) (string, bool, error) {
+	return kvs.client.SPop(ctx, kvs.key)
+}
+
+func (kvs *kvSet) SPopN(ctx context.Context, count int) ([]string, error) {
+	return kvs.client.SPopN(ctx, kvs.key, count)
+}
+
+func (kvs *kvSet) SRandMember(ctx context.Context) (string, bool, error) {
+	result, err := kvs.client.SRandMember(ctx, kvs.key, 1)
+	if err != nil || len(result) != 1 {
+		return "", false, err
+	}
+	return result[0], true, nil
+}
+
+func (kvs *kvSet) SRandMemberN(ctx context.Context, count int) ([]string, error) {
+	return kvs.client.SRandMember(ctx, kvs.key, count)
+}
+
 func (kv *RedisStore) ZSet(key string) xkv.ZSet[string] {
 	return &kvZSet{
 		client: kv.Client,
@@ -318,6 +338,11 @@ func (kvz *kvZSet) ZIncrBy(ctx context.Context, score float64, member string) (f
 
 func (kvz *kvZSet) ZCount(ctx context.Context, min, max string) (int64, error) {
 	num, err := kvz.client.ZCount(ctx, kvz.key, min, max)
+	return num, err
+}
+
+func (kvz *kvZSet) ZLen(ctx context.Context) (int64, error) {
+	num, err := kvz.client.ZCount(ctx, kvz.key, "-inf", "+inf")
 	return num, err
 }
 

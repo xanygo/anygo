@@ -128,6 +128,10 @@ func (z *ZSet) ZCount(ctx context.Context, min, max string) (num int64, err erro
 	return num, err
 }
 
+func (z *ZSet) ZLen(ctx context.Context) (num int64, err error) {
+	return z.ZCount(ctx, "-inf", "+inf")
+}
+
 func (z *ZSet) ZScore(ctx context.Context, member string) (score float64, found bool, err error) {
 	err = z.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
 		if !hasMeta {

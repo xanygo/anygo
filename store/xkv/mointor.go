@@ -309,6 +309,30 @@ func (ms *monitorSet[V]) SMIsMember(ctx context.Context, members []V) ([]bool, e
 	return result, err
 }
 
+func (ms *monitorSet[V]) SPop(ctx context.Context) (V, bool, error) {
+	result, ok, err := ms.store.SPop(ctx)
+	ms.monitor.doAfterDelete(ctx, ms.key, err)
+	return result, ok, err
+}
+
+func (ms *monitorSet[V]) SPopN(ctx context.Context, count int) ([]V, error) {
+	result, err := ms.store.SPopN(ctx, count)
+	ms.monitor.doAfterDelete(ctx, ms.key, err)
+	return result, err
+}
+
+func (ms *monitorSet[V]) SRandMember(ctx context.Context) (V, bool, error) {
+	result, ok, err := ms.store.SRandMember(ctx)
+	ms.monitor.doAfterDelete(ctx, ms.key, err)
+	return result, ok, err
+}
+
+func (ms *monitorSet[V]) SRandMemberN(ctx context.Context, count int) ([]V, error) {
+	result, err := ms.store.SRandMemberN(ctx, count)
+	ms.monitor.doAfterDelete(ctx, ms.key, err)
+	return result, err
+}
+
 func (m *Monitor[V]) ZSet(key string) ZSet[V] {
 	return &monitorZSet[V]{
 		store:   m.Store.ZSet(key),
@@ -357,6 +381,12 @@ func (mz *monitorZSet[V]) ZRem(ctx context.Context, members ...V) error {
 
 func (mz *monitorZSet[V]) ZCount(ctx context.Context, min, max string) (int64, error) {
 	num, err := mz.store.ZCount(ctx, min, max)
+	mz.monitor.doAfterRead(ctx, mz.key, err)
+	return num, err
+}
+
+func (mz *monitorZSet[V]) ZLen(ctx context.Context) (int64, error) {
+	num, err := mz.store.ZLen(ctx)
 	mz.monitor.doAfterRead(ctx, mz.key, err)
 	return num, err
 }

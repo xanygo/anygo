@@ -193,6 +193,10 @@ func (m *ZSet) ZCount(ctx context.Context, min, max string) (num int64, err erro
 	return num, err
 }
 
+func (m *ZSet) ZLen(ctx context.Context) (num int64, err error) {
+	return m.ZCount(ctx, "-inf", "+inf")
+}
+
 func (m *ZSet) ZRange(ctx context.Context, fn func(member string, score float64) bool) error {
 	var value *zsetValue
 	err := m.withLocked(func(zv *zsetValue) (*zsetValue, operate, error) {

@@ -198,6 +198,41 @@ func PopTailN[S ~[]E, E any](s S, n int) (new S, values S) {
 	return new, values
 }
 
+// PopRand 从 slice 中随机弹出一个元素
+func PopRand[S ~[]E, E any](s S) (new S, value E, has bool) {
+	if len(s) == 0 {
+		return s, value, false
+	}
+	index := rand.IntN(len(s))
+	value = s[index]
+	new = slices.Delete(s, index, index+1)
+	return new, value, true
+}
+
+// PopRandN  从 slice 中随机弹出最多 N 个元素
+func PopRandN[S ~[]E, E any](s S, n int) (new S, values S) {
+	if len(s) == 0 || n == 0 {
+		return s, values
+	}
+	if n >= len(s) {
+		return new, s
+	}
+
+	new = slices.Clone(s)
+	values = make(S, 0, n)
+
+	// 随机选择 n 个元素放到末尾
+	for i := 0; i < n; i++ {
+		idx := i + rand.IntN(len(new)-i)
+		new[i], new[idx] = new[idx], new[i]
+		values = append(values, new[i])
+	}
+
+	// 剩余元素
+	new = new[n:]
+	return new, values
+}
+
 // JoinFunc 将 slice 使用特定的 format 方法转换为 string ，然后使用 sep 链接为字符串
 func JoinFunc[E any](arr []E, format func(val E) string, sep string) string {
 	if len(arr) == 0 {
@@ -381,6 +416,30 @@ func Rand[S ~[]E, E any](s S) (e E) {
 	}
 	n := rand.IntN(len(s))
 	return s[n]
+}
+
+// RandN 随机返回最多 N 个，会返回一个全新的 slice
+func RandN[S ~[]E, E any](s S, n int) S {
+	if len(s) == 0 || n <= 0 {
+		return nil
+	}
+
+	if n >= len(s) {
+		return slices.Clone(s)
+	}
+
+	values := make(S, n)
+	buf := make(S, len(s))
+	copy(buf, s)
+
+	for i := 0; i < n; i++ {
+		idx := i + rand.IntN(len(buf)-i)
+
+		buf[i], buf[idx] = buf[idx], buf[i]
+		values[i] = buf[i]
+	}
+
+	return values
 }
 
 func Append[E any](arr []any, items ...E) []any {

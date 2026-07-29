@@ -545,6 +545,56 @@ func checkSet(t *testing.T, kvs xkv.StringStorage) {
 		xt.NoError(t, err)
 		xt.Equal(t, oks, []bool{true, true, false})
 	})
+
+	t.Run("set3-pop", func(t *testing.T) {
+		se := kvs.Set("t2-set3")
+		members := []string{"m1", "m2", "m3", "m4"}
+		num, err := se.SAdd(ctx, members...)
+		xt.NoError(t, err)
+		xt.Equal(t, num, 4)
+
+		one, found, err := se.SPop(ctx)
+		xt.NoError(t, err)
+		xt.True(t, found)
+		xt.SliceContains(t, members, one)
+
+		num, err = se.SCard(ctx)
+		xt.NoError(t, err)
+		xt.Equal(t, num, 3)
+
+		many, err := se.SPopN(ctx, 2)
+		xt.NoError(t, err)
+		xt.SliceContains(t, members, many...)
+
+		num, err = se.SCard(ctx)
+		xt.NoError(t, err)
+		xt.Equal(t, num, 1)
+	})
+
+	t.Run("set4-rand", func(t *testing.T) {
+		se := kvs.Set("t2-set4")
+		members := []string{"m1", "m2", "m3", "m4"}
+		num, err := se.SAdd(ctx, members...)
+		xt.NoError(t, err)
+		xt.Equal(t, num, 4)
+
+		one, found, err := se.SRandMember(ctx)
+		xt.NoError(t, err)
+		xt.True(t, found)
+		xt.SliceContains(t, members, one)
+
+		num, err = se.SCard(ctx)
+		xt.NoError(t, err)
+		xt.Equal(t, num, 4)
+
+		many, err := se.SRandMemberN(ctx, 2)
+		xt.NoError(t, err)
+		xt.SliceContains(t, members, many...)
+
+		num, err = se.SCard(ctx)
+		xt.NoError(t, err)
+		xt.Equal(t, num, 4)
+	})
 }
 
 func checkZSet(t *testing.T, kvs xkv.StringStorage) {

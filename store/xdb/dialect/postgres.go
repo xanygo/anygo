@@ -24,6 +24,10 @@ func (Postgres) Name() string {
 	return "postgres"
 }
 
+func (Postgres) RandomOrder() string {
+	return "RANDOM()"
+}
+
 // BindVar 返回 Postgres 的占位符 `$1`, `$2`, ...
 func (Postgres) BindVar(i int) string {
 	return fmt.Sprintf("$%d", i)
@@ -47,10 +51,12 @@ func (d Postgres) QuoteQualifiedIdentifier(parts ...string) string {
 // LimitOffsetClause 生成 LIMIT/OFFSET 子句
 func (Postgres) LimitOffsetClause(limit, offset int) string {
 	switch {
-	case limit >= 0 && offset > 0:
+	case limit > 0 && offset > 0:
 		return fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
-	case limit >= 0:
+	case limit > 0:
 		return fmt.Sprintf("LIMIT %d", limit)
+	case limit == 0 && offset == 0:
+		return ""
 	case offset > 0:
 		// PostgreSQL 不允许 LIMIT ALL OFFSET ?，需明确写 ALL
 		return fmt.Sprintf("LIMIT ALL OFFSET %d", offset)

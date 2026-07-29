@@ -396,6 +396,58 @@ func (t transSet[V]) SMIsMember(ctx context.Context, members []V) ([]bool, error
 	return t.ss.SMIsMember(ctx, ms)
 }
 
+func (t transSet[V]) SPop(ctx context.Context) (v V, found bool, err error) {
+	var str string
+	str, found, err = t.ss.SPop(ctx)
+	if err != nil || !found {
+		return v, false, err
+	}
+	err = xcodec.DecodeFromString(t.codec, str, &v)
+	return v, err == nil, err
+}
+
+func (t transSet[V]) SPopN(ctx context.Context, count int) ([]V, error) {
+	list, err := t.ss.SPopN(ctx, count)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]V, len(list))
+	for i, str := range list {
+		var v V
+		if err = xcodec.DecodeFromString(t.codec, str, &v); err != nil {
+			return nil, err
+		}
+		result[i] = v
+	}
+	return result, nil
+}
+
+func (t transSet[V]) SRandMember(ctx context.Context) (v V, found bool, err error) {
+	var str string
+	str, found, err = t.ss.SRandMember(ctx)
+	if err != nil || !found {
+		return v, false, err
+	}
+	err = xcodec.DecodeFromString(t.codec, str, &v)
+	return v, err == nil, err
+}
+
+func (t transSet[V]) SRandMemberN(ctx context.Context, count int) ([]V, error) {
+	list, err := t.ss.SRandMemberN(ctx, count)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]V, len(list))
+	for i, str := range list {
+		var v V
+		if err = xcodec.DecodeFromString(t.codec, str, &v); err != nil {
+			return nil, err
+		}
+		result[i] = v
+	}
+	return result, nil
+}
+
 func (tr Transformer[V]) ZSet(key string) ZSet[V] {
 	return AsZSet[V](tr.Storage, tr.Codec, key)
 }
@@ -464,6 +516,10 @@ func (t transZSet[V]) ZRem(ctx context.Context, members ...V) error {
 
 func (t transZSet[V]) ZCount(ctx context.Context, min, max string) (int64, error) {
 	return t.ss.ZCount(ctx, min, max)
+}
+
+func (t transZSet[V]) ZLen(ctx context.Context) (int64, error) {
+	return t.ss.ZLen(ctx)
 }
 
 func (t transZSet[V]) ZRank(ctx context.Context, member V) (int64, float64, error) {

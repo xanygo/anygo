@@ -22,6 +22,10 @@ func (MySQL) Name() string {
 	return "mysql"
 }
 
+func (MySQL) RandomOrder() string {
+	return "RAND()"
+}
+
 // BindVar 返回绑定变量占位符。
 // MySQL 使用 "?" 占位符，忽略序号。
 func (MySQL) BindVar(i int) string {
@@ -52,13 +56,13 @@ func (d MySQL) QuoteQualifiedIdentifier(parts ...string) string {
 //
 // 通常推荐使用前者（兼容性更好）
 func (MySQL) LimitOffsetClause(limit, offset int) string {
-	if limit < 0 && offset <= 0 {
+	if limit <= 0 && offset <= 0 {
 		return ""
 	}
 	switch {
-	case limit >= 0 && offset > 0:
+	case limit > 0 && offset > 0:
 		return fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
-	case limit >= 0:
+	case limit > 0:
 		return fmt.Sprintf("LIMIT %d", limit)
 	default:
 		// limit < 0, offset > 0 不常见

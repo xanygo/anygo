@@ -2,6 +2,7 @@ package mem
 
 import (
 	"context"
+	"math/rand/v2"
 	"slices"
 
 	"github.com/xanygo/anygo/ds/xslice"
@@ -96,4 +97,59 @@ func (m *Set) SMIsMember(ctx context.Context, members []string) (ok []bool, err 
 		return values, opSkip, nil
 	})
 	return ok, err
+}
+
+func (m *Set) SPop(ctx context.Context) (v string, found bool, err error) {
+	err = m.withLocked(func(values []string) ([]string, operate, error) {
+		if len(values) == 0 {
+			return nil, opSkip, nil
+		}
+		newValue, one, _ := xslice.PopRand(values)
+		v = one
+		found = true
+		return newValue, opWrite, nil
+	})
+	return v, found, err
+}
+
+func (m *Set) SPopN(ctx context.Context, count int) (result []string, err error) {
+	if count == 0 {
+		return nil, nil
+	}
+	err = m.withLocked(func(values []string) ([]string, operate, error) {
+		if len(values) == 0 {
+			return nil, opSkip, nil
+		}
+		values, result = xslice.PopRandN(values, count)
+		return values, opWrite, nil
+	})
+	return result, err
+}
+
+func (m *Set) SRandMember(ctx context.Context) (v string, found bool, err error) {
+	err = m.withLocked(func(values []string) ([]string, operate, error) {
+		if len(values) == 0 {
+			return nil, opSkip, nil
+		}
+		index := rand.IntN(len(values))
+		v = values[index]
+		found = true
+		return values, opSkip, nil
+	})
+	return v, found, err
+}
+
+func (m *Set) SRandMemberN(ctx context.Context, count int) (result []string, err error) {
+	err = m.withLocked(func(values []string) ([]string, operate, error) {
+		if len(values) == 0 {
+			return nil, opSkip, nil
+		}
+		if count >= len(values) {
+			result = slices.Clone(values)
+			return values, opSkip, nil
+		}
+		result = xslice.RandN(values, count)
+		return values, opSkip, nil
+	})
+	return result, err
 }

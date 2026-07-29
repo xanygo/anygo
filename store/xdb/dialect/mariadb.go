@@ -18,6 +18,10 @@ var _ dbtype.Dialect = MariaDB{}
 // MariaDB 实现 Dialect 接口
 type MariaDB struct{}
 
+func (d MariaDB) RandomOrder() string {
+	return "RAND()"
+}
+
 // Name 返回方言名称
 func (MariaDB) Name() string {
 	return "mariadb"

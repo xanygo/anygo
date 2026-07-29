@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"time"
 
 	"github.com/xanygo/anygo/ds/xslice"
@@ -193,4 +194,134 @@ func (s *Set) SMIsMember(ctx context.Context, members []string) (oks []bool, err
 		return err1
 	})
 	return oks, err
+}
+
+func (s *Set) SPop(ctx context.Context) (v string, found bool, err error) {
+	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+		if !hasMeta {
+			return nil
+		}
+		orm := xdb.NewMode[SetModel](tx)
+		orm.Table(s.GetTable())
+		total, err1 := orm.Count(ctx, "*", "k=?", s.Key)
+		if err1 != nil {
+			return err1
+		}
+		if total < 1 {
+			return nil
+		}
+		orm.Limit(1).Offset(rand.IntN(int(total))).SelectFields("m")
+		rows, err2 := orm.List(ctx, "k=?", s.Key)
+		if err2 != nil || len(rows) == 0 {
+			return err2
+		}
+		member := rows[0].Member
+		_, err3 := orm.Delete(ctx, "k=? and m=?", s.Key, member)
+		if err3 != nil {
+			return err3
+		}
+		found = true
+		v = member
+		return nil
+	})
+	return v, found, err
+}
+
+func (s *Set) SPopN(ctx context.Context, count int) (result []string, err error) {
+	if count <= 0 {
+		return nil, nil
+	}
+	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+		if !hasMeta {
+			return nil
+		}
+		orm := xdb.NewMode[SetModel](tx)
+		orm.Table(s.GetTable())
+		total, err1 := orm.Count(ctx, "*", "k=?", s.Key)
+		if err1 != nil {
+			return err1
+		}
+		if total < 1 {
+			return nil
+		}
+		orm.Limit(count).SelectFields("m")
+		rows, err2 := orm.List(ctx, "k=? ORDER BY X:RAND()", s.Key)
+		if err2 != nil || len(rows) == 0 {
+			return err2
+		}
+		members := make([]string, 0, len(rows))
+		for _, row := range rows {
+			members = append(members, row.Member)
+		}
+		cond := xdb.Condition{}
+		cond.And("k=?", s.Key)
+		cond.AndInFmt("m in (%s)", xslice.ToAnys(members))
+		where, args, err3 := cond.Build()
+		if err3 != nil {
+			return err3
+		}
+		_, err4 := orm.Delete(ctx, where, args...)
+		if err4 == nil {
+			result = members
+		}
+		return err4
+	})
+	return result, err
+}
+
+func (s *Set) SRandMember(ctx context.Context) (v string, found bool, err error) {
+	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+		if !hasMeta {
+			return nil
+		}
+		orm := xdb.NewMode[SetModel](tx)
+		orm.Table(s.GetTable())
+		total, err1 := orm.Count(ctx, "*", "k=?", s.Key)
+		if err1 != nil {
+			return err1
+		}
+		if total < 1 {
+			return nil
+		}
+		orm.Limit(1).Offset(rand.IntN(int(total))).SelectFields("m")
+		rows, err2 := orm.List(ctx, "k=?", s.Key)
+		if err2 != nil || len(rows) == 0 {
+			return err2
+		}
+		found = true
+		v = rows[0].Member
+		return nil
+	})
+	return v, found, err
+}
+
+func (s *Set) SRandMemberN(ctx context.Context, count int) (result []string, err error) {
+	if count <= 0 {
+		return nil, nil
+	}
+	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+		if !hasMeta {
+			return nil
+		}
+		orm := xdb.NewMode[SetModel](tx)
+		orm.Table(s.GetTable())
+		total, err1 := orm.Count(ctx, "*", "k=?", s.Key)
+		if err1 != nil {
+			return err1
+		}
+		if total < 1 {
+			return nil
+		}
+		orm.Limit(count).SelectFields("m")
+		rows, err2 := orm.List(ctx, "k=? ORDER BY X:RAND()", s.Key)
+		if err2 != nil || len(rows) == 0 {
+			return err2
+		}
+		result = make([]string, 0, len(rows))
+		for _, row := range rows {
+			result = append(result, row.Member)
+		}
+		return nil
+	})
+	return result, err
 }

@@ -12,28 +12,32 @@ import (
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
-var _ dbtype.Dialect = (*SQLServerDialect)(nil)
+var _ dbtype.Dialect = (*SQLServer)(nil)
 
-type SQLServerDialect struct{}
+type SQLServer struct{}
 
 // Name 返回方言名称
-func (SQLServerDialect) Name() string {
+func (SQLServer) Name() string {
 	return "sqlserver"
 }
 
+func (SQLServer) RandomOrder() string {
+	return "NEWID()"
+}
+
 // BindVar 返回 SQL Server 的占位符：@p1, @p2, ...
-func (SQLServerDialect) BindVar(i int) string {
+func (SQLServer) BindVar(i int) string {
 	return fmt.Sprintf("@p%d", i)
 }
 
 // QuoteIdentifier 使用方括号引用标识符
-func (SQLServerDialect) QuoteIdentifier(s string) string {
+func (SQLServer) QuoteIdentifier(s string) string {
 	safe := strings.ReplaceAll(s, "]", "]]")
 	return fmt.Sprintf("[%s]", safe)
 }
 
 // QuoteQualifiedIdentifier 支持 schema.table
-func (d SQLServerDialect) QuoteQualifiedIdentifier(parts ...string) string {
+func (d SQLServer) QuoteQualifiedIdentifier(parts ...string) string {
 	quoted := make([]string, len(parts))
 	for i, p := range parts {
 		quoted[i] = d.QuoteIdentifier(p)
@@ -42,8 +46,8 @@ func (d SQLServerDialect) QuoteQualifiedIdentifier(parts ...string) string {
 }
 
 // LimitOffsetClause 生成 OFFSET/FETCH 子句
-func (SQLServerDialect) LimitOffsetClause(limit, offset int) string {
-	if limit < 0 && offset <= 0 {
+func (SQLServer) LimitOffsetClause(limit, offset int) string {
+	if limit <= 0 && offset <= 0 {
 		return ""
 	}
 	if limit < 0 {
@@ -56,7 +60,7 @@ func (SQLServerDialect) LimitOffsetClause(limit, offset int) string {
 }
 
 // PlaceholderList 返回占位符列表
-func (d SQLServerDialect) PlaceholderList(n, start int) string {
+func (d SQLServer) PlaceholderList(n, start int) string {
 	if n <= 0 {
 		return ""
 	}
@@ -68,16 +72,16 @@ func (d SQLServerDialect) PlaceholderList(n, start int) string {
 }
 
 // SupportReturning SQL Server 不直接支持 RETURNING
-func (SQLServerDialect) SupportReturning() bool {
+func (SQLServer) SupportReturning() bool {
 	return false
 }
 
-func (SQLServerDialect) SupportLastInsertId() bool {
+func (SQLServer) SupportLastInsertId() bool {
 	return false
 }
 
 // ReturningClause SQL Server 用 OUTPUT 子句实现
-func (SQLServerDialect) ReturningClause(columns ...string) string {
+func (SQLServer) ReturningClause(columns ...string) string {
 	if len(columns) == 0 {
 		return "OUTPUT inserted.*"
 	}
@@ -88,7 +92,7 @@ func (SQLServerDialect) ReturningClause(columns ...string) string {
 	return "OUTPUT " + strings.Join(quoted, ", ")
 }
 
-var _ dbtype.UpsertDialect = SQLServerDialect{}
+var _ dbtype.UpsertDialect = SQLServer{}
 
 // UpsertSQL 生成 SQL Server MERGE UPSERT
 // table: 表名
@@ -98,7 +102,7 @@ var _ dbtype.UpsertDialect = SQLServerDialect{}
 // updateCols: 需要更新的字段
 // args: 对应参数值
 // 返回：SQL string + 参数切片
-func (d SQLServerDialect) UpsertSQL(table string, count int, cols, conflictCols, updateCols []string, returningCols []string) string {
+func (d SQLServer) UpsertSQL(table string, count int, cols, conflictCols, updateCols []string, returningCols []string) string {
 	valPlaceholders := make([]string, len(cols))
 	for c := range count {
 		tmp := make([]string, len(cols))
@@ -173,10 +177,10 @@ ON %s`,
 	return sqlStr
 }
 
-var _ dbtype.SchemaDialect = SQLServerDialect{}
+var _ dbtype.SchemaDialect = SQLServer{}
 
 // ColumnType 映射通用类型到 SQL Server 类型
-func (SQLServerDialect) ColumnType(kind dbtype.Kind, size int) string {
+func (SQLServer) ColumnType(kind dbtype.Kind, size int) string {
 	switch kind {
 	case dbtype.KindString:
 		if size <= 0 {
@@ -213,12 +217,12 @@ func (SQLServerDialect) ColumnType(kind dbtype.Kind, size int) string {
 	}
 }
 
-func (d SQLServerDialect) CreateTableIfNotExists(table string) string {
+func (d SQLServer) CreateTableIfNotExists(table string) string {
 	return "IF NOT EXISTS (SELECT * FROM sysobjects where id = object_id('" +
 		table + "') and OBJECTPROPERTY(id, 'IsUserTable') = 1 ) CREATE TABLE " + d.QuoteIdentifier(table)
 }
 
-func (d SQLServerDialect) ColumnString(fs dbtype.ColumnSchema) string {
+func (d SQLServer) ColumnString(fs dbtype.ColumnSchema) string {
 	var sb strings.Builder
 	sb.WriteString(d.QuoteIdentifier(fs.Name))
 	sb.WriteString(" ")
@@ -253,20 +257,20 @@ func (d SQLServerDialect) ColumnString(fs dbtype.ColumnSchema) string {
 	return sb.String()
 }
 
-func (d SQLServerDialect) UniqIndex(name string, columns []string) string {
+func (d SQLServer) UniqIndex(name string, columns []string) string {
 	return fmt.Sprintf("CONSTRAINT %s UNIQUE(%s)", name, strings.Join(columns, ","))
 }
 
-func (d SQLServerDialect) AlterCreateIndex(indexType string, name string, table string, columns []string) string {
+func (d SQLServer) AlterCreateIndex(indexType string, name string, table string, columns []string) string {
 	// 不支持 IF NOT EXISTS
 	name += "_" + table // 避免不同表的索引名称重复
 	return fmt.Sprintf("CREATE %s %s on %s(%s)",
 		indexType, d.QuoteIdentifier(name), table, strings.Join(columns, ","))
 }
 
-var _ dbtype.MigrateDialect = SQLServerDialect{}
+var _ dbtype.MigrateDialect = SQLServer{}
 
-func (d SQLServerDialect) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.TableSchema) error {
+func (d SQLServer) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.TableSchema) error {
 	sqlStr := createTableSQL(schema, d, d)
 	_, err := db.ExecContext(ctx, sqlStr)
 	if err != nil {

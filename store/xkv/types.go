@@ -135,6 +135,20 @@ type Set[V any] interface {
 	// SRem 从集合中移除一个成员（类似 Redis 的 SREM 命令）
 	SRem(ctx context.Context, members ...V) error
 
+	// SPop 从集合中随机弹出（返回并删除）一个元素
+	// 返回值：值，成功状态，错误
+	SPop(ctx context.Context) (V, bool, error)
+
+	// SPopN 从集合中随机弹出（返回并删除）最多 N 个元素
+	SPopN(ctx context.Context, count int) ([]V, error)
+
+	// SRandMember 从集合中随机返回一个元素
+	// 返回值：值，成功状态，错误
+	SRandMember(ctx context.Context) (V, bool, error)
+
+	// SRandMemberN 从集合中随机返回最多 N 个元素
+	SRandMemberN(ctx context.Context, count int) ([]V, error)
+
 	// SRange 遍历
 	SRange(ctx context.Context, fn func(member V) bool) error
 
@@ -176,6 +190,9 @@ type ZSet[V any] interface {
 	// min: 最小分数，如 "2"表示 >=2，"(2" 表示 >2，"-inf" 表示无穷小
 	// max: 最大分数，如 "2"表示 <=2，"(2" 表示 <2，"+inf" 表示无穷大
 	ZCount(ctx context.Context, min string, max string) (int64, error)
+
+	// ZLen 统计元素个数,等价于  ZCount(ctx,"-inf","+inf")
+	ZLen(ctx context.Context) (int64, error)
 
 	// ZRem 移除有序集合中的指定成员（类似 Redis 的 ZREM 命令）
 	ZRem(ctx context.Context, members ...V) error

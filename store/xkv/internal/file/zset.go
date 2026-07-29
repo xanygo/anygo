@@ -130,6 +130,10 @@ func (zs *ZSet) ZCount(ctx context.Context, min, max string) (num int64, err err
 	return num, err
 }
 
+func (zs *ZSet) ZLen(ctx context.Context) (num int64, err error) {
+	return zs.ZCount(ctx, "-inf", "+inf")
+}
+
 func (zs *ZSet) ZRank(ctx context.Context, member string) (index int64, score float64, err error) {
 	index = -1
 	var idx int64

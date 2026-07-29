@@ -34,3 +34,21 @@ func (n Set[V]) SMIsMember(ctx context.Context, members []V) ([]bool, error) {
 	result := make([]bool, len(members))
 	return result, nil
 }
+
+func (n Set[V]) SPop(ctx context.Context) (V, bool, error) {
+	var v V
+	return v, false, nil
+}
+
+func (n Set[V]) SPopN(ctx context.Context, count int) ([]V, error) {
+	return nil, nil
+}
+
+func (n Set[V]) SRandMember(ctx context.Context) (V, bool, error) {
+	var v V
+	return v, false, nil
+}
+
+func (n Set[V]) SRandMemberN(ctx context.Context, count int) ([]V, error) {
+	return nil, nil
+}

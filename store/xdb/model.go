@@ -36,7 +36,9 @@ func NewMode[T any](client HasDriver) *Model[T] {
 
 // Model 轻量 ORM 实现，已实现数据模型常用的增删改查功能
 //
-// 使用此 Model 的 where 条件统一使用 ? 占位符，在执行前，会将 ? 替换为方言的占位符
+// 使用此 Model 的 where 条件:
+//   - 统一使用 ? 占位符，在执行前，会将 ? 替换为方言的占位符
+//   - where 中可以写 order by X:RAND(), 让结果随机排序，字符串 “X:RAND()” 会被替换为方言
 type Model[T any] struct {
 	dialect dbtype.Dialect
 	client  HasDriver
@@ -565,11 +567,13 @@ func (m *Model[T]) ListIter(ctx context.Context, where string, args ...any) iter
 		}
 
 		sqlStr := fmt.Sprintf(
-			"SELECT %s FROM %s %s",
+			"SELECT %s FROM %s %s %s",
 			field,
 			m.dialect.QuoteIdentifier(m.table),
 			m.connectWhere(where),
+			m.dialect.LimitOffsetClause(m.limit, m.offset),
 		)
+
 		db, ok := m.client.(Queryer)
 		if !ok {
 			err = fmt.Errorf("client (%T) is not Queryer", m.client)
@@ -591,23 +595,31 @@ func (m *Model[T]) connectWhere(where string) string {
 	return " where " + where
 }
 
+const randFn = `X:RAND()`
+
 func (m *Model[T]) buildWhere(indexStart int, where string, args []any) (string, []any, error) {
-	if m.dialect.BindVar(0) == "?" {
-		return where, args, nil
+	// 将 ? 替换为方言的占位符，如 $1, $2 ...
+	if m.dialect.BindVar(0) != "?" {
+		var sb strings.Builder
+		idx := 1
+		for i := 0; i < len(where); i++ {
+			if where[i] == '?' {
+				sb.WriteString(m.dialect.BindVar(indexStart + idx))
+				idx++
+			} else {
+				sb.WriteByte(where[i])
+			}
+		}
+		where = sb.String()
 	}
 
-	// 将 ? 替换为方言的占位符，如 $1, $2 ...
-	var sb strings.Builder
-	idx := 1
-	for i := 0; i < len(where); i++ {
-		if where[i] == '?' {
-			sb.WriteString(m.dialect.BindVar(indexStart + idx))
-			idx++
-		} else {
-			sb.WriteByte(where[i])
+	// 将条件中的 RAND() 换成方言
+	if strings.Contains(where, randFn) {
+		if dr := m.dialect.RandomOrder(); dr != randFn {
+			where = strings.ReplaceAll(where, randFn, dr)
 		}
 	}
-	return sb.String(), args, nil
+	return where, args, nil
 }
 
 func (m *Model[T]) Count(ctx context.Context, field string, where string, args ...any) (num int64, err error) {

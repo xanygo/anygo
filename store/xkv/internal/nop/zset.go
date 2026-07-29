@@ -24,6 +24,10 @@ func (n ZSet[V]) ZCount(ctx context.Context, min, max string) (int64, error) {
 	return 0, nil
 }
 
+func (n ZSet[V]) ZLen(ctx context.Context) (int64, error) {
+	return 0, nil
+}
+
 func (n ZSet[V]) ZRem(ctx context.Context, members ...V) error {
 	return nil
 }

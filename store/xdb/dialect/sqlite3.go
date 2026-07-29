@@ -21,6 +21,10 @@ func (SQLite3) Name() string {
 	return "sqlite3"
 }
 
+func (SQLite3) RandomOrder() string {
+	return "RANDOM()"
+}
+
 // BindVar 返回占位符。
 // SQLite3 支持 "?"，也支持 "?NNN" 形式，但一般直接用 "?"。
 func (SQLite3) BindVar(i int) string {
@@ -47,13 +51,13 @@ func (d SQLite3) QuoteQualifiedIdentifier(parts ...string) string {
 // LimitOffsetClause 生成 LIMIT/OFFSET 子句。
 // SQLite3 支持标准写法 "LIMIT ? OFFSET ?"
 func (SQLite3) LimitOffsetClause(limit, offset int) string {
-	if limit < 0 && offset <= 0 {
+	if limit <= 0 && offset <= 0 {
 		return ""
 	}
 	switch {
-	case limit >= 0 && offset > 0:
+	case limit > 0 && offset > 0:
 		return fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
-	case limit >= 0:
+	case limit > 0:
 		return fmt.Sprintf("LIMIT %d", limit)
 	default:
 		// limit < 0, offset > 0 → “取所有剩余行”

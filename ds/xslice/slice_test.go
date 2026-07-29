@@ -5,6 +5,7 @@
 package xslice
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/xanygo/anygo/xt"
@@ -250,4 +251,48 @@ func TestAllContains(t *testing.T) {
 	miss, ok = AllContains([]string{"a", "b"}, []string{"c"})
 	xt.False(t, ok)
 	xt.Equal(t, miss, "c")
+}
+
+func TestPopRand(t *testing.T) {
+	l1 := []int{1, 2, 3, 4, 5}
+	t.Run("pop1", func(t *testing.T) {
+		var poped []int
+		ns := slices.Clone(l1)
+		for i := 0; i < 5; i++ {
+			var one int
+			var ok bool
+			ns, one, ok = PopRand(ns)
+			xt.True(t, ok)
+			xt.Len(t, ns, 4-i)
+			xt.SliceContains(t, l1, one)
+			poped = append(poped, one)
+		}
+		xt.Empty(t, ns)
+		xt.SliceSortEqual(t, l1, poped)
+	})
+}
+
+func TestPopRandN(t *testing.T) {
+	l1 := []int{1, 2, 3, 4, 5}
+	t.Run("pop1", func(t *testing.T) {
+		var poped []int
+		ns := slices.Clone(l1)
+		var vs []int
+		for i := 0; i < 2; i++ {
+			ns, vs = PopRandN(ns, 2)
+			xt.Len(t, ns, 3-i*2)
+			xt.Len(t, vs, 2)
+			xt.SliceContains(t, l1, vs...)
+			poped = append(poped, vs...)
+		}
+
+		ns, vs = PopRandN(ns, 2)
+		xt.Len(t, ns, 0)
+		xt.Len(t, vs, 1)
+		xt.SliceContains(t, l1, vs...)
+		poped = append(poped, vs...)
+
+		xt.Empty(t, ns)
+		xt.SliceSortEqual(t, l1, poped)
+	})
 }

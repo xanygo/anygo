@@ -43,6 +43,9 @@ type Dialect interface {
 
 	// SupportLastInsertId 是否支持 LastInsertId()
 	SupportLastInsertId() bool
+
+	// RandomOrder 随机排序算法
+	RandomOrder() string
 }
 
 // ReturningDialect 提供 RETURNING 子句生成（仅对支持的方言实现）

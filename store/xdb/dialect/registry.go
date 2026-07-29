@@ -39,5 +39,6 @@ func init() {
 	Register(Postgres{})
 	RegisterWithName("pgx", Postgres{})
 	Register(SQLite3{})
-	Register(SQLServerDialect{})
+	RegisterWithName("sqlite", SQLite3{})
+	Register(SQLServer{})
 }
