@@ -17,11 +17,11 @@ import (
 
 type ZSet struct {
 	Compact func()
-	Base
+	Base    *Base
 }
 
-func (f ZSet) ZAdd(ctx context.Context, score float64, member string) error {
-	if err := f.SaveMeta(internal.DataTypeZSet); err != nil {
+func (zs *ZSet) ZAdd(ctx context.Context, score float64, member string) error {
+	if err := zs.Base.SaveMeta(internal.DataTypeZSet); err != nil {
 		return err
 	}
 	m := fileZSetMember{
@@ -32,21 +32,21 @@ func (f ZSet) ZAdd(ctx context.Context, score float64, member string) error {
 	if err != nil {
 		return err
 	}
-	return f.WriteKVDataFile(f.Md5(member), string(bf))
+	return zs.Base.WriteKVDataFile(zs.Base.Md5(member), string(bf))
 }
 
-func (f ZSet) ZIncrBy(ctx context.Context, score float64, member string) (float64, error) {
-	old, _, err := f.ZScore(ctx, member)
+func (zs *ZSet) ZIncrBy(ctx context.Context, score float64, member string) (float64, error) {
+	old, _, err := zs.ZScore(ctx, member)
 	if err != nil {
 		return 0, err
 	}
 	newScore := old + score
-	err = f.ZAdd(ctx, newScore, member)
+	err = zs.ZAdd(ctx, newScore, member)
 	return newScore, err
 }
 
-func (f ZSet) ZScore(ctx context.Context, member string) (float64, bool, error) {
-	str, found, err := f.CheckReadKVDataFile(f.Md5(member), internal.DataTypeZSet, false)
+func (zs *ZSet) ZScore(ctx context.Context, member string) (float64, bool, error) {
+	str, found, err := zs.Base.CheckReadKVDataFile(zs.Base.Md5(member), internal.DataTypeZSet, false)
 	if err != nil || !found {
 		return 0, false, err
 	}
@@ -56,9 +56,9 @@ func (f ZSet) ZScore(ctx context.Context, member string) (float64, bool, error) 
 	return m.Score, err == nil, err
 }
 
-func (f ZSet) rangeFiles(ctx context.Context, fn func(item *fileZSetMember) bool) error {
-	return f.RangeKVFiles(ctx, internal.DataTypeZSet, func(path string, d fs.DirEntry) error {
-		bf, err := os.ReadFile(filepath.Join(f.Dir, d.Name()))
+func (zs *ZSet) rangeFiles(ctx context.Context, fn func(item *fileZSetMember) bool) error {
+	return zs.Base.RangeKVFiles(ctx, internal.DataTypeZSet, func(path string, d fs.DirEntry) error {
+		bf, err := os.ReadFile(filepath.Join(zs.Base.Dir, d.Name()))
 		if err != nil {
 			return err
 		}
@@ -75,9 +75,9 @@ func (f ZSet) rangeFiles(ctx context.Context, fn func(item *fileZSetMember) bool
 	})
 }
 
-func (f ZSet) ZRange(ctx context.Context, fn func(member string, score float64) bool) error {
+func (zs *ZSet) ZRange(ctx context.Context, fn func(member string, score float64) bool) error {
 	var list []*fileZSetMember
-	err := f.rangeFiles(ctx, func(item *fileZSetMember) bool {
+	err := zs.rangeFiles(ctx, func(item *fileZSetMember) bool {
 		list = append(list, item)
 		return true
 	})
@@ -95,21 +95,21 @@ func (f ZSet) ZRange(ctx context.Context, fn func(member string, score float64) 
 	return err
 }
 
-func (f ZSet) ZRem(ctx context.Context, members ...string) error {
+func (zs *ZSet) ZRem(ctx context.Context, members ...string) error {
 	var errs []error
 	for _, member := range members {
-		if err := f.DeleteKVDataFile(f.Md5(member)); err != nil {
+		if err := zs.Base.DeleteKVDataFile(zs.Base.Md5(member)); err != nil {
 			errs = append(errs, err)
 		}
 	}
-	go safely.RunVoid(f.Compact)
+	go safely.RunVoid(zs.Compact)
 	if len(errs) == 0 {
 		return nil
 	}
 	return errors.Join(errs...)
 }
 
-func (f ZSet) ZCount(ctx context.Context, min, max string) (num int64, err error) {
+func (zs *ZSet) ZCount(ctx context.Context, min, max string) (num int64, err error) {
 	minBound := &xcmp.Bound[float64]{}
 	if err = minBound.ParserMin(min); err != nil {
 		return 0, err
@@ -120,7 +120,7 @@ func (f ZSet) ZCount(ctx context.Context, min, max string) (num int64, err error
 		return 0, err
 	}
 
-	err = f.rangeFiles(ctx, func(item *fileZSetMember) bool {
+	err = zs.rangeFiles(ctx, func(item *fileZSetMember) bool {
 		match := minBound.MatchMin(item.Score) && maxBound.MatchMax(item.Score)
 		if match {
 			num++
@@ -130,10 +130,10 @@ func (f ZSet) ZCount(ctx context.Context, min, max string) (num int64, err error
 	return num, err
 }
 
-func (f ZSet) ZRank(ctx context.Context, member string) (index int64, score float64, err error) {
+func (zs *ZSet) ZRank(ctx context.Context, member string) (index int64, score float64, err error) {
 	index = -1
 	var idx int64
-	err = f.ZRange(ctx, func(name string, sc float64) bool {
+	err = zs.ZRange(ctx, func(name string, sc float64) bool {
 		if member == name {
 			index = idx
 			score = sc

@@ -546,6 +546,26 @@ func checkSet(t xt.TB, kvs xkv.StringStorage) {
 		xt.NoError(t, err)
 		xt.Equal(t, gots, []string{"m1"})
 	})
+
+	t.Run("set2", func(t xt.TB) {
+		se := kvs.Set("t2-set2")
+
+		ok, err := se.SIsMember(ctx, "m1")
+		xt.NoError(t, err)
+		xt.False(t, ok)
+
+		num, err := se.SAdd(ctx, "m1", "m2")
+		xt.NoError(t, err)
+		xt.Equal(t, num, 2)
+
+		ok, err = se.SIsMember(ctx, "m1")
+		xt.NoError(t, err)
+		xt.True(t, ok)
+
+		oks, err := se.SMIsMember(ctx, []string{"m1", "m2", "m3-not-found"})
+		xt.NoError(t, err)
+		xt.Equal(t, oks, []bool{true, true, false})
+	})
 }
 
 func checkZSet(t xt.TB, kvs xkv.StringStorage) {

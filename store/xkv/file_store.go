@@ -113,7 +113,7 @@ func (f *FileStore) getDataDir(key string) string {
 
 func (f *FileStore) String(key string) String[string] {
 	return &file.String{
-		Base: file.Base{
+		Base: &file.Base{
 			Key: key,
 			Dir: f.getDataDir(key),
 		},
@@ -123,7 +123,7 @@ func (f *FileStore) String(key string) String[string] {
 func (f *FileStore) List(key string) List[string] {
 	return &file.List{
 		Compact: f.autoCompact,
-		Base: file.Base{
+		Base: &file.Base{
 			Key: key,
 			Dir: f.getDataDir(key),
 		},
@@ -133,7 +133,7 @@ func (f *FileStore) List(key string) List[string] {
 func (f *FileStore) Hash(key string) Hash[string] {
 	return &file.Hash{
 		Compact: f.autoCompact,
-		Base: file.Base{
+		Base: &file.Base{
 			Key: key,
 			Dir: f.getDataDir(key),
 		},
@@ -143,7 +143,7 @@ func (f *FileStore) Hash(key string) Hash[string] {
 func (f *FileStore) Set(key string) Set[string] {
 	return &file.Set{
 		Compact: f.autoCompact,
-		Base: file.Base{
+		Base: &file.Base{
 			Key: key,
 			Dir: f.getDataDir(key),
 		},
@@ -153,7 +153,7 @@ func (f *FileStore) Set(key string) Set[string] {
 func (f *FileStore) ZSet(key string) ZSet[string] {
 	return &file.ZSet{
 		Compact: f.autoCompact,
-		Base: file.Base{
+		Base: &file.Base{
 			Key: key,
 			Dir: f.getDataDir(key),
 		},

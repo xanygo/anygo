@@ -8,25 +8,25 @@ import (
 )
 
 type String struct {
-	Base
+	Base *Base
 }
 
 func (f *String) Set(ctx context.Context, value string) error {
-	if err := f.SaveMeta(internal.DataTypeString); err != nil {
+	if err := f.Base.SaveMeta(internal.DataTypeString); err != nil {
 		return err
 	}
-	return f.WriteKVDataFile("value", value)
+	return f.Base.WriteKVDataFile("value", value)
 }
 
 func (f *String) SetNX(ctx context.Context, value string) (ok bool, err error) {
-	if err = f.SaveMeta(internal.DataTypeString); err != nil {
+	if err = f.Base.SaveMeta(internal.DataTypeString); err != nil {
 		return false, err
 	}
 	_, found, err := f.Get(ctx)
 	if err != nil || found {
 		return false, err
 	}
-	err = f.WriteKVDataFile("value", value)
+	err = f.Base.WriteKVDataFile("value", value)
 	if err != nil {
 		return false, err
 	}
@@ -34,11 +34,11 @@ func (f *String) SetNX(ctx context.Context, value string) (ok bool, err error) {
 }
 
 func (f *String) Get(ctx context.Context) (string, bool, error) {
-	return f.CheckReadKVDataFile("value", internal.DataTypeString, false)
+	return f.Base.CheckReadKVDataFile("value", internal.DataTypeString, false)
 }
 
 func (f *String) GetDel(ctx context.Context) (string, bool, error) {
-	return f.CheckReadKVDataFile("value", internal.DataTypeString, true)
+	return f.Base.CheckReadKVDataFile("value", internal.DataTypeString, true)
 }
 
 func (f *String) GetSet(ctx context.Context, value string) (string, bool, error) {

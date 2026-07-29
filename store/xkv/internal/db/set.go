@@ -141,3 +141,53 @@ func (s *Set) SCard(ctx context.Context) (num int64, err error) {
 	})
 	return num, err
 }
+
+func (s *Set) SIsMember(ctx context.Context, member string) (ok bool, err error) {
+	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+		if !hasMeta {
+			return nil
+		}
+		orm := xdb.NewMode[SetModel](tx)
+		orm.Table(s.GetTable())
+		_, found, err1 := orm.First(ctx, "k=? and m=?", s.Key, member)
+		if err1 == nil {
+			ok = found
+		}
+		return err1
+	})
+	return ok, err
+}
+
+func (s *Set) SMIsMember(ctx context.Context, members []string) (oks []bool, err error) {
+	oks = make([]bool, len(members))
+	if len(members) == 0 {
+		return oks, nil
+	}
+	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+		if !hasMeta {
+			return nil
+		}
+		orm := xdb.NewMode[SetModel](tx)
+		orm.Table(s.GetTable())
+
+		cond := xdb.Condition{}
+		cond.And("k=?", s.Key)
+		cond.AndInFmt("m in (%s)", xslice.ToAnys(members))
+		where, args, err0 := cond.Build()
+		if err0 != nil {
+			return err0
+		}
+		items, err1 := orm.List(ctx, where, args...)
+		if err1 == nil {
+			mp := make(map[string]bool, len(items))
+			for _, item := range items {
+				mp[item.Member] = true
+			}
+			for i, member := range members {
+				oks[i] = mp[member]
+			}
+		}
+		return err1
+	})
+	return oks, err
+}

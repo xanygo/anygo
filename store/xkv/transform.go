@@ -380,6 +380,22 @@ func (t transSet[V]) SCard(ctx context.Context) (int64, error) {
 	return t.ss.SCard(ctx)
 }
 
+func (t transSet[V]) SIsMember(ctx context.Context, member V) (bool, error) {
+	str, err := xcodec.EncodeToString(t.codec, member)
+	if err != nil {
+		return false, err
+	}
+	return t.ss.SIsMember(ctx, str)
+}
+
+func (t transSet[V]) SMIsMember(ctx context.Context, members []V) ([]bool, error) {
+	ms, errs := internal.EncodeToStrings(t.codec, members)
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
+	}
+	return t.ss.SMIsMember(ctx, ms)
+}
+
 func (tr Transformer[V]) ZSet(key string) ZSet[V] {
 	return AsZSet[V](tr.Storage, tr.Codec, key)
 }

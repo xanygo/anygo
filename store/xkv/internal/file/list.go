@@ -18,33 +18,33 @@ import (
 
 type List struct {
 	Compact func()
-	Base
+	Base    *Base
 }
 
 // LPush 在列表左侧插入元素（类似 Redis 的 LPUSH 命令）
-func (f List) LPush(ctx context.Context, values ...string) (int64, error) {
-	if err := f.SaveMeta(internal.DataTypeList); err != nil {
+func (l *List) LPush(ctx context.Context, values ...string) (int64, error) {
+	if err := l.Base.SaveMeta(internal.DataTypeList); err != nil {
 		return 0, err
 	}
 	var errs []error
 	id := time.Now().UnixNano()
 	for _, value := range values {
 		name := strconv.FormatInt(id, 10)
-		_, err := f.WriteKVDataFile2("0_"+name, value)
+		_, err := l.Base.WriteKVDataFile2("0_"+name, value)
 		id++
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
-	num, err := f.LLen(ctx)
+	num, err := l.LLen(ctx)
 	if err != nil {
 		errs = append(errs, err)
 	}
 	return num, errors.Join(errs...)
 }
 
-func (f List) RPush(ctx context.Context, values ...string) (int64, error) {
-	if err := f.SaveMeta(internal.DataTypeList); err != nil {
+func (l *List) RPush(ctx context.Context, values ...string) (int64, error) {
+	if err := l.Base.SaveMeta(internal.DataTypeList); err != nil {
 		return 0, err
 	}
 
@@ -52,13 +52,13 @@ func (f List) RPush(ctx context.Context, values ...string) (int64, error) {
 	id := time.Now().UnixNano()
 	for _, value := range values {
 		name := strconv.FormatInt(id, 10)
-		_, err := f.WriteKVDataFile2("1_"+name, value)
+		_, err := l.Base.WriteKVDataFile2("1_"+name, value)
 		id++
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
-	num, err := f.LLen(ctx)
+	num, err := l.LLen(ctx)
 	if err != nil {
 		errs = append(errs, err)
 	}
@@ -66,16 +66,16 @@ func (f List) RPush(ctx context.Context, values ...string) (int64, error) {
 }
 
 // LPop 移除并返回列表最左侧的元素（类似 Redis 的 LPOP 命令）
-func (f List) LPop(ctx context.Context) (string, bool, error) {
-	return f.pop(ctx, true)
+func (l *List) LPop(ctx context.Context) (string, bool, error) {
+	return l.pop(ctx, true)
 }
 
-func (f List) pop(ctx context.Context, left bool) (string, bool, error) {
+func (l *List) pop(ctx context.Context, left bool) (string, bool, error) {
 	var fileName string
-	err := f.RangeKVFiles(ctx, internal.DataTypeList, func(path string, d fs.DirEntry) error {
+	err := l.Base.RangeKVFiles(ctx, internal.DataTypeList, func(path string, d fs.DirEntry) error {
 		if fileName == "" {
 			fileName = path
-		} else if f.compare(path, fileName) == left {
+		} else if l.compare(path, fileName) == left {
 			fileName = path
 		}
 		return nil
@@ -86,26 +86,26 @@ func (f List) pop(ctx context.Context, left bool) (string, bool, error) {
 	if fileName == "" {
 		return "", false, nil
 	}
-	value, ok, err := f.ReadFile(fileName, true)
-	go safely.RunVoid(f.Compact)
+	value, ok, err := l.Base.ReadFile(fileName, true)
+	go safely.RunVoid(l.Compact)
 	return value, ok, err
 }
 
-func (f List) compare(a string, b string) bool {
+func (l *List) compare(a string, b string) bool {
 	return a > b
 }
 
-func (f List) RPop(ctx context.Context) (string, bool, error) {
-	return f.pop(ctx, false)
+func (l *List) RPop(ctx context.Context) (string, bool, error) {
+	return l.pop(ctx, false)
 }
 
-func (f List) LRem(ctx context.Context, count int64, element string) (deleted int64, err error) {
+func (l *List) LRem(ctx context.Context, count int64, element string) (deleted int64, err error) {
 	var errs []error
 	callBack := func(path, val string) bool {
 		if val != element {
 			return true
 		}
-		if err1 := f.OsRemove(path); err1 == nil {
+		if err1 := l.Base.OsRemove(path); err1 == nil {
 			errs = append(errs, err1)
 		} else {
 			deleted++
@@ -116,10 +116,10 @@ func (f List) LRem(ctx context.Context, count int64, element string) (deleted in
 		return true
 	}
 	if count >= 0 {
-		err = f.lrRange(ctx, true, callBack)
+		err = l.lrRange(ctx, true, callBack)
 	} else {
 		count = count * -1
-		err = f.lrRange(ctx, false, callBack)
+		err = l.lrRange(ctx, false, callBack)
 	}
 	if err != nil {
 		errs = append(errs, err)
@@ -127,37 +127,37 @@ func (f List) LRem(ctx context.Context, count int64, element string) (deleted in
 	return deleted, errors.Join(errs...)
 }
 
-type fileNameInfo struct {
+type listFileNameInfo struct {
 	Name     string
 	Flag     int   // 0 或 1，0-LPush 1-RPush
 	Timespan int64 // 时间戳
 }
 
 // LRange 查询数据的排序算法
-var fileNameSortAsc = xcmp.Chain(
-	xcmp.TrueFront[fileNameInfo](func(info fileNameInfo) bool {
+var listFileNameSortAsc = xcmp.Chain(
+	xcmp.TrueFront[listFileNameInfo](func(info listFileNameInfo) bool {
 		return info.Flag == 0
 	}),
-	xcmp.OrderAsc[fileNameInfo, int64](func(info fileNameInfo) int64 {
+	xcmp.OrderAsc[listFileNameInfo, int64](func(info listFileNameInfo) int64 {
 		return info.Timespan
 	}),
 )
 
 // RRange 查询数据的排序算法
-var fileNameSortDesc = xcmp.Chain(
-	xcmp.TrueFront[fileNameInfo](func(info fileNameInfo) bool {
+var listFileNameSortDesc = xcmp.Chain(
+	xcmp.TrueFront[listFileNameInfo](func(info listFileNameInfo) bool {
 		return info.Flag == 1
 	}),
-	xcmp.OrderDesc[fileNameInfo, int64](func(info fileNameInfo) int64 {
+	xcmp.OrderDesc[listFileNameInfo, int64](func(info listFileNameInfo) int64 {
 		return info.Timespan
 	}),
 )
 
-func (f List) lrRange(ctx context.Context, left bool, fn func(path, val string) bool) error {
-	var fileInfos []fileNameInfo
-	err := f.RangeKVFiles(ctx, internal.DataTypeList, func(path string, d fs.DirEntry) error {
-		flag, timespan := f.parserKVDFileName(d.Name())
-		fileInfos = append(fileInfos, fileNameInfo{
+func (l *List) lrRange(ctx context.Context, left bool, fn func(path, val string) bool) error {
+	var fileInfos []listFileNameInfo
+	err := l.Base.RangeKVFiles(ctx, internal.DataTypeList, func(path string, d fs.DirEntry) error {
+		flag, timespan := l.parserKVDFileName(d.Name())
+		fileInfos = append(fileInfos, listFileNameInfo{
 			Name:     d.Name(),
 			Flag:     flag,
 			Timespan: timespan,
@@ -170,13 +170,13 @@ func (f List) lrRange(ctx context.Context, left bool, fn func(path, val string) 
 	}
 
 	if left {
-		slices.SortFunc(fileInfos, fileNameSortAsc)
+		slices.SortFunc(fileInfos, listFileNameSortAsc)
 	} else {
-		slices.SortFunc(fileInfos, fileNameSortDesc)
+		slices.SortFunc(fileInfos, listFileNameSortDesc)
 	}
 
 	for _, fileInfo := range fileInfos {
-		fp := filepath.Join(f.Dir, fileInfo.Name)
+		fp := filepath.Join(l.Base.Dir, fileInfo.Name)
 		bf, err := os.ReadFile(fp)
 		if err != nil {
 			return err
@@ -188,7 +188,7 @@ func (f List) lrRange(ctx context.Context, left bool, fn func(path, val string) 
 	return nil
 }
 
-func (f List) parserKVDFileName(name string) (int, int64) {
+func (l *List) parserKVDFileName(name string) (int, int64) {
 	name, found := strings.CutSuffix(name, filepath.Ext(name))
 	if !found {
 		return 0, 0
@@ -211,22 +211,22 @@ func (f List) parserKVDFileName(name string) (int, int64) {
 	return flag, timespan
 }
 
-func (f List) LRange(ctx context.Context, fn func(val string) bool) error {
-	return f.lrRange(ctx, true, func(path, val string) bool {
+func (l *List) LRange(ctx context.Context, fn func(val string) bool) error {
+	return l.lrRange(ctx, true, func(path, val string) bool {
 		return fn(val)
 	})
 }
 
-func (f List) RRange(ctx context.Context, fn func(val string) bool) error {
-	return f.lrRange(ctx, false, func(path, val string) bool {
+func (l *List) RRange(ctx context.Context, fn func(val string) bool) error {
+	return l.lrRange(ctx, false, func(path, val string) bool {
 		return fn(val)
 	})
 }
 
 // Range 无序的
-func (f List) Range(ctx context.Context, fn func(val string) bool) error {
-	err := f.RangeKVFiles(ctx, internal.DataTypeList, func(path string, d fs.DirEntry) error {
-		bf, err := os.ReadFile(filepath.Join(f.Dir, d.Name()))
+func (l *List) Range(ctx context.Context, fn func(val string) bool) error {
+	err := l.Base.RangeKVFiles(ctx, internal.DataTypeList, func(path string, d fs.DirEntry) error {
+		bf, err := os.ReadFile(filepath.Join(l.Base.Dir, d.Name()))
 		if err != nil {
 			return err
 		}
@@ -238,9 +238,9 @@ func (f List) Range(ctx context.Context, fn func(val string) bool) error {
 	return err
 }
 
-func (f List) LLen(ctx context.Context) (int64, error) {
+func (l *List) LLen(ctx context.Context) (int64, error) {
 	var num int64
-	err := f.Range(ctx, func(val string) bool {
+	err := l.Range(ctx, func(val string) bool {
 		num++
 		return true
 	})

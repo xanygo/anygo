@@ -78,3 +78,22 @@ func (m *Set) SCard(ctx context.Context) (int64, error) {
 	})
 	return num, err
 }
+
+func (m *Set) SIsMember(ctx context.Context, member string) (ok bool, err error) {
+	err = m.withLocked(func(values []string) ([]string, operate, error) {
+		ok = slices.Contains(values, member)
+		return values, opSkip, nil
+	})
+	return ok, err
+}
+
+func (m *Set) SMIsMember(ctx context.Context, members []string) (ok []bool, err error) {
+	ok = make([]bool, len(members))
+	err = m.withLocked(func(values []string) ([]string, operate, error) {
+		for i := range members {
+			ok[i] = slices.Contains(values, members[i])
+		}
+		return values, opSkip, nil
+	})
+	return ok, err
+}

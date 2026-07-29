@@ -60,11 +60,30 @@ func checkDB(t *testing.T, db *xdb.Client) {
 
 	xt.NoError(t, kvs.Migrate(ctx))
 
-	checkString(t, kvs)
-	checkList(t, kvs)
-	checkHash(t, kvs)
-	checkSet(t, kvs)
-	checkZSet(t, kvs)
+	t.Run("checkString", func(t *testing.T) {
+		logWriter.Switch(t)
+		checkString(t, kvs)
+	})
+
+	t.Run("checkList", func(t *testing.T) {
+		logWriter.Switch(t)
+		checkList(t, kvs)
+	})
+
+	t.Run("checkHash", func(t *testing.T) {
+		logWriter.Switch(t)
+		checkHash(t, kvs)
+	})
+
+	t.Run("checkSet", func(t *testing.T) {
+		logWriter.Switch(t)
+		checkSet(t, kvs)
+	})
+
+	t.Run("checkZSet", func(t *testing.T) {
+		logWriter.Switch(t)
+		checkZSet(t, kvs)
+	})
 }
 
 var tables = []string{"xkv_meta", "xkv_string", "xkv_hash", "xkv_list", "xkv_set", "xkv_zset"}
@@ -503,6 +522,28 @@ func checkSet(t *testing.T, kvs xkv.StringStorage) {
 		gots, err = se.SMembers(ctx)
 		xt.NoError(t, err)
 		xt.Equal(t, gots, []string{"m1"})
+	})
+
+	t.Run("set2", func(t *testing.T) {
+		se := kvs.Set("t2-set2")
+
+		ok, err := se.SIsMember(ctx, "m1")
+		xt.NoError(t, err)
+		xt.False(t, ok)
+
+		num, err := se.SAdd(ctx, "m1", "m2")
+		xt.NoError(t, err)
+		xt.Equal(t, num, 2)
+
+		for _, m := range []string{"m1", "m2"} {
+			ok, err = se.SIsMember(ctx, m)
+			xt.NoError(t, err)
+			xt.True(t, ok)
+		}
+
+		oks, err := se.SMIsMember(ctx, []string{"m1", "m2", "m3-not-found"})
+		xt.NoError(t, err)
+		xt.Equal(t, oks, []bool{true, true, false})
 	})
 }
 

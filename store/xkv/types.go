@@ -125,7 +125,7 @@ type Hash[V any] interface {
 	HLen(ctx context.Context) (int64, error)
 }
 
-// Set 无序、唯一元素集合
+// Set 唯一元素集合
 type Set[V any] interface {
 	// SAdd 向集合中添加一个成员（类似 Redis 的 SADD 命令）
 	// 返回值：新增个数，错误
@@ -140,6 +140,14 @@ type Set[V any] interface {
 
 	// SMembers 返回集合中的所有成员（类似 Redis 的 SMEMBERS 命令）
 	SMembers(ctx context.Context) ([]V, error)
+
+	// SIsMember 判断 member 是否在集合中
+	SIsMember(ctx context.Context, member V) (bool, error)
+
+	// SMIsMember 判断多个 member 是否在合集中
+	//
+	// API 会保证，返回的 []bool 和输入的 []V 一样多
+	SMIsMember(ctx context.Context, members []V) ([]bool, error)
 
 	// SCard 返回 Set 的元素个数
 	SCard(ctx context.Context) (int64, error)

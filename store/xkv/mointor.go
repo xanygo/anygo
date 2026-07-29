@@ -4,7 +4,9 @@
 
 package xkv
 
-import "context"
+import (
+	"context"
+)
 
 var _ Storage[any] = (*Monitor[any])(nil)
 
@@ -293,6 +295,18 @@ func (ms *monitorSet[V]) SCard(ctx context.Context) (int64, error) {
 	val, err := ms.store.SCard(ctx)
 	ms.monitor.doAfterRead(ctx, ms.key, err)
 	return val, err
+}
+
+func (ms *monitorSet[V]) SIsMember(ctx context.Context, member V) (bool, error) {
+	found, err := ms.store.SIsMember(ctx, member)
+	ms.monitor.doAfterRead(ctx, ms.key, err)
+	return found, err
+}
+
+func (ms *monitorSet[V]) SMIsMember(ctx context.Context, members []V) ([]bool, error) {
+	result, err := ms.store.SMIsMember(ctx, members)
+	ms.monitor.doAfterRead(ctx, ms.key, err)
+	return result, err
 }
 
 func (m *Monitor[V]) ZSet(key string) ZSet[V] {

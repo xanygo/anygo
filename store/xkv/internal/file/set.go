@@ -15,17 +15,17 @@ import (
 
 type Set struct {
 	Compact func()
-	Base
+	Base    *Base
 }
 
-func (f Set) SAdd(ctx context.Context, members ...string) (int64, error) {
-	if err := f.SaveMeta(internal.DataTypeSet); err != nil {
+func (f *Set) SAdd(ctx context.Context, members ...string) (int64, error) {
+	if err := f.Base.SaveMeta(internal.DataTypeSet); err != nil {
 		return 0, err
 	}
 	var added int64
 	var errs []error
 	for _, member := range members {
-		addNew, err := f.WriteKVDataFile2(f.Md5(member), member)
+		addNew, err := f.Base.WriteKVDataFile2(f.Base.Md5(member), member)
 		if err != nil {
 			errs = append(errs, err)
 		} else if addNew {
@@ -38,10 +38,10 @@ func (f Set) SAdd(ctx context.Context, members ...string) (int64, error) {
 	return added, errors.Join(errs...)
 }
 
-func (f Set) SRem(ctx context.Context, members ...string) error {
+func (f *Set) SRem(ctx context.Context, members ...string) error {
 	var errs []error
 	for _, member := range members {
-		if err := f.DeleteKVDataFile(f.Md5(member)); err != nil {
+		if err := f.Base.DeleteKVDataFile(f.Base.Md5(member)); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -53,9 +53,9 @@ func (f Set) SRem(ctx context.Context, members ...string) error {
 }
 
 // SRange 返回结果是无序的（没有按照写入顺序排序）
-func (f Set) SRange(ctx context.Context, fn func(val string) bool) error {
-	err := f.RangeKVFiles(ctx, internal.DataTypeSet, func(path string, d fs.DirEntry) error {
-		bf, err1 := os.ReadFile(filepath.Join(f.Dir, d.Name()))
+func (f *Set) SRange(ctx context.Context, fn func(val string) bool) error {
+	err := f.Base.RangeKVFiles(ctx, internal.DataTypeSet, func(path string, d fs.DirEntry) error {
+		bf, err1 := os.ReadFile(filepath.Join(f.Base.Dir, d.Name()))
 		if err1 != nil {
 			return err1
 		}
@@ -77,11 +77,11 @@ var memberSortFn = xcmp.OrderAsc(func(m memberWithMeta) int64 {
 })
 
 // SMembers 返回所有 member，结果按照写入时间顺序正序排列
-func (f Set) SMembers(ctx context.Context) ([]string, error) {
+func (f *Set) SMembers(ctx context.Context) ([]string, error) {
 	var list []memberWithMeta
 
-	err := f.RangeKVFiles(ctx, internal.DataTypeSet, func(path string, d fs.DirEntry) error {
-		bf, err1 := os.ReadFile(filepath.Join(f.Dir, d.Name()))
+	err := f.Base.RangeKVFiles(ctx, internal.DataTypeSet, func(path string, d fs.DirEntry) error {
+		bf, err1 := os.ReadFile(filepath.Join(f.Base.Dir, d.Name()))
 		if err1 != nil {
 			return err1
 		}
@@ -104,11 +104,28 @@ func (f Set) SMembers(ctx context.Context) ([]string, error) {
 	return result, err
 }
 
-func (f Set) SCard(ctx context.Context) (int64, error) {
+func (f *Set) SCard(ctx context.Context) (int64, error) {
 	var result int64
-	err := f.RangeKVFiles(ctx, internal.DataTypeSet, func(path string, d fs.DirEntry) error {
+	err := f.Base.RangeKVFiles(ctx, internal.DataTypeSet, func(path string, d fs.DirEntry) error {
 		result++
 		return nil
 	})
 	return result, err
+}
+
+func (f *Set) SIsMember(ctx context.Context, member string) (bool, error) {
+	_, found, err := f.Base.CheckReadKVDataFile(f.Base.Md5(member), internal.DataTypeSet, false)
+	return found, err
+}
+
+func (f *Set) SMIsMember(ctx context.Context, members []string) ([]bool, error) {
+	result := make([]bool, len(members))
+	for i, member := range members {
+		_, found, err := f.Base.CheckReadKVDataFile(f.Base.Md5(member), internal.DataTypeSet, false)
+		if err != nil {
+			return nil, err
+		}
+		result[i] = found
+	}
+	return result, nil
 }

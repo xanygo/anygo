@@ -36,13 +36,42 @@ func (c *Condition) Append(op string, str string, args ...any) {
 	c.args = append(c.args, args...)
 }
 
+// AppendInFmt 添加 IN 查询
+//
+// op：AND 或者 OR
+// format: 条件，格式如 field in (%s)
+// values: 查询的数据数组
+func (c *Condition) AppendInFmt(op string, format string, values []any) {
+	if len(values) == 0 {
+		return
+	}
+	where := fmt.Sprintf(format, Placeholder(len(values)))
+	c.Append(op, where, values...)
+}
+
+// AndInFmt 添加 IN 查询
+//
+// format: 条件，格式如 field in (%s)
+// values: 查询的数据数组
+func (c *Condition) AndInFmt(format string, values []any) {
+	c.AppendInFmt("AND", format, values)
+}
+
+// OrInFmt 添加 IN 查询
+//
+// format: 条件，格式如 field in (%s)
+// values: 查询的数据数组
+func (c *Condition) OrInFmt(format string, values []any) {
+	c.AppendInFmt("OR", format, values)
+}
+
 func (c *Condition) AppendBuilder(op string, str string, b Builder) {
-	txt, args, err := b.Build()
+	where, args, err := b.Build()
 	if err != nil {
 		c.err = err
 		return
 	}
-	c.Append(op, str+" "+txt, args...)
+	c.Append(op, str+" ("+where+")", args...)
 }
 
 func (c *Condition) And(str string, args ...any) {

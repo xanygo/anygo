@@ -25,3 +25,12 @@ func (n Set[V]) SMembers(ctx context.Context) ([]V, error) {
 func (n Set[V]) SCard(ctx context.Context) (int64, error) {
 	return 0, nil
 }
+
+func (n Set[V]) SIsMember(ctx context.Context, member V) (bool, error) {
+	return false, nil
+}
+
+func (n Set[V]) SMIsMember(ctx context.Context, members []V) ([]bool, error) {
+	result := make([]bool, len(members))
+	return result, nil
+}

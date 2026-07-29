@@ -35,15 +35,15 @@ type Base struct {
 	Dir string
 }
 
-func (fb Base) getMetaFilePath() string {
+func (fb *Base) getMetaFilePath() string {
 	return filepath.Join(fb.Dir, "meta")
 }
 
-func (fb Base) MetaFileStats() (os.FileInfo, error) {
+func (fb *Base) MetaFileStats() (os.FileInfo, error) {
 	return os.Stat(fb.getMetaFilePath())
 }
 
-func (fb Base) SaveMeta(tp internal.DataType) error {
+func (fb *Base) SaveMeta(tp internal.DataType) error {
 	fp := fb.getMetaFilePath()
 	old, _ := fb.loadMeta()
 	if old.Type > internal.DataTypeUnset && old.Type != tp {
@@ -68,7 +68,7 @@ func (fb Base) SaveMeta(tp internal.DataType) error {
 	return os.WriteFile(fp, bf, 0644)
 }
 
-func (fb Base) loadMeta() (Meta, error) {
+func (fb *Base) loadMeta() (Meta, error) {
 	bf, err := os.ReadFile(fb.getMetaFilePath())
 	if err != nil {
 		return Meta{}, err
@@ -81,12 +81,12 @@ func (fb Base) loadMeta() (Meta, error) {
 }
 
 // WriteKVDataFile 写 kv 数据文件
-func (fb Base) WriteKVDataFile(baseName string, data string) (err error) {
+func (fb *Base) WriteKVDataFile(baseName string, data string) (err error) {
 	return fb.WriteFile(baseName+kvDataFileExt, data)
 }
 
 // WriteKVDataFile2 写入，返回：(新写入/更新，错误)
-func (fb Base) WriteKVDataFile2(baseName string, data string) (added bool, err error) {
+func (fb *Base) WriteKVDataFile2(baseName string, data string) (added bool, err error) {
 	baseName = baseName + kvDataFileExt
 	fp := filepath.Join(fb.Dir, baseName)
 	dir := filepath.Dir(fp)
@@ -107,7 +107,7 @@ func (fb Base) WriteKVDataFile2(baseName string, data string) (added bool, err e
 	return true, os.WriteFile(fp, bf, 0644)
 }
 
-func (fb Base) WriteFile(baseName string, data string) error {
+func (fb *Base) WriteFile(baseName string, data string) error {
 	fp := filepath.Join(fb.Dir, baseName)
 	dir := filepath.Dir(fp)
 	if err := xfs.KeepDirExists(dir); err != nil {
@@ -117,8 +117,9 @@ func (fb Base) WriteFile(baseName string, data string) error {
 	return os.WriteFile(fp, bf, 0644)
 }
 
-// CheckReadKVDataFile 检查并读取 kv 文件，
-func (fb Base) CheckReadKVDataFile(baseName string, typ internal.DataType, delete bool) (string, bool, error) {
+// CheckReadKVDataFile 检查并读取 kv 文件
+// delete: 读取完成后，是否删除该文件
+func (fb *Base) CheckReadKVDataFile(baseName string, typ internal.DataType, delete bool) (string, bool, error) {
 	meta, err := fb.loadMeta()
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -133,7 +134,7 @@ func (fb Base) CheckReadKVDataFile(baseName string, typ internal.DataType, delet
 	return fb.ReadFile(baseName+kvDataFileExt, delete)
 }
 
-func (fb Base) ReadFile(baseName string, delete bool) (string, bool, error) {
+func (fb *Base) ReadFile(baseName string, delete bool) (string, bool, error) {
 	fp := filepath.Join(fb.Dir, baseName)
 	bf, err := os.ReadFile(fp)
 	if delete {
@@ -148,16 +149,16 @@ func (fb Base) ReadFile(baseName string, delete bool) (string, bool, error) {
 	return "", false, err
 }
 
-func (fb Base) DeleteKVDataFile(baseName string) error {
+func (fb *Base) DeleteKVDataFile(baseName string) error {
 	return fb.DeleteFile(baseName + kvDataFileExt)
 }
 
-func (fb Base) DeleteFile(baseName string) error {
+func (fb *Base) DeleteFile(baseName string) error {
 	fp := filepath.Join(fb.Dir, baseName)
 	return fb.OsRemove(fp)
 }
 
-func (fb Base) OsRemove(fp string) error {
+func (fb *Base) OsRemove(fp string) error {
 	err := os.Remove(fp)
 	if err == nil || errors.Is(err, fs.ErrNotExist) {
 		return nil
@@ -165,12 +166,12 @@ func (fb Base) OsRemove(fp string) error {
 	return err
 }
 
-func (fb Base) Md5(field string) string {
+func (fb *Base) Md5(field string) string {
 	sm := md5.Sum([]byte("anygo" + field))
 	return hex.EncodeToString(sm[:])
 }
 
-func (fb Base) RangeKVFiles(ctx context.Context, typ internal.DataType, fn func(path string, d fs.DirEntry) error) error {
+func (fb *Base) RangeKVFiles(ctx context.Context, typ internal.DataType, fn func(path string, d fs.DirEntry) error) error {
 	meta, err := fb.loadMeta()
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {

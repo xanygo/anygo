@@ -280,6 +280,14 @@ func (kvs *kvSet) SMembers(ctx context.Context) ([]string, error) {
 	return values, err
 }
 
+func (kvs *kvSet) SIsMember(ctx context.Context, member string) (bool, error) {
+	return kvs.client.SIsMember(ctx, kvs.key, member)
+}
+
+func (kvs *kvSet) SMIsMember(ctx context.Context, members []string) ([]bool, error) {
+	return kvs.client.SMIsMember(ctx, kvs.key, members...)
+}
+
 func (kvs *kvSet) SCard(ctx context.Context) (int64, error) {
 	return kvs.client.SCard(ctx, kvs.key)
 }
