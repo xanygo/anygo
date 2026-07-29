@@ -90,8 +90,9 @@ func (s *Set) SRem(ctx context.Context, members ...string) error {
 
 // checkExists 检查 key 是否还存在，若不存在，则删除 meta
 func (s *Set) checkExists(ctx context.Context, orm *xdb.Model[SetModel]) error {
-	orm = orm.Clone().Reset().OnlyFields("c")
+	orm = orm.Clone().Reset()
 	orm.Table(s.GetTable())
+	orm.SelectFields("c")
 	_, found, err := orm.First(ctx, "k=?", s.Key)
 	if err != nil {
 		return err
@@ -106,7 +107,7 @@ func (s *Set) SRange(ctx context.Context, fn func(member string) bool) error {
 	return s.Meta.WithReadTx(ctx, func(as context.Context, tx xdb.TxCore, hasMeta bool) error {
 		orm := xdb.NewMode[SetModel](tx)
 		orm.Table(s.GetTable())
-		orm.OnlyFields("m")
+		orm.SelectFields("m")
 		for item, err1 := range orm.ListIter(ctx, "k=?", s.Key) {
 			if err1 != nil {
 				return err1
@@ -149,6 +150,7 @@ func (s *Set) SIsMember(ctx context.Context, member string) (ok bool, err error)
 		}
 		orm := xdb.NewMode[SetModel](tx)
 		orm.Table(s.GetTable())
+		orm.SelectFields("c")
 		_, found, err1 := orm.First(ctx, "k=? and m=?", s.Key, member)
 		if err1 == nil {
 			ok = found
@@ -169,6 +171,7 @@ func (s *Set) SMIsMember(ctx context.Context, members []string) (oks []bool, err
 		}
 		orm := xdb.NewMode[SetModel](tx)
 		orm.Table(s.GetTable())
+		orm.SelectFields("m")
 
 		cond := xdb.Condition{}
 		cond.And("k=?", s.Key)

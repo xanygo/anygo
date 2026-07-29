@@ -64,10 +64,9 @@ func (z *ZSet) ZIncrBy(ctx context.Context, inc float64, member string) (num flo
 	err = z.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[ZSetModel](tx)
 		orm.Table(z.GetTable())
+		orm.SelectFields("s")
 
-		orm1 := orm.Clone()
-		orm1 = orm1.OnlyFields("s")
-		item, ok, err1 := orm1.First(ctx, "k=? and m=?", z.Key, member)
+		item, ok, err1 := orm.First(ctx, "k=? and m=?", z.Key, member)
 		if err1 != nil {
 			return err1
 		}
@@ -136,7 +135,8 @@ func (z *ZSet) ZScore(ctx context.Context, member string) (score float64, found 
 		}
 		orm := xdb.NewMode[ZSetModel](tx)
 		orm.Table(z.GetTable())
-		orm.OnlyFields("s")
+		orm.SelectFields("s")
+
 		item, ok, err1 := orm.First(ctx, "k=? and m=?", z.Key, member)
 		if err1 != nil || !ok {
 			return err1
@@ -155,7 +155,8 @@ func (z *ZSet) ZRange(ctx context.Context, fn func(member string, score float64)
 		}
 		orm := xdb.NewMode[ZSetModel](tx)
 		orm.Table(z.GetTable())
-		orm.OnlyFields("m", "s")
+		orm.SelectFields("m", "s")
+
 		for item, err := range orm.ListIter(ctx, "k=?", z.Key) {
 			if err != nil {
 				return err
@@ -196,8 +197,9 @@ func (z *ZSet) ZRem(ctx context.Context, members ...string) error {
 
 // checkExists 检查 key 是否还存在，若不存在，则删除 meta
 func (z *ZSet) checkExists(ctx context.Context, orm *xdb.Model[ZSetModel]) error {
-	orm = orm.Clone().Reset().OnlyFields("c")
+	orm = orm.Clone().Reset()
 	orm.Table(z.GetTable())
+	orm.SelectFields("c")
 	_, found, err := orm.First(ctx, "k=?", z.Key)
 	if err != nil {
 		return err
@@ -213,6 +215,8 @@ func (z *ZSet) ZRank(ctx context.Context, member string) (index int64, score flo
 	err = z.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[ZSetModel](tx)
 		orm.Table(z.GetTable())
+		orm.SelectFields("s")
+
 		one, found, err1 := orm.First(ctx, "k=? and m=?", z.Key, member)
 		if err1 != nil || !found {
 			return err1

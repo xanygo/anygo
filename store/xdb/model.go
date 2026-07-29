@@ -43,8 +43,12 @@ type Model[T any] struct {
 
 	table         string
 	limit, offset int
-	onlyFields    []string // insert, update 的字段列表
-	ignoreFields  []string // select, update 时候忽略的字段列表
+
+	upsertFields       []string // insert, update 的字段列表
+	upsertIgnoreFields []string // insert, update 忽略的字段列表
+
+	selectFields       string   // select 查询的字段列表
+	selectIgnoreFields []string // 查询时要忽略的字段列表。当 selectFields 为空时才生效
 
 	schema *dbtype.TableSchema
 	pk     *dbtype.ColumnSchema // 可能为 nil
@@ -70,46 +74,104 @@ func (m *Model[T]) Client() HasDriver {
 	return m.client
 }
 
+// Reset 重置 limit、offset、upsertFields、upsertIgnore、selectFields、selectIgnore 等属性
+//
+// Table 属性会保留
 func (m *Model[T]) Reset() *Model[T] {
 	m.limit = 0
 	m.offset = 0
-	m.onlyFields = nil
-	m.ignoreFields = nil
+
+	m.upsertFields = nil
+	m.upsertIgnoreFields = nil
+
+	m.selectFields = ""
+	m.selectIgnoreFields = nil
 	return m
 }
 
 func (m *Model[T]) Clone() *Model[T] {
 	return &Model[T]{
-		dialect:      m.dialect,
-		client:       m.client,
-		table:        m.table,
-		limit:        m.limit,
-		offset:       m.offset,
-		err:          m.err,
-		onlyFields:   slices.Clone(m.onlyFields),
-		ignoreFields: slices.Clone(m.ignoreFields),
+		dialect: m.dialect,
+		client:  m.client,
+		table:   m.table,
+		limit:   m.limit,
+		offset:  m.offset,
+		err:     m.err,
+
+		upsertFields:       slices.Clone(m.upsertFields),
+		upsertIgnoreFields: slices.Clone(m.upsertIgnoreFields),
+
+		selectFields:       m.selectFields,
+		selectIgnoreFields: slices.Clone(m.selectIgnoreFields),
 	}
 }
 
-// OnlyFields 设置 insert、update 的字段列表，默认为空时，写入所有字段
-func (m *Model[T]) OnlyFields(fields ...string) *Model[T] {
-	m.onlyFields = fields
+// SelectFields 设置查询字段列表，设置为空，则查询所有字段
+func (m *Model[T]) SelectFields(fields ...string) *Model[T] {
+	if len(fields) == 1 && fields[0] == "*" {
+		m.selectFields = "*"
+	} else if len(fields) == 0 {
+		m.selectFields = ""
+	} else {
+		m.selectFields = strings.Join(xslice.MapFunc(fields, m.dialect.QuoteIdentifier), ",")
+	}
 	return m
 }
 
-func (m *Model[T]) AppendOnlyFields(fields ...string) *Model[T] {
-	m.onlyFields = append(m.onlyFields, fields...)
+// SelectIgnore 设置查询时忽略的字段列表，未设置 SelectFields 时生效
+func (m *Model[T]) SelectIgnore(fields ...string) *Model[T] {
+	m.selectIgnoreFields = fields
 	return m
 }
 
-// IgnoreFields 设置 select 和 update 时候，需要忽略的字段，默认为空
-func (m *Model[T]) IgnoreFields(fields ...string) *Model[T] {
-	m.ignoreFields = fields
+func (m *Model[T]) getSelectFields() (string, error) {
+	if m.selectFields != "" {
+		return m.selectFields, nil
+	}
+
+	var fields []string
+
+	if m.schema != nil {
+		fields = slices.Clone(m.schema.ColumnsNames)
+	} else {
+		var zero T
+		var err error
+		fields, err = m.getEncoder().Fields(zero)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	if len(m.selectIgnoreFields) != 0 {
+		fields = xslice.DeleteValue(fields, m.selectIgnoreFields...)
+	}
+
+	if len(fields) == 0 {
+		return "*", nil
+	}
+
+	return strings.Join(xslice.MapFunc(fields, m.dialect.QuoteIdentifier), ","), nil
+}
+
+// UpsertFields 设置 insert、update 的字段列表，默认为空时，写入所有字段
+func (m *Model[T]) UpsertFields(fields ...string) *Model[T] {
+	m.upsertFields = fields
 	return m
 }
 
-func (m *Model[T]) AppendIgnoreFields(fields ...string) *Model[T] {
-	m.ignoreFields = append(m.ignoreFields, fields...)
+func (m *Model[T]) AppendUpsertFields(fields ...string) *Model[T] {
+	m.upsertFields = append(m.upsertFields, fields...)
+	return m
+}
+
+// UpsertIgnore 设置 insert 和 update 时候，需要忽略的字段，默认为空
+func (m *Model[T]) UpsertIgnore(fields ...string) *Model[T] {
+	m.upsertIgnoreFields = fields
+	return m
+}
+
+func (m *Model[T]) AppendUpsertIgnore(fields ...string) *Model[T] {
+	m.upsertIgnoreFields = append(m.upsertIgnoreFields, fields...)
 	return m
 }
 
@@ -132,8 +194,8 @@ func (m *Model[T]) Offset(num int) *Model[T] {
 func (m *Model[T]) getEncoder() Encoder[T] {
 	return Encoder[T]{
 		Dialect:      m.dialect,
-		OnlyFields:   m.onlyFields,
-		IgnoreFields: m.ignoreFields,
+		OnlyFields:   m.upsertFields,
+		IgnoreFields: m.upsertIgnoreFields,
 	}
 }
 
@@ -147,7 +209,7 @@ func (m *Model[T]) Insert(ctx context.Context, v T) error {
 		return err
 	}
 	if len(kv) == 0 {
-		return errors.New("no columns")
+		return fmt.Errorf("no columns found in: %T", v)
 	}
 
 	qcols := make([]string, 0, len(kv))
@@ -170,6 +232,11 @@ func (m *Model[T]) Insert(ctx context.Context, v T) error {
 	}
 	_, err = Exec(ctx, db, sqlStr, args...)
 	return err
+}
+
+// QuoteIdentifier 将标识符转义
+func (m *Model[T]) QuoteIdentifier(name string) string {
+	return m.dialect.QuoteIdentifier(name)
 }
 
 // InsertReturningID 写入一条新数据,并返回 int 类型的主键 ID
@@ -381,7 +448,7 @@ func (m *Model[T]) UpdateByPK(ctx context.Context, v T) (int64, error) {
 	where := m.dialect.QuoteIdentifier(pk) + "=?"
 
 	m1 := m.Clone()
-	m1.AppendIgnoreFields(pk)
+	m1.AppendUpsertIgnore(pk)
 	return m1.doUpdate(ctx, v, where, value)
 }
 
@@ -425,18 +492,6 @@ func (m *Model[T]) DeleteByPK(ctx context.Context, v T) (int64, error) {
 	return m.Delete(ctx, where, value)
 }
 
-func (m *Model[T]) selectFields() (string, error) {
-	var zero T
-	fields, err := m.getEncoder().Fields(zero)
-	if err != nil {
-		return "", err
-	}
-	if len(fields) == 0 {
-		return "*", nil
-	}
-	return strings.Join(xslice.MapFunc(fields, m.dialect.QuoteIdentifier), ","), nil
-}
-
 func (m *Model[T]) First(ctx context.Context, where string, args ...any) (v T, ok bool, err error) {
 	if m.err != nil {
 		return v, false, m.err
@@ -445,7 +500,7 @@ func (m *Model[T]) First(ctx context.Context, where string, args ...any) (v T, o
 	if err != nil {
 		return v, false, err
 	}
-	field, err := m.selectFields()
+	field, err := m.getSelectFields()
 	if err != nil {
 		return v, false, err
 	}
@@ -497,7 +552,7 @@ func (m *Model[T]) ListIter(ctx context.Context, where string, args ...any) iter
 			return
 		}
 
-		field, err := m.selectFields()
+		field, err := m.getSelectFields()
 		if err != nil {
 			yield(zero, err)
 			return

@@ -92,8 +92,8 @@ func (h *Hash) HGet(ctx context.Context, field string) (value string, found bool
 		}
 		orm := xdb.NewMode[HashModel](tx)
 		orm.Table(h.GetTable())
+		orm.SelectFields("v")
 
-		orm.OnlyFields("v")
 		v, ok, err1 := orm.First(ctx, "k=? and f=?", h.Key, field)
 		if err1 != nil || !ok {
 			return err1
@@ -107,8 +107,9 @@ func (h *Hash) HGet(ctx context.Context, field string) (value string, found bool
 
 // checkExists 检查 key 是否还存在，若不存在，则删除 meta
 func (h *Hash) checkExists(ctx context.Context, orm *xdb.Model[HashModel]) error {
-	orm = orm.Clone().Reset().OnlyFields("c")
+	orm = orm.Clone().Reset()
 	orm.Table(h.GetTable())
+	orm.SelectFields("c")
 	_, found, err := orm.First(ctx, "k=?", h.Key)
 	if err != nil {
 		return err
@@ -146,6 +147,7 @@ func (h *Hash) HRange(ctx context.Context, fn func(field string, value string) b
 	return h.Meta.WithReadTx(ctx, func(as context.Context, tx xdb.TxCore, hasMeta bool) error {
 		orm := xdb.NewMode[HashModel](tx)
 		orm.Table(h.GetTable())
+		orm.SelectFields("f", "v")
 		for item, err1 := range orm.ListIter(ctx, "k=?", h.Key) {
 			if err1 != nil {
 				return err1
@@ -174,7 +176,7 @@ func (h *Hash) HExists(ctx context.Context, field string) (found bool, err error
 		}
 		orm := xdb.NewMode[HashModel](tx)
 		orm.Table(h.GetTable())
-		orm.OnlyFields("c")
+		orm.SelectFields("c")
 		_, ok, err1 := orm.First(ctx, "k=? and f=?", h.Key, field)
 		if ok {
 			found = true
@@ -189,6 +191,8 @@ func (h *Hash) HIncrBy(ctx context.Context, field string, increment int64) (num 
 	err = h.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[HashModel](tx)
 		orm.Table(h.GetTable())
+		orm.SelectFields("v")
+
 		old, found, err1 := orm.First(ctx, "k=? and f=?", h.Key, field)
 		if err1 != nil {
 			return err1

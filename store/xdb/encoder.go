@@ -157,7 +157,7 @@ func (e Encoder[T]) withStruct(v reflect.Value, fn func(name string, tag xstruct
 			return nil
 		}
 		if dbschema.TagHasAutoInc(tag) && fv.IsZero() {
-			// 当时自增长类型、并且是零值，则跳过该字段
+			// 当是自增长类型、并且是零值，则跳过该字段
 			return nil
 		}
 		if err := fn(name, tag, field, fv); err != nil {
@@ -193,9 +193,9 @@ func (e Encoder[T]) encodeMap(v reflect.Value) (map[string]any, error) {
 
 // Fields 获取 data 的字段列表。
 //
-//  1. 当类型是 struct 的时候，返回有有效的 db tag的字段（以使用 OnlyFiles 和 IgnoreFields 过滤）。
+//  1. 当类型是 struct 的时候，返回所有有效的 db tag 的字段
 //     若返回的字段列表为空，会报错。
-//  2. 当类型是 map 时，返回 nil,nil
+//  2. 当类型是 map 时，返回 nil, nil
 //  3. 其他类型，返回 error
 func (e Encoder[T]) Fields(data T) ([]string, error) {
 	v := reflect.ValueOf(data)

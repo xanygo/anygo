@@ -103,15 +103,17 @@ func (m *Meta) WithTx(ctx context.Context, do func(ctx context.Context, tx xdb.T
 
 func (m *Meta) checkWriteType(ctx context.Context, tx xdb.TxCore) error {
 	orm := m.orm(tx)
-	value, found, err := orm.First(ctx, "k=?", m.Key)
+	orm.SelectFields("dt")
+
+	old, found, err := orm.First(ctx, "k=?", m.Key)
 	if err != nil {
 		return err
 	}
 	if found {
-		if value.DataType == m.DataType {
+		if old.DataType == m.DataType {
 			return nil
 		}
-		return fmt.Errorf("canot write %s on type %s", m.DataType.String(), value.DataType.String())
+		return fmt.Errorf("canot write %s on type %s", m.DataType.String(), old.DataType.String())
 	}
 	now := time.Now().Unix()
 	data := MetaModel{
@@ -148,7 +150,7 @@ func (m *Meta) loadExists(ctx context.Context, tx xdb.TxCore) (MetaModel, bool, 
 
 func (m *Meta) checkReadType(ctx context.Context, tx xdb.TxCore) (bool, error) {
 	orm := m.orm(tx)
-	orm.OnlyFields("dt")
+	orm.SelectFields("dt")
 	value, found, err := orm.First(ctx, "k=?", m.Key)
 	if err != nil {
 		return false, err
