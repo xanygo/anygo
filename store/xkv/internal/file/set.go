@@ -2,15 +2,12 @@ package file
 
 import (
 	"context"
-	"errors"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"slices"
 
 	"github.com/xanygo/anygo/ds/xcmp"
 	"github.com/xanygo/anygo/safely"
-	"github.com/xanygo/anygo/store/xkv/internal"
 )
 
 type Set struct {
@@ -18,50 +15,85 @@ type Set struct {
 	Base    *Base
 }
 
-func (s *Set) SAdd(ctx context.Context, members ...string) (int64, error) {
-	if err := s.Base.SaveMeta(internal.DataTypeSet); err != nil {
-		return 0, err
+func (s *Set) saveMember(member string) (added bool, err error) {
+	return s.Base.writeMemberFile2(s.Base.md5(member), member)
+}
+
+func (s *Set) deleteMember(member string) (err error) {
+	return s.Base.deleteMemberFile(s.Base.md5(member))
+}
+
+func (s *Set) deleteMemberByPath(fp string) (err error) {
+	return s.Base.osRemove(fp)
+}
+
+func (s *Set) readMemberByPath(path string) (member string, err error) {
+	bf, err1 := os.ReadFile(path)
+	return string(bf), err1
+}
+
+func (s *Set) hasMember(member string) (bool, error) {
+	_, found, err := s.Base.readMemberFile(s.Base.md5(member))
+	return found, err
+}
+
+func (s *Set) SAdd(ctx context.Context, members ...string) (num int64, err error) {
+	if len(members) == 0 {
+		return 0, nil
 	}
-	var added int64
-	for _, member := range members {
-		addNew, err := s.Base.WriteKVDataFile2(s.Base.Md5(member), member)
-		if err != nil {
-			return 0, err
+	err = s.Base.lockWrite(ctx, func(ctx context.Context, meta *Meta) error {
+		for _, member := range members {
+			addNew, err1 := s.saveMember(member)
+			if err1 != nil {
+				if num == 0 {
+					s.Base.deleteKeyWhenNoMember(ctx)
+				}
+				return err1
+			}
+			if addNew {
+				num++
+			}
 		}
-		if addNew {
-			added++
-		}
-	}
-	return added, nil
+		return nil
+	})
+	return num, err
 }
 
 func (s *Set) SRem(ctx context.Context, members ...string) error {
-	var errs []error
-	for _, member := range members {
-		if err := s.Base.DeleteKVDataFile(s.Base.Md5(member)); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	go safely.RunVoid(s.Compact)
-	if len(errs) == 0 {
+	if len(members) == 0 {
 		return nil
 	}
-	return errors.Join(errs...)
+	defer func() {
+		go safely.RunVoid(s.Compact)
+	}()
+	return s.Base.lock(ctx, func(ctx context.Context, meta *Meta) error {
+		defer s.Base.deleteKeyWhenNoMember(ctx)
+		for _, member := range members {
+			if err1 := s.deleteMember(member); err1 != nil {
+				return err1
+			}
+		}
+		return nil
+	})
 }
 
 // SRange 返回结果是无序的（没有按照写入顺序排序）
 func (s *Set) SRange(ctx context.Context, fn func(val string) bool) error {
-	err := s.Base.RangeKVFiles(ctx, internal.DataTypeSet, func(path string, d fs.DirEntry) error {
-		bf, err1 := os.ReadFile(filepath.Join(s.Base.Dir, d.Name()))
-		if err1 != nil {
-			return err1
+	return s.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
+		if meta == nil {
+			return nil
 		}
-		if !fn(string(bf)) {
-			return fs.SkipAll
-		}
-		return nil
+		return s.Base.rangeMemberFiles(ctx, func(path string, d fs.DirEntry) error {
+			member, err1 := s.readMemberByPath(path)
+			if err1 != nil {
+				return err1
+			}
+			if !fn(member) {
+				return fs.SkipAll
+			}
+			return nil
+		})
 	})
-	return err
 }
 
 type memberWithMeta struct {
@@ -76,21 +108,25 @@ var memberSortFn = xcmp.OrderAsc(func(m memberWithMeta) int64 {
 // SMembers 返回所有 member，结果按照写入时间顺序正序排列
 func (s *Set) SMembers(ctx context.Context) ([]string, error) {
 	var list []memberWithMeta
-
-	err := s.Base.RangeKVFiles(ctx, internal.DataTypeSet, func(path string, d fs.DirEntry) error {
-		bf, err1 := os.ReadFile(filepath.Join(s.Base.Dir, d.Name()))
-		if err1 != nil {
-			return err1
+	err := s.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
+		if meta == nil {
+			return nil
 		}
-		info, err2 := d.Info()
-		if err2 != nil {
-			return err2
-		}
-		list = append(list, memberWithMeta{
-			Member: string(bf),
-			Mtime:  info.ModTime().UnixNano(),
+		return s.Base.rangeMemberFiles(ctx, func(path string, d fs.DirEntry) error {
+			member, err1 := s.readMemberByPath(path)
+			if err1 != nil {
+				return err1
+			}
+			info, err2 := d.Info()
+			if err2 != nil {
+				return err2
+			}
+			list = append(list, memberWithMeta{
+				Member: member,
+				Mtime:  info.ModTime().UnixNano(),
+			})
+			return nil
 		})
-		return nil
 	})
 
 	var result []string
@@ -101,65 +137,106 @@ func (s *Set) SMembers(ctx context.Context) ([]string, error) {
 	return result, err
 }
 
-func (s *Set) SCard(ctx context.Context) (int64, error) {
-	var result int64
-	err := s.Base.RangeKVFiles(ctx, internal.DataTypeSet, func(path string, d fs.DirEntry) error {
-		result++
+func (s *Set) SCard(ctx context.Context) (num int64, err error) {
+	err = s.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
+		if meta == nil {
+			return nil
+		}
+		return s.Base.rangeMemberFiles(ctx, func(path string, d fs.DirEntry) error {
+			num++
+			return nil
+		})
+	})
+	return num, err
+}
+
+func (s *Set) SIsMember(ctx context.Context, member string) (ok bool, err error) {
+	err = s.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
+		if meta == nil {
+			return nil
+		}
+		found, err1 := s.hasMember(member)
+		ok = found
+		return err1
+	})
+	return ok, err
+}
+
+func (s *Set) SMIsMember(ctx context.Context, members []string) ([]bool, error) {
+	result := make([]bool, len(members))
+	if len(members) == 0 {
+		return result, nil
+	}
+	err := s.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
+		if meta == nil {
+			return nil
+		}
+		for idx, member := range members {
+			found, err1 := s.hasMember(member)
+			if err1 != nil {
+				return err1
+			}
+			result[idx] = found
+		}
 		return nil
 	})
 	return result, err
 }
 
-func (s *Set) SIsMember(ctx context.Context, member string) (bool, error) {
-	_, found, err := s.Base.CheckReadKVDataFile(s.Base.Md5(member), internal.DataTypeSet, false)
-	return found, err
-}
-
-func (s *Set) SMIsMember(ctx context.Context, members []string) ([]bool, error) {
-	result := make([]bool, len(members))
-	for i, member := range members {
-		_, found, err := s.Base.CheckReadKVDataFile(s.Base.Md5(member), internal.DataTypeSet, false)
-		if err != nil {
-			return nil, err
-		}
-		result[i] = found
-	}
-	return result, nil
-}
-
 func (s *Set) SPop(ctx context.Context) (v string, found bool, err error) {
-	var lastErr error
-	err = s.SRange(ctx, func(val string) bool {
-		lastErr = s.SRem(ctx, val)
-		if lastErr == nil {
-			v = val
-			found = true
-			return false
+	err = s.Base.lock(ctx, func(ctx context.Context, meta *Meta) error {
+		if meta == nil {
+			return nil
 		}
-		return true
+		defer s.Base.deleteKeyWhenNoMember(ctx)
+		return s.Base.rangeMemberFiles(ctx, func(path string, d fs.DirEntry) error {
+			member, err1 := s.readMemberByPath(path)
+			if err1 != nil {
+				return err1
+			}
+			if err2 := s.deleteMemberByPath(path); err2 != nil {
+				return err2
+			}
+			v = member
+			found = true
+
+			return fs.SkipAll
+		})
 	})
 	if err != nil {
 		return "", false, err
-	}
-	if lastErr != nil {
-		return "", false, lastErr
 	}
 	return v, found, nil
 }
 
 func (s *Set) SPopN(ctx context.Context, count int) (members []string, err error) {
-	var lastErr error
-	err = s.SRange(ctx, func(val string) bool {
-		lastErr = s.SRem(ctx, val)
-		if lastErr == nil {
-			members = append(members, val)
+	if count <= 0 {
+		return nil, nil
+	}
+	err = s.Base.lock(ctx, func(ctx context.Context, meta *Meta) error {
+		if meta == nil {
+			return nil
 		}
-		return len(members) < count
+		defer s.Base.deleteKeyWhenNoMember(ctx)
+		return s.Base.rangeMemberFiles(ctx, func(path string, d fs.DirEntry) error {
+			member, err1 := s.readMemberByPath(path)
+			if err1 != nil {
+				return err1
+			}
+			if err2 := s.deleteMemberByPath(path); err2 != nil {
+				return err2
+			}
+			members = append(members, member)
+			if len(members) == count {
+				return fs.SkipAll
+			}
+			return nil
+		})
 	})
 	if err != nil {
-		return members, err
+		return nil, err
 	}
-	return members, lastErr
+	return members, nil
 }
 
 func (s *Set) SRandMember(ctx context.Context) (member string, found bool, err error) {

@@ -41,3 +41,7 @@ func (dt DataType) String() string {
 		return "invalid type"
 	}
 }
+
+func (dt DataType) Equal(dt2 DataType) bool {
+	return dt == dt2 || dt == DataTypeAny || dt2 == DataTypeAny
+}

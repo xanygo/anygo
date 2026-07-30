@@ -14,7 +14,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/internal/zos"
+	"github.com/xanygo/anygo/store/xkv/internal"
 	"github.com/xanygo/anygo/store/xkv/internal/file"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xio/xfs"
@@ -48,6 +50,8 @@ type FileStore struct {
 	GC time.Duration
 
 	runner xpp.CooldownRunner
+
+	groupMutex xsync.GroupMutex[any]
 }
 
 func (f *FileStore) autoCompact() {
@@ -67,18 +71,13 @@ func (f *FileStore) doCompact() {
 }
 
 func (f *FileStore) Has(ctx context.Context, key string) (bool, error) {
-	fb := file.Base{
-		Key: key,
-		Dir: f.getDataDir(key),
+	fb := &file.Base{
+		Key:        key,
+		Dir:        f.getDataDir(key),
+		Type:       internal.DataTypeAny,
+		GroupMutex: &f.groupMutex,
 	}
-	info, err := fb.MetaFileStats()
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return false, nil
-		}
-		return false, err
-	}
-	return !info.IsDir(), nil
+	return fb.Has(ctx)
 }
 
 func (f *FileStore) Delete(ctx context.Context, keys ...string) error {
@@ -88,10 +87,7 @@ func (f *FileStore) Delete(ctx context.Context, keys ...string) error {
 			errs = append(errs, err)
 		}
 	}
-	if len(errs) == 0 {
-		return nil
-	}
-	f.autoCompact()
+	go f.autoCompact()
 	return errors.Join(errs...)
 }
 
@@ -114,8 +110,10 @@ func (f *FileStore) getDataDir(key string) string {
 func (f *FileStore) String(key string) String[string] {
 	return &file.String{
 		Base: &file.Base{
-			Key: key,
-			Dir: f.getDataDir(key),
+			Key:        key,
+			Dir:        f.getDataDir(key),
+			Type:       internal.DataTypeString,
+			GroupMutex: &f.groupMutex,
 		},
 	}
 }
@@ -124,8 +122,10 @@ func (f *FileStore) List(key string) List[string] {
 	return &file.List{
 		Compact: f.autoCompact,
 		Base: &file.Base{
-			Key: key,
-			Dir: f.getDataDir(key),
+			Key:        key,
+			Dir:        f.getDataDir(key),
+			Type:       internal.DataTypeList,
+			GroupMutex: &f.groupMutex,
 		},
 	}
 }
@@ -134,8 +134,10 @@ func (f *FileStore) Hash(key string) Hash[string] {
 	return &file.Hash{
 		Compact: f.autoCompact,
 		Base: &file.Base{
-			Key: key,
-			Dir: f.getDataDir(key),
+			Key:        key,
+			Dir:        f.getDataDir(key),
+			Type:       internal.DataTypeHash,
+			GroupMutex: &f.groupMutex,
 		},
 	}
 }
@@ -144,8 +146,10 @@ func (f *FileStore) Set(key string) Set[string] {
 	return &file.Set{
 		Compact: f.autoCompact,
 		Base: &file.Base{
-			Key: key,
-			Dir: f.getDataDir(key),
+			Key:        key,
+			Dir:        f.getDataDir(key),
+			Type:       internal.DataTypeSet,
+			GroupMutex: &f.groupMutex,
 		},
 	}
 }
@@ -154,8 +158,10 @@ func (f *FileStore) ZSet(key string) ZSet[string] {
 	return &file.ZSet{
 		Compact: f.autoCompact,
 		Base: &file.Base{
-			Key: key,
-			Dir: f.getDataDir(key),
+			Key:        key,
+			Dir:        f.getDataDir(key),
+			Type:       internal.DataTypeZSet,
+			GroupMutex: &f.groupMutex,
 		},
 	}
 }

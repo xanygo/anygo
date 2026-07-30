@@ -13,15 +13,15 @@ func TestBase_WriteKVDataFile2(t *testing.T) {
 		Dir: filepath.Join(t.TempDir(), "fb1"),
 	}
 
-	added, err := fb.WriteKVDataFile2("k1", "hello")
+	added, err := fb.writeMemberFile2("k1", "hello")
 	xt.NoError(t, err)
 	xt.True(t, added)
 
-	added, err = fb.WriteKVDataFile2("k1", "hello")
+	added, err = fb.writeMemberFile2("k1", "hello")
 	xt.NoError(t, err)
 	xt.False(t, added) // 内容一样
 
-	added, err = fb.WriteKVDataFile2("k1", "world")
+	added, err = fb.writeMemberFile2("k1", "world")
 	xt.NoError(t, err)
 	xt.True(t, added) // 内容有变化
 }

@@ -3,15 +3,11 @@ package file
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io/fs"
-	"os"
-	"path/filepath"
 	"strconv"
 	"unsafe"
 
 	"github.com/xanygo/anygo/safely"
-	"github.com/xanygo/anygo/store/xkv/internal"
 )
 
 type hashKV struct {
@@ -33,82 +29,112 @@ type Hash struct {
 	Base    *Base
 }
 
-func (h *Hash) HSet(ctx context.Context, field, value string) error {
-	if err := h.Base.SaveMeta(internal.DataTypeHash); err != nil {
-		return err
-	}
+func (h *Hash) saveField(field, value string) error {
 	kv := hashKV{
 		Field: field,
 		Value: unsafe.Slice(unsafe.StringData(value), len(value)),
 	}
-	return h.Base.WriteKVDataFile(h.Base.Md5(field), kv.String())
+	return h.Base.writeMemberFile(h.Base.md5(field), kv.String())
 }
 
-func (h *Hash) HMSet(ctx context.Context, values map[string]string) error {
-	if err := h.Base.SaveMeta(internal.DataTypeHash); err != nil {
-		return err
-	}
-	var errs []error
-	for k, v := range values {
-		kv := hashKV{
-			Field: k,
-			Value: []byte(v),
-		}
-		if err := h.Base.WriteKVDataFile(h.Base.Md5(k), kv.String()); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	if len(errs) == 0 {
-		return nil
-	}
-	return errors.Join(errs...)
+func (h *Hash) deleteField(field string) error {
+	return h.Base.deleteMemberFile(h.Base.md5(field))
 }
 
-func (h *Hash) HGet(ctx context.Context, field string) (string, bool, error) {
-	str, found, err := h.Base.CheckReadKVDataFile(h.Base.Md5(field), internal.DataTypeHash, false)
+func (h *Hash) readFieldValue(field string) (string, bool, error) {
+	str, found, err := h.Base.readMemberFile(h.Base.md5(field))
 	if err != nil || !found {
 		return "", false, err
 	}
 	kv := &hashKV{}
 	err = json.Unmarshal([]byte(str), kv)
-	if err != nil {
-		return "", false, err
-	}
-	return kv.ValueString(), true, nil
+	return kv.ValueString(), err == nil, err
 }
 
-func (h *Hash) HDel(ctx context.Context, fields ...string) error {
-	var errs []error
-	for _, field := range fields {
-		if err := h.Base.DeleteKVDataFile(h.Base.Md5(field)); err != nil {
-			errs = append(errs, err)
-		}
+func (h *Hash) readFieldFile(fp string) (*hashKV, error) {
+	bf, err := h.Base.readMemberFileByPath(fp)
+	if err != nil {
+		return nil, err
 	}
-	go safely.RunVoid(h.Compact)
-	if len(errs) == 0 {
+	if len(bf) == 0 {
+		return nil, nil
+	}
+	kv := &hashKV{}
+	err = json.Unmarshal(bf, kv)
+	if err != nil {
+		return nil, err
+	}
+	return kv, err
+}
+
+func (h *Hash) HSet(ctx context.Context, field, value string) error {
+	return h.Base.lockWrite(ctx, func(ctx context.Context, meta *Meta) error {
+		return h.saveField(field, value)
+	})
+}
+
+func (h *Hash) HMSet(ctx context.Context, values map[string]string) error {
+	if len(values) == 0 {
 		return nil
 	}
-
-	return errors.Join(errs...)
-}
-
-func (h *Hash) HRange(ctx context.Context, fn func(field string, value string) bool) error {
-	err := h.Base.RangeKVFiles(ctx, internal.DataTypeHash, func(path string, d fs.DirEntry) error {
-		bf, err := os.ReadFile(filepath.Join(h.Base.Dir, d.Name()))
-		if err != nil {
-			return err
-		}
-		kv := &hashKV{}
-		err = json.Unmarshal(bf, kv)
-		if err != nil {
-			return err
-		}
-		if !fn(kv.Field, kv.ValueString()) {
-			return fs.SkipAll
+	return h.Base.lockWrite(ctx, func(ctx context.Context, meta *Meta) error {
+		for k, v := range values {
+			if err := h.saveField(k, v); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
-	return err
+}
+
+func (h *Hash) HGet(ctx context.Context, field string) (value string, found bool, err error) {
+	err = h.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
+		if meta == nil {
+			return nil
+		}
+		value, found, err = h.readFieldValue(field)
+		return err
+	})
+	return value, found, err
+}
+
+func (h *Hash) HDel(ctx context.Context, fields ...string) error {
+	if len(fields) == 0 {
+		return nil
+	}
+	defer func() {
+		go safely.RunVoid(h.Compact)
+	}()
+	return h.Base.lock(ctx, func(ctx context.Context, meta *Meta) error {
+		if meta == nil {
+			return nil
+		}
+		for _, field := range fields {
+			if err := h.deleteField(field); err != nil {
+				return err
+			}
+		}
+		h.Base.deleteKeyWhenNoMember(ctx)
+		return nil
+	})
+}
+
+func (h *Hash) HRange(ctx context.Context, fn func(field string, value string) bool) error {
+	return h.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
+		if meta == nil {
+			return nil
+		}
+		return h.Base.rangeMemberFiles(ctx, func(path string, d fs.DirEntry) error {
+			kv, err1 := h.readFieldFile(path)
+			if err1 != nil || kv == nil {
+				return err1
+			}
+			if !fn(kv.Field, kv.ValueString()) {
+				return fs.SkipAll
+			}
+			return nil
+		})
+	})
 }
 
 func (h *Hash) HGetAll(ctx context.Context) (map[string]string, error) {
@@ -120,40 +146,54 @@ func (h *Hash) HGetAll(ctx context.Context) (map[string]string, error) {
 	return result, err
 }
 
-func (h *Hash) HExists(ctx context.Context, field string) (bool, error) {
-	_, found, err := h.Base.CheckReadKVDataFile(h.Base.Md5(field), internal.DataTypeHash, false)
-	if err != nil || !found {
-		return false, err
-	}
-	return true, nil
+func (h *Hash) HExists(ctx context.Context, field string) (ok bool, err error) {
+	err = h.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
+		if meta == nil {
+			return nil
+		}
+		_, found, err1 := h.readFieldValue(field)
+		if err1 != nil || !found {
+			return err1
+		}
+		ok = true
+		return nil
+	})
+	return ok, err
 }
 
-func (h *Hash) HIncrBy(ctx context.Context, field string, increment int64) (int64, error) {
-	old, found, err := h.HGet(ctx, field)
-	if err != nil {
-		return 0, err
-	}
-	var num int64
-	if !found {
-		num = increment
-	} else {
-		oldNum, err := strconv.ParseInt(old, 10, 64)
-		if err != nil {
-			return 0, err
+func (h *Hash) HIncrBy(ctx context.Context, field string, increment int64) (num int64, err error) {
+	err = h.Base.lockWrite(ctx, func(ctx context.Context, meta *Meta) error {
+		old, found, err1 := h.readFieldValue(field)
+		if err1 != nil {
+			return err1
 		}
-		num = oldNum + increment
-	}
-	err = h.HSet(ctx, field, strconv.FormatInt(num, 10))
-	if err != nil {
-		return 0, err
-	}
-	return num, nil
+		if old == "" {
+			num = 0
+		} else {
+			num, err1 = strconv.ParseInt(old, 10, 64)
+			if err1 != nil {
+				return err1
+			}
+		}
+		num += increment
+		err1 = h.saveField(field, strconv.FormatInt(num, 10))
+		if !found && err1 != nil {
+			h.Base.deleteKeyWhenNoMember(ctx)
+		}
+		return err1
+	})
+	return num, err
 }
 
 func (h *Hash) HLen(ctx context.Context) (num int64, err error) {
-	err = h.Base.RangeKVFiles(ctx, internal.DataTypeHash, func(path string, d fs.DirEntry) error {
-		num++
-		return nil
+	err = h.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
+		if meta == nil {
+			return nil
+		}
+		return h.Base.rangeMemberFiles(ctx, func(path string, d fs.DirEntry) error {
+			num++
+			return nil
+		})
 	})
 	return num, err
 }
