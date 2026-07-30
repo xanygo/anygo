@@ -2,7 +2,6 @@ package xsync
 
 import (
 	"sync"
-	"sync/atomic"
 )
 
 type RWLocker interface {
@@ -33,7 +32,9 @@ func (g *GroupMutex[T]) DoRead(key T, fn func()) {
 	fn()
 }
 
-// Locker 获取资源的锁对象
+// Locker 获取资源的锁对象。
+// 获取后必须使用，在调用 Unlock 和 RUnlock 时会检查引用次数，
+// 当应用次数为 0 后，会从 GroupMutex 删除引用
 func (g *GroupMutex[T]) Locker(key T) RWLocker {
 	g.mux.Lock()
 	if g.items == nil {
@@ -42,6 +43,7 @@ func (g *GroupMutex[T]) Locker(key T) RWLocker {
 	defer g.mux.Unlock()
 
 	if c, ok := g.items[key]; ok {
+		c.dups++
 		return c
 	}
 
@@ -50,6 +52,7 @@ func (g *GroupMutex[T]) Locker(key T) RWLocker {
 		g:   g,
 	}
 	g.items[key] = c
+	c.dups++
 	return c
 }
 
@@ -59,41 +62,32 @@ type groupMutexCall[T comparable] struct {
 	key  T
 	g    *GroupMutex[T]
 	mux  sync.RWMutex
-	dups atomic.Int64
+	dups int // 使用 g 的 mux 锁
 }
 
 func (c *groupMutexCall[T]) RLock() {
 	c.mux.RLock()
-	c.dups.And(1)
 }
 
 func (c *groupMutexCall[T]) RUnlock() {
 	c.mux.RUnlock()
-	c.dups.And(-1)
+	c.free()
 }
 
 func (c *groupMutexCall[T]) Lock() {
 	c.mux.Lock()
-	c.dups.And(1)
 }
 
-func (c *groupMutexCall[T]) getDup() int64 {
-	c.mux.Lock()
-	defer c.mux.Unlock()
-	return c.dups.Load()
+func (c *groupMutexCall[T]) free() {
+	c.g.mux.Lock()
+	defer c.g.mux.Unlock()
+	c.dups--
+	if c.dups == 0 {
+		delete(c.g.items, c.key)
+	}
 }
 
 func (c *groupMutexCall[T]) Unlock() {
 	c.mux.Unlock()
-	num := c.dups.Add(-1)
-
-	if num > 0 {
-		return
-	}
-	c.g.mux.Lock()
-	defer c.g.mux.Unlock()
-	if c.getDup() > 0 {
-		return
-	}
-	delete(c.g.items, c.key)
+	c.free()
 }

@@ -45,11 +45,11 @@ func TestOnceGroup_Panic(t *testing.T) {
 	})
 	xt.Empty(t, v)
 	xt.Error(t, err)
-	t.Logf("err= %s\n", err.Error())
+	// t.Logf("err= %s\n", err.Error())
 	var te *safely.PanicErr
 	ok := errors.As(err, &te)
 	xt.True(t, ok)
-	t.Logf("te: %#v", te.TraceData())
+	// t.Logf("te: %#v", te.TraceData())
 }
 
 func TestOnceGroup_DoDupSuppress(t *testing.T) {
