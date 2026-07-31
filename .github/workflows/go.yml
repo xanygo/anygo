@@ -60,7 +60,7 @@ jobs:
     name: Go ${{ matrix.go }} On ${{ matrix.servers }}
 
     env:
-      anygo-ut-redis: redis://127.0.0.1:6379
+      anygo_ut_redis: redis://127.0.0.1:6379
 
     steps:
     - name: Prepare git

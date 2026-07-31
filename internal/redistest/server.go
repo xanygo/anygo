@@ -17,7 +17,7 @@ import (
 
 const (
 	serverCmd   = "redis-server"
-	testURIName = "anygo-ut-redis"
+	testURIName = "anygo_ut_redis"
 	utRdsCmd    = "anygo-redis-do"
 )
 

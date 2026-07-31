@@ -6,6 +6,7 @@ package xredis
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/xanygo/anygo/store/xredis/resp3"
@@ -55,7 +56,11 @@ func (c *Client) SetNX(ctx context.Context, key string, value any, ttl time.Dura
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeSimpleString, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToOkBool(resp.result, resp.err)
+	ok, err := resp3.ToOkBool(resp.result, resp.err)
+	if errors.Is(err, ErrNil) {
+		return false, nil
+	}
+	return ok, err
 }
 
 // SetXX 当给定 key 存在时，才设置 key 的值。设置成功返回 true，nil

@@ -152,7 +152,7 @@ func checkMySQLBase(t *testing.T, dialect string) {
 }
 
 func TestRedis(t *testing.T) {
-	rdsURI := os.Getenv("anygo-ut-redis")
+	rdsURI := os.Getenv("anygo_ut_redis")
 	if rdsURI == "" {
 		t.Skip("no test redis uri found, skipped")
 		return
