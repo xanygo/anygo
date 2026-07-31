@@ -6,6 +6,7 @@ package xkv_test
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -17,6 +18,10 @@ import (
 
 func TestFileStorage(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "xkv_file")
+	// dir := filepath.Join(os.TempDir(), "xkv_file")
+	t.Logf("xkv_file dir: %s", dir)
+	_ = os.RemoveAll(dir)
+
 	ff := &xkv.FileStore{
 		DataDir: dir,
 	}
@@ -29,6 +34,8 @@ func TestFileStorage(t *testing.T) {
 
 func TestFileStorageCipher(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "xkv_file")
+	t.Logf("xkv_file dir: %s", dir)
+
 	ff := &xkv.FileStore{
 		DataDir: dir,
 	}

@@ -39,12 +39,10 @@ func (d DeleteItem) deleteAll(ctx context.Context, tx xdb.TxCore) error {
 	key := d.Meta.Key
 	orm := d.Meta.orm(tx)
 	value, found, err := orm.First(ctx, "k=?", key)
-	if err != nil {
+	if err != nil || !found {
 		return err
 	}
-	if !found {
-		return nil
-	}
+
 	switch value.DataType {
 	case internal.DataTypeString:
 		data := &String{

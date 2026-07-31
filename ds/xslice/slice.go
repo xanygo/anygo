@@ -121,7 +121,7 @@ func DeleteFuncN[S ~[]E, E any](s S, del func(E) bool, limit int) S {
 	return s[:i]
 }
 
-// RevIndexFunc  反向查找，若每找到，会返回 -1
+// RevIndexFunc  反向查找，若没找到，会返回 -1
 func RevIndexFunc[S ~[]E, E any](s S, f func(E) bool) int {
 	for j := len(s) - 1; j > 0; j-- {
 		if f(s[j]) {
@@ -153,21 +153,19 @@ func PopHead[S ~[]E, E any](s S) (new S, value E, ok bool) {
 		return s, value, false
 	}
 	value = s[0]
-	new = slices.Delete(s, 0, 1)
-	return new, value, true
+	return s[1:], value, true
 }
 
 // PopHeadN 弹出头部的 n 个元素
 func PopHeadN[S ~[]E, E any](s S, n int) (new S, values S) {
-	if len(s) == 0 {
+	if len(s) == 0 || n <= 0 {
 		return s, nil
 	}
 	if n >= len(s) {
-		return nil, s
+		return nil, slices.Clone(s)
 	}
-	values = s[0:n]
-	new = slices.Delete(s, 0, n)
-	return new, values
+	values = slices.Clone(s[0:n])
+	return s[n:], values
 }
 
 // PopTail 弹出尾部的一个元素，若 slice 为空会返回 false
@@ -178,24 +176,23 @@ func PopTail[S ~[]E, E any](s S) (new S, value E, has bool) {
 	}
 	index := len(s) - 1
 	value = s[index]
-	new = slices.Delete(s, index, index+1)
-	return new, value, true
+	return s[:index], value, true
 }
 
-// PopTailN 弹出尾部的 n 个元素
+// PopTailN 弹出尾部的 n 个元素(原slice不会被修改)
 func PopTailN[S ~[]E, E any](s S, n int) (new S, values S) {
-	if len(s) == 0 {
+	if len(s) == 0 || n <= 0 {
 		return s, nil
 	}
 	if n >= len(s) {
-		slices.Reverse(s)
-		return nil, s
+		values = slices.Clone(s)
+		slices.Reverse(values)
+		return nil, values
 	}
 	index := len(s) - n
-	values = s[index:]
+	values = slices.Clone(s[index:])
 	slices.Reverse(values)
-	new = slices.Delete(s, index, len(s))
-	return new, values
+	return s[:index], values
 }
 
 // PopRand 从 slice 中随机弹出一个元素

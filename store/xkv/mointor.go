@@ -397,6 +397,18 @@ func (mz *monitorZSet[V]) ZRank(ctx context.Context, member V) (int64, float64, 
 	return index, score, err
 }
 
+func (mz *monitorZSet[V]) ZPopMax(ctx context.Context, count int) ([]V, []float64, error) {
+	values, scores, err := mz.store.ZPopMax(ctx, count)
+	mz.monitor.doAfterDelete(ctx, mz.key, err)
+	return values, scores, err
+}
+
+func (mz *monitorZSet[V]) ZPopMin(ctx context.Context, count int) ([]V, []float64, error) {
+	values, scores, err := mz.store.ZPopMin(ctx, count)
+	mz.monitor.doAfterDelete(ctx, mz.key, err)
+	return values, scores, err
+}
+
 func (m *Monitor[V]) Delete(ctx context.Context, keys ...string) error {
 	err := m.Store.Delete(ctx, keys...)
 	for _, key := range keys {

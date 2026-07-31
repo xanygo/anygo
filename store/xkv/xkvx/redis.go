@@ -378,6 +378,30 @@ func (kvz *kvZSet) ZRem(ctx context.Context, members ...string) error {
 	return err
 }
 
+func (kvz *kvZSet) ZPopMax(ctx context.Context, count int) (members []string, scores []float64, err error) {
+	items, err1 := kvz.client.ZPopMax(ctx, kvz.key, count)
+	if err1 != nil {
+		return nil, nil, err1
+	}
+	for _, item := range items {
+		members = append(members, item.Member)
+		scores = append(scores, item.Score)
+	}
+	return members, scores, nil
+}
+
+func (kvz *kvZSet) ZPopMin(ctx context.Context, count int) (members []string, scores []float64, err error) {
+	items, err1 := kvz.client.ZPopMin(ctx, kvz.key, count)
+	if err1 != nil {
+		return nil, nil, err1
+	}
+	for _, item := range items {
+		members = append(members, item.Member)
+		scores = append(scores, item.Score)
+	}
+	return members, scores, nil
+}
+
 func (kv *RedisStore) Delete(ctx context.Context, keys ...string) error {
 	if kv.KeyPrefix != "" {
 		for i := range keys {

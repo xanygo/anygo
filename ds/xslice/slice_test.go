@@ -70,12 +70,15 @@ func TestPopHead(t *testing.T) {
 		g1, v1, ok1 := PopHead(a1)
 		xt.True(t, ok1)
 		xt.Equal(t, v1, 1)
-		xt.NotEmpty(t, g1)
+		xt.Equal(t, g1, []int{2})
 
 		g2, v2, ok2 := PopHead(g1)
 		xt.True(t, ok2)
 		xt.Equal(t, v2, 2)
 		xt.Empty(t, g2)
+
+		// 检查元slice长度未变化
+		xt.Len(t, a1, 2)
 	})
 }
 
@@ -107,6 +110,20 @@ func TestPopHeadN(t *testing.T) {
 		g2, v2 := PopHeadN(g1, 2)
 		xt.Empty(t, v2)
 		xt.Empty(t, g2)
+	})
+	t.Run("len 5", func(t *testing.T) {
+		a1 := []int{1, 2, 3, 4, 5}
+		g1, v1 := PopHeadN(a1, 2)
+		xt.Equal(t, v1, []int{1, 2})
+		xt.Equal(t, g1, []int{3, 4, 5})
+
+		g2, v2 := PopHeadN(g1, 2)
+		xt.Equal(t, v2, []int{3, 4})
+		xt.Equal(t, g2, []int{5})
+
+		g3, v3 := PopHeadN(g2, 2)
+		xt.Equal(t, v3, []int{5})
+		xt.Empty(t, g3)
 	})
 }
 
@@ -174,6 +191,20 @@ func TestPopTailN(t *testing.T) {
 		g2, v2 := PopTailN(g1, 2)
 		xt.Empty(t, v2)
 		xt.Empty(t, g2)
+	})
+	t.Run("len 5", func(t *testing.T) {
+		a1 := []int{1, 2, 3, 4, 5}
+		g1, v1 := PopTailN(a1, 2)
+		xt.Equal(t, v1, []int{5, 4})
+		xt.Equal(t, g1, []int{1, 2, 3})
+
+		g2, v2 := PopTailN(g1, 2)
+		xt.Equal(t, v2, []int{3, 2})
+		xt.Equal(t, g2, []int{1})
+
+		g3, v3 := PopTailN(g2, 2)
+		xt.Equal(t, v3, []int{1})
+		xt.Empty(t, g3)
 	})
 }
 
@@ -258,17 +289,19 @@ func TestPopRand(t *testing.T) {
 	t.Run("pop1", func(t *testing.T) {
 		var poped []int
 		ns := slices.Clone(l1)
+		arr := ns
 		for i := 0; i < 5; i++ {
 			var one int
 			var ok bool
-			ns, one, ok = PopRand(ns)
+			arr, one, ok = PopRand(arr)
 			xt.True(t, ok)
-			xt.Len(t, ns, 4-i)
+			xt.Len(t, arr, 4-i)
 			xt.SliceContains(t, l1, one)
 			poped = append(poped, one)
 		}
-		xt.Empty(t, ns)
+		xt.Empty(t, arr)
 		xt.SliceSortEqual(t, l1, poped)
+		xt.Len(t, ns, 5)
 	})
 }
 

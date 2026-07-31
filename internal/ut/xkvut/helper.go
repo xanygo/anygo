@@ -29,7 +29,7 @@ func hasFlag(flag string) bool {
 }
 
 func TestStringStorage1(t xt.TB, kvs xkv.StringStorage) {
-	t.Run("string", func(t xt.TB) {
+	t.Run("String", func(t xt.TB) {
 		const key = "t1-hello"
 		ss1 := kvs.String(key)
 		got1, found1, err1 := ss1.Get(context.Background())
@@ -49,7 +49,7 @@ func TestStringStorage1(t xt.TB, kvs xkv.StringStorage) {
 		xt.NoError(t, kvs.Delete(context.Background(), key))
 	})
 
-	t.Run("list", func(t xt.TB) {
+	t.Run("List", func(t xt.TB) {
 		const key = "t1-list1"
 		list := kvs.List(key)
 		_, err1 := list.RPush(context.Background(), "1")
@@ -157,11 +157,25 @@ func TestStringStorage1(t xt.TB, kvs xkv.StringStorage) {
 }
 
 func TestStringStorage2(t xt.TB, kvs xkv.StringStorage) {
-	checkString(t, kvs)
-	checkHash(t, kvs)
-	checkList(t, kvs)
-	checkSet(t, kvs)
-	checkZSet(t, kvs)
+	t.Run("String", func(t xt.TB) {
+		checkString(t, kvs)
+	})
+
+	t.Run("Hash", func(t xt.TB) {
+		checkHash(t, kvs)
+	})
+
+	t.Run("List", func(t xt.TB) {
+		checkList(t, kvs)
+	})
+
+	t.Run("Set", func(t xt.TB) {
+		checkSet(t, kvs)
+	})
+
+	t.Run("ZSet", func(t xt.TB) {
+		checkZSet(t, kvs)
+	})
 }
 
 func checkString(t xt.TB, kvs xkv.StringStorage) {
@@ -732,5 +746,58 @@ func checkZSet(t xt.TB, kvs xkv.StringStorage) {
 		xt.NoError(t, err)
 		xt.Equal(t, index, 2)
 		xt.Equal(t, score, 2)
+	})
+
+	t.Run("zpopmax-min1", func(t xt.TB) {
+		zs := kvs.ZSet("t2-zpopmax1")
+		checkLen := func(t xt.TB, want int64) {
+			t.Helper()
+			num, err1 := zs.ZLen(ctx)
+			xt.NoError(t, err1)
+			xt.Equal(t, num, want)
+		}
+		members, scores, err := zs.ZPopMax(ctx, 3)
+		xt.NoError(t, err)
+		xt.Empty(t, members)
+		xt.Empty(t, scores)
+
+		err = zs.ZAdd(ctx, 1, "m1")
+		xt.NoError(t, err)
+
+		checkLen(t, 1)
+
+		members, scores, err = zs.ZPopMax(ctx, 3)
+		xt.NoError(t, err)
+		xt.Equal(t, members, []string{"m1"})
+		xt.Equal(t, scores, []float64{1})
+
+		checkLen(t, 0)
+
+		for i := 0; i < 20; i++ {
+			err = zs.ZAdd(ctx, float64(i+1), fmt.Sprintf("m%d", i+1))
+			xt.NoError(t, err)
+		}
+		checkLen(t, 20)
+
+		members, scores, err = zs.ZPopMax(ctx, 3)
+		xt.NoError(t, err)
+		xt.Equal(t, members, []string{"m20", "m19", "m18"})
+		xt.Equal(t, scores, []float64{20, 19, 18})
+
+		checkLen(t, 17)
+
+		members, scores, err = zs.ZPopMax(ctx, 3)
+		xt.NoError(t, err)
+		xt.Equal(t, members, []string{"m17", "m16", "m15"})
+		xt.Equal(t, scores, []float64{17, 16, 15})
+
+		checkLen(t, 14)
+
+		members, scores, err = zs.ZPopMin(ctx, 4)
+		xt.NoError(t, err)
+		xt.Equal(t, members, []string{"m1", "m2", "m3", "m4"})
+		xt.Equal(t, scores, []float64{1, 2, 3, 4})
+
+		checkLen(t, 10)
 	})
 }

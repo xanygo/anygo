@@ -25,8 +25,13 @@ func (t testT) Run(name string, fn func(tb xt.TB)) {
 
 func testStringStorage(t *testing.T, ff xkv.StringStorage) {
 	tb := testT{T: t}
-	xkvut.TestStringStorage1(tb, ff)
-	xkvut.TestStringStorage2(tb, ff)
+	tb.Run("t1", func(tb xt.TB) {
+		xkvut.TestStringStorage1(tb, ff)
+	})
+
+	tb.Run("t2", func(tb xt.TB) {
+		xkvut.TestStringStorage2(tb, ff)
+	})
 }
 
 func benchStorage(b *testing.B, st xkv.StringStorage) {

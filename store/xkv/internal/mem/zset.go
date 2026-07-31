@@ -132,6 +132,28 @@ func (mz *zsetValue) Len() int64 {
 	return int64(len(mz.Members))
 }
 
+func (mz *zsetValue) PopMax(count int) (members []string, scores []float64) {
+	mz.mux.Lock()
+	defer mz.mux.Unlock()
+	mz.Members, members = xslice.PopTailN(mz.Members, count)
+	for _, m := range members {
+		scores = append(scores, mz.Scores[m])
+		delete(mz.Scores, m)
+	}
+	return members, scores
+}
+
+func (mz *zsetValue) PopMin(count int) (members []string, scores []float64) {
+	mz.mux.Lock()
+	defer mz.mux.Unlock()
+	mz.Members, members = xslice.PopHeadN(mz.Members, count)
+	for _, m := range members {
+		scores = append(scores, mz.Scores[m])
+		delete(mz.Scores, m)
+	}
+	return members, scores
+}
+
 func zsetValueEmpty(mz *zsetValue) bool {
 	return mz == nil || mz.Len() == 0
 }
@@ -234,4 +256,20 @@ func (m *ZSet) ZRem(ctx context.Context, members ...string) error {
 		}
 		return value, op, nil
 	})
+}
+
+func (m *ZSet) ZPopMax(ctx context.Context, count int) (members []string, scores []float64, err error) {
+	err = m.withLocked(func(value *zsetValue) (*zsetValue, operate, error) {
+		members, scores = value.PopMax(count)
+		return value, opWrite, nil
+	})
+	return members, scores, err
+}
+
+func (m *ZSet) ZPopMin(ctx context.Context, count int) (members []string, scores []float64, err error) {
+	err = m.withLocked(func(value *zsetValue) (*zsetValue, operate, error) {
+		members, scores = value.PopMin(count)
+		return value, opWrite, nil
+	})
+	return members, scores, err
 }

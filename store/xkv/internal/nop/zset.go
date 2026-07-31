@@ -35,3 +35,11 @@ func (n ZSet[V]) ZRem(ctx context.Context, members ...V) error {
 func (n ZSet[V]) ZRank(ctx context.Context, member V) (int64, float64, error) {
 	return 0, 0, nil
 }
+
+func (n ZSet[V]) ZPopMax(ctx context.Context, count int) ([]V, []float64, error) {
+	return nil, nil, nil
+}
+
+func (n ZSet[V]) ZPopMin(ctx context.Context, count int) ([]V, []float64, error) {
+	return nil, nil, nil
+}

@@ -244,8 +244,12 @@ func (fb *Base) rangeMemberFiles(ctx context.Context, fn func(path string, d fs.
 		if err != nil {
 			return err
 		}
-		if err = ctx.Err(); err != nil {
-			return err
+
+		select {
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		default:
+			// 继续
 		}
 
 		if !strings.HasSuffix(d.Name(), memberFileExt) {
@@ -257,7 +261,9 @@ func (fb *Base) rangeMemberFiles(ctx context.Context, fn func(path string, d fs.
 		}
 		return err
 	})
-
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
 	return err
 }
 

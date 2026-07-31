@@ -715,4 +715,57 @@ func checkZSet(t *testing.T, kvs xkv.StringStorage) {
 		xt.Equal(t, index, 2)
 		xt.Equal(t, score, 2)
 	})
+
+	t.Run("zpopmax-min1", func(t *testing.T) {
+		zs := kvs.ZSet("t2-zpopmax1")
+		checkLen := func(t *testing.T, want int64) {
+			t.Helper()
+			num, err1 := zs.ZLen(ctx)
+			xt.NoError(t, err1)
+			xt.Equal(t, num, want)
+		}
+		members, scores, err := zs.ZPopMax(ctx, 3)
+		xt.NoError(t, err)
+		xt.Empty(t, members)
+		xt.Empty(t, scores)
+
+		err = zs.ZAdd(ctx, 1, "m1")
+		xt.NoError(t, err)
+
+		checkLen(t, 1)
+
+		members, scores, err = zs.ZPopMax(ctx, 3)
+		xt.NoError(t, err)
+		xt.Equal(t, members, []string{"m1"})
+		xt.Equal(t, scores, []float64{1})
+
+		checkLen(t, 0)
+
+		for i := 0; i < 20; i++ {
+			err = zs.ZAdd(ctx, float64(i+1), fmt.Sprintf("m%d", i+1))
+			xt.NoError(t, err)
+		}
+		checkLen(t, 20)
+
+		members, scores, err = zs.ZPopMax(ctx, 3)
+		xt.NoError(t, err)
+		xt.Equal(t, members, []string{"m20", "m19", "m18"})
+		xt.Equal(t, scores, []float64{20, 19, 18})
+
+		checkLen(t, 17)
+
+		members, scores, err = zs.ZPopMax(ctx, 3)
+		xt.NoError(t, err)
+		xt.Equal(t, members, []string{"m17", "m16", "m15"})
+		xt.Equal(t, scores, []float64{17, 16, 15})
+
+		checkLen(t, 14)
+
+		members, scores, err = zs.ZPopMin(ctx, 4)
+		xt.NoError(t, err)
+		xt.Equal(t, members, []string{"m1", "m2", "m3", "m4"})
+		xt.Equal(t, scores, []float64{1, 2, 3, 4})
+
+		checkLen(t, 10)
+	})
 }

@@ -196,6 +196,12 @@ type ZSet[V any] interface {
 
 	// ZRem 移除有序集合中的指定成员（类似 Redis 的 ZREM 命令）
 	ZRem(ctx context.Context, members ...V) error
+
+	// ZPopMax 弹出分数最大的 count 个元素
+	ZPopMax(ctx context.Context, count int) ([]V, []float64, error)
+
+	// ZPopMin 弹出分数最小的 count 个元素
+	ZPopMin(ctx context.Context, count int) ([]V, []float64, error)
 }
 
 type Storage[V any] interface {

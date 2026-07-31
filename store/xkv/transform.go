@@ -530,6 +530,38 @@ func (t transZSet[V]) ZRank(ctx context.Context, member V) (int64, float64, erro
 	return t.ss.ZRank(ctx, str)
 }
 
+func (t transZSet[V]) ZPopMax(ctx context.Context, count int) ([]V, []float64, error) {
+	values, scores, err := t.ss.ZPopMax(ctx, count)
+	if err != nil {
+		return nil, nil, err
+	}
+	result := make([]V, len(values))
+	for i, str := range values {
+		var v V
+		if err = xcodec.DecodeFromString(t.codec, str, &v); err != nil {
+			return nil, nil, err
+		}
+		result[i] = v
+	}
+	return result, scores, nil
+}
+
+func (t transZSet[V]) ZPopMin(ctx context.Context, count int) ([]V, []float64, error) {
+	values, scores, err := t.ss.ZPopMin(ctx, count)
+	if err != nil {
+		return nil, nil, err
+	}
+	result := make([]V, len(values))
+	for i, str := range values {
+		var v V
+		if err = xcodec.DecodeFromString(t.codec, str, &v); err != nil {
+			return nil, nil, err
+		}
+		result[i] = v
+	}
+	return result, scores, nil
+}
+
 func (tr Transformer[V]) Delete(ctx context.Context, keys ...string) error {
 	return tr.Storage.Delete(ctx, keys...)
 }
