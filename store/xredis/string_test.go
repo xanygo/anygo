@@ -63,13 +63,13 @@ func TestClientString(t *testing.T) {
 		xt.True(t, ok)
 
 		ok, err = client.SetNX(ctx, "k2", "v2-1", 0)
-		xt.ErrorIs(t, err, ErrNil)
+		xt.NoError(t, err)
 		xt.False(t, ok)
 	})
 
 	t.Run("setxx", func(t *testing.T) {
 		ok, err := client.SetXX(ctx, "k3", "v3", 0)
-		xt.ErrorIs(t, err, ErrNil)
+		xt.NoError(t, err)
 		xt.False(t, ok)
 
 		_, err = client.Get(ctx, "k3")

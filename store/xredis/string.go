@@ -79,7 +79,11 @@ func (c *Client) SetXX(ctx context.Context, key string, value any, ttl time.Dura
 	}
 	cmd := resp3.NewRequest(resp3.DataTypeSimpleString, args...)
 	resp := c.do(ctx, cmd)
-	return resp3.ToOkBool(resp.result, resp.err)
+	ok, err := resp3.ToOkBool(resp.result, resp.err)
+	if errors.Is(err, ErrNil) {
+		return false, nil
+	}
+	return ok, err
 }
 
 func (c *Client) SetRange(ctx context.Context, key string, offset int, value any) (int, error) {
