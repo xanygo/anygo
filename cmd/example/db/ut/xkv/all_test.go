@@ -15,6 +15,7 @@ import (
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xkv"
 	"github.com/xanygo/anygo/store/xkv/xkvx"
+	"github.com/xanygo/anygo/store/xredis"
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xt"
 )
@@ -60,6 +61,10 @@ func checkDB(t *testing.T, db *xdb.Client) {
 
 	xt.NoError(t, kvs.Migrate(ctx))
 
+	checkAll(t, kvs)
+}
+
+func checkAll(t *testing.T, kvs xkv.StringStorage) {
 	t.Run("checkString", func(t *testing.T) {
 		logWriter.Switch(t)
 		checkString(t, kvs)
@@ -144,6 +149,27 @@ func checkMySQLBase(t *testing.T, dialect string) {
 	}
 
 	checkDB(t, client)
+}
+
+func TestRedis(t *testing.T) {
+	rdsURI := os.Getenv("anygo-ut-redis")
+	if rdsURI == "" {
+		t.Skip("no test redis uri found, skipped")
+		return
+	}
+	_, client, err := xredis.NewClientByURI("demo", rdsURI)
+	xt.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	xt.NoError(t, client.Select(ctx, 10))
+	xt.NoError(t, client.FlushB(ctx, true))
+
+	xs := &xkvx.RedisStore{
+		Client: client,
+	}
+	checkAll(t, xs)
 }
 
 func checkString(t *testing.T, kvs xkv.StringStorage) {
@@ -789,5 +815,20 @@ func checkZSet(t *testing.T, kvs xkv.StringStorage) {
 		}
 
 		checkRange(t, "1", "2", []string{"m1", "m2"}, []float64{1, 2})
+	})
+
+	t.Run("", func(t *testing.T) {
+		zs := kvs.ZSet("t2-zem-rangebyscore-1")
+		for i := 0; i < 10; i++ {
+			err := zs.ZAdd(ctx, float64(i), fmt.Sprintf("m%d", i))
+			xt.NoError(t, err)
+		}
+		num, err := zs.ZRemRangeByScore(ctx, "-inf", "3")
+		xt.NoError(t, err)
+		xt.Equal(t, num, 4)
+
+		num, err = zs.ZLen(ctx)
+		xt.NoError(t, err)
+		xt.Equal(t, num, 6)
 	})
 }

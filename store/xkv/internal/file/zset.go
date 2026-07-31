@@ -8,9 +8,9 @@ import (
 	"os"
 	"unsafe"
 
-	"github.com/xanygo/anygo/ds/xcmp"
 	"github.com/xanygo/anygo/ds/xcontainer"
 	"github.com/xanygo/anygo/safely"
+	"github.com/xanygo/anygo/store/xkv/internal"
 )
 
 type ZSet struct {
@@ -124,17 +124,12 @@ func (z *ZSet) ZRange(ctx context.Context, fn func(member string, score float64)
 }
 
 func (z *ZSet) ZRangeByScore(ctx context.Context, min string, max string, fn func(member string, score float64) bool) error {
-	minBound := &xcmp.Bound[float64]{}
-	if err := minBound.ParserMin(min); err != nil {
-		return err
-	}
-
-	maxBound := &xcmp.Bound[float64]{}
-	if err := maxBound.ParserMax(max); err != nil {
+	match, err := internal.ParserMinMax(min, max)
+	if err != nil {
 		return err
 	}
 	return z.ZRange(ctx, func(member string, score float64) bool {
-		if minBound.MatchMin(score) && maxBound.MatchMax(score) {
+		if match(score) {
 			return fn(member, score)
 		}
 		return true
@@ -146,6 +141,9 @@ func (z *ZSet) ZRem(ctx context.Context, members ...string) error {
 		return nil
 	}
 	return z.Base.lock(ctx, func(ctx context.Context, meta *Meta) error {
+		if meta == nil {
+			return nil
+		}
 		defer func() {
 			z.Base.deleteKeyWhenNoMember(ctx)
 			go safely.RunVoid(z.Compact)
@@ -160,14 +158,35 @@ func (z *ZSet) ZRem(ctx context.Context, members ...string) error {
 	})
 }
 
-func (z *ZSet) ZCount(ctx context.Context, min, max string) (num int64, err error) {
-	minBound := &xcmp.Bound[float64]{}
-	if err = minBound.ParserMin(min); err != nil {
+func (z *ZSet) ZRemRangeByScore(ctx context.Context, min, max string) (num int64, err error) {
+	match, err := internal.ParserMinMax(min, max)
+	if err != nil {
 		return 0, err
 	}
+	err = z.Base.lock(ctx, func(ctx context.Context, meta *Meta) error {
+		if meta == nil {
+			return nil
+		}
+		defer func() {
+			z.Base.deleteKeyWhenNoMember(ctx)
+			go safely.RunVoid(z.Compact)
+		}()
+		return z.rangeMembers(ctx, func(item *memberScore) (bool, error) {
+			if match(item.Score) {
+				if err1 := z.deleteMember(item.MemberString()); err1 != nil {
+					return false, err1
+				}
+				num++
+			}
+			return true, nil
+		})
+	})
+	return num, err
+}
 
-	maxBound := &xcmp.Bound[float64]{}
-	if err = maxBound.ParserMax(max); err != nil {
+func (z *ZSet) ZCount(ctx context.Context, min, max string) (num int64, err error) {
+	match, err := internal.ParserMinMax(min, max)
+	if err != nil {
 		return 0, err
 	}
 	err = z.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
@@ -175,8 +194,7 @@ func (z *ZSet) ZCount(ctx context.Context, min, max string) (num int64, err erro
 			return nil
 		}
 		return z.rangeMembers(ctx, func(item *memberScore) (bool, error) {
-			match := minBound.MatchMin(item.Score) && maxBound.MatchMax(item.Score)
-			if match {
+			if match(item.Score) {
 				num++
 			}
 			return true, nil

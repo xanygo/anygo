@@ -224,6 +224,26 @@ func (z *ZSet) ZRem(ctx context.Context, members ...string) error {
 	})
 }
 
+func (z *ZSet) ZRemRangeByScore(ctx context.Context, min, max string) (num int64, err error) {
+	where, args, err := z.minMaxCond(min, max)
+	if err != nil {
+		return 0, err
+	}
+	err = z.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+		_, err1 := z.Meta.load(ctx, tx)
+		if err1 != nil {
+			return err1
+		}
+		orm := z.orm(tx)
+		num, err1 = orm.Delete(ctx, where, args...)
+		if err1 != nil {
+			return err1
+		}
+		return z.checkExists(ctx, orm)
+	})
+	return num, err
+}
+
 // checkExists 检查 key 是否还存在，若不存在，则删除 meta
 func (z *ZSet) checkExists(ctx context.Context, orm *xdb.Model[ZSetModel]) error {
 	orm.SelectFields("c")

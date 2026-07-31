@@ -195,3 +195,21 @@ func (opt *CommandListOption) appendArgs(args []any) []any {
 	}
 	return args
 }
+
+// Select 切换逻辑数据库 id
+func (c *Client) Select(ctx context.Context, id uint) error {
+	cmd := resp3.NewRequest(resp3.DataTypeSimpleString, "SELECT", id)
+	resp := c.do(ctx, cmd)
+	return resp3.ToOkStatus(resp.result, resp.err)
+}
+
+// FlushB 清空当前数据库的所有 key
+func (c *Client) FlushB(ctx context.Context, sync bool) error {
+	op := "ASYNC"
+	if sync {
+		op = "SYNC"
+	}
+	cmd := resp3.NewRequest(resp3.DataTypeSimpleString, "FLUSHDB", op)
+	resp := c.do(ctx, cmd)
+	return resp3.ToOkStatus(resp.result, resp.err)
+}

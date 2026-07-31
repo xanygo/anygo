@@ -36,6 +36,10 @@ func (n ZSet[V]) ZRem(ctx context.Context, members ...V) error {
 	return nil
 }
 
+func (n ZSet[V]) ZRemRangeByScore(ctx context.Context, min, max string) (int64, error) {
+	return 0, nil
+}
+
 func (n ZSet[V]) ZRank(ctx context.Context, member V) (int64, float64, error) {
 	return 0, 0, nil
 }

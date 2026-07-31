@@ -6,11 +6,7 @@ package xkv
 
 import (
 	"context"
-
-	"github.com/xanygo/anygo/store/xkv/internal"
 )
-
-var ErrInvalidType = internal.ErrInvalidType
 
 type String[V any] interface {
 	// Set 设置字符串的值（类似 Redis 的 SET 命令）
@@ -205,10 +201,15 @@ type ZSet[V any] interface {
 	// ZRem 移除有序集合中的指定成员（类似 Redis 的 ZREM 命令）
 	ZRem(ctx context.Context, members ...V) error
 
-	// ZPopMax 弹出分数最大的 count 个元素
+	// ZRemRangeByScore 删除分数在 min 和 max 之间的元素
+	// min: 最小分数，如 "2"表示 >=2，"(2" 表示 >2，"-inf" 表示无穷小
+	// max: 最大分数，如 "2"表示 <=2，"(2" 表示 <2，"+inf" 表示无穷大
+	ZRemRangeByScore(ctx context.Context, min, max string) (int64, error)
+
+	// ZPopMax 按照分数倒序，弹出分数最多 count 个元素
 	ZPopMax(ctx context.Context, count int) ([]V, []float64, error)
 
-	// ZPopMin 弹出分数最小的 count 个元素
+	// ZPopMin 按照分数正序，弹出分数最多 count 个元素
 	ZPopMin(ctx context.Context, count int) ([]V, []float64, error)
 }
 
@@ -230,3 +231,14 @@ type Storage[V any] interface {
 }
 
 type StringStorage = Storage[string]
+
+// ZItem zset 的一条数据
+type ZItem[T any] struct {
+	Member T
+	Score  float64
+}
+
+type HItem[T any] struct {
+	Field string
+	Value T
+}

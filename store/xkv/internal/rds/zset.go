@@ -82,6 +82,10 @@ func (z *ZSet) ZRem(ctx context.Context, members ...string) error {
 	return err
 }
 
+func (z *ZSet) ZRemRangeByScore(ctx context.Context, min, max string) (int64, error) {
+	return z.Client.ZRemRangeByScore(ctx, z.Key, min, max)
+}
+
 func (z *ZSet) ZPopMax(ctx context.Context, count int) (members []string, scores []float64, err error) {
 	items, err1 := z.Client.ZPopMax(ctx, z.Key, count)
 	if err1 != nil {

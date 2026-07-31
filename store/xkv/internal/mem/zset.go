@@ -96,7 +96,28 @@ func (mz *zsetValue) Remove(member string) bool {
 	return true
 }
 
-func (mz *zsetValue) Count(min, max *xcmp.Bound[float64]) (num int64) {
+func (mz *zsetValue) RemoveRange(match func(num float64) bool) int64 {
+	mz.mux.Lock()
+	defer mz.mux.Unlock()
+
+	if len(mz.Members) == 0 {
+		return 0
+	}
+	var deleted []string
+	for member, score := range mz.Scores {
+		if match(score) {
+			delete(mz.Scores, member)
+			deleted = append(deleted, member)
+		}
+	}
+	if len(deleted) == 0 {
+		return 0
+	}
+	mz.Members = xslice.DeleteValue(mz.Members, deleted...)
+	return int64(len(deleted))
+}
+
+func (mz *zsetValue) Count(match func(num float64) bool) (num int64) {
 	mz.mux.RLock()
 	defer mz.mux.RUnlock()
 
@@ -104,7 +125,7 @@ func (mz *zsetValue) Count(min, max *xcmp.Bound[float64]) (num int64) {
 		return 0
 	}
 	for _, s := range mz.Scores {
-		if min.MatchMin(s) && max.MatchMax(s) {
+		if match(s) {
 			num++
 		}
 	}
@@ -154,7 +175,7 @@ func (mz *zsetValue) PopMin(count int) (members []string, scores []float64) {
 	return members, scores
 }
 
-func zsetValueEmpty(mz *zsetValue) bool {
+func zSetValueEmpty(mz *zsetValue) bool {
 	return mz == nil || mz.Len() == 0
 }
 
@@ -169,7 +190,7 @@ func (m *ZSet) withLocked(fn func(*zsetValue) (*zsetValue, operate, error)) erro
 			value = &zsetValue{}
 		}
 		return fn(value)
-	}, zsetValueEmpty)
+	}, zSetValueEmpty)
 }
 
 func (m *ZSet) ZAdd(ctx context.Context, score float64, member string) error {
@@ -199,17 +220,12 @@ func (m *ZSet) ZIncrBy(ctx context.Context, incr float64, member string) (float6
 }
 
 func (m *ZSet) ZCount(ctx context.Context, min, max string) (num int64, err error) {
-	minBound := &xcmp.Bound[float64]{}
-	if err = minBound.ParserMin(min); err != nil {
-		return 0, err
-	}
-
-	maxBound := &xcmp.Bound[float64]{}
-	if err = maxBound.ParserMax(max); err != nil {
+	match, err := internal.ParserMinMax(min, max)
+	if err != nil {
 		return 0, err
 	}
 	err = m.withLocked(func(zv *zsetValue) (*zsetValue, operate, error) {
-		num = zv.Count(minBound, maxBound)
+		num = zv.Count(match)
 		return zv, opSkip, nil
 	})
 	return num, err
@@ -239,17 +255,12 @@ func (m *ZSet) ZRange(ctx context.Context, fn func(member string, score float64)
 }
 
 func (m *ZSet) ZRangeByScore(ctx context.Context, min string, max string, fn func(member string, score float64) bool) error {
-	minBound := &xcmp.Bound[float64]{}
-	if err := minBound.ParserMin(min); err != nil {
-		return err
-	}
-
-	maxBound := &xcmp.Bound[float64]{}
-	if err := maxBound.ParserMax(max); err != nil {
+	match, err := internal.ParserMinMax(min, max)
+	if err != nil {
 		return err
 	}
 	return m.ZRange(ctx, func(member string, score float64) bool {
-		if minBound.MatchMin(score) && maxBound.MatchMax(score) {
+		if match(score) {
 			return fn(member, score)
 		}
 		return true
@@ -265,6 +276,9 @@ func (m *ZSet) ZRank(ctx context.Context, member string) (index int64, score flo
 }
 
 func (m *ZSet) ZRem(ctx context.Context, members ...string) error {
+	if len(members) == 0 {
+		return nil
+	}
 	return m.withLocked(func(value *zsetValue) (*zsetValue, operate, error) {
 		var op operate
 		for _, member := range members {
@@ -274,6 +288,21 @@ func (m *ZSet) ZRem(ctx context.Context, members ...string) error {
 		}
 		return value, op, nil
 	})
+}
+
+func (m *ZSet) ZRemRangeByScore(ctx context.Context, min, max string) (num int64, err error) {
+	match, err := internal.ParserMinMax(min, max)
+	if err != nil {
+		return 0, err
+	}
+	err = m.withLocked(func(zv *zsetValue) (*zsetValue, operate, error) {
+		num = zv.RemoveRange(match)
+		if num > 0 {
+			return zv, opWrite, nil
+		}
+		return zv, opSkip, nil
+	})
+	return num, err
 }
 
 func (m *ZSet) ZPopMax(ctx context.Context, count int) (members []string, scores []float64, err error) {

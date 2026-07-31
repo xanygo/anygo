@@ -530,6 +530,10 @@ func (t transZSet[V]) ZRem(ctx context.Context, members ...V) error {
 	return t.ss.ZRem(ctx, ms...)
 }
 
+func (t transZSet[V]) ZRemRangeByScore(ctx context.Context, min, max string) (int64, error) {
+	return t.ss.ZRemRangeByScore(ctx, min, max)
+}
+
 func (t transZSet[V]) ZCount(ctx context.Context, min, max string) (int64, error) {
 	return t.ss.ZCount(ctx, min, max)
 }
