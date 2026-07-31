@@ -19,7 +19,7 @@ tasks:
     env:
       anygo-ut-redis: redis://127.0.0.1:6379
     cmds:
-      - go test -race -v github.com/xanygo/anygo/store/xredis
+      - go test -race  github.com/xanygo/anygo/store/xredis
   trc:
     cmds:
-      - go test -race -v github.com/xanygo/anygo/store/xredis
+      - go test -race  github.com/xanygo/anygo/store/xredis

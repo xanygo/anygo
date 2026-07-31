@@ -239,7 +239,7 @@ func (z *ZSet) popXX(ctx context.Context, count int, orderBy string) (members []
 	err = z.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := z.orm(tx)
 		orm.SelectFields("s", "m").Limit(count)
-		values, err1 := orm.List(ctx, "k=? order by s "+orderBy, z.Key, count)
+		values, err1 := orm.List(ctx, "k=? order by s "+orderBy, z.Key)
 		if err1 != nil {
 			return err1
 		}
