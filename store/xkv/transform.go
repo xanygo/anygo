@@ -506,6 +506,22 @@ func (t transZSet[V]) ZRange(ctx context.Context, fn func(member V, score float6
 	return err
 }
 
+func (t transZSet[V]) ZRangeByScore(ctx context.Context, min string, max string, fn func(member V, score float64) bool) error {
+	var decodeErr error
+	err := t.ss.ZRangeByScore(ctx, min, max, func(member string, score float64) bool {
+		var v V
+		decodeErr = xcodec.DecodeFromString(t.codec, member, &v)
+		if decodeErr != nil {
+			return false
+		}
+		return fn(v, score)
+	})
+	if decodeErr != nil {
+		return decodeErr
+	}
+	return err
+}
+
 func (t transZSet[V]) ZRem(ctx context.Context, members ...V) error {
 	ms, errs := internal.EncodeToStrings(t.codec, members)
 	if len(errs) == len(members) {

@@ -176,15 +176,23 @@ type ZSet[V any] interface {
 	// 返回：值，是否存在，错误
 	ZScore(ctx context.Context, member V) (float64, bool, error)
 
-	// ZRank 查找 member 的索引顺序并返回分数
-	// 返回值：索引位置(若为-1 则表示不存在,0-表示首位)，分数，错误
+	// ZRank 查找 member 的索引顺序(按照 score 升序排序)并返回分数
+	//
+	//  返回值：索引位置(若为-1 则表示不存在,0-表示首位)，分数，错误
+	//  实现时需要注意：
+	//  相同分数时，若 member 的字典顺序在前面，也排在前面
 	ZRank(ctx context.Context, member V) (int64, float64, error)
 
 	// ZIncrBy 给 member 添加分数，返回新的分数
 	ZIncrBy(ctx context.Context, increment float64, member V) (float64, error)
 
-	// ZRange 按分数升序返回所有元素（类似 Redis 的 ZRANGE 命令）
+	// ZRange 遍历所有元素，不保证顺序（类似 Redis 的 ZRANGE 命令）
 	ZRange(ctx context.Context, fn func(member V, score float64) bool) error
+
+	// ZRangeByScore 返回所有分数在  min 和 max 之间的元素，不保证顺序
+	// min: 最小分数，如 "2"表示 >=2，"(2" 表示 >2，"-inf" 表示无穷小
+	// max: 最大分数，如 "2"表示 <=2，"(2" 表示 <2，"+inf" 表示无穷大
+	ZRangeByScore(ctx context.Context, min string, max string, fn func(member V, score float64) bool) error
 
 	// ZCount 统计 score 在 min 和 max 之间的元素个数
 	// min: 最小分数，如 "2"表示 >=2，"(2" 表示 >2，"-inf" 表示无穷小

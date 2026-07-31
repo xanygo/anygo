@@ -238,6 +238,24 @@ func (m *ZSet) ZRange(ctx context.Context, fn func(member string, score float64)
 	return nil
 }
 
+func (m *ZSet) ZRangeByScore(ctx context.Context, min string, max string, fn func(member string, score float64) bool) error {
+	minBound := &xcmp.Bound[float64]{}
+	if err := minBound.ParserMin(min); err != nil {
+		return err
+	}
+
+	maxBound := &xcmp.Bound[float64]{}
+	if err := maxBound.ParserMax(max); err != nil {
+		return err
+	}
+	return m.ZRange(ctx, func(member string, score float64) bool {
+		if minBound.MatchMin(score) && maxBound.MatchMax(score) {
+			return fn(member, score)
+		}
+		return true
+	})
+}
+
 func (m *ZSet) ZRank(ctx context.Context, member string) (index int64, score float64, err error) {
 	err = m.withLocked(func(zv *zsetValue) (*zsetValue, operate, error) {
 		index, score = zv.Rank(member)

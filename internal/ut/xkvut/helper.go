@@ -140,13 +140,14 @@ func TestStringStorage1(t xt.TB, kvs xkv.StringStorage) {
 		xt.NoError(t, zset.ZAdd(context.Background(), 1.5, "m3"))
 		var members []string
 		var scores []float64
-		zset.ZRange(context.Background(), func(member string, score float64) bool {
+		err1 = zset.ZRange(context.Background(), func(member string, score float64) bool {
 			members = append(members, member)
 			scores = append(scores, score)
 			return true
 		})
-		xt.Equal(t, members, []string{"m1", "m3", "m2"})
-		xt.Equal(t, scores, []float64{1, 1.5, 2})
+		xt.NoError(t, err1)
+		xt.SliceSortEqual(t, members, []string{"m1", "m3", "m2"})
+		xt.SliceSortEqual(t, scores, []float64{1, 1.5, 2})
 
 		xt.NoError(t, zset.ZRem(context.Background(), "m2"))
 		got2, found2, err2 := zset.ZScore(context.Background(), "m2")
@@ -734,7 +735,7 @@ func checkZSet(t xt.TB, kvs xkv.StringStorage) {
 		xt.Equal(t, index, -1)
 		xt.Equal(t, score, 0)
 
-		err = zs.ZAdd(ctx, 2, "f100") // 和 m2 相同的 score
+		err = zs.ZAdd(ctx, 2, "f100") // 和 m2 相同的 score,但是 f100 排在 m2 之前
 		xt.NoError(t, err)
 
 		index, score, err = zs.ZRank(ctx, "m2")
@@ -799,5 +800,27 @@ func checkZSet(t xt.TB, kvs xkv.StringStorage) {
 		xt.Equal(t, scores, []float64{1, 2, 3, 4})
 
 		checkLen(t, 10)
+	})
+
+	t.Run("zrangebyscore", func(t xt.TB) {
+		zs := kvs.ZSet("t2-zrangebyscore-1")
+		for i := 0; i < 100; i++ {
+			err := zs.ZAdd(ctx, float64(i), fmt.Sprintf("m%d", i))
+			xt.NoError(t, err)
+		}
+		checkRange := func(t xt.TB, min, max string, want1 []string, wang2 []float64) {
+			var members []string
+			var scores []float64
+			err := zs.ZRangeByScore(ctx, min, max, func(member string, score float64) bool {
+				members = append(members, member)
+				scores = append(scores, score)
+				return true
+			})
+			xt.NoError(t, err)
+			xt.SliceSortEqual(t, members, want1)
+			xt.SliceSortEqual(t, scores, wang2)
+		}
+
+		checkRange(t, "1", "2", []string{"m1", "m2"}, []float64{1, 2})
 	})
 }

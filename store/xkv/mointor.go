@@ -373,6 +373,12 @@ func (mz *monitorZSet[V]) ZRange(ctx context.Context, fn func(member V, score fl
 	return err
 }
 
+func (mz *monitorZSet[V]) ZRangeByScore(ctx context.Context, min string, max string, fn func(member V, score float64) bool) error {
+	err := mz.store.ZRangeByScore(ctx, min, max, fn)
+	mz.monitor.doAfterRead(ctx, mz.key, err)
+	return err
+}
+
 func (mz *monitorZSet[V]) ZRem(ctx context.Context, members ...V) error {
 	err := mz.store.ZRem(ctx, members...)
 	mz.monitor.doAfterWrite(ctx, mz.key, err)

@@ -16,6 +16,10 @@ func (n ZSet[V]) ZRange(ctx context.Context, fn func(member V, score float64) bo
 	return nil
 }
 
+func (n ZSet[V]) ZRangeByScore(ctx context.Context, min string, max string, fn func(member V, score float64) bool) error {
+	return nil
+}
+
 func (n ZSet[V]) ZIncrBy(ctx context.Context, score float64, member V) (float64, error) {
 	return 0, nil
 }

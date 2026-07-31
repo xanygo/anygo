@@ -768,4 +768,26 @@ func checkZSet(t *testing.T, kvs xkv.StringStorage) {
 
 		checkLen(t, 10)
 	})
+
+	t.Run("zrangebyscore", func(t *testing.T) {
+		zs := kvs.ZSet("t2-zrangebyscore-1")
+		for i := 0; i < 100; i++ {
+			err := zs.ZAdd(ctx, float64(i), fmt.Sprintf("m%d", i))
+			xt.NoError(t, err)
+		}
+		checkRange := func(t *testing.T, min, max string, want1 []string, wang2 []float64) {
+			var members []string
+			var scores []float64
+			err := zs.ZRangeByScore(ctx, min, max, func(member string, score float64) bool {
+				members = append(members, member)
+				scores = append(scores, score)
+				return true
+			})
+			xt.NoError(t, err)
+			xt.SliceSortEqual(t, members, want1)
+			xt.SliceSortEqual(t, scores, wang2)
+		}
+
+		checkRange(t, "1", "2", []string{"m1", "m2"}, []float64{1, 2})
+	})
 }

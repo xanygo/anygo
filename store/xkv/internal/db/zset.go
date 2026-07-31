@@ -91,40 +91,42 @@ func (z *ZSet) ZIncrBy(ctx context.Context, inc float64, member string) (num flo
 	return num, err
 }
 
+func (z *ZSet) minMaxCond(min, max string) (where string, args []any, err error) {
+	minBound := &xcmp.Bound[float64]{}
+	if err1 := minBound.ParserMin(min); err1 != nil {
+		return "", nil, err1
+	}
+
+	maxBound := &xcmp.Bound[float64]{}
+	if err1 := maxBound.ParserMin(max); err1 != nil {
+		return "", nil, err1
+	}
+
+	cond := &xdb.Condition{}
+	cond.And("k=?", z.Key)
+	if !minBound.Inf {
+		op := anygo.Ternary(minBound.Exclude, ">", ">=")
+		cond.And(fmt.Sprintf("s %s ?", op), minBound.Value)
+	}
+	if !maxBound.Inf {
+		op := anygo.Ternary(minBound.Exclude, "<", "<=")
+		cond.And(fmt.Sprintf("s %s ?", op), maxBound.Value)
+	}
+	return cond.Build()
+}
+
 func (z *ZSet) ZCount(ctx context.Context, min, max string) (num int64, err error) {
+	where, args, err1 := z.minMaxCond(min, max)
+	if err1 != nil {
+		return 0, err1
+	}
 	err = z.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
 		if !hasMeta {
 			return nil
 		}
-
-		minBound := &xcmp.Bound[float64]{}
-		if err1 := minBound.ParserMin(min); err1 != nil {
-			return err1
-		}
-
-		maxBound := &xcmp.Bound[float64]{}
-		if err1 := maxBound.ParserMin(max); err1 != nil {
-			return err1
-		}
-
-		cond := xdb.Condition{}
-		cond.And("k=?", z.Key)
-		if !minBound.Inf {
-			op := anygo.Ternary(minBound.Exclude, ">", ">=")
-			cond.And(fmt.Sprintf("s %s ?", op), minBound.Value)
-		}
-		if !maxBound.Inf {
-			op := anygo.Ternary(minBound.Exclude, "<", "<=")
-			cond.And(fmt.Sprintf("s %s ?", op), maxBound.Value)
-		}
-		where, args, err2 := cond.Build()
-		if err2 != nil {
-			return err2
-		}
-
 		orm := z.orm(tx)
-		num, err2 = orm.Count(ctx, "*", where, args...)
-		return err2
+		num, err1 = orm.Count(ctx, "*", where, args...)
+		return err1
 	})
 	return num, err
 }
@@ -160,7 +162,32 @@ func (z *ZSet) ZRange(ctx context.Context, fn func(member string, score float64)
 		orm := z.orm(tx)
 		orm.SelectFields("m", "s")
 
-		for item, err := range orm.ListIter(ctx, "k=?", z.Key) {
+		for item, err := range orm.ListIter(ctx, "k=? order by s asc", z.Key) {
+			if err != nil {
+				return err
+			}
+			if !fn(item.Member, item.Score) {
+				return nil
+			}
+		}
+		return nil
+	})
+}
+
+func (z *ZSet) ZRangeByScore(ctx context.Context, min string, max string, fn func(member string, score float64) bool) error {
+	where, args, err1 := z.minMaxCond(min, max)
+	if err1 != nil {
+		return err1
+	}
+
+	return z.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+		if !hasMeta {
+			return nil
+		}
+		orm := z.orm(tx)
+		orm.SelectFields("m", "s")
+
+		for item, err := range orm.ListIter(ctx, where+" order by s asc", args...) {
 			if err != nil {
 				return err
 			}

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"io/fs"
 	"os"
-	"slices"
 	"unsafe"
 
 	"github.com/xanygo/anygo/ds/xcmp"
@@ -19,7 +18,7 @@ type ZSet struct {
 	Base    *Base
 }
 
-func (zs *ZSet) saveMember(member string, score float64) error {
+func (z *ZSet) saveMember(member string, score float64) error {
 	m := memberScore{
 		Member: unsafe.Slice(unsafe.StringData(member), len(member)),
 		Score:  score,
@@ -28,15 +27,15 @@ func (zs *ZSet) saveMember(member string, score float64) error {
 	if err != nil {
 		return err
 	}
-	return zs.Base.writeMemberFile(zs.Base.md5(member), string(bf))
+	return z.Base.writeMemberFile(z.Base.md5(member), string(bf))
 }
 
-func (zs *ZSet) deleteMember(member string) error {
-	return zs.Base.deleteMemberFile(zs.Base.md5(member))
+func (z *ZSet) deleteMember(member string) error {
+	return z.Base.deleteMemberFile(z.Base.md5(member))
 }
 
-func (zs *ZSet) memberScore(member string) (float64, bool, error) {
-	str, found, err := zs.Base.readMemberFile(zs.Base.md5(member))
+func (z *ZSet) memberScore(member string) (float64, bool, error) {
+	str, found, err := z.Base.readMemberFile(z.Base.md5(member))
 	if err != nil || !found {
 		return 0, false, err
 	}
@@ -46,22 +45,22 @@ func (zs *ZSet) memberScore(member string) (float64, bool, error) {
 	return m.Score, err == nil, err
 }
 
-func (zs *ZSet) ZAdd(ctx context.Context, score float64, member string) error {
-	return zs.Base.lockWrite(ctx, func(ctx context.Context, meta *Meta) error {
-		return zs.saveMember(member, score)
+func (z *ZSet) ZAdd(ctx context.Context, score float64, member string) error {
+	return z.Base.lockWrite(ctx, func(ctx context.Context, meta *Meta) error {
+		return z.saveMember(member, score)
 	})
 }
 
-func (zs *ZSet) ZIncrBy(ctx context.Context, score float64, member string) (result float64, err error) {
-	err = zs.Base.lockWrite(ctx, func(ctx context.Context, meta *Meta) error {
-		value, hasOld, err1 := zs.memberScore(member)
+func (z *ZSet) ZIncrBy(ctx context.Context, score float64, member string) (result float64, err error) {
+	err = z.Base.lockWrite(ctx, func(ctx context.Context, meta *Meta) error {
+		value, hasOld, err1 := z.memberScore(member)
 		if err1 != nil {
 			return err1
 		}
 		result = value + score
-		err2 := zs.saveMember(member, result)
+		err2 := z.saveMember(member, result)
 		if !hasOld && err2 != nil {
-			zs.Base.deleteKeyWhenNoMember(ctx)
+			z.Base.deleteKeyWhenNoMember(ctx)
 		}
 		return err2
 	})
@@ -71,13 +70,13 @@ func (zs *ZSet) ZIncrBy(ctx context.Context, score float64, member string) (resu
 	return result, nil
 }
 
-func (zs *ZSet) ZScore(ctx context.Context, member string) (score float64, found bool, err error) {
-	err = zs.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
+func (z *ZSet) ZScore(ctx context.Context, member string) (score float64, found bool, err error) {
+	err = z.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
 		if meta == nil {
 			return nil
 		}
 
-		value, ok, err1 := zs.memberScore(member)
+		value, ok, err1 := z.memberScore(member)
 		if err1 != nil || !ok {
 			return err1
 		}
@@ -88,8 +87,8 @@ func (zs *ZSet) ZScore(ctx context.Context, member string) (score float64, found
 	return score, found, err
 }
 
-func (zs *ZSet) rangeMembers(ctx context.Context, fn func(item *memberScore) (bool, error)) error {
-	return zs.Base.rangeMemberFiles(ctx, func(path string, d fs.DirEntry) error {
+func (z *ZSet) rangeMembers(ctx context.Context, fn func(item *memberScore) (bool, error)) error {
+	return z.Base.rangeMemberFiles(ctx, func(path string, d fs.DirEntry) error {
 		bf, err := os.ReadFile(path)
 		if err != nil {
 			return err
@@ -110,45 +109,50 @@ func (zs *ZSet) rangeMembers(ctx context.Context, fn func(item *memberScore) (bo
 	})
 }
 
-var zsMemberSortFn = xcmp.OrderAsc(func(t *memberScore) float64 {
-	return t.Score
-})
-
-func (zs *ZSet) ZRange(ctx context.Context, fn func(member string, score float64) bool) error {
-	return zs.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
+func (z *ZSet) ZRange(ctx context.Context, fn func(member string, score float64) bool) error {
+	return z.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
 		if meta == nil {
 			return nil
 		}
-		var list []*memberScore
-		err := zs.rangeMembers(ctx, func(item *memberScore) (bool, error) {
-			list = append(list, item)
+		return z.rangeMembers(ctx, func(item *memberScore) (bool, error) {
+			if !fn(item.MemberString(), item.Score) {
+				return false, nil
+			}
 			return true, nil
 		})
-		if err != nil {
-			return err
-		}
-		slices.SortFunc(list, zsMemberSortFn)
-		for _, m := range list {
-			if !fn(m.MemberString(), m.Score) {
-				return nil
-			}
-		}
-		return nil
 	})
 }
 
-func (zs *ZSet) ZRem(ctx context.Context, members ...string) error {
+func (z *ZSet) ZRangeByScore(ctx context.Context, min string, max string, fn func(member string, score float64) bool) error {
+	minBound := &xcmp.Bound[float64]{}
+	if err := minBound.ParserMin(min); err != nil {
+		return err
+	}
+
+	maxBound := &xcmp.Bound[float64]{}
+	if err := maxBound.ParserMax(max); err != nil {
+		return err
+	}
+	return z.ZRange(ctx, func(member string, score float64) bool {
+		if minBound.MatchMin(score) && maxBound.MatchMax(score) {
+			return fn(member, score)
+		}
+		return true
+	})
+}
+
+func (z *ZSet) ZRem(ctx context.Context, members ...string) error {
 	if len(members) == 0 {
 		return nil
 	}
-	return zs.Base.lock(ctx, func(ctx context.Context, meta *Meta) error {
+	return z.Base.lock(ctx, func(ctx context.Context, meta *Meta) error {
 		defer func() {
-			zs.Base.deleteKeyWhenNoMember(ctx)
-			go safely.RunVoid(zs.Compact)
+			z.Base.deleteKeyWhenNoMember(ctx)
+			go safely.RunVoid(z.Compact)
 		}()
 		var errs []error
 		for _, member := range members {
-			if err := zs.deleteMember(member); err != nil {
+			if err := z.deleteMember(member); err != nil {
 				errs = append(errs, err)
 			}
 		}
@@ -156,7 +160,7 @@ func (zs *ZSet) ZRem(ctx context.Context, members ...string) error {
 	})
 }
 
-func (zs *ZSet) ZCount(ctx context.Context, min, max string) (num int64, err error) {
+func (z *ZSet) ZCount(ctx context.Context, min, max string) (num int64, err error) {
 	minBound := &xcmp.Bound[float64]{}
 	if err = minBound.ParserMin(min); err != nil {
 		return 0, err
@@ -166,11 +170,11 @@ func (zs *ZSet) ZCount(ctx context.Context, min, max string) (num int64, err err
 	if err = maxBound.ParserMax(max); err != nil {
 		return 0, err
 	}
-	err = zs.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
+	err = z.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
 		if meta == nil {
 			return nil
 		}
-		return zs.rangeMembers(ctx, func(item *memberScore) (bool, error) {
+		return z.rangeMembers(ctx, func(item *memberScore) (bool, error) {
 			match := minBound.MatchMin(item.Score) && maxBound.MatchMax(item.Score)
 			if match {
 				num++
@@ -181,12 +185,12 @@ func (zs *ZSet) ZCount(ctx context.Context, min, max string) (num int64, err err
 	return num, err
 }
 
-func (zs *ZSet) ZLen(ctx context.Context) (num int64, err error) {
-	err = zs.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
+func (z *ZSet) ZLen(ctx context.Context) (num int64, err error) {
+	err = z.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
 		if meta == nil {
 			return nil
 		}
-		return zs.rangeMembers(ctx, func(item *memberScore) (bool, error) {
+		return z.rangeMembers(ctx, func(item *memberScore) (bool, error) {
 			num++
 			return true, nil
 		})
@@ -194,34 +198,50 @@ func (zs *ZSet) ZLen(ctx context.Context) (num int64, err error) {
 	return num, err
 }
 
-func (zs *ZSet) ZRank(ctx context.Context, member string) (index int64, score float64, err error) {
+func (z *ZSet) ZRank(ctx context.Context, member string) (index int64, score float64, err error) {
 	index = -1
-	var idx int64
-	err = zs.ZRange(ctx, func(name string, sc float64) bool {
-		if member == name {
-			index = idx
-			score = sc
-			return false
+	err = z.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
+		if meta == nil {
+			return nil
 		}
-		idx++
-		return true
+		scoreValue, found, err1 := z.memberScore(member)
+		if err1 != nil || !found {
+			return err1
+		}
+		var valueIndex int
+		err2 := z.rangeMembers(ctx, func(item *memberScore) (bool, error) {
+			name := item.MemberString()
+			if name != member {
+				// 相同分数时，若 member 的字典顺序在前面，也排在前面
+				if item.Score < scoreValue || (item.Score == scoreValue && name < member) {
+					valueIndex++
+				}
+			}
+			return true, nil
+		})
+		if err2 != nil {
+			return err2
+		}
+		index = int64(valueIndex)
+		score = scoreValue
+		return nil
 	})
 	return index, score, err
 }
 
-func (zs *ZSet) popXX(ctx context.Context, count int, sort func(a, b *memberScore) bool) (members []string, scores []float64, err error) {
+func (z *ZSet) popXX(ctx context.Context, count int, sort func(a, b *memberScore) bool) (members []string, scores []float64, err error) {
 	if count < 1 {
 		return nil, nil, nil
 	}
 
-	err = zs.Base.lock(ctx, func(ctx context.Context, meta *Meta) error {
+	err = z.Base.lock(ctx, func(ctx context.Context, meta *Meta) error {
 		if meta == nil {
 			return nil
 		}
-		defer zs.Base.deleteKeyWhenNoMember(ctx)
+		defer z.Base.deleteKeyWhenNoMember(ctx)
 
 		xh := xcontainer.NewTopNHeap[*memberScore](count, sort)
-		err1 := zs.rangeMembers(ctx, func(item *memberScore) (bool, error) {
+		err1 := z.rangeMembers(ctx, func(item *memberScore) (bool, error) {
 			xh.Add(item)
 			return true, nil
 		})
@@ -234,7 +254,7 @@ func (zs *ZSet) popXX(ctx context.Context, count int, sort func(a, b *memberScor
 			scores = append(scores, item.Score)
 
 			// 不能保证原子性
-			if err2 := zs.deleteMember(member); err2 != nil {
+			if err2 := z.deleteMember(member); err2 != nil {
 				return err2
 			}
 		}
@@ -248,16 +268,16 @@ func memberScoreSortDesc(a, b *memberScore) bool {
 	return a.Score < b.Score
 }
 
-func (zs *ZSet) ZPopMax(ctx context.Context, count int) (members []string, scores []float64, err error) {
-	return zs.popXX(ctx, count, memberScoreSortDesc)
+func (z *ZSet) ZPopMax(ctx context.Context, count int) (members []string, scores []float64, err error) {
+	return z.popXX(ctx, count, memberScoreSortDesc)
 }
 
 func memberScoreSortAsc(a, b *memberScore) bool {
 	return a.Score > b.Score
 }
 
-func (zs *ZSet) ZPopMin(ctx context.Context, count int) (members []string, scores []float64, err error) {
-	return zs.popXX(ctx, count, memberScoreSortAsc)
+func (z *ZSet) ZPopMin(ctx context.Context, count int) (members []string, scores []float64, err error) {
+	return z.popXX(ctx, count, memberScoreSortAsc)
 }
 
 type memberScore struct {
