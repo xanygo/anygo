@@ -233,13 +233,13 @@ func (d Postgres) ColumnString(fs dbtype.ColumnSchema) string {
 }
 
 func (d Postgres) UniqIndex(name string, columns []string) string {
-	return fmt.Sprintf("CONSTRAINT %s UNIQUE(%s)", name, strings.Join(columns, ","))
+	return fmt.Sprintf("CONSTRAINT %s UNIQUE(%s)", d.QuoteIdentifier(name), quoteIdentifiersJoin(d, columns))
 }
 
 func (d Postgres) AlterCreateIndex(indexType string, name string, table string, columns []string) string {
 	name += "_" + table // 避免不同表的索引名称重复
 	return fmt.Sprintf("CREATE %s IF NOT EXISTS %s on %s(%s)",
-		indexType, d.QuoteIdentifier(name), table, strings.Join(columns, ","))
+		indexType, d.QuoteIdentifier(name), d.QuoteIdentifier(table), quoteIdentifiersJoin(d, columns))
 }
 
 var _ dbtype.MigrateDialect = Postgres{}

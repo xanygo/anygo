@@ -88,7 +88,7 @@ func (d MariaDB) ReturningClause(columns ...string) string {
 var _ dbtype.UpsertDialect = MariaDB{}
 
 func (d MariaDB) UpsertSQL(table string, count int, columns, conflictCols, updateCols []string, returningCols []string) string {
-	colList := strings.Join(xslice.MapFunc(columns, d.QuoteIdentifier), ",")
+	colList := quoteIdentifiersJoin(d, columns)
 
 	valPlaceholders := "(" + strings.Join(xslice.Repeat("?", len(columns)), ",") + ")"
 
@@ -128,13 +128,13 @@ func (d MariaDB) CreateTableIfNotExists(table string) string {
 }
 
 func (d MariaDB) UniqIndex(name string, columns []string) string {
-	return fmt.Sprintf("UNIQUE KEY %s(%s)", name, strings.Join(columns, ","))
+	return fmt.Sprintf("UNIQUE KEY %s(%s)", d.QuoteIdentifier(name), quoteIdentifiersJoin(d, columns))
 }
 
 func (d MariaDB) AlterCreateIndex(indexType string, name string, table string, columns []string) string {
 	// 不支持 IF NOT EXISTS
 	return fmt.Sprintf(`ALTER TABLE %s ADD %s %s(%s)`,
-		table, indexType, name, strings.Join(columns, ","))
+		d.QuoteIdentifier(table), indexType, d.QuoteIdentifier(name), quoteIdentifiersJoin(d, columns))
 }
 
 //	func (d MariaDB) addColumnIfNotExists(table string, col string) string {

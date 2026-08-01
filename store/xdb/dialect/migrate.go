@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
@@ -48,7 +49,7 @@ func createTableSQL(ts dbtype.TableSchema, d dbtype.Dialect, sd dbtype.SchemaDia
 		})
 		var names []string
 		for _, index := range indexes {
-			names = append(names, d.QuoteIdentifier(index.FieldName))
+			names = append(names, index.FieldName)
 		}
 		tmp := sd.UniqIndex(indexName, names)
 		lines = append(lines, tmp)
@@ -90,7 +91,7 @@ func createTableSQLList(ts dbtype.TableSchema, d dbtype.Dialect, sd dbtype.Schem
 		})
 		var cols []string
 		for _, index := range indexes {
-			cols = append(cols, d.QuoteIdentifier(index.FieldName))
+			cols = append(cols, index.FieldName)
 		}
 		str := sd.AlterCreateIndex("INDEX", indexName, ts.Table, cols)
 		result = append(result, str)
@@ -102,11 +103,15 @@ func createTableSQLList(ts dbtype.TableSchema, d dbtype.Dialect, sd dbtype.Schem
 		})
 		var cols []string
 		for _, index := range indexes {
-			cols = append(cols, d.QuoteIdentifier(index.FieldName))
+			cols = append(cols, index.FieldName)
 		}
 		str := sd.AlterCreateIndex("UNIQUE INDEX", indexName, ts.Table, cols)
 		result = append(result, str)
 	}
 
 	return result
+}
+
+func quoteIdentifiersJoin(d dbtype.Dialect, cols []string) string {
+	return strings.Join(xslice.MapFunc(cols, d.QuoteIdentifier), ",")
 }

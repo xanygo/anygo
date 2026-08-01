@@ -173,13 +173,13 @@ func (d MySQL) CreateTableIfNotExists(table string) string {
 }
 
 func (d MySQL) UniqIndex(name string, columns []string) string {
-	return fmt.Sprintf("UNIQUE KEY %s(%s)", name, strings.Join(columns, ","))
+	return fmt.Sprintf("UNIQUE KEY %s(%s)", d.QuoteIdentifier(name), quoteIdentifiersJoin(d, columns))
 }
 
 func (d MySQL) AlterCreateIndex(indexType string, name string, table string, columns []string) string {
 	// 不支持 IF NOT EXISTS
 	return fmt.Sprintf(`ALTER TABLE %s ADD %s %s(%s)`,
-		d.QuoteIdentifier(table), indexType, name, strings.Join(columns, ","))
+		d.QuoteIdentifier(table), indexType, d.QuoteIdentifier(name), quoteIdentifiersJoin(d, columns))
 }
 
 //	func (d MySQL) addColumnIfNotExists(table string, col string) string {
