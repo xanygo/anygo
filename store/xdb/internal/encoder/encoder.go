@@ -225,7 +225,7 @@ func (e Encoder[T]) structFields(v T) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return sc.ColumnsNames, nil
+	return sc.ColumnNames, nil
 }
 
 // encodeStructFieldValue 对单个字段根据类型和 serializer 转换

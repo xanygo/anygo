@@ -84,7 +84,7 @@ uniqueIndex 示例：
 
 
 #### native
-设置数据库中字段类型使用原始类型，如 `native:varchar(32)`
+设置数据库中字段类型使用数据库原生类型，如 `native:varchar(32)`
 
 ### codec 参数
 数据编解码的方式：
@@ -98,6 +98,8 @@ uniqueIndex 示例：
 | date_time | 可用于 time.Time 类型的字段                            | `2025-11-11 13:00:00` |
 | timespan  | 可用于 time.Time 类型的字段,数据库中存储的 int 类型的值           | `1234567890`          |
 
+通过 codec 参数指定复杂类型在编码为 SQL 语句时的序列化方式，以及从数据库中读取出来后反序列化的方式。
+除了上述内置的 codec，还可以通过 dbcodec.Register 注册自定义的 codec。
 
 ## 驱动
 | 名称        | import path                     | 说明                      |

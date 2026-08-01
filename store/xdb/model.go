@@ -135,7 +135,7 @@ func (m *Model[T]) getSelectFields() (string, error) {
 	var fields []string
 
 	if m.schema != nil {
-		fields = slices.Clone(m.schema.ColumnsNames)
+		fields = slices.Clone(m.schema.ColumnNames)
 	} else {
 		var zero T
 		var err error
@@ -356,6 +356,15 @@ func (m *Model[T]) InsertBatch(ctx context.Context, vs ...T) (int64, error) {
 	return ret.RowsAffected()
 }
 
+// Upsert 批量 insert or update
+//
+// 输入参数：
+//
+//	conflictCols: 冲突字段名，必填，不可为空，应该数主键或者唯一索引的字段
+//	updateCols: 若冲突发生，执行更新的字段列表，可选。若为空，则冲突发生后，该条数据丢弃。
+//	values: 数据列表，必填
+//
+//	返回值：受影响条数，错误
 func (m *Model[T]) Upsert(ctx context.Context, conflictCols []string, updateCols []string, values ...T) (int64, error) {
 	if len(values) == 0 {
 		return 0, errors.New("no values")
@@ -388,6 +397,7 @@ func (m *Model[T]) Upsert(ctx context.Context, conflictCols []string, updateCols
 	return RowsAffected(ret, err)
 }
 
+// Update 执行 update 语句
 func (m *Model[T]) Update(ctx context.Context, v T, where string, args ...any) (int64, error) {
 	return m.doUpdate(ctx, v, where, args...)
 }
@@ -456,6 +466,7 @@ func (m *Model[T]) UpdateByPK(ctx context.Context, v T) (int64, error) {
 	return m1.doUpdate(ctx, v, where, value)
 }
 
+// Delete 执行 delete 语句
 func (m *Model[T]) Delete(ctx context.Context, where string, args ...any) (int64, error) {
 	if m.err != nil {
 		return 0, m.err
@@ -496,6 +507,9 @@ func (m *Model[T]) DeleteByPK(ctx context.Context, v T) (int64, error) {
 	return m.Delete(ctx, where, value)
 }
 
+// First 使用 select xx from table where xxx limit 1 查询满足条件的第一条数据
+//
+// 可通过 SelectFields、SelectIgnore 限制查询返回的字段
 func (m *Model[T]) First(ctx context.Context, where string, args ...any) (v T, ok bool, err error) {
 	if m.err != nil {
 		return v, false, m.err
@@ -525,6 +539,8 @@ func (m *Model[T]) First(ctx context.Context, where string, args ...any) (v T, o
 // FindByPK 使用主键查找数据
 //
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
+//
+//	可通过 SelectFields、SelectIgnore 限制查询返回的字段
 func (m *Model[T]) FindByPK(ctx context.Context, v T) (nv T, ok bool, err error) {
 	pk, value, err := m.getEncoder(encoder.ActionSelect).PKNameAndValue(v)
 	if err != nil {
@@ -534,6 +550,10 @@ func (m *Model[T]) FindByPK(ctx context.Context, v T) (nv T, ok bool, err error)
 	return m.First(ctx, where, value)
 }
 
+// List 查询并返回满足条件的数据。
+//
+//	可以使用 Limit(xxx).Offset(xxx) 限制返回条数和偏移量
+//	可通过 SelectFields、SelectIgnore 限制查询返回的字段
 func (m *Model[T]) List(ctx context.Context, where string, args ...any) ([]T, error) {
 	if m.err != nil {
 		return nil, m.err
@@ -548,6 +568,10 @@ func (m *Model[T]) List(ctx context.Context, where string, args ...any) ([]T, er
 	return result, nil
 }
 
+// ListIter 查询满足条件的数据并返回一个迭代器。数据是流式从数据库返回的。
+//
+//	可以使用 Limit(xxx).Offset(xxx) 限制返回条数和偏移量
+//	可通过 SelectFields、SelectIgnore 限制查询返回的字段
 func (m *Model[T]) ListIter(ctx context.Context, where string, args ...any) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
 		var zero T
@@ -597,8 +621,6 @@ func (m *Model[T]) connectWhere(where string) string {
 	return " where " + where
 }
 
-const randFn = `X:RAND()`
-
 func (m *Model[T]) buildWhere(indexStart int, where string, args []any) (string, []any, error) {
 	// 将 ? 替换为方言的占位符，如 $1, $2 ...
 	if m.dialect.BindVar(0) != "?" {
@@ -616,9 +638,9 @@ func (m *Model[T]) buildWhere(indexStart int, where string, args []any) (string,
 	}
 
 	// 将条件中的 RAND() 换成方言
-	if strings.Contains(where, randFn) {
-		if dr := m.dialect.RandomOrder(); dr != randFn {
-			where = strings.ReplaceAll(where, randFn, dr)
+	if strings.Contains(where, KWRand) {
+		if dr := m.dialect.RandomOrder(); dr != KWRand {
+			where = strings.ReplaceAll(where, KWRand, dr)
 		}
 	}
 	return where, args, nil
@@ -651,6 +673,8 @@ func (m *Model[T]) doCount(ctx context.Context, field string, where string, args
 }
 
 // ListPage 分页查询，适应于数据量不太大的场景
+//
+//	可通过 SelectFields、SelectIgnore 限制查询返回的字段
 func (m *Model[T]) ListPage(ctx context.Context, page int, size int, where string, args ...any) (Pagination, []PageRecord[T], error) {
 	if size < 1 {
 		return Pagination{}, nil, fmt.Errorf("invalid size=%d", size)
@@ -676,7 +700,7 @@ func (m *Model[T]) ListPage(ctx context.Context, page int, size int, where strin
 		return info, nil, nil
 	}
 	m1 := m.Clone()
-	result, err := m1.Limit(size).Offset(offset).List(ctx, where, args)
+	result, err := m1.Limit(size).Offset(offset).List(ctx, where, args...)
 	if err != nil {
 		return info, nil, err
 	}

@@ -54,7 +54,7 @@ func TestSchemaUser1(t *testing.T) {
 	checkUser1 := func(t *testing.T, sc *dbtype.TableSchema) {
 		xt.Empty(t, sc.Table)
 		colNames1 := []string{"id", "name", "roles", "attrs"}
-		xt.SliceSortEqual(t, colNames1, sc.ColumnsNames)
+		xt.SliceSortEqual(t, colNames1, sc.ColumnNames)
 		for _, col := range testUser1Cols {
 			t.Run(col.Name, func(t *testing.T) {
 				got, err := sc.ColumnByName(col.Name)
@@ -97,7 +97,7 @@ func TestSchemaAdmin1(t *testing.T) {
 	check := func(t *testing.T, sc *dbtype.TableSchema) {
 		xt.Empty(t, sc.Table)
 		colNames1 := []string{"id", "name", "roles", "attrs", "class"}
-		xt.SliceSortEqual(t, colNames1, sc.ColumnsNames)
+		xt.SliceSortEqual(t, colNames1, sc.ColumnNames)
 		for _, col := range cols {
 			t.Run(col.Name, func(t *testing.T) {
 				got, err := sc.ColumnByName(col.Name)

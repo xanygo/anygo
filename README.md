@@ -29,15 +29,17 @@ RPC Server 功能：
   2. Memory Storage：内存存储，支持 LRU（最少使用先过期）、FIFO(先写入先过期)、LIFO(后写入先过期)
   3. Nop：黑洞，总是能成功写入但是读取不到值
   4. Redis Storage：使用 redis 作为缓存
-  5. Chains：多层级缓存，可将多种 Cache 组合，设置不同的缓存容量和过期时间，以提升 Cache 效率
-     - 如将 LRU Cache 和 Redis Cache 组合
-  6. Reader：将数据源和 Cache 直接组合，透明的读取数据，而不需要先读取缓再设置缓存的模版代码
+  5. Database Storage: 使用数据库存储缓存数据（如 sqlite、MySQL 等）
+  6. Chains：多层级缓存，可将多种 Cache 组合，设置不同的缓存容量和过期时间，以提升 Cache 效率
+    - 如将 LRU Cache 和 Redis Cache 组合
+  7. Reader：将数据源和 Cache 直接组合，透明的读取数据，而不需要先读取缓再设置缓存的模版代码
 - 通用的，仿 Redis 存储的 Key-Value API，已支持数据类型 String、List、Hash、Set，ZSet。已内置支持驱动：
   1. File Storage：本地文件系统存储
   2. Memory Storage：内存存储
-  3. Redis Storage：使用 redis 作为缓存
-  4. Nop：黑洞，总是能成功写入但是读取不到值
-  5. 当使用 K-V 存储时，使用此，可避免和 Redis 等具体的实现绑定，轻松配置管理实际存储方案。
+  3. Redis Storage：使用 Redis 存储
+  4. Database Storage：使用数据库存储，如 sqlite、MySQL 等
+  5. Nop：黑洞，总是能成功写入但是读取不到值
+  6. 当使用 K-V 存储时，使用此，可避免和 Redis 等具体的实现绑定，轻松配置管理实际存储方案。
 - 日志库 （xlog）：基于标准库 slog 封装，轻量好用
 - 支持泛型的轻量的单侧 assert 库 （ xt ）
 - 国际化（i18n）的能力 （ xi18n ）

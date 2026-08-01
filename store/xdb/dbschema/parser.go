@@ -23,7 +23,7 @@ import (
 
 // Schema 传入一个 struct，获取其 db schema 定义
 func Schema(fy dbtype.Dialect, obj any) (*dbtype.TableSchema, error) {
-	return (schemaParser{fy: fy}).Parser(obj)
+	return (schemaParser{dialect: fy}).Parser(obj)
 }
 
 type hasTable interface {
@@ -31,7 +31,7 @@ type hasTable interface {
 }
 
 type schemaParser struct {
-	fy dbtype.Dialect
+	dialect dbtype.Dialect
 }
 
 func (sp schemaParser) Parser(obj any) (*dbtype.TableSchema, error) {
@@ -57,7 +57,7 @@ func (sp schemaParser) Parser(obj any) (*dbtype.TableSchema, error) {
 		}
 	}
 
-	value := schemaCache.Get2(rt, sp.getSchemaCacheValue)
+	value := schemaCache.Get2(schemaCacheKey{Type: rt, Dialect: sp.dialect.Name()}, sp.getSchemaCacheValue)
 	if value.Err != nil {
 		return nil, value.Err
 	}
@@ -66,15 +66,20 @@ func (sp schemaParser) Parser(obj any) (*dbtype.TableSchema, error) {
 	return &sc, nil
 }
 
-var schemaCache = zcache.MapCache[reflect.Type, *schemaCacheValue]{}
+type schemaCacheKey struct {
+	Type    reflect.Type
+	Dialect string
+}
+
+var schemaCache = zcache.MapCache[schemaCacheKey, *schemaCacheValue]{}
 
 type schemaCacheValue struct {
 	Schema dbtype.TableSchema
 	Err    error
 }
 
-func (sp schemaParser) getSchemaCacheValue(rt reflect.Type) *schemaCacheValue {
-	sc, err := sp.getSchema(rt)
+func (sp schemaParser) getSchemaCacheValue(key schemaCacheKey) *schemaCacheValue {
+	sc, err := sp.getSchema(key.Type)
 	return &schemaCacheValue{
 		Schema: *sc,
 		Err:    err,
@@ -127,8 +132,8 @@ func (sp schemaParser) getSchema(rt reflect.Type) (*dbtype.TableSchema, error) {
 	}
 
 	err := scan(rt)
-	sc.ColumnsNames = xmap.Keys(sc.Name2Column)
-	slices.Sort(sc.ColumnsNames)
+	sc.ColumnNames = xmap.Keys(sc.Name2Column)
+	slices.Sort(sc.ColumnNames)
 	return sc, err
 }
 
@@ -172,14 +177,14 @@ func (sp schemaParser) parserField(f reflect.StructField, tag xstruct.Tag) (dbty
 
 	codecName := tag.Value(TagCodec)
 	if codecName != "" && !dbtype.KindAutoJSON.Is(codecName) {
-		field.Codec, err = findCodec(sp.fy, codecName)
+		field.Codec, err = findCodec(sp.dialect, codecName)
 		if err != nil {
 			return field, err
 		}
 	}
 
 	if field.Codec == nil {
-		if dz, ok := sp.fy.(dbtype.CoderDialect); ok {
+		if dz, ok := sp.dialect.(dbtype.CoderDialect); ok {
 			field.Codec, err = dz.ColumnCodec(f.Type)
 			if err != nil {
 				return field, err
@@ -196,7 +201,7 @@ func (sp schemaParser) parserField(f reflect.StructField, tag xstruct.Tag) (dbty
 		if codecName != "" && dbtype.KindAutoJSON.Is(codecName) {
 			field.Codec = dbcodec.JSON{}
 		} else {
-			field.Codec, err = findCodec(sp.fy, dbcodec.TextName)
+			field.Codec, err = findCodec(sp.dialect, dbcodec.TextName)
 			if err != nil {
 				return field, err
 			}

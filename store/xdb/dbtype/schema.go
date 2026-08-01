@@ -13,10 +13,10 @@ import (
 )
 
 type TableSchema struct {
-	Table        string
-	Columns      []ColumnSchema
-	Name2Column  map[string]ColumnSchema
-	ColumnsNames []string
+	Table       string                  // 数据库表名，可能为空
+	Columns     []ColumnSchema          // 字段列表
+	Name2Column map[string]ColumnSchema // 数据库字段名 <---> 字段属性的映射
+	ColumnNames []string                // 数据库中的字段名
 }
 
 func (ts *TableSchema) ColumnByName(name string) (ColumnSchema, error) {
@@ -29,6 +29,7 @@ func (ts *TableSchema) ColumnByName(name string) (ColumnSchema, error) {
 
 var errNoPK = errors.New("no primary key column")
 
+// PKColumn 查找主键字段(单字段主键)
 func (ts *TableSchema) PKColumn() (z ColumnSchema, err error) {
 	for _, col := range ts.Columns {
 		if col.IsPrimaryKey {
@@ -39,21 +40,19 @@ func (ts *TableSchema) PKColumn() (z ColumnSchema, err error) {
 }
 
 type ColumnSchema struct {
-	Name          string // 字段名
-	IsPrimaryKey  bool
-	AutoIncrement bool // 自增长
-	Kind          Kind
-	Unique        bool         // 是否唯一键
-	Index         *IndexSchema // 索引的名称
-	UniqueIndex   *IndexSchema // 唯一索引
-	Size          int          // 定义列数据类型的大小或长度
-	NotNull       bool
-	Codec         Codec  // 字段编解码器
-	Native        string // 数据库原生类型
-
-	Default *DefaultValueSchema
-
-	ReflectType reflect.Type
+	Name          string              // 字段名
+	IsPrimaryKey  bool                // 是否主键
+	AutoIncrement bool                // 自增长
+	Kind          Kind                // 数据类型
+	Unique        bool                // 是否唯一键
+	Index         *IndexSchema        // 索引的名称
+	UniqueIndex   *IndexSchema        // 唯一索引
+	Size          int                 // 定义列数据类型的大小或长度
+	NotNull       bool                // 是否申明 not null 属性
+	Codec         Codec               // 字段编解码器
+	Native        string              // 数据库原生类型
+	Default       *DefaultValueSchema // 默认值
+	ReflectType   reflect.Type
 }
 
 func (scf *ColumnSchema) String() string {
@@ -61,8 +60,8 @@ func (scf *ColumnSchema) String() string {
 }
 
 type IndexSchema struct {
-	FieldName  string
-	IndexName  string // 索引
+	FieldName  string // 数据库字段名
+	IndexName  string // 索引名
 	FieldOrder int    // 字段在索引中的顺序
 }
 
