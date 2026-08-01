@@ -2,13 +2,13 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2025-11-07
 
-package xdb_test
+package encoder_test
 
 import (
 	"testing"
 
-	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xdb/dialect"
+	"github.com/xanygo/anygo/store/xdb/internal/encoder"
 	"github.com/xanygo/anygo/xt"
 )
 
@@ -91,7 +91,7 @@ func TestEncode(t *testing.T) {
 		}
 		// id := 1
 		// user1.ID2 = &id
-		out1, err := xdb.Encode(dz, user1)
+		out1, err := encoder.Encode(dz, user1)
 		xt.NoError(t, err)
 		t.Logf("out: %#v", out1)
 		xt.NotEmpty(t, out1)
@@ -119,7 +119,7 @@ func TestEncode(t *testing.T) {
 				MP1:  map[string]string{"key1": "value1"},
 			},
 		}
-		out1, err := xdb.Encode(dz, u3)
+		out1, err := encoder.Encode(dz, u3)
 		xt.NoError(t, err)
 		t.Logf("out: %#v", out1)
 		want := map[string]any{
@@ -138,7 +138,7 @@ func TestEncode(t *testing.T) {
 				MP1:  map[string]string{"key1": "value1"},
 			},
 		}
-		out1, err := xdb.Encode(dz, u3)
+		out1, err := encoder.Encode(dz, u3)
 		xt.NoError(t, err)
 		t.Logf("out: %#v", out1)
 		want := map[string]any{
@@ -160,7 +160,7 @@ func TestEncode(t *testing.T) {
 				},
 			},
 		}
-		out1, err := xdb.Encode(dz, u22)
+		out1, err := encoder.Encode(dz, u22)
 		xt.NoError(t, err)
 		t.Logf("out: %#v", out1)
 		want := map[string]any{
@@ -183,6 +183,6 @@ func BenchmarkEncodeStruct(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		xdb.Encode(dialect.MySQL{}, u1)
+		encoder.Encode(dialect.MySQL{}, u1)
 	}
 }

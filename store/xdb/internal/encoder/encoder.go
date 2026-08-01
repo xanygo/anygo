@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2025-11-11
 
-package xdb
+package encoder
 
 import (
 	"errors"
@@ -16,30 +16,23 @@ import (
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
-// Encode 将结构体或 map 转成 map[string]any，用于 SQL insert
-func Encode[T any](fy dbtype.Dialect, data T, cols ...string) (map[string]any, error) {
-	return Encoder[T]{Dialect: fy, OnlyFields: cols}.Encode(data)
-}
+type Action uint8
 
-func EncodeBatch[T any](fy dbtype.Dialect, items []T, fields ...string) ([]map[string]any, error) {
-	if len(items) == 0 {
-		return nil, errors.New("no value to encode")
-	}
-	result := make([]map[string]any, 0, len(items))
-	for _, item := range items {
-		data, err := Encode(fy, item, fields...)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, data)
-	}
-	return result, nil
-}
+const (
+	ActionUnset Action = iota
+	ActionInsert
+	ActionUpdate
+	ActionUpsert
+	ActionDelete
+	ActionSelect
+	ActionOther
+)
 
 type Encoder[T any] struct {
-	Dialect      dbtype.Dialect
-	OnlyFields   []string // 当不为空时，输出结果的 key 只限定此列表中的
-	IgnoreFields []string // 当不为空时，输出结果的 key 限定不能是此列表中的
+	Action       Action
+	Dialect      dbtype.Dialect // 方言，必填
+	OnlyFields   []string       // 当不为空时，输出结果的 key 只限定此列表中的
+	IgnoreFields []string       // 当不为空时，输出结果的 key 限定不能是此列表中的
 }
 
 func (e Encoder[T]) Encode(data T) (map[string]any, error) {
@@ -92,6 +85,12 @@ func (e Encoder[T]) encodeStruct(v reflect.Value, schema *dbtype.TableSchema) (m
 		fs, err := schema.ColumnByName(name)
 		if err != nil {
 			return err
+		}
+		if e.Action == ActionUpdate && fs.AutoIncrement {
+			// 更新的时候，将自增长类型的字段忽略掉
+			// 如 sql server，在更新的字段列表中，包含【自增长】类型的字段，
+			// 将报错：mssql: Cannot update identity column 'id'
+			return nil
 		}
 		encodedVal, err := e.encodeStructFieldValue(fs, value.Interface())
 		if err != nil {

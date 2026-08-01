@@ -103,24 +103,18 @@ var _ dbtype.UpsertDialect = SQLServer{}
 // args: 对应参数值
 // 返回：SQL string + 参数切片
 func (d SQLServer) UpsertSQL(table string, count int, cols, conflictCols, updateCols []string, returningCols []string) string {
-	valPlaceholders := make([]string, len(cols))
+	valPlaceholders := make([]string, 0, count)
 	for c := range count {
-		tmp := make([]string, len(cols))
-		for i := range cols {
-			tmp[i] = fmt.Sprintf("@p%d", c*i+1)
-		}
-		str := "(" + strings.Join(tmp, ",") + ")"
+		str := "(" + d.PlaceholderList(len(cols), c*len(cols)+1) + ")"
 		valPlaceholders = append(valPlaceholders, str)
 	}
 
 	// ON 条件
 	onCond := make([]string, len(conflictCols))
 
-	placeholders := make([]string, len(cols))
 	for i, c := range conflictCols {
 		c = d.QuoteIdentifier(c)
-		onCond[i] = fmt.Sprintf("target.[%s] = source.[%s]", c, c)
-		placeholders[i] = fmt.Sprintf("source.%s", c)
+		onCond[i] = fmt.Sprintf("target.%s = source.%s", c, c)
 	}
 
 	// UPDATE 赋值
@@ -157,7 +151,8 @@ func (d SQLServer) UpsertSQL(table string, count int, cols, conflictCols, update
 	// 生成完整 MERGE SQL
 	sqlStr := fmt.Sprintf(
 		`MERGE INTO %s AS target
-USING (VALUES %s) AS source (%s)
+USING (VALUES %s) 
+AS source (%s)
 ON %s`,
 		d.QuoteIdentifier(table),
 		strings.Join(valPlaceholders, ","), // VALUES 占位
@@ -165,14 +160,21 @@ ON %s`,
 		strings.Join(onCond, " AND "),      // ON 条件
 	)
 	if len(assigns) > 0 {
-		sqlStr += " WHEN MATCHED THEN UPDATE SET " + strings.Join(assigns, ", ") // UPDATE
+		sqlStr += "\n WHEN MATCHED THEN UPDATE SET " + strings.Join(assigns, ", ") // UPDATE
 	}
 
+	placeholders := make([]string, len(cols))
+	for i, c := range cols {
+		placeholders[i] = fmt.Sprintf("source.%s", d.QuoteIdentifier(c))
+	}
+
+	sqlStr += "\n"
 	sqlStr += fmt.Sprintf(`WHEN NOT MATCHED THEN INSERT (%s) VALUES (%s)`,
 		strings.Join(cols, ", "),         // INSERT 列
 		strings.Join(placeholders, ", "), // INSERT VALUES
 	)
 	sqlStr += output // OUTPUT
+	sqlStr += ";"
 
 	return sqlStr
 }
@@ -184,9 +186,9 @@ func (SQLServer) ColumnType(kind dbtype.Kind, size int) string {
 	switch kind {
 	case dbtype.KindString:
 		if size <= 0 {
-			return "TEXT"
+			return "NVARCHAR(MAX)"
 		}
-		return fmt.Sprintf("VARCHAR(%d)", size)
+		return fmt.Sprintf("NVARCHAR(%d)", size)
 
 	case dbtype.KindUint8:
 		return "TINYINT"
@@ -197,7 +199,8 @@ func (SQLServer) ColumnType(kind dbtype.Kind, size int) string {
 	case dbtype.KindInt8, dbtype.KindInt16:
 		return "SMALLINT"
 	case dbtype.KindUint64:
-		return "NUMERIC(20,0)"
+		return "BIGINT"
+		// return "NUMERIC(20,0)"
 
 	case dbtype.KindBoolean:
 		return "BIT"
@@ -212,6 +215,10 @@ func (SQLServer) ColumnType(kind dbtype.Kind, size int) string {
 
 	case dbtype.KindJSON:
 		return "NVARCHAR(MAX)" // SQL Server 2016+ 可以用 JSON 函数处理
+	case dbtype.KindDateTime:
+		return "DATETIME2" // 可存储  0001-9999
+	case dbtype.KindDate:
+		return "DATE"
 	default:
 		panic("unknown kind:" + kind)
 	}

@@ -32,10 +32,10 @@ type Chain[K comparable, V any] struct {
 	// Cache  必填
 	Cache Cache[K, V]
 
-	// DynamicTTL 必填，动态获取数据的缓存有效期,若是 Chains 里的最后一个则不需要
-	DynamicTTL func(ctx context.Context, key K, value V) time.Duration
+	// DynamicTTLFn 必填，动态获取数据的缓存有效期,若是 Chains 里的最后一个则不需要
+	DynamicTTLFn func(ctx context.Context, key K, value V) time.Duration
 
-	// WriteTimeout 可选，读取后给未命中缓存的对象，填充缓存的写超时
+	// WriteTimeout 可选，读取后给未命中缓存的对象，填充缓存的写超时,默认 10秒
 	WriteTimeout time.Duration
 }
 
@@ -53,8 +53,8 @@ func (c *Chain[K, V]) getTimeout() time.Duration {
 	return 10 * time.Second
 }
 
-func (c *Chain[K, V]) CacheTTL(ctx context.Context, key K, value V) time.Duration {
-	return c.DynamicTTL(ctx, key, value)
+func (c *Chain[K, V]) DynamicTTL(ctx context.Context, key K, value V) time.Duration {
+	return c.DynamicTTLFn(ctx, key, value)
 }
 
 func (c *Chain[K, V]) Unwrap() any {
@@ -91,7 +91,7 @@ func (c *chains[K, V]) Get(ctx context.Context, key K) (v V, err error) {
 				go c.setBefore(ctx, idx, key, value)
 			}
 			return value, nil
-		} else if err != nil && !xerror.IsNotFound(err) {
+		} else if !xerror.IsNotFound(err) {
 			errs = append(errs, err)
 		}
 	}
@@ -114,7 +114,7 @@ func (c *chains[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duratio
 	ctx1 := context.WithoutCancel(ctx)
 	// 底层的 cache 一般速度可能会更慢，所以采用异步，并且提前写
 	for _, item := range c.caches[1:] {
-		go safely.RunCtx(ctx1, func(ctx2 context.Context) {
+		go safely.RunCtxVoid(ctx1, func(ctx2 context.Context) {
 			ctx3, cancel := context.WithTimeout(ctx2, time.Minute)
 			defer cancel()
 			_ = item.Cache.Set(ctx3, key, value, ttl)

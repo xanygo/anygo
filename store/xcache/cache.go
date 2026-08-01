@@ -34,6 +34,7 @@ type (
 	}
 
 	Setter[K comparable, V any] interface {
+		// Set 设置换成，ttl 应 > 0
 		Set(ctx context.Context, key K, value V, ttl time.Duration) error
 	}
 
@@ -41,8 +42,8 @@ type (
 		Delete(ctx context.Context, keys ...K) error
 	}
 
-	HasTTL[K comparable, V any] interface {
-		CacheTTL(ctx context.Context, key K, value V) time.Duration
+	DynamicTTLCache[K comparable, V any] interface {
+		DynamicTTL(ctx context.Context, key K, value V) time.Duration
 	}
 )
 
@@ -64,7 +65,8 @@ type (
 )
 
 type (
-	StringCache  Cache[string, string]
+	StringCache Cache[string, string]
+
 	StringMCache MCache[string, string]
 )
 

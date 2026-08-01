@@ -100,8 +100,9 @@ uniqueIndex 示例：
 
 
 ## 驱动
-| 名称      | import path                    | 说明                  |
-|---------|--------------------------------|---------------------|
-| mysql   | github.com/go-sql-driver/mysql | 支持 MySQL 和 MariaDB  |
-| sqlite3 | github.com/mattn/go-sqlite3    | 支持 sqlite3,需要 cGo=1 |
-| pgx     | github.com/jackc/pgx/v5        | 支持 postgres         |
+| 名称        | import path                     | 说明                      |
+|-----------|---------------------------------|-------------------------|
+| mysql     | github.com/go-sql-driver/mysql  | 支持 MySQL 和 MariaDB      |
+| sqlite3   | github.com/mattn/go-sqlite3     | 支持 sqlite3, 需要 cGo=1    |
+| pgx       | github.com/jackc/pgx/v5         | 支持 postgres             |
+| sqlserver | github.com/microsoft/go-mssqldb | 支持 Microsoft SQL server |

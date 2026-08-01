@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-var _ HasTTL[string, string] = (*TTLWrapper[string, string])(nil)
+var _ DynamicTTLCache[string, string] = (*TTLWrapper[string, string])(nil)
 
 // TTLWrapper 用于对缓存的 TTL 进行动态调整的工具类
 //
@@ -25,17 +25,17 @@ type TTLWrapper[K comparable, V any] struct {
 	// Fixed 固定的 TTL 时间，Fixed 和 Dynamic 二选一
 	Fixed time.Duration
 
-	// Dynamic 动态的 TTL 时间
-	Dynamic func(ctx context.Context, k K, v V, ttl time.Duration) time.Duration
+	// Dynamic 依据 key 和 value 动态的 TTL 时间
+	DynamicTTLFn func(ctx context.Context, k K, v V, ttl time.Duration) time.Duration
 }
 
 func (tw *TTLWrapper[K, V]) Unwrap() any {
 	return tw.Cache
 }
 
-func (tw *TTLWrapper[K, V]) CacheTTL(ctx context.Context, key K, value V) time.Duration {
-	if tw.Dynamic != nil {
-		return tw.Dynamic(ctx, key, value, tw.Fixed)
+func (tw *TTLWrapper[K, V]) DynamicTTL(ctx context.Context, key K, value V) time.Duration {
+	if tw.DynamicTTLFn != nil {
+		return tw.DynamicTTLFn(ctx, key, value, tw.Fixed)
 	}
 	return tw.Fixed
 }
@@ -49,8 +49,8 @@ func (tw *TTLWrapper[K, V]) Get(ctx context.Context, key K) (value V, err error)
 }
 
 func (tw *TTLWrapper[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration) error {
-	if tw.Dynamic != nil {
-		ttl = tw.Dynamic(ctx, key, value, ttl)
+	if tw.DynamicTTLFn != nil {
+		ttl = tw.DynamicTTLFn(ctx, key, value, ttl)
 	} else if tw.Fixed > 0 {
 		ttl = tw.Fixed
 	}

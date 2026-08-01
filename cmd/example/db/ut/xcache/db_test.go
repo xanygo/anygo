@@ -4,6 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
+	"os"
+	"testing"
+	"time"
+
 	_ "github.com/go-sql-driver/mysql" // mysql driver
 	_ "github.com/jackc/pgx/v5/stdlib" // pgx driver
 	_ "github.com/mattn/go-sqlite3"    // sqlite driver
@@ -13,10 +18,6 @@ import (
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xt"
-	"log"
-	"os"
-	"testing"
-	"time"
 )
 
 var logWriter = &xt.TLogWriter{}
@@ -50,6 +51,64 @@ func TestSQLite(t *testing.T) {
 		xt.NoError(t, err)
 	}
 	checkDB(t, db)
+}
+
+func TestPostgres(t *testing.T) {
+	logWriter.Switch(t)
+
+	const dsn = `user=work password=123456 host=127.0.0.1 port=5432 database=demo sslmode=disable`
+	db, err := sql.Open("pgx", dsn)
+	xt.NoError(t, err)
+	defer db.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err = db.PingContext(ctx); err != nil {
+		t.Skipf("PingContext failed: %s ,skipped", err.Error())
+		return
+	}
+
+	client := xdb.NewClient("pgx", "demo", db)
+	for _, table := range tables {
+		_, err = xdb.Exec(ctx, client, fmt.Sprintf("DROP TABLE IF EXISTS %q", table))
+		xt.NoError(t, err)
+	}
+
+	checkDB(t, client)
+}
+
+func TestMySQL(t *testing.T) {
+	logWriter.Switch(t)
+	checkMySQLBase(t, "mysql")
+}
+
+func TestMariaDB(t *testing.T) {
+	logWriter.Switch(t)
+	checkMySQLBase(t, "mariadb")
+}
+
+func checkMySQLBase(t *testing.T, dialect string) {
+	const dsn = `work:123456@tcp(127.0.0.1)/demo`
+	db, err := sql.Open("mysql", dsn)
+	xt.NoError(t, err)
+	defer db.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err = db.PingContext(ctx); err != nil {
+		t.Skipf("PingContext failed: %s ,skipped", err.Error())
+		return
+	}
+
+	client := xdb.NewClient(dialect, "demo", db)
+	for _, table := range tables {
+		_, err = xdb.Exec(ctx, client, fmt.Sprintf("DROP TABLE IF EXISTS `%s`", table))
+		xt.NoError(t, err)
+	}
+
+	checkDB(t, client)
 }
 
 func checkDB(t *testing.T, db *xdb.Client) {
@@ -116,5 +175,4 @@ func checkAll(t *testing.T, cache xcache.StringCache) {
 		xt.NoError(t, err)
 		xt.Equal(t, got1, kv1)
 	})
-
 }

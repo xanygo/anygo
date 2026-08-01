@@ -3,16 +3,19 @@ package xcachex
 import (
 	"context"
 	"errors"
+	"sync/atomic"
+	"time"
+
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/xerror"
-	"time"
 )
 
 var _ xcache.StringCache = (*Database)(nil)
 var _ xcache.MCache[string, string] = (*Database)(nil)
+var _ xcache.HasStats = (*Database)(nil)
 
 type dbModel struct {
 	Key     string `db:"k,pk"`
@@ -27,6 +30,11 @@ type Database struct {
 	Table     string        // 可选，默认 xcache
 	KeyPrefix string        // 可选
 	BGTimeout time.Duration // 可选，后台清理数据每次操作的超时时间，默认 1 秒
+
+	cntRead   atomic.Uint64
+	cntWrite  atomic.Uint64
+	cntDelete atomic.Uint64
+	cntHit    atomic.Uint64
 }
 
 func (d *Database) fullKey(key string) string {
@@ -38,6 +46,17 @@ func (d *Database) getTable() string {
 		return d.Table
 	}
 	return "xcache"
+}
+
+func (d *Database) keysCount() int64 {
+	ctx, cancel := context.WithTimeout(context.Background(), d.getBGTimeout())
+	defer cancel()
+	orm := d.orm()
+	num, err := orm.Count(ctx, "*", "")
+	if err != nil {
+		return -1
+	}
+	return num
 }
 
 func (d *Database) getBGTimeout() time.Duration {
@@ -88,14 +107,17 @@ func (d *Database) get(ctx context.Context, key string) (*dbModel, error) {
 }
 
 func (d *Database) Get(ctx context.Context, key string) (value string, err error) {
+	d.cntRead.Add(1)
 	item, err := d.get(ctx, key)
 	if err != nil {
 		return value, err
 	}
+	d.cntHit.Add(1)
 	return item.Value, nil
 }
 
 func (d *Database) Set(ctx context.Context, key string, value string, ttl time.Duration) error {
+	d.cntWrite.Add(1)
 	now := time.Now().UnixMicro()
 	expires := time.Now().Add(ttl).UnixMicro()
 	item := &dbModel{
@@ -114,6 +136,7 @@ func (d *Database) Delete(ctx context.Context, keys ...string) error {
 	if len(keys) == 0 {
 		return nil
 	}
+	d.cntDelete.Add(uint64(len(keys)))
 	cond := xdb.Condition{}
 	cond.AndInFmt("k in (%s)", xslice.ToAnys(keys))
 	where, args, err := cond.Build()
@@ -129,6 +152,8 @@ func (d *Database) MSet(ctx context.Context, values map[string]string, ttl time.
 	if len(values) == 0 {
 		return nil
 	}
+	d.cntWrite.Add(uint64(len(values)))
+
 	now := time.Now().UnixMicro()
 	expires := time.Now().Add(ttl).UnixMicro()
 	orm := d.orm()
@@ -151,6 +176,8 @@ func (d *Database) MGet(ctx context.Context, keys ...string) (result map[string]
 	if len(keys) == 0 {
 		return nil, nil
 	}
+	d.cntRead.Add(uint64(len(keys)))
+
 	cond := xdb.Condition{}
 	cond.AndInFmt("k in (%s)", xslice.ToAnys(keys))
 	where, args, err := cond.Build()
@@ -173,6 +200,7 @@ func (d *Database) MGet(ctx context.Context, keys ...string) (result map[string]
 			expires = append(expires, item.Key)
 		}
 	}
+	d.cntHit.Add(uint64(len(result)))
 	if len(expires) > 0 {
 		go safely.RunCtxVoid(ctx, func(ctx context.Context) {
 			d.deleteExpired(ctx, expires...)
@@ -241,4 +269,14 @@ func (d *Database) ClearExpired(ctx context.Context, limit int, batchNum int) (i
 func (d *Database) Migrate(ctx context.Context) error {
 	obj := dbModel{}
 	return xdb.MigrateWithTable(ctx, d.DB, obj, d.getTable())
+}
+
+func (d *Database) Stats() xcache.Stats {
+	return xcache.Stats{
+		Keys:   d.keysCount(),
+		Read:   d.cntRead.Load(),
+		Write:  d.cntWrite.Load(),
+		Delete: d.cntDelete.Load(),
+		Hit:    d.cntHit.Load(),
+	}
 }

@@ -179,7 +179,7 @@ func (fc *File[K, V]) doSet(key K, value V, ttl time.Duration) error {
 	}
 	defer func() {
 		file.Close()
-		os.Remove(file.Name())
+		_ = os.Remove(file.Name())
 	}()
 
 	// 写 cache 文件：

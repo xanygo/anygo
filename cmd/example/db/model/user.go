@@ -18,6 +18,7 @@ var _ xdb.HasTable = User{}
 type User struct {
 	ID           uint64    `db:"id,pk,auto_inc"`
 	Email        string    // 不添加 db 标签
+	Username     string    `db:"username,unique_index,size:200"`
 	Password     string    `db:"password,not-null"`
 	Status       Status    `db:"status,not-null"`
 	RegisterTime time.Time `db:"register_time,codec:date_time,default:fn|CURRENT_TIMESTAMP"`
@@ -53,6 +54,7 @@ func WithUser(ctx context.Context, client *xdb.Client) {
 	orm := xdb.NewMode[User](client)
 	u := User{
 		Password:     "demo",
+		Username:     "user1",
 		RegisterTime: time.Now(),
 		Scores:       []int{1, 2, 3},
 		a:            123,
@@ -77,11 +79,11 @@ func WithUser(ctx context.Context, client *xdb.Client) {
 	log.Println("Count:", cnt, errorText(err))
 
 	u3 := User{
-		ID:           5,
+		Username:     "user2",
 		Password:     "hello",
 		RegisterTime: time.Now(),
 	}
-	cnt, err = orm.Upsert(ctx, []string{"id"}, []string{"register_time"}, u3)
+	cnt, err = orm.Upsert(ctx, []string{"username"}, []string{"register_time"}, u3)
 	log.Println("Upsert:", cnt, errorText(err))
 }
 

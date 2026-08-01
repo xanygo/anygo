@@ -17,6 +17,7 @@ import (
 	"github.com/xanygo/anygo/store/xdb/dbschema"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 	"github.com/xanygo/anygo/store/xdb/dialect"
+	"github.com/xanygo/anygo/store/xdb/internal/encoder"
 )
 
 // HasTable 给 Model 使用的 struct 可以选择实现该接口，以自动读取数据库表名
@@ -138,7 +139,7 @@ func (m *Model[T]) getSelectFields() (string, error) {
 	} else {
 		var zero T
 		var err error
-		fields, err = m.getEncoder().Fields(zero)
+		fields, err = m.getEncoder(encoder.ActionSelect).Fields(zero)
 		if err != nil {
 			return "", err
 		}
@@ -193,8 +194,9 @@ func (m *Model[T]) Offset(num int) *Model[T] {
 	return m
 }
 
-func (m *Model[T]) getEncoder() Encoder[T] {
-	return Encoder[T]{
+func (m *Model[T]) getEncoder(action encoder.Action) encoder.Encoder[T] {
+	return encoder.Encoder[T]{
+		Action:       action,
 		Dialect:      m.dialect,
 		OnlyFields:   m.upsertFields,
 		IgnoreFields: m.upsertIgnoreFields,
@@ -206,7 +208,7 @@ func (m *Model[T]) Insert(ctx context.Context, v T) error {
 	if m.err != nil {
 		return m.err
 	}
-	kv, err := m.getEncoder().Encode(v)
+	kv, err := m.getEncoder(encoder.ActionInsert).Encode(v)
 	if err != nil {
 		return err
 	}
@@ -248,7 +250,7 @@ func (m *Model[T]) InsertReturningID(ctx context.Context, v T) (int64, error) {
 	if m.err != nil {
 		return 0, m.err
 	}
-	kv, err := m.getEncoder().Encode(v)
+	kv, err := m.getEncoder(encoder.ActionInsert).Encode(v)
 	if err != nil {
 		return 0, err
 	}
@@ -309,7 +311,7 @@ func (m *Model[T]) InsertBatch(ctx context.Context, vs ...T) (int64, error) {
 	if len(vs) == 0 {
 		return 0, errors.New("no values")
 	}
-	values, err := m.getEncoder().EncodeBatch(vs...)
+	values, err := m.getEncoder(encoder.ActionInsert).EncodeBatch(vs...)
 	if err != nil {
 		return 0, err
 	}
@@ -367,7 +369,7 @@ func (m *Model[T]) Upsert(ctx context.Context, conflictCols []string, updateCols
 		return 0, fmt.Errorf("client (%T) is not Execer", m.client)
 	}
 
-	kvSlice, err := m.getEncoder().EncodeBatch(values...)
+	kvSlice, err := m.getEncoder(encoder.ActionInsert).EncodeBatch(values...)
 	if err != nil {
 		return 0, err
 	}
@@ -394,7 +396,7 @@ func (m *Model[T]) doUpdate(ctx context.Context, v T, where string, args ...any)
 	if m.err != nil {
 		return 0, m.err
 	}
-	kv, err := m.getEncoder().Encode(v)
+	kv, err := m.getEncoder(encoder.ActionUpdate).Encode(v)
 	if err != nil {
 		return 0, err
 	}
@@ -443,7 +445,7 @@ func (m *Model[T]) doUpdate(ctx context.Context, v T, where string, args ...any)
 //
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 func (m *Model[T]) UpdateByPK(ctx context.Context, v T) (int64, error) {
-	pk, value, err := m.getEncoder().PKNameAndValue(v)
+	pk, value, err := m.getEncoder(encoder.ActionUpdate).PKNameAndValue(v)
 	if err != nil {
 		return 0, err
 	}
@@ -486,7 +488,7 @@ func (m *Model[T]) Delete(ctx context.Context, where string, args ...any) (int64
 //
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 func (m *Model[T]) DeleteByPK(ctx context.Context, v T) (int64, error) {
-	pk, value, err := m.getEncoder().PKNameAndValue(v)
+	pk, value, err := m.getEncoder(encoder.ActionDelete).PKNameAndValue(v)
 	if err != nil {
 		return 0, err
 	}
@@ -524,7 +526,7 @@ func (m *Model[T]) First(ctx context.Context, where string, args ...any) (v T, o
 //
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 func (m *Model[T]) FindByPK(ctx context.Context, v T) (nv T, ok bool, err error) {
-	pk, value, err := m.getEncoder().PKNameAndValue(v)
+	pk, value, err := m.getEncoder(encoder.ActionSelect).PKNameAndValue(v)
 	if err != nil {
 		return nv, false, err
 	}
