@@ -26,7 +26,7 @@ func init() {
 	xdb.RegisterIT((&xdb.Logger{Logger: xlog.NewSimple(logWriter)}).ToInterceptor())
 }
 
-func getDB(name string) *xdb.Client {
+func getSQLiteDB(name string) *xdb.Client {
 	_ = os.Remove(name)
 	db, err := sql.Open("sqlite3", name)
 
@@ -40,7 +40,7 @@ func getDB(name string) *xdb.Client {
 func TestSQLite(t *testing.T) {
 	logWriter.Switch(t)
 
-	db := getDB("ut.db")
+	db := getSQLiteDB("ut.db")
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()

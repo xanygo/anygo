@@ -39,9 +39,13 @@ func (r *Redis) Has(ctx context.Context, key string) (bool, error) {
 	return num == 1, err
 }
 
+func (r *Redis) fullKey(key string) string {
+	return r.KeyPrefix + key
+}
+
 func (r *Redis) Get(ctx context.Context, key string) (value string, err error) {
 	r.readCnt.Add(1)
-	value, err = r.Client.Get(ctx, r.KeyPrefix+key)
+	value, err = r.Client.Get(ctx, r.fullKey(key))
 	if err == nil {
 		r.hitCnt.Add(1)
 		return value, nil
@@ -55,7 +59,7 @@ func (r *Redis) Get(ctx context.Context, key string) (value string, err error) {
 func (r *Redis) MGet(ctx context.Context, keys ...string) (result map[string]string, err error) {
 	r.readCnt.Add(uint64(len(keys)))
 	for idx, key := range keys {
-		keys[idx] = r.KeyPrefix + key
+		keys[idx] = r.fullKey(key)
 	}
 	result, err = r.Client.MGet(ctx, keys...)
 	r.hitCnt.Add(uint64(len(result)))
@@ -64,7 +68,7 @@ func (r *Redis) MGet(ctx context.Context, keys ...string) (result map[string]str
 
 func (r *Redis) Set(ctx context.Context, key string, value string, ttl time.Duration) error {
 	r.writeCnt.Add(1)
-	return r.Client.SetWithTTL(ctx, r.KeyPrefix+key, value, ttl)
+	return r.Client.SetWithTTL(ctx, r.fullKey(key), value, ttl)
 }
 
 const mSetScript = `
@@ -92,7 +96,7 @@ func (r *Redis) MSet(ctx context.Context, data map[string]string, ttl time.Durat
 	keys := make([]string, 0, len(data))
 	values := make([]any, 0, len(data))
 	for key, value := range data {
-		keys = append(keys, r.KeyPrefix+key)
+		keys = append(keys, r.fullKey(key))
 		values = append(values, value)
 	}
 	values = append(values, strconv.FormatInt(tm.UnixMilli(), 10))
@@ -121,7 +125,7 @@ func (r *Redis) Delete(ctx context.Context, keys ...string) error {
 	r.deleteCnt.Add(uint64(len(keys)))
 	keysNew := make([]string, len(keys))
 	for i, key := range keys {
-		keysNew[i] = r.KeyPrefix + key
+		keysNew[i] = r.fullKey(key)
 	}
 	_, err := r.Client.Del(ctx, keysNew...)
 	return err

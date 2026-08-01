@@ -24,8 +24,6 @@ type (
 		Deleter[K]
 	}
 
-	StringCache Cache[string, string]
-
 	Getter[K comparable, V any] interface {
 		// Get 读取数据，
 		// error 返回值：
@@ -63,6 +61,11 @@ type (
 		// MGet 批量查询，若 key 不存在，则不出现在 result 中
 		MGet(ctx context.Context, keys ...K) (result map[K]V, err error)
 	}
+)
+
+type (
+	StringCache  Cache[string, string]
+	StringMCache MCache[string, string]
 )
 
 func IsNotExists(err error) bool {
