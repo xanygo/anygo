@@ -340,11 +340,19 @@ func (t transHash[V]) HRange(ctx context.Context, fn func(field string, value V)
 }
 
 func (t transHash[V]) HGetAll(ctx context.Context) (map[string]V, error) {
-	result := make(map[string]V)
-	err := t.HRange(ctx, func(field string, value V) bool {
-		result[field] = value
-		return true
-	})
+	datas, err := t.ss.HGetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]V, len(datas))
+	for k, str := range datas {
+		var v V
+		err1 := xcodec.DecodeFromString(t.codec, str, &v)
+		if err1 != nil {
+			return nil, err1
+		}
+		result[k] = v
+	}
 	return result, err
 }
 

@@ -17,8 +17,8 @@ import (
 	"github.com/xanygo/anygo/xt"
 )
 
-func TestOnceGroup_Do(t *testing.T) {
-	var g xsync.OnceGroup[string, any]
+func TestSingleFlight_Do(t *testing.T) {
+	var g xsync.SingleFlight[string, any]
 	v, err, _ := g.Do("key", func() (any, error) {
 		return "bar", nil
 	})
@@ -28,8 +28,8 @@ func TestOnceGroup_Do(t *testing.T) {
 	xt.NoError(t, err)
 }
 
-func TestOnceGroup_DoErr(t *testing.T) {
-	var g xsync.OnceGroup[string, any]
+func TestSingleFlight_DoErr(t *testing.T) {
+	var g xsync.SingleFlight[string, any]
 	someErr := errors.New("some error")
 	v, err, _ := g.Do("key", func() (any, error) {
 		return nil, someErr
@@ -38,8 +38,8 @@ func TestOnceGroup_DoErr(t *testing.T) {
 	xt.Empty(t, v)
 }
 
-func TestOnceGroup_Panic(t *testing.T) {
-	var g xsync.OnceGroup[string, any]
+func TestSingleFlight_Panic(t *testing.T) {
+	var g xsync.SingleFlight[string, any]
 	v, err, _ := g.Do("key", func() (any, error) {
 		panic("hello")
 	})
@@ -52,8 +52,8 @@ func TestOnceGroup_Panic(t *testing.T) {
 	// t.Logf("te: %#v", te.TraceData())
 }
 
-func TestOnceGroup_DoDupSuppress(t *testing.T) {
-	var g xsync.OnceGroup[string, any]
+func TestSingleFlight_DoDupSuppress(t *testing.T) {
+	var g xsync.SingleFlight[string, any]
 	var wg1, wg2 sync.WaitGroup
 	c := make(chan string, 1)
 	var calls int32
@@ -96,8 +96,8 @@ func TestOnceGroup_DoDupSuppress(t *testing.T) {
 	}
 }
 
-func TestForget(t *testing.T) {
-	var g xsync.OnceGroup[string, any]
+func TestSingleFlight_Forget(t *testing.T) {
+	var g xsync.SingleFlight[string, any]
 
 	var (
 		firstStarted  = make(chan struct{})

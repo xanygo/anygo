@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xerror"
 )
 
@@ -28,6 +29,8 @@ type Reader[K comparable, V any] struct {
 	// FailTTL 当 New 方法创建对象失败的时候，可选，缓存的有效期，默认为 0。
 	// > 0 时生效存储 New 失败的 error 信息
 	FailTTL time.Duration
+
+	sf xsync.SingleFlight[K, V]
 }
 
 func (rd *Reader[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration) error {
@@ -59,7 +62,9 @@ func (rd *Reader[K, V]) Get(ctx context.Context, key K) (v V, err error) {
 	if !IsNotExists(err) {
 		return v, err
 	}
-	v, err = rd.New(ctx, key)
+	v, err = rd.sf.Do2(key, func() (V, error) {
+		return rd.New(ctx, key)
+	})
 
 	value = ValueError[V]{
 		Value: v,
@@ -75,7 +80,9 @@ func (rd *Reader[K, V]) Get(ctx context.Context, key K) (v V, err error) {
 
 // Flush 刷新缓存的数据
 func (rd *Reader[K, V]) Flush(ctx context.Context, key K) (v V, err error) {
-	v, err = rd.New(ctx, key)
+	v, err = rd.sf.Do2(key, func() (V, error) {
+		return rd.New(ctx, key)
+	})
 	if err != nil {
 		return v, err
 	}
@@ -91,9 +98,12 @@ func (rd *Reader[K, V]) Delete(ctx context.Context, keys ...K) error {
 	return rd.Cache.Delete(ctx, keys...)
 }
 
+// MemReader1 只在内存中缓存一个值的，可自动读写缓存的 Reader
 type MemReader1[V any] struct {
 	// New 创建新值的函数,必填
 	New func(ctx context.Context) (V, error)
+
+	sf xsync.SingleFlightSlot[V]
 
 	// TTL 缓存有效期，必填
 	TTL time.Duration
@@ -102,7 +112,7 @@ type MemReader1[V any] struct {
 	// > 0 时生效存储 New 失败的 error 信息
 	FailTTL time.Duration
 
-	mux    sync.Mutex
+	mux    sync.RWMutex
 	value  V
 	err    error
 	expire time.Time
@@ -110,16 +120,18 @@ type MemReader1[V any] struct {
 
 func (rd *MemReader1[V]) Set(value V, ttl time.Duration) {
 	rd.mux.Lock()
+	defer rd.mux.Unlock()
+
 	rd.value = value
 	rd.err = nil
 	rd.expire = time.Now().Add(ttl)
-	rd.mux.Lock()
 }
 
 // Read 读取缓存中的值
 func (rd *MemReader1[V]) Read() (v V, err error) {
-	rd.mux.Lock()
-	defer rd.mux.Unlock()
+	rd.mux.RLock()
+	defer rd.mux.RUnlock()
+
 	if rd.expire.Before(time.Now()) {
 		return v, xerror.NotFound
 	}
@@ -128,13 +140,20 @@ func (rd *MemReader1[V]) Read() (v V, err error) {
 
 // Get 读取数据，若没有，会先查询
 func (rd *MemReader1[V]) Get(ctx context.Context) (v V, err error) {
+	rd.mux.RLock()
+	if rd.expire.After(time.Now()) {
+		defer rd.mux.RUnlock()
+		return rd.value, rd.err
+	}
+	rd.mux.RUnlock()
+
+	v, err = rd.sf.Do2(func() (V, error) {
+		return rd.New(ctx)
+	})
+
 	rd.mux.Lock()
 	defer rd.mux.Unlock()
 
-	if rd.expire.After(time.Now()) {
-		return rd.value, rd.err
-	}
-	v, err = rd.New(ctx)
 	if err == nil || rd.FailTTL > 0 {
 		rd.value = v
 		rd.err = err
@@ -149,7 +168,9 @@ func (rd *MemReader1[V]) Get(ctx context.Context) (v V, err error) {
 
 // Flush 刷新缓存的数据
 func (rd *MemReader1[V]) Flush(ctx context.Context) (v V, err error) {
-	v, err = rd.New(ctx)
+	v, err = rd.sf.Do2(func() (V, error) {
+		return rd.New(ctx)
+	})
 
 	rd.mux.Lock()
 	defer rd.mux.Unlock()
@@ -172,8 +193,9 @@ func (rd *MemReader1[V]) Flush(ctx context.Context) (v V, err error) {
 func (rd *MemReader1[V]) Clear() {
 	var emp V
 	rd.mux.Lock()
+	defer rd.mux.Unlock()
+
 	rd.expire = time.Time{}
 	rd.value = emp
 	rd.err = nil
-	rd.mux.Unlock()
 }

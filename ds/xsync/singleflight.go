@@ -31,19 +31,19 @@ type call[V any] struct {
 	// not written after the WaitGroup is done.
 	dups int
 
-	chans []chan<- OnceGroupResult[V]
+	chans []chan<- SingleFlightResult[V]
 }
 
-// OnceGroup golang.org/sync/singleflight 的泛型版本
+// SingleFlight golang.org/sync/singleflight 的泛型版本
 // 调整：移除 RePanic 逻辑，panic 时会返回一个 error
-type OnceGroup[K comparable, V any] struct {
+type SingleFlight[K comparable, V any] struct {
 	mu sync.Mutex     // protects m
 	m  map[K]*call[V] // lazily initialized
 }
 
-// OnceGroupResult holds the results of Get, so they can be passed
+// SingleFlightResult holds the results of Get, so they can be passed
 // on a channel.
-type OnceGroupResult[V any] struct {
+type SingleFlightResult[V any] struct {
 	Val    V
 	Err    error
 	Shared bool
@@ -54,7 +54,7 @@ type OnceGroupResult[V any] struct {
 // time. If a duplicate comes in, the duplicate caller waits for the
 // original to complete and receives the same results.
 // The return value shared indicates whether v was given to multiple callers.
-func (g *OnceGroup[K, V]) Do(key K, fn func() (V, error)) (v V, err error, shared bool) {
+func (g *SingleFlight[K, V]) Do(key K, fn func() (V, error)) (v V, err error, shared bool) {
 	g.mu.Lock()
 	if g.m == nil {
 		g.m = make(map[K]*call[V])
@@ -78,7 +78,7 @@ func (g *OnceGroup[K, V]) Do(key K, fn func() (V, error)) (v V, err error, share
 	return c.val, c.err, c.dups > 0
 }
 
-func (g *OnceGroup[K, V]) Do2(key K, fn func() (V, error)) (v V, err error) {
+func (g *SingleFlight[K, V]) Do2(key K, fn func() (V, error)) (v V, err error) {
 	v, err, _ = g.Do(key, fn)
 	return v, err
 }
@@ -87,8 +87,8 @@ func (g *OnceGroup[K, V]) Do2(key K, fn func() (V, error)) (v V, err error) {
 // results when they are ready.
 //
 // The returned channel will not be firstDone.
-func (g *OnceGroup[K, V]) DoChan(key K, fn func() (V, error)) <-chan OnceGroupResult[V] {
-	ch := make(chan OnceGroupResult[V], 1)
+func (g *SingleFlight[K, V]) DoChan(key K, fn func() (V, error)) <-chan SingleFlightResult[V] {
+	ch := make(chan SingleFlightResult[V], 1)
 	g.mu.Lock()
 	if g.m == nil {
 		g.m = make(map[K]*call[V])
@@ -99,7 +99,7 @@ func (g *OnceGroup[K, V]) DoChan(key K, fn func() (V, error)) <-chan OnceGroupRe
 		g.mu.Unlock()
 		return ch
 	}
-	c := &call[V]{chans: []chan<- OnceGroupResult[V]{ch}}
+	c := &call[V]{chans: []chan<- SingleFlightResult[V]{ch}}
 	c.wg.Add(1)
 	g.m[key] = c
 	g.mu.Unlock()
@@ -110,7 +110,7 @@ func (g *OnceGroup[K, V]) DoChan(key K, fn func() (V, error)) <-chan OnceGroupRe
 }
 
 // doCall handles the single call for a key.
-func (g *OnceGroup[K, V]) doCall(c *call[V], key K, fn func() (V, error)) {
+func (g *SingleFlight[K, V]) doCall(c *call[V], key K, fn func() (V, error)) {
 	normalReturn := false
 	recovered := false
 
@@ -134,7 +134,7 @@ func (g *OnceGroup[K, V]) doCall(c *call[V], key K, fn func() (V, error)) {
 		} else {
 			// Normal return
 			for _, ch := range c.chans {
-				ch <- OnceGroupResult[V]{Val: c.val, Err: c.err, Shared: c.dups > 0}
+				ch <- SingleFlightResult[V]{Val: c.val, Err: c.err, Shared: c.dups > 0}
 			}
 		}
 	}()
@@ -160,8 +160,29 @@ func (g *OnceGroup[K, V]) doCall(c *call[V], key K, fn func() (V, error)) {
 // Forget tells the singleflight to forget about a key.  Future calls
 // to Do for this key will call the function rather than waiting for
 // an earlier call to complete.
-func (g *OnceGroup[K, V]) Forget(key K) {
+func (g *SingleFlight[K, V]) Forget(key K) {
 	g.mu.Lock()
 	delete(g.m, key)
 	g.mu.Unlock()
+}
+
+// SingleFlightSlot 只有一个固定槽位的 SingleFlight
+type SingleFlightSlot[V any] struct {
+	sf SingleFlight[struct{}, V]
+}
+
+func (sv *SingleFlightSlot[V]) Do(fn func() (V, error)) (v V, err error, shared bool) {
+	return sv.sf.Do(struct{}{}, fn)
+}
+
+func (sv *SingleFlightSlot[V]) Do2(fn func() (V, error)) (v V, err error) {
+	return sv.sf.Do2(struct{}{}, fn)
+}
+
+func (sv *SingleFlightSlot[V]) DoChan(fn func() (V, error)) <-chan SingleFlightResult[V] {
+	return sv.sf.DoChan(struct{}{}, fn)
+}
+
+func (sv *SingleFlightSlot[V]) Forget() {
+	sv.sf.Forget(struct{}{})
 }
