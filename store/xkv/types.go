@@ -63,6 +63,9 @@ type List[V any] interface {
 	//  3.若有异常导致失败，返回值为：<空，false, error >
 	LPop(ctx context.Context) (V, bool, error)
 
+	// LPopN 移除并返回列表最左侧的 N 个元素
+	LPopN(ctx context.Context, count int) ([]V, error)
+
 	// RPop 移除并返回列表最右侧的元素（类似 Redis 的 RPOP 命令）
 	//
 	// 返回值：
@@ -70,6 +73,9 @@ type List[V any] interface {
 	//  2.若 list 不存在时，返回值为: <空，false, nil >
 	//  3.若有异常导致失败，返回值为：<空，false, error >
 	RPop(ctx context.Context) (V, bool, error)
+
+	// RPopN 移除并返回列表最右侧的 N 个元素
+	RPopN(ctx context.Context, count int) ([]V, error)
 
 	// LRem 从存储在键（key）的列表中删除等于元素（ element ）的前 count 个元素。count 参数以以下方式影响操作：
 	// count > 0: 从头部到尾部移除 count 个等于 element 的元素。
@@ -104,6 +110,9 @@ type Hash[V any] interface {
 	// HGet 获取哈希表字段的值（类似 Redis 的 HGET 命令）
 	// 返回：值，是否存在，错误
 	HGet(ctx context.Context, field string) (V, bool, error)
+
+	// HMGet 批量读取
+	HMGet(ctx context.Context, fields ...string) (map[string]V, error)
 
 	// HExists 判断 field 是否存在
 	HExists(ctx context.Context, field string) (bool, error)

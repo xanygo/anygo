@@ -105,6 +105,38 @@ func (h *Hash) HGet(ctx context.Context, field string) (value string, found bool
 	return value, found, err
 }
 
+func (h *Hash) HMGet(ctx context.Context, fields ...string) (result map[string]string, err error) {
+	if len(fields) == 0 {
+		return nil, nil
+	}
+	cond := xdb.Condition{}
+	cond.And("k=?", h.Key)
+	cond.AndInFmt("f in (%s)", xslice.ToAnys(fields))
+	where, args, err := cond.Build()
+	if err != nil {
+		return nil, err
+	}
+	err = h.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+		if !hasMeta {
+			return nil
+		}
+		orm := xdb.NewMode[HashModel](tx)
+		orm.Table(h.GetTable())
+		orm.SelectFields("f", "v")
+
+		items, err1 := orm.List(ctx, where, args...)
+		if err1 != nil {
+			return err1
+		}
+		result = make(map[string]string, len(items))
+		for _, item := range items {
+			result[item.Field] = item.Value
+		}
+		return nil
+	})
+	return result, err
+}
+
 // checkExists 检查 key 是否还存在，若不存在，则删除 meta
 func (h *Hash) checkExists(ctx context.Context, orm *xdb.Model[HashModel]) error {
 	orm = orm.Clone().Reset()

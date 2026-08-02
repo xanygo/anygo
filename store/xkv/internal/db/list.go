@@ -5,6 +5,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xkv"
 )
@@ -84,7 +85,7 @@ func (l *List) RPush(ctx context.Context, values ...string) (int64, error) {
 	return l.xxPush(ctx, "right-idx", 1, values...)
 }
 
-func (l *List) LPop(ctx context.Context) (value string, found bool, err error) {
+func (l *List) lPopXX(ctx context.Context, orderBy string) (value string, found bool, err error) {
 	err = l.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		_, err1 := l.Meta.load(ctx, tx)
 		if err1 != nil {
@@ -94,7 +95,7 @@ func (l *List) LPop(ctx context.Context) (value string, found bool, err error) {
 		orm.Table(l.GetTable())
 		orm.SelectFields("v", "idx")
 
-		v, ok, err2 := orm.First(ctx, "k=? order by idx asc", l.Key)
+		v, ok, err2 := orm.First(ctx, "k=? order by idx "+orderBy, l.Key)
 		if err2 != nil || !ok {
 			return err2
 		}
@@ -107,6 +108,56 @@ func (l *List) LPop(ctx context.Context) (value string, found bool, err error) {
 		return l.checkExists(ctx, orm)
 	})
 	return value, found, err
+}
+
+func (l *List) LPop(ctx context.Context) (value string, found bool, err error) {
+	return l.lPopXX(ctx, "asc")
+}
+
+func (l *List) RPop(ctx context.Context) (value string, found bool, err error) {
+	return l.lPopXX(ctx, "desc")
+}
+
+func (l *List) lPopNXX(ctx context.Context, count int, orderBy string) (result []string, err error) {
+	err = l.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+		_, err1 := l.Meta.load(ctx, tx)
+		if err1 != nil {
+			return err1
+		}
+		orm := xdb.NewMode[ListModel](tx)
+		orm.Table(l.GetTable())
+		orm.SelectFields("v", "idx").Limit(count)
+		items, err2 := orm.List(ctx, "k=? order by idx "+orderBy, l.Key)
+		if err2 != nil || len(items) == 0 {
+			return err2
+		}
+		idxList := make([]int64, 0, len(items))
+		for _, item := range items {
+			result = append(result, item.Value)
+			idxList = append(idxList, item.Index)
+		}
+		cond := xdb.Condition{}
+		cond.And("k=?", l.Key)
+		cond.AndInFmt("idx in (%s)", xslice.ToAnys(idxList))
+		where, args, err3 := cond.Build()
+		if err3 != nil {
+			return err3
+		}
+		_, err4 := orm.Delete(ctx, where, args...)
+		if err4 != nil {
+			return err4
+		}
+		return l.checkExists(ctx, orm)
+	})
+	return result, err
+}
+
+func (l *List) LPopN(ctx context.Context, count int) (result []string, err error) {
+	return l.lPopNXX(ctx, count, "asc")
+}
+
+func (l *List) RPopN(ctx context.Context, count int) (result []string, err error) {
+	return l.lPopNXX(ctx, count, "desc")
 }
 
 // checkExists 检查 key 是否还存在，若不存在，则删除 meta
@@ -123,31 +174,6 @@ func (l *List) checkExists(ctx context.Context, orm *xdb.Model[ListModel]) error
 		return nil
 	}
 	return l.Meta.delete(ctx, orm.Client())
-}
-
-func (l *List) RPop(ctx context.Context) (value string, found bool, err error) {
-	err = l.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
-		_, err1 := l.Meta.load(ctx, tx)
-		if err1 != nil {
-			return err1
-		}
-		orm := xdb.NewMode[ListModel](tx)
-		orm.Table(l.GetTable())
-		orm.SelectFields("v")
-
-		v, ok, err2 := orm.First(ctx, "k=? order by idx desc", l.Key)
-		if err2 != nil || !ok {
-			return err2
-		}
-		value = v.Value
-		found = true
-		_, err2 = orm.Delete(ctx, "k=? and idx=?", v.Key, v.Index)
-		if err2 != nil {
-			return err2
-		}
-		return l.checkExists(ctx, orm)
-	})
-	return value, found, err
 }
 
 func (l *List) LRem(ctx context.Context, count int64, element string) (num int64, err error) {

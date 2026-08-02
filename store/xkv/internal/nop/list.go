@@ -18,8 +18,16 @@ func (n List[V]) LPop(ctx context.Context) (v V, ok bool, err error) {
 	return v, false, nil
 }
 
+func (n List[V]) LPopN(ctx context.Context, count int) ([]V, error) {
+	return nil, nil
+}
+
 func (n List[V]) RPop(ctx context.Context) (v V, ok bool, err error) {
 	return v, false, nil
+}
+
+func (n List[V]) RPopN(ctx context.Context, count int) ([]V, error) {
+	return nil, nil
 }
 
 func (n List[V]) LRem(ctx context.Context, count int64, element string) (int64, error) {

@@ -7,10 +7,10 @@ import (
 
 // NewTopNHeap 创建一个保留  topN 的最小堆
 //
-//		n:  堆的最大容量
-//		less: 比较函数，若 head(堆顶的值) < add(新的元素) 则将 add 添加到堆中。
-//	       若 less 返回的是  head < add ，Heap 保留最大的 n 个值
-//	       若 less 返回的是  head > add ，Heap 保留最小的 n 个值
+//	n:  堆的最大容量
+//	less: 比较函数，若 head(堆顶的值) < add(新的元素) 则将 add 添加到堆中。
+//	    若 less 返回的是  head < add ，Heap 保留最大的 n 个值
+//	    若 less 返回的是  head > add ，Heap 保留最小的 n 个值
 func NewTopNHeap[T any](n int, less func(head, add T) bool) *TopNHeap[T] {
 	return &TopNHeap[T]{
 		data: make([]T, 0, n),

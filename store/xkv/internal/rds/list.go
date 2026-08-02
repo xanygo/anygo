@@ -31,12 +31,28 @@ func (l *List) LPop(ctx context.Context) (string, bool, error) {
 	return value, err == nil, err
 }
 
+func (l *List) LPopN(ctx context.Context, count int) ([]string, error) {
+	values, err := l.Client.LPopN(ctx, l.Key, int64(count))
+	if errors.Is(err, xredis.ErrNil) {
+		return nil, nil
+	}
+	return values, err
+}
+
 func (l *List) RPop(ctx context.Context) (string, bool, error) {
 	value, err := l.Client.RPop(ctx, l.Key)
 	if errors.Is(err, xredis.ErrNil) {
 		return "", false, nil
 	}
 	return value, err == nil, err
+}
+
+func (l *List) RPopN(ctx context.Context, count int) ([]string, error) {
+	values, err := l.Client.RPopN(ctx, l.Key, int64(count))
+	if errors.Is(err, xredis.ErrNil) {
+		return nil, nil
+	}
+	return values, err
 }
 
 func (l *List) LRem(ctx context.Context, count int64, element string) (int64, error) {

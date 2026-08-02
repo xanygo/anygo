@@ -98,6 +98,32 @@ func (h *Hash) HGet(ctx context.Context, field string) (value string, found bool
 	return value, found, err
 }
 
+func (h *Hash) HMGet(ctx context.Context, fields ...string) (result map[string]string, err error) {
+	if len(fields) == 0 {
+		return nil, nil
+	}
+	err = h.Base.lockRead(ctx, func(ctx context.Context, meta *Meta) error {
+		if meta == nil {
+			return nil
+		}
+		for _, field := range fields {
+			value, found, err1 := h.readFieldValue(field)
+			if err1 != nil {
+				return err1
+			}
+			if found {
+				if result == nil {
+					result = make(map[string]string, len(fields))
+				}
+				result[field] = value
+			}
+		}
+
+		return err
+	})
+	return result, err
+}
+
 func (h *Hash) HDel(ctx context.Context, fields ...string) error {
 	if len(fields) == 0 {
 		return nil

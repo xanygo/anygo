@@ -29,6 +29,14 @@ func (kvh *Hash) HGet(ctx context.Context, field string) (string, bool, error) {
 	return value, err == nil, err
 }
 
+func (kvh *Hash) HMGet(ctx context.Context, fields ...string) (map[string]string, error) {
+	value, err := kvh.Client.HMGet(ctx, kvh.Key, fields...)
+	if errors.Is(err, xredis.ErrNil) {
+		return nil, nil
+	}
+	return value, nil
+}
+
 func (kvh *Hash) HDel(ctx context.Context, fields ...string) error {
 	_, err := kvh.Client.HDel(ctx, kvh.Key, fields...)
 	return err

@@ -395,6 +395,29 @@ func checkList(t *testing.T, kvs xkv.StringStorage) {
 		xt.NoError(t, err)
 		xt.Equal(t, num, 2)
 	})
+
+	t.Run("list4", func(t *testing.T) {
+		li := kvs.List("list4")
+		result, err := li.LPopN(ctx, 3)
+		xt.NoError(t, err)
+		xt.Empty(t, result)
+
+		num, err := li.RPush(ctx, "m1", "m2", "m3", "m4", "m5", "m6")
+		xt.NoError(t, err)
+		xt.Equal(t, num, 6)
+
+		result, err = li.LPopN(ctx, 3)
+		xt.NoError(t, err)
+		xt.Equal(t, result, []string{"m1", "m2", "m3"})
+
+		result, err = li.RPopN(ctx, 2)
+		xt.NoError(t, err)
+		xt.Equal(t, result, []string{"m6", "m5"})
+
+		num, err = li.LLen(ctx)
+		xt.NoError(t, err)
+		xt.Equal(t, num, 1)
+	})
 }
 
 func checkHash(t *testing.T, kvs xkv.StringStorage) {
@@ -505,6 +528,24 @@ func checkHash(t *testing.T, kvs xkv.StringStorage) {
 			xt.NoError(t, err)
 			xt.Equal(t, num, int64(i)+1)
 		}
+	})
+
+	t.Run("hmget1", func(t *testing.T) {
+		ha := kvs.Hash("t2-hmget1")
+		result, err := ha.HMGet(ctx, "f1", "f2")
+		xt.NoError(t, err)
+		xt.Empty(t, result)
+		kv1 := map[string]string{
+			"f1": "v1",
+			"f2": "v2",
+			"f3": "v3",
+		}
+		err = ha.HMSet(ctx, kv1)
+		xt.NoError(t, err)
+
+		result, err = ha.HMGet(ctx, "f1", "f2")
+		xt.NoError(t, err)
+		xt.Equal(t, result, map[string]string{"f1": "v1", "f2": "v2"})
 	})
 }
 
@@ -817,7 +858,7 @@ func checkZSet(t *testing.T, kvs xkv.StringStorage) {
 		checkRange(t, "1", "2", []string{"m1", "m2"}, []float64{1, 2})
 	})
 
-	t.Run("", func(t *testing.T) {
+	t.Run("zem-rangebyscore", func(t *testing.T) {
 		zs := kvs.ZSet("t2-zem-rangebyscore-1")
 		for i := 0; i < 10; i++ {
 			err := zs.ZAdd(ctx, float64(i), fmt.Sprintf("m%d", i))

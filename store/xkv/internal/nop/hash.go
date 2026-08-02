@@ -18,6 +18,10 @@ func (n Hash[V]) HGet(ctx context.Context, field string) (v V, ok bool, err erro
 	return v, false, nil
 }
 
+func (n Hash[V]) HMGet(ctx context.Context, fields ...string) (map[string]V, error) {
+	return nil, nil
+}
+
 func (n Hash[V]) HDel(ctx context.Context, fields ...string) error {
 	return nil
 }

@@ -161,6 +161,21 @@ func (t transList[V]) LPop(ctx context.Context) (v V, ok bool, err error) {
 	return v, err == nil, err
 }
 
+func (t transList[V]) LPopN(ctx context.Context, count int) (vs []V, err error) {
+	items, err := t.ss.LPopN(ctx, count)
+	if err != nil || len(items) == 0 {
+		return nil, err
+	}
+	for _, item := range items {
+		var v V
+		err = xcodec.DecodeFromString(t.codec, item, &v)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return vs, err
+}
+
 func (t transList[V]) RPop(ctx context.Context) (v V, ok bool, err error) {
 	str, found, err := t.ss.RPop(ctx)
 	if !found || err != nil {
@@ -168,6 +183,21 @@ func (t transList[V]) RPop(ctx context.Context) (v V, ok bool, err error) {
 	}
 	err = xcodec.DecodeFromString(t.codec, str, &v)
 	return v, err == nil, err
+}
+
+func (t transList[V]) RPopN(ctx context.Context, count int) (vs []V, err error) {
+	items, err := t.ss.RPopN(ctx, count)
+	if err != nil || len(items) == 0 {
+		return nil, err
+	}
+	for _, item := range items {
+		var v V
+		err = xcodec.DecodeFromString(t.codec, item, &v)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return vs, err
 }
 
 func (t transList[V]) LRem(ctx context.Context, count int64, element string) (int64, error) {
@@ -267,6 +297,26 @@ func (t transHash[V]) HGet(ctx context.Context, field string) (v V, ok bool, err
 	}
 	err = xcodec.DecodeFromString(t.codec, str, &v)
 	return v, err == nil, err
+}
+
+func (t transHash[V]) HMGet(ctx context.Context, fields ...string) (map[string]V, error) {
+	if len(fields) == 0 {
+		return nil, nil
+	}
+	datas, err := t.ss.HMGet(ctx, fields...)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]V, len(datas))
+	for k, str := range datas {
+		var v V
+		err = xcodec.DecodeFromString(t.codec, str, &v)
+		if err != nil {
+			return nil, err
+		}
+		result[k] = v
+	}
+	return result, nil
 }
 
 func (t transHash[V]) HDel(ctx context.Context, fields ...string) error {

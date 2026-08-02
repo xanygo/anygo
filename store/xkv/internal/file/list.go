@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/ds/xcmp"
+	"github.com/xanygo/anygo/ds/xcontainer"
 	"github.com/xanygo/anygo/safely"
 )
 
@@ -100,12 +101,61 @@ func (l *List) pop(ctx context.Context, left bool) (value string, found bool, er
 	return value, found, err
 }
 
+func (l *List) popN(ctx context.Context, count int, left bool) (result []string, err error) {
+	err = l.Base.lock(ctx, func(ctx context.Context, meta *Meta) error {
+		if meta == nil {
+			return nil
+		}
+		defer l.Base.deleteKeyWhenNoMember(ctx)
+
+		xh := xcontainer.NewTopNHeap[string](count, func(head, add string) bool {
+			if left {
+				return head > add
+			}
+			return head < add
+		})
+
+		err1 := l.Base.rangeMemberFiles(ctx, func(path string, d fs.DirEntry) error {
+			xh.Add(path)
+			return nil
+		})
+		if err1 != nil {
+			return err1
+		}
+		files := xh.Sorted()
+		if len(files) == 0 {
+			return nil
+		}
+		for _, fp := range files {
+			bf, err2 := os.ReadFile(fp)
+			if err2 != nil {
+				return err2
+			}
+			if err3 := l.Base.osRemove(fp); err3 != nil {
+				return err3
+			}
+			result = append(result, string(bf))
+		}
+		return nil
+	})
+	go safely.RunVoid(l.Compact)
+	return result, err
+}
+
 func (l *List) compare(a string, b string) bool {
 	return a > b
 }
 
+func (l *List) LPopN(ctx context.Context, count int) ([]string, error) {
+	return l.popN(ctx, count, true)
+}
+
 func (l *List) RPop(ctx context.Context) (string, bool, error) {
 	return l.pop(ctx, false)
+}
+
+func (l *List) RPopN(ctx context.Context, count int) ([]string, error) {
+	return l.popN(ctx, count, false)
 }
 
 func (l *List) LRem(ctx context.Context, count int64, element string) (deleted int64, err error) {

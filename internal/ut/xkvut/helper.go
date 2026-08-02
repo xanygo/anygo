@@ -401,6 +401,29 @@ func checkList(t xt.TB, kvs xkv.StringStorage) {
 		xt.NoError(t, err)
 		xt.Equal(t, num, 2)
 	})
+
+	t.Run("list4", func(t xt.TB) {
+		li := kvs.List("list4")
+		result, err := li.LPopN(ctx, 3)
+		xt.NoError(t, err)
+		xt.Empty(t, result)
+
+		num, err := li.RPush(ctx, "m1", "m2", "m3", "m4", "m5", "m6")
+		xt.NoError(t, err)
+		xt.Equal(t, num, 6)
+
+		result, err = li.LPopN(ctx, 3)
+		xt.NoError(t, err)
+		xt.Equal(t, result, []string{"m1", "m2", "m3"})
+
+		result, err = li.RPopN(ctx, 2)
+		xt.NoError(t, err)
+		xt.Equal(t, result, []string{"m6", "m5"})
+
+		num, err = li.LLen(ctx)
+		xt.NoError(t, err)
+		xt.Equal(t, num, 1)
+	})
 }
 
 func checkHash(t xt.TB, kvs xkv.StringStorage) {
@@ -512,6 +535,24 @@ func checkHash(t xt.TB, kvs xkv.StringStorage) {
 			xt.NoError(t, err)
 			xt.Equal(t, num, int64(i)+1)
 		}
+	})
+
+	t.Run("hmget1", func(t xt.TB) {
+		ha := kvs.Hash("t2-hmget1")
+		result, err := ha.HMGet(ctx, "f1", "f2")
+		xt.NoError(t, err)
+		xt.Empty(t, result)
+		kv1 := map[string]string{
+			"f1": "v1",
+			"f2": "v2",
+			"f3": "v3",
+		}
+		err = ha.HMSet(ctx, kv1)
+		xt.NoError(t, err)
+
+		result, err = ha.HMGet(ctx, "f1", "f2")
+		xt.NoError(t, err)
+		xt.Equal(t, result, map[string]string{"f1": "v1", "f2": "v2"})
 	})
 }
 

@@ -55,6 +55,18 @@ func (m *List) LPop(ctx context.Context) (string, bool, error) {
 	return value, found, err
 }
 
+func (m *List) LPopN(ctx context.Context, count int) (result []string, err error) {
+	err = m.withLocked(func(list []string) ([]string, operate, error) {
+		if len(list) == 0 {
+			return nil, opSkip, nil
+		}
+		list, result = xslice.PopHeadN(list, count)
+		return list, opWrite, nil
+	})
+
+	return result, err
+}
+
 func (m *List) RPop(ctx context.Context) (string, bool, error) {
 	var value string
 	var found bool
@@ -67,6 +79,18 @@ func (m *List) RPop(ctx context.Context) (string, bool, error) {
 	})
 
 	return value, found, err
+}
+
+func (m *List) RPopN(ctx context.Context, count int) (result []string, err error) {
+	err = m.withLocked(func(list []string) ([]string, operate, error) {
+		if len(list) == 0 {
+			return nil, opSkip, nil
+		}
+		list, result = xslice.PopTailN(list, count)
+		return list, opWrite, nil
+	})
+
+	return result, err
 }
 
 func (m *List) LRem(ctx context.Context, count int64, element string) (int64, error) {

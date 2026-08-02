@@ -50,6 +50,22 @@ func (m *Hash) HGet(ctx context.Context, field string) (string, bool, error) {
 	return value, found, err
 }
 
+func (m *Hash) HMGet(ctx context.Context, fields ...string) (result map[string]string, err error) {
+	if len(fields) == 0 {
+		return nil, nil
+	}
+	result = make(map[string]string, len(fields))
+	err = m.withLocked(func(m map[string]string) (map[string]string, operate, error) {
+		for _, field := range fields {
+			if value, found := m[field]; found {
+				result[field] = value
+			}
+		}
+		return m, opSkip, nil
+	})
+	return result, err
+}
+
 func (m *Hash) HDel(ctx context.Context, fields ...string) error {
 	return m.withLocked(func(m map[string]string) (map[string]string, operate, error) {
 		if len(m) == 0 {
