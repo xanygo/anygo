@@ -4,6 +4,17 @@ import (
 	"context"
 )
 
+// ZItem zset 的一条数据
+type ZItem[T any] struct {
+	Member T
+	Score  float64
+}
+
+type HItem[T any] struct {
+	Field string
+	Value T
+}
+
 func ZRange[V any](ctx context.Context, z ZSet[V], count int) ([]*ZItem[V], error) {
 	var result []*ZItem[V]
 	err := z.ZRange(ctx, func(item V, score float64) bool {

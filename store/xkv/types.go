@@ -240,14 +240,3 @@ type Storage[V any] interface {
 }
 
 type StringStorage = Storage[string]
-
-// ZItem zset 的一条数据
-type ZItem[T any] struct {
-	Member T
-	Score  float64
-}
-
-type HItem[T any] struct {
-	Field string
-	Value T
-}

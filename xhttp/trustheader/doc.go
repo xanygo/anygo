@@ -8,4 +8,18 @@
 //
 // 注意： 可信字段，应根据程序部署情况，配置在配置文件中，在程序启动时设置导入。如果上游网关是 cloudflare,可以将
 // Cf-Visitor、Cf-Connecting-Ip 配置为可信字段，否则不应配置。
+//
+//	如可以在 conf/app.yml 中添加配置段：
+//
+//	# 可信的 HTTP Header
+//	TrustHeader:
+//	  - X-Forwarded-Proto
+//	  - X-Real-Ip
+//	  - X-Forwarded-For
+//	  - Cf-Visitor
+//	  - Cf-Connecting-Ip
+//
+// 然后在程序启动阶段添加如下代码加载配置：
+//
+//	trustheader.Add(xattr.GetDefault[[]string]("TrustHeader", nil)...)
 package trustheader

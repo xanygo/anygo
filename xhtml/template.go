@@ -31,6 +31,7 @@ import (
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/ds/xurl"
 	"github.com/xanygo/anygo/internal/zreflect"
+	"github.com/xanygo/anygo/xattr"
 	"github.com/xanygo/anygo/xhtml/internal/tplfn"
 )
 
@@ -105,6 +106,24 @@ func (t *TPLRequest) WithNewQuery(queryPair ...any) (template.URL, error) {
 	}
 	str, err := xurl.WithNewQuery(t.Request.URL, qs...)
 	return template.URL(str), err
+}
+
+// QueryString 只返回 query string，会自动带上"?"
+func (t *TPLRequest) QueryString(queryPair ...string) (template.URL, error) {
+	qs := t.Request.URL.Query()
+	for i := 0; i < len(queryPair); i += 2 {
+		key := queryPair[i]
+		value := queryPair[i+1]
+		if value != "" {
+			qs.Set(key, value)
+		} else {
+			qs.Del(key)
+		}
+	}
+	if len(qs) == 0 {
+		return "", nil
+	}
+	return template.URL("?" + qs.Encode()), nil
 }
 
 func (t *TPLRequest) EchoQueryEQ(field string, value any, echo any) any {
@@ -242,31 +261,33 @@ var FuncMap = template.FuncMap{
 		return xstr.RandIdentN(5)
 	},
 
-	"xRandUint":   rand.Uint,
-	"xRandUint32": rand.Uint32,
-	"xRandUint64": rand.Uint64,
+	"xRandUint":   rand.Uint,   //  生成 uint 随机数
+	"xRandUint32": rand.Uint32, // 生成 uint32 随机数
+	"xRandUint64": rand.Uint64, // 生成 uint64 随机数
 
-	"xRandUintN":   rand.UintN,
-	"xRandUint32N": rand.Uint32N,
-	"xRandUint64N": rand.Uint64N,
+	"xRandUintN":   rand.UintN,   // 生成在区间 n 内的 uint   随机数, 如 {{ $num := xRandUintN  100 }}
+	"xRandUint32N": rand.Uint32N, // 生成在区间 n 内的 uint32 随机数, 如 {{ $num := xRandUint32N 200 }}
+	"xRandUint64N": rand.Uint64N, // 生成在区间 n 内的 uint64 随机数, 如 {{ $num := xRandUint64N 300 }}
 
-	"xRandInt":   rand.Int,
-	"xRandInt32": rand.Int32,
-	"xRandInt64": rand.Int64,
+	"xRandInt":   rand.Int,   // 生成  int 随机数
+	"xRandInt32": rand.Int32, // 生成  int32 随机数
+	"xRandInt64": rand.Int64, // 生成  int64 随机数
 
-	"xRandIntN":   rand.IntN,
-	"xRandInt32N": rand.Int32N,
-	"xRandInt64N": rand.Int64N,
+	"xRandIntN":   rand.IntN,   // 生成在区间 n 内的 int   随机数, 如 {{ $num := xRandIntN  100 }}
+	"xRandInt32N": rand.Int32N, // 生成在区间 n 内的 int32   随机数, 如 {{ $num := xRandInt32N  200 }}
+	"xRandInt64N": rand.Int64N, // 生成在区间 n 内的 int64   随机数, 如 {{ $num := xRandInt64N  300 }}
 
-	"xRandFloat64": rand.Float64,
-	"xRandFloat32": rand.Float32,
+	"xRandFloat64": rand.Float64, // 生成 float64 随机数
+	"xRandFloat32": rand.Float32, // 生成 float32 随机数
 
-	// 通过输入的 pair 创建一个 map，
-	// 如 {{ $obj := xNewMap "k1" "v1" "k2" 100 }}, 会生成map：$obj = {"k1" : "v1", "k2" : 100 }
-	// 创建的是 map[string]any 类型的 map
-	"xNewMap":  xmap.Create[string, any],
+	// 通过输入的 pair 创建一个 map[string]any 类型的 map，
+	// 如 {{ $obj := xNewMap "k1" "v1" "k2" 100 }}, 会生成 map：$obj = {"k1" : "v1", "k2" : 100 }
+	"xNewMap": xmap.Create[string, any],
+
+	// 返回所有 map 的 keys( 结果是 []any 类型)
 	"xMapKeys": tplfn.MapKeys,
 
+	// xNewSlice 创建一个 []any 类型的 slice，如 {{ $arr := xNewSlice 1 2 3 }}
 	"xNewSlice": func(arr ...any) []any {
 		return arr
 	},
@@ -274,7 +295,11 @@ var FuncMap = template.FuncMap{
 	// 若传入的 value 不为空，则返回自身。否则返回一个空的 map[sting]any
 	"xOrMap": tplfn.OrMap,
 
-	"xDateTime":  tplfn.DateTime,
+	// 将 time.Time 类型的值，格式化输出为 2006-01-02 15:04:05。
+	// 若 Time.IsZero,则会输出空字符串
+	"xDateTime": tplfn.DateTime,
+
+	// 格式输出当前的时间，需要传入 format，如 {{ xNowFormat "2006" }} -> 2026
 	"xNowFormat": tplfn.NowTimeFormat,
 
 	// 对输入的参数，创建一个依次轮询的顺序迭代器
@@ -293,39 +318,56 @@ var FuncMap = template.FuncMap{
 	//  {{ end }}
 	"xRandOfIter": tplfn.RandOfIter,
 
+	// 将对象以 JSON 编码并输出，未加 Indent 格式对齐
 	"xJSON": func(val any) (string, error) {
 		bf, err := json.Marshal(val)
 		return string(bf), err
 	},
+
+	// 将对象以 JSON 编码，并添加 Indent 格式对齐
 	"xJSONIndent": func(val any) (string, error) {
 		bf, err := json.MarshalIndent(val, "", "  ")
 		return string(bf), err
 	},
 
-	"xToPlainObject": zreflect.ToPlainObject, // 丢弃 json tag 属性(struct 会转换为 map)
+	// 丢弃 json tag 属性，struct 会转换为 map。
+	// slice、array、map 等为 struct 类型会原样返回
+	// 用于调试，更方便打印出数据的原始结构信息
+	// 如 {{ xJSONIndent ( xToPlainObject $item ) }}
+	"xToPlainObject": zreflect.ToPlainObject,
 
+	// xDump 调试时打印出数据内容。如 {{ xDump $item }}
 	"xDump": tplfn.Dump,
 
 	"xIsOdd":  tplfn.IsOddNumber,  //  判断是否是奇数
 	"xIsEven": tplfn.IsEvenNumber, // 判断是否是偶数
 	"xModEQ":  tplfn.IsRemainder,  // 判断余数是否指定值
 
+	// 将字符串转换为 HTML
 	"xHTML": func(str string) template.HTML {
 		return template.HTML(str)
 	},
+	// 将字符串转换为 html 属性
 	"xHTMLAttr": func(str string) template.HTMLAttr {
 		return template.HTMLAttr(str)
 	},
+
+	// 将字符串转换为 css 代码
 	"xCss": func(str string) template.CSS {
 		return template.CSS(str)
 	},
+
+	// 将字符串转换为 js 代码
 	"xJs": func(str string) template.JS {
 		return template.JS(str)
 	},
+
+	// 将字符串转换为 url
 	"xURL": func(str string) template.URL {
 		return template.URL(str)
 	},
 
+	// 生成从 [start,end] 区间的 []int ，如 {{  $arr := xNewInts 1 3 }}
 	"xNewInts": func(start int, end int) []int {
 		result := make([]int, 0, end-start)
 		for i := start; i < end; i++ {
@@ -333,6 +375,8 @@ var FuncMap = template.FuncMap{
 		}
 		return result
 	},
+
+	// 生成从 [start, end] 区间,间隔步长为 step 的 []int ，如 {{  $arr := xNewIntsStep 1 3 2 }}
 	"xNewIntsStep": func(start int, end int, step int) []int {
 		result := make([]int, 0, (end-start)/step+1)
 		for i := start; i < end; i += step {
@@ -341,54 +385,57 @@ var FuncMap = template.FuncMap{
 		return result
 	},
 
-	"xStrPrefix":   strings.HasPrefix,
-	"xStrSuffix":   strings.HasSuffix,
-	"xStrContains": strings.Contains,
-	"xStrSplit":    strings.Split,
-	"xStrFields":   strings.Fields,
-	"xStrCount":    strings.Count,
+	"xStrPrefix":   strings.HasPrefix, // 判断字符串是否包含指定前缀 ，如 {{ if  xStrPrefix $name "han" }}
+	"xStrSuffix":   strings.HasSuffix, // 判断字符串是否包含指定后缀 ，如 {{ if  xStrSuffix $name "mei" }}
+	"xStrContains": strings.Contains,  // 判断字符串是否包含指定子串 ，如 {{ if  xStrContains $name "mei" }}
+	"xStrSplit":    strings.Split,     // 将字符串使用子串分割为 []string, 如 {{ $arr := xStrSplit $log "\n" }}
+	"xStrFields":   strings.Fields,    // 将字符串使用空白字符分割为 []string, 如 {{ $arr := xStrFields $log }}
+	"xStrCount":    strings.Count,     // 统计字符串中子串的数量，{{ xStrCount $name "mei" }}
 
 	// 读取使用 SetConst 设置的常量值
 	"xConst": getConst,
 
-	// 检查传入的参数是否是非空值
+	// 检查传入的参数是否是非空值，若是空值则会报错
 	"xAssert": tplfn.Assert,
 
+	// 将 array 或者 slice,使用 连接符链接为一个字符串。
+	// 如 {{ $str := xJoin $arr "-" }}
 	"xJoin": tplfn.Join,
 
-	"xMathAdd":        tplfn.MathAdd,
-	"xMathSub":        tplfn.MathSub,
-	"xMathMul":        tplfn.MathMul,
-	"xMathDiv":        tplfn.MathDiv,
-	"xMathPercent":    tplfn.MathPercent,    // 将一个小数转换为百分比的字符串
-	"xMathComplement": tplfn.MathComplement, // 转换为百分比： (1-f)*100 %
+	"xMathAdd":        tplfn.MathAdd,        // 数学运算，加法，如 {{ $num := xMathAdd $score 1 }}
+	"xMathSub":        tplfn.MathSub,        // 数学运算，减法，如 {{ $num := xMathSub $score 1 }}
+	"xMathMul":        tplfn.MathMul,        // 数学运算，乘法，如 {{ $num := xMathMul $score 2 }}
+	"xMathDiv":        tplfn.MathDiv,        // 数学运算，除法，如 {{ $num := xMathDiv $score 3 }}
+	"xMathPercent":    tplfn.MathPercent,    // 将一个小数转换为百分比的字符串，如 $score=0.1, {{ xMathPercent $score }} -> " 10.000%"
+	"xMathComplement": tplfn.MathComplement, // 将小数转换为剩余百分比，即  (1-f)*100 %， $score=0.1, {{ xMathComplement $score }} -> " 90.000%"
 
-	"xInt":     xcast.IntegerE[int], // 类型转换，将其他类型的数值转换为 int
-	"xInt8":    xcast.IntegerE[int8],
-	"xInt16":   xcast.IntegerE[int16],
-	"xInt32":   xcast.IntegerE[int32],
-	"xInt64":   xcast.IntegerE[int64],
-	"xUInt":    xcast.IntegerE[uint],
-	"xUInt8":   xcast.IntegerE[uint8],
-	"xUInt16":  xcast.IntegerE[uint16],
-	"xUInt32":  xcast.IntegerE[uint32],
-	"xUInt64":  xcast.IntegerE[uint64],
-	"xFloat32": xcast.FloatE[float32],
-	"xFloat64": xcast.FloatE[float64],
+	"xInt":     xcast.IntegerE[int],    // 将数值类型的数值转换为 int，失败会报错
+	"xInt8":    xcast.IntegerE[int8],   // 将其他类型的数值转换为 int8，失败会报错
+	"xInt16":   xcast.IntegerE[int16],  // 将其他类型的数值转换为 int16，失败会报错
+	"xInt32":   xcast.IntegerE[int32],  // 将其他类型的数值转换为 int32，失败会报错
+	"xInt64":   xcast.IntegerE[int64],  // 将其他类型的数值转换为 int64，失败会报错
+	"xUInt":    xcast.IntegerE[uint],   // 将其他类型的数值转换为 uint，失败会报错
+	"xUInt8":   xcast.IntegerE[uint8],  // 将其他类型的数值转换为 uint8，失败会报错
+	"xUInt16":  xcast.IntegerE[uint16], // 将其他类型的数值转换为 uint16，失败会报错
+	"xUInt32":  xcast.IntegerE[uint32], // 将其他类型的数值转换为 uint32，失败会报错
+	"xUInt64":  xcast.IntegerE[uint64], // 将其他类型的数值转换为 uint64，失败会报错
+	"xFloat32": xcast.FloatE[float32],  // 将其他类型的数值转换为 float32，失败会报错
+	"xFloat64": xcast.FloatE[float64],  // 将其他类型的数值转换为 float64，失败会报错
 
+	// 将多个字符串连接在一起
 	"xCat": func(items ...string) string {
 		if len(items) == 0 {
 			return ""
 		}
 		return strings.Join(items, "")
 	},
-	"xToLower":   strings.ToLower,
-	"xToUpper":   strings.ToUpper,
+	"xToLower":   strings.ToLower, // 将字符串转换为小写
+	"xToUpper":   strings.ToUpper, // 将字符串转换为大写
 	"xToTitle":   strings.ToTitle,
-	"xTrimSpace": strings.TrimSpace,
-	"xTrim":      strings.Trim,
+	"xTrimSpace": strings.TrimSpace, // 移除字符串首尾的空白
+	"xTrim":      strings.Trim,      // 移除字符串首尾的子串
 
-	"xnl2br": tplfn.NL2BR,
+	"xnl2br": tplfn.NL2BR, // 将换行符转换为 <br>
 
 	// 统计字符串的行数( \n 的个数)，返回值不小于 min
 	"xMinLines": func(min int, str string) int {
@@ -411,6 +458,7 @@ var FuncMap = template.FuncMap{
 
 	"xFilePathToSlash": filepath.ToSlash,
 
+	// 三元表达式，如 {{ xTernary $ok "Ok-Value" "Else Value" }}
 	"xTernary": func(ok bool, x any, y any) any {
 		if ok {
 			return x
@@ -419,6 +467,8 @@ var FuncMap = template.FuncMap{
 	},
 
 	"xSliceContains": zreflect.SliceContains, // 判断 slice 或者 array 是否包含特定的值
+
+	"xIsDebugMode": xattr.IsDebugMode, // 判断当前应用是否调试模式
 }
 
 func Dump(w io.Writer, obj any) {

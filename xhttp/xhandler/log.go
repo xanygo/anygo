@@ -112,6 +112,9 @@ func (al *AccessLog) before(ctx context.Context, start time.Time, r *http.Reques
 		xlog.String("Method", r.Method),
 		xlog.String("URI", r.RequestURI),
 		xlog.String("Remote", r.RemoteAddr),
+		xlog.String("ClientIP", xhttp.ClientIP(r)),
+		xlog.String("XFF", r.Header.Get("X-Forwarded-For")),
+		xlog.String("UA", r.UserAgent()),
 	)
 
 	xlog.AddAttr(ctx,
