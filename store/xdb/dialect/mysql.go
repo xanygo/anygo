@@ -230,3 +230,31 @@ func (d MySQL) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.Tabl
 	}
 	return nil
 }
+
+var _ dbtype.DescDialect = MySQL{}
+
+func (d MySQL) CurrentDatabase(ctx context.Context, q dbtype.Queryer) (string, error) {
+	const str = "SELECT DATABASE()"
+	return queryOneString(ctx, q, str)
+}
+
+func (d MySQL) Databases(ctx context.Context, q dbtype.Queryer) ([]string, error) {
+	const str = `SHOW DATABASES`
+	return querySliceString(ctx, q, str)
+}
+
+func (d MySQL) Tables(ctx context.Context, q dbtype.Queryer) ([]string, error) {
+	const str = `SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()`
+	return querySliceString(ctx, q, str)
+}
+
+func (d MySQL) TableExists(ctx context.Context, q dbtype.Queryer, table string) (bool, error) {
+	const str = `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ? )`
+	return queryBool(ctx, q, str, table)
+}
+
+func (d MySQL) TableColumns(ctx context.Context, q dbtype.Queryer, table string) ([]string, error) {
+	const str = `SELECT column_name FROM information_schema.columns
+WHERE table_schema = DATABASE() AND table_name = ? ORDER BY ordinal_position`
+	return querySliceString(ctx, q, str, table)
+}

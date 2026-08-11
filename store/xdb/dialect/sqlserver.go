@@ -285,3 +285,36 @@ func (d SQLServer) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.
 	}
 	return nil
 }
+
+var _ dbtype.DescDialect = SQLServer{}
+
+func (d SQLServer) CurrentDatabase(ctx context.Context, q dbtype.Queryer) (string, error) {
+	rows, err := q.QueryContext(ctx, "SELECT DB_NAME()")
+	if err != nil {
+		return "", err
+	}
+	var name string
+	err = rows.Scan(&name)
+	return name, err
+}
+
+func (d SQLServer) Databases(ctx context.Context, q dbtype.Queryer) ([]string, error) {
+	const str = `SELECT name FROM sys.databases`
+	return querySliceString(ctx, q, str)
+}
+
+func (d SQLServer) Tables(ctx context.Context, q dbtype.Queryer) ([]string, error) {
+	const str = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE'`
+	return querySliceString(ctx, q, str)
+}
+
+func (d SQLServer) TableExists(ctx context.Context, q dbtype.Queryer, table string) (bool, error) {
+	const str = `SELECT CASE WHEN EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES HERE TABLE_NAME = @p1 ) THEN 1 ELSE 0 END;`
+	return queryBool(ctx, q, str, table)
+}
+
+func (d SQLServer) TableColumns(ctx context.Context, q dbtype.Queryer, table string) ([]string, error) {
+	const str = `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = @p1 ORDER BY ORDINAL_POSITION`
+	return querySliceString(ctx, q, str, table)
+}

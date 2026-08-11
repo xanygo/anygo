@@ -218,3 +218,68 @@ func (d SQLite3) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.Ta
 	}
 	return nil
 }
+
+var _ dbtype.DescDialect = SQLite3{}
+
+func (d SQLite3) CurrentDatabase(ctx context.Context, q dbtype.Queryer) (string, error) {
+	return "main", nil
+}
+
+func (d SQLite3) Databases(ctx context.Context, q dbtype.Queryer) ([]string, error) {
+	rows, err := q.QueryContext(ctx, `PRAGMA database_list`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var result []string
+	for rows.Next() {
+		var seq int
+		var name string
+		var file string
+		if err = rows.Scan(&seq, &name, &file); err != nil {
+			return nil, err
+		}
+		result = append(result, name)
+	}
+	return result, nil
+}
+
+func (d SQLite3) Tables(ctx context.Context, q dbtype.Queryer) ([]string, error) {
+	const str = `SELECT name FROM sqlite_master WHERE type='table'`
+	return querySliceString(ctx, q, str)
+}
+
+func (d SQLite3) TableExists(ctx context.Context, q dbtype.Queryer, table string) (bool, error) {
+	const str = `SELECT EXISTS ( SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?)`
+	return queryBool(ctx, q, str, table)
+}
+
+func (d SQLite3) TableColumns(ctx context.Context, q dbtype.Queryer, table string) ([]string, error) {
+	str := fmt.Sprintf("PRAGMA table_info(%s)", d.QuoteIdentifier(table))
+	rows, err := q.QueryContext(ctx, str)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var columns []string
+
+	for rows.Next() {
+		var (
+			cid     int
+			name    string
+			typ     string
+			notnull int
+			def     any
+			pk      int
+		)
+
+		err = rows.Scan(&cid, &name, &typ, &notnull, &def, &pk)
+
+		if err != nil {
+			return nil, err
+		}
+
+		columns = append(columns, name)
+	}
+	return columns, nil
+}

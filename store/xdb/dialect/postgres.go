@@ -269,6 +269,34 @@ func (d Postgres) ColumnCodec(p reflect.Type) (dbtype.Codec, error) {
 	}
 }
 
+var _ dbtype.DescDialect = Postgres{}
+
+func (d Postgres) CurrentDatabase(ctx context.Context, q dbtype.Queryer) (string, error) {
+	const str = "SELECT current_database()"
+	return queryOneString(ctx, q, str)
+}
+
+func (d Postgres) Databases(ctx context.Context, q dbtype.Queryer) ([]string, error) {
+	const str = `SELECT datname FROM pg_database WHERE datistemplate = false`
+	return querySliceString(ctx, q, str)
+}
+
+func (d Postgres) Tables(ctx context.Context, q dbtype.Queryer) ([]string, error) {
+	const str = `SELECT datname FROM pg_database WHERE datistemplate = false`
+	return querySliceString(ctx, q, str)
+}
+
+func (d Postgres) TableExists(ctx context.Context, q dbtype.Queryer, table string) (bool, error) {
+	const str = `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = $1 )`
+	return queryBool(ctx, q, str, table)
+}
+
+func (d Postgres) TableColumns(ctx context.Context, q dbtype.Queryer, table string) ([]string, error) {
+	const str = `SELECT column_name FROM information_schema.columns
+WHERE table_schema = current_schema() AND table_name = $1 ORDER BY ordinal_position`
+	return querySliceString(ctx, q, str, table)
+}
+
 var _ dbtype.Codec = pgAnyArrayCodec{}
 
 // pgAnyArrayCodec 数组类型的编解码功能

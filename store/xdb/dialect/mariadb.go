@@ -150,3 +150,25 @@ func (d MariaDB) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.Ta
 	}
 	return nil
 }
+
+var _ dbtype.DescDialect = MariaDB{}
+
+func (d MariaDB) CurrentDatabase(ctx context.Context, q dbtype.Queryer) (string, error) {
+	return MySQL{}.CurrentDatabase(ctx, q)
+}
+
+func (d MariaDB) Databases(ctx context.Context, q dbtype.Queryer) ([]string, error) {
+	return MySQL{}.Databases(ctx, q)
+}
+
+func (d MariaDB) Tables(ctx context.Context, q dbtype.Queryer) ([]string, error) {
+	return MySQL{}.Tables(ctx, q)
+}
+
+func (d MariaDB) TableExists(ctx context.Context, q dbtype.Queryer, table string) (bool, error) {
+	return MySQL{}.TableExists(ctx, q, table)
+}
+
+func (d MariaDB) TableColumns(ctx context.Context, q dbtype.Queryer, table string) ([]string, error) {
+	return MySQL{}.TableColumns(ctx, q, table)
+}

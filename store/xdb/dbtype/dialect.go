@@ -114,8 +114,29 @@ type Capability interface {
 	HasFeature(feature string) bool
 }
 
+type DescDialect interface {
+	// CurrentDatabase 返回当前使用的数据库
+	CurrentDatabase(ctx context.Context, q Queryer) (string, error)
+
+	// Databases 返回数据库列表
+	Databases(ctx context.Context, q Queryer) ([]string, error)
+
+	// Tables 返回数据库中所有的表明
+	Tables(ctx context.Context, q Queryer) ([]string, error)
+
+	// TableExists 返回数据库中是否存在表
+	TableExists(ctx context.Context, q Queryer, table string) (bool, error)
+
+	// TableColumns 返回数据库表的字段名
+	TableColumns(ctx context.Context, q Queryer, table string) ([]string, error)
+}
+
 type DBCore interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+type Queryer interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }

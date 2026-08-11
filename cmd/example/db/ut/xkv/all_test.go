@@ -26,6 +26,8 @@ func init() {
 	xdb.RegisterIT((&xdb.Logger{Logger: xlog.NewSimple(logWriter)}).ToInterceptor())
 }
 
+var tables = []string{"xkv_meta", "xkv_string", "xkv_hash", "xkv_list", "xkv_set", "xkv_zset"}
+
 func getSQLiteDB(name string) *xdb.Client {
 	_ = os.Remove(name)
 	db, err := sql.Open("sqlite3", name)
@@ -62,6 +64,28 @@ func checkDB(t *testing.T, db *xdb.Client) {
 	xt.NoError(t, kvs.Migrate(ctx))
 
 	checkAll(t, kvs)
+
+	t.Run("schema", func(t *testing.T) {
+		sc := xdb.MustNewSchema(db)
+		t.Run("CurrentDatabase", func(t *testing.T) {
+			name, err := sc.CurrentDatabase(ctx)
+			xt.NoError(t, err)
+			xt.NotEmpty(t, name)
+		})
+		t.Run("Tables", func(t *testing.T) {
+			ts, err := sc.Tables(ctx)
+			xt.NoError(t, err)
+			xt.NotEmpty(t, ts)
+			xt.SliceContains(t, ts, "xkv_meta")
+		})
+		t.Run("TableColumns", func(t *testing.T) {
+			for _, table := range tables {
+				cs, err := sc.TableColumns(ctx, table)
+				xt.NoError(t, err)
+				xt.NotEmpty(t, cs)
+			}
+		})
+	})
 }
 
 func checkAll(t *testing.T, kvs xkv.StringStorage) {
@@ -90,8 +114,6 @@ func checkAll(t *testing.T, kvs xkv.StringStorage) {
 		checkZSet(t, kvs)
 	})
 }
-
-var tables = []string{"xkv_meta", "xkv_string", "xkv_hash", "xkv_list", "xkv_set", "xkv_zset"}
 
 func TestPostgres(t *testing.T) {
 	logWriter.Switch(t)
