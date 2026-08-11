@@ -140,3 +140,7 @@ type DBCore interface {
 type Queryer interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
+
+type QueryRower interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}

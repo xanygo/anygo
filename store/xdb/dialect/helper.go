@@ -2,25 +2,31 @@ package dialect
 
 import (
 	"context"
-	"errors"
+	"database/sql"
 
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
-func queryOneString(ctx context.Context, q dbtype.Queryer, sql string, args ...any) (string, error) {
-	rows, err := q.QueryContext(ctx, sql, args...)
+func queryOneString(ctx context.Context, q dbtype.Queryer, query string, args ...any) (string, error) {
+	if qr, ok := q.(dbtype.QueryRower); ok {
+		var name string
+		err := qr.QueryRowContext(ctx, query, args...).Scan(&name)
+		return name, err
+	}
+
+	rows, err := q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return "", err
 	}
 	defer rows.Close()
-	for rows.Next() {
+	if rows.Next() {
 		var name string
 		if err = rows.Scan(&name); err != nil {
 			return "", err
 		}
 		return name, nil
 	}
-	return "", errors.New("no result")
+	return "", sql.ErrNoRows
 }
 
 func querySliceString(ctx context.Context, q dbtype.Queryer, sql string, args ...any) ([]string, error) {
@@ -40,13 +46,21 @@ func querySliceString(ctx context.Context, q dbtype.Queryer, sql string, args ..
 	return result, nil
 }
 
-func queryBool(ctx context.Context, q dbtype.Queryer, sql string, args ...any) (bool, error) {
-	rows, err := q.QueryContext(ctx, sql, args...)
+func queryBool(ctx context.Context, q dbtype.Queryer, query string, args ...any) (bool, error) {
+	if qr, ok := q.(dbtype.QueryRower); ok {
+		var exists bool
+		err := qr.QueryRowContext(ctx, query, args...).Scan(&exists)
+		return exists, err
+	}
+	rows, err := q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return false, err
 	}
 	defer rows.Close()
-	var exists bool
-	err = rows.Scan(&exists)
-	return exists, err
+	if rows.Next() {
+		var exists bool
+		err = rows.Scan(&exists)
+		return exists, err
+	}
+	return false, sql.ErrNoRows
 }
