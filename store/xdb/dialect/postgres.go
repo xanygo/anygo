@@ -282,7 +282,8 @@ func (d Postgres) Databases(ctx context.Context, q dbtype.Queryer) ([]string, er
 }
 
 func (d Postgres) Tables(ctx context.Context, q dbtype.Queryer) ([]string, error) {
-	const str = `SELECT datname FROM pg_database WHERE datistemplate = false`
+	const str = `SELECT table_name FROM information_schema.tables
+WHERE table_schema = current_schema() AND table_type = 'BASE TABLE' ORDER BY table_name;`
 	return querySliceString(ctx, q, str)
 }
 
