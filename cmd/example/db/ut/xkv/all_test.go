@@ -53,6 +53,15 @@ func TestMSSQL(t *testing.T) {
 
 	defer db.Close()
 	client := xdb.NewClient("sqlserver", "demo", db)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+
+	if client.PingContext(ctx) == nil {
+		sc := xdb.MustNewSchemaAPI(client)
+		_ = sc.CreateDatabase(ctx, "demo")
+	}
+
 	checkDB(t, client)
 }
 
