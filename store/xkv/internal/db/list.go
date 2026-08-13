@@ -12,11 +12,10 @@ import (
 
 type ListModel struct {
 	KeyHash [32]byte `db:"k,pk"`
-	Index   int64    `db:"idx,pk"
-`
-	KeyRaw  string `db:"k_raw"`
-	Value   string `db:"v"`
-	Created int64  `db:"c"`
+	Index   int64    `db:"idx,pk"`
+	KeyRaw  string   `db:"k_raw"`
+	Value   string   `db:"v"`
+	Created int64    `db:"c"`
 }
 
 var _ xkv.List[string] = (*List)(nil)
