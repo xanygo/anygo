@@ -10,6 +10,7 @@ import (
 )
 
 var _ dbtype.Codec = (*JSON)(nil)
+var _ dbtype.HasKind = (*JSON)(nil)
 
 type JSON struct {
 }

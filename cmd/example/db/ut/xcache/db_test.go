@@ -9,21 +9,21 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql" // mysql driver
-	_ "github.com/jackc/pgx/v5/stdlib" // pgx driver
-	_ "github.com/mattn/go-sqlite3"    // sqlite driver
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/store/xcache/xcachex"
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xt"
+
+	"cmd/example/db/internal"
 )
 
 var logWriter = &xt.TLogWriter{}
 
 func init() {
 	xdb.RegisterIT((&xdb.Logger{Logger: xlog.NewSimple(logWriter)}).ToInterceptor())
+	internal.Init()
 }
 
 func getSQLiteDB(name string) *xdb.Client {
@@ -44,7 +44,7 @@ func TestSQLite(t *testing.T) {
 
 	db := getSQLiteDB("xcache_ut.db")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 	for _, table := range tables {
 		_, err := db.ExecContext(ctx, fmt.Sprintf("DROP TABLE IF EXISTS %q", table))
@@ -56,12 +56,11 @@ func TestSQLite(t *testing.T) {
 func TestPostgres(t *testing.T) {
 	logWriter.Switch(t)
 
-	const dsn = `user=work password=123456 host=127.0.0.1 port=5432 database=demo sslmode=disable`
-	db, err := sql.Open("pgx", dsn)
+	db, err := internal.NewPostgres()
 	xt.NoError(t, err)
 	defer db.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
 	if err = db.PingContext(ctx); err != nil {
@@ -89,12 +88,11 @@ func TestMariaDB(t *testing.T) {
 }
 
 func checkMySQLBase(t *testing.T, dialect string) {
-	const dsn = `work:123456@tcp(127.0.0.1)/demo`
-	db, err := sql.Open("mysql", dsn)
+	db, err := internal.NewMySQL()
 	xt.NoError(t, err)
 	defer db.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
 	if err = db.PingContext(ctx); err != nil {
@@ -115,7 +113,7 @@ func checkDB(t *testing.T, db *xdb.Client) {
 	cc := &xcachex.Database{
 		DB: db,
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 
 	xt.NoError(t, cc.Migrate(ctx))
@@ -126,7 +124,7 @@ func checkDB(t *testing.T, db *xdb.Client) {
 }
 
 func checkAll(t *testing.T, cache xcache.StringCache) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 
 	t.Run("single", func(t *testing.T) {

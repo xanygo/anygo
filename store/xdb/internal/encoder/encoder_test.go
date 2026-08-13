@@ -104,7 +104,7 @@ func TestEncode(t *testing.T) {
 			"ids2":   "[1,5,3]",
 			"md1":    "null",
 			"md2":    `{"key1":"value1"}`,
-			"bs1":    "",
+			"bs1":    []byte(nil),
 			"id2":    0,
 		}
 		xt.Equal(t, out1, want1)

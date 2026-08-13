@@ -48,6 +48,10 @@ func (d MySQL) QuoteQualifiedIdentifier(parts ...string) string {
 	return strings.Join(quoted, ".")
 }
 
+func (MySQL) LimitOffsetRequiresOrderBy() bool {
+	return false
+}
+
 // LimitOffsetClause 生成 LIMIT/OFFSET 语句片段。
 // MySQL 支持两种写法：
 //
@@ -119,7 +123,7 @@ func (d MySQL) UpsertSQL(table string, count int, columns, conflictCols, updateC
 
 var _ dbtype.SchemaDialect = MySQL{}
 
-func (MySQL) ColumnType(kind dbtype.Kind, size int) string {
+func (MySQL) ColumnKindType(kind dbtype.Kind, size int) string {
 	switch kind {
 	case dbtype.KindString:
 		if size <= 0 {
@@ -156,6 +160,9 @@ func (MySQL) ColumnType(kind dbtype.Kind, size int) string {
 	case dbtype.KindFloat64:
 		return "DOUBLE"
 	case dbtype.KindBinary:
+		if size > 0 {
+			return fmt.Sprintf("BINARY(%d)", size)
+		}
 		return "BLOB"
 	case dbtype.KindJSON:
 		return "LONGTEXT"
@@ -191,7 +198,7 @@ func (d MySQL) ColumnString(fs dbtype.ColumnSchema) string {
 	sb.WriteString(" ")
 	baseType := fs.Native
 	if baseType == "" {
-		baseType = d.ColumnType(fs.Kind, fs.Size)
+		baseType = d.ColumnKindType(fs.Kind, fs.Size)
 	}
 	sb.WriteString(baseType)
 	if fs.NotNull {

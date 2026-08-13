@@ -22,7 +22,7 @@ var testUser1Cols = []dbtype.ColumnSchema{
 		IsPrimaryKey:  true,
 		Kind:          dbtype.KindUint64,
 		AutoIncrement: true,
-		Codec:         dbcodec.Text{},
+		Codec:         dbcodec.Native{},
 	},
 	{
 		Name:    "name",
@@ -41,6 +41,12 @@ var testUser1Cols = []dbtype.ColumnSchema{
 		Kind:  dbtype.KindJSON,
 		Codec: dbcodec.JSON{},
 	},
+	{
+		Name:  "sign",
+		Kind:  dbtype.KindBinary,
+		Codec: dbcodec.Binary{},
+		Size:  32,
+	},
 }
 
 type User1 struct {
@@ -48,12 +54,13 @@ type User1 struct {
 	Name  string            `db:"name,not-null,unique"`
 	Roles []int             `db:"roles,codec:csv"`
 	Attrs map[string]string `db:"attrs,codec:json"`
+	Sign  [32]byte          `db:"sign"`
 }
 
 func TestSchemaUser1(t *testing.T) {
 	checkUser1 := func(t *testing.T, sc *dbtype.TableSchema) {
 		xt.Empty(t, sc.Table)
-		colNames1 := []string{"id", "name", "roles", "attrs"}
+		colNames1 := []string{"id", "name", "roles", "attrs", "sign"}
 		xt.SliceSortEqual(t, colNames1, sc.ColumnNames)
 		for _, col := range testUser1Cols {
 			t.Run(col.Name, func(t *testing.T) {
@@ -96,7 +103,7 @@ func TestSchemaAdmin1(t *testing.T) {
 	})
 	check := func(t *testing.T, sc *dbtype.TableSchema) {
 		xt.Empty(t, sc.Table)
-		colNames1 := []string{"id", "name", "roles", "attrs", "class"}
+		colNames1 := []string{"id", "name", "roles", "attrs", "class", "sign"}
 		xt.SliceSortEqual(t, colNames1, sc.ColumnNames)
 		for _, col := range cols {
 			t.Run(col.Name, func(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 )
 
 var _ dbtype.Codec = (*Date)(nil)
+var _ dbtype.HasKind = (*Date)(nil)
 
 type Date struct{}
 

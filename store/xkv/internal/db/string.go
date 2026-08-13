@@ -11,16 +11,16 @@ import (
 )
 
 type StringModel struct {
-	Key     string `db:"k,pk"`
-	Value   string `db:"v"`
-	Created int64  `db:"c"`
-	Updated int64  `db:"u"`
+	KeyHash [32]byte `db:"k,pk"`
+	KeyRaw  string   `db:"k_raw"`
+	Value   string   `db:"v"`
+	Created int64    `db:"c"`
+	Updated int64    `db:"u"`
 }
 
 var _ xkv.String[string] = (*String)(nil)
 
 type String struct {
-	Key   string
 	Table string
 	Meta  *Meta
 }
@@ -35,15 +35,16 @@ func (d *String) GetTable() string {
 func (d *String) deleteWithKey(ctx context.Context, tx xdb.TxCore) error {
 	orm := xdb.NewMode[StringModel](tx)
 	orm.Table(d.GetTable())
-	_, err := orm.Delete(ctx, "k=?", d.Key)
+	_, err := orm.Delete(ctx, "k=?", d.Meta.KeyHash[:])
 	return err
 }
 
 func (d *String) Set(ctx context.Context, value string) error {
-	now := time.Now().Unix()
+	now := time.Now().UnixNano()
 	return d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		data := StringModel{
-			Key:     d.Key,
+			KeyHash: d.Meta.KeyHash,
+			KeyRaw:  d.Meta.KeyRaw,
 			Value:   value,
 			Created: now,
 			Updated: now,
@@ -56,14 +57,15 @@ func (d *String) Set(ctx context.Context, value string) error {
 }
 
 func (d *String) SetNX(ctx context.Context, value string) (ok bool, err error) {
-	now := time.Now().Unix()
+	now := time.Now().UnixNano()
 	err = d.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		_, has, err1 := d.Meta.loadExists(ctx, tx)
 		if err1 != nil || has {
 			return err1
 		}
 		meta := MetaModel{
-			Key:      d.Key,
+			KeyHash:  d.Meta.KeyHash,
+			KeyRaw:   d.Meta.KeyRaw,
 			DataType: internal.DataTypeString,
 			Created:  now,
 			Updated:  now,
@@ -72,7 +74,8 @@ func (d *String) SetNX(ctx context.Context, value string) (ok bool, err error) {
 			return err1
 		}
 		data := StringModel{
-			Key:     d.Key,
+			KeyHash: d.Meta.KeyHash,
+			KeyRaw:  d.Meta.KeyRaw,
 			Value:   value,
 			Created: now,
 			Updated: now,
@@ -94,7 +97,7 @@ func (d *String) Get(ctx context.Context) (val string, ok bool, err error) {
 		orm := xdb.NewMode[StringModel](tx)
 		orm.Table(d.GetTable())
 		orm.SelectFields("v")
-		value, found, err1 := orm.First(ctx, "k=?", d.Key)
+		value, found, err1 := orm.First(ctx, "k=?", d.Meta.KeyHash[:])
 		if err1 != nil {
 			return err1
 		}
@@ -116,31 +119,32 @@ func (d *String) GetDel(ctx context.Context) (val string, ok bool, err error) {
 		orm := xdb.NewMode[StringModel](tx)
 		orm.Table(d.GetTable())
 		orm.SelectFields("v")
-		value, found, err2 := orm.First(ctx, "k=?", d.Key)
+		value, found, err2 := orm.First(ctx, "k=?", d.Meta.KeyHash[:])
 		if err2 != nil || !found {
 			return err2
 		}
 		val = value.Value
 		ok = true
-		_, err = orm.Delete(ctx, "k=?", d.Key)
+		_, err = orm.Delete(ctx, "k=?", d.Meta.KeyHash[:])
 		return err
 	})
 	return val, ok, err
 }
 
 func (d *String) GetSet(ctx context.Context, value string) (old string, ok bool, err error) {
-	now := time.Now().Unix()
+	now := time.Now().UnixNano()
 	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[StringModel](tx)
 		orm.Table(d.GetTable())
 		orm.SelectFields("v")
-		item, found, err2 := orm.First(ctx, "k=?", d.Key)
+		item, found, err2 := orm.First(ctx, "k=?", d.Meta.KeyHash[:])
 		if err2 != nil {
 			return err2
 		}
 
 		nv := StringModel{
-			Key:     d.Key,
+			KeyHash: d.Meta.KeyHash,
+			KeyRaw:  d.Meta.KeyRaw,
 			Value:   value,
 			Created: now,
 			Updated: now,
@@ -163,12 +167,12 @@ func (d *String) Incr(ctx context.Context) (num int64, err error) {
 }
 
 func (d *String) IncrBy(ctx context.Context, incr int64) (num int64, err error) {
-	now := time.Now().Unix()
+	now := time.Now().UnixNano()
 	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[StringModel](tx)
 		orm.Table(d.GetTable())
 		orm.SelectFields("v")
-		val, found, err1 := orm.First(ctx, "k=?", d.Key)
+		val, found, err1 := orm.First(ctx, "k=?", d.Meta.KeyHash[:])
 		if err1 != nil {
 			return err1
 		}
@@ -187,7 +191,8 @@ func (d *String) IncrBy(ctx context.Context, incr int64) (num int64, err error) 
 		strVal = strconv.FormatInt(num, 10)
 
 		data := StringModel{
-			Key:     d.Key,
+			KeyHash: d.Meta.KeyHash,
+			KeyRaw:  d.Meta.KeyRaw,
 			Value:   strVal,
 			Created: now,
 			Updated: now,
@@ -199,12 +204,12 @@ func (d *String) IncrBy(ctx context.Context, incr int64) (num int64, err error) 
 }
 
 func (d *String) IncrByFloat(ctx context.Context, incr float64) (num float64, err error) {
-	now := time.Now().Unix()
+	now := time.Now().UnixNano()
 	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[StringModel](tx)
 		orm.Table(d.GetTable())
 		orm.SelectFields("v")
-		val, found, err1 := orm.First(ctx, "k=?", d.Key)
+		val, found, err1 := orm.First(ctx, "k=?", d.Meta.KeyHash[:])
 		if err1 != nil {
 			return err1
 		}
@@ -223,7 +228,8 @@ func (d *String) IncrByFloat(ctx context.Context, incr float64) (num float64, er
 		strVal = strconv.FormatFloat(num, 'g', -1, 64)
 
 		data := StringModel{
-			Key:     d.Key,
+			KeyHash: d.Meta.KeyHash,
+			KeyRaw:  d.Meta.KeyRaw,
 			Value:   strVal,
 			Created: now,
 			Updated: now,

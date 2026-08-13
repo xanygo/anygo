@@ -41,4 +41,5 @@ func init() {
 	Register(SQLite3{})
 	RegisterWithName("sqlite", SQLite3{})
 	Register(SQLServer{})
+	RegisterWithName("mssql", SQLServer{})
 }

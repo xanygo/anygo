@@ -5,8 +5,6 @@
 package dbcodec
 
 import (
-	"fmt"
-
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
@@ -21,13 +19,30 @@ func Register(codec dbtype.Codec) bool {
 	return true
 }
 
-func Find(names ...string) (dbtype.Codec, error) {
+func FindByName(names ...string) dbtype.Codec {
 	for _, name := range names {
 		if codec, ok := codecs[name]; ok {
-			return codec, nil
+			return codec
 		}
 	}
-	return nil, fmt.Errorf("codec %q not found", names)
+	return nil
+}
+
+func FindByKind(kind dbtype.Kind) dbtype.Codec {
+	switch kind {
+	case dbtype.KindString:
+		return Text{}
+	case dbtype.KindBinary:
+		return Binary{}
+	case dbtype.KindArray, dbtype.KindJSON:
+		return JSON{}
+	case dbtype.KindDateTime:
+		return DateTime{}
+	case dbtype.KindDate:
+		return Date{}
+	default:
+		return Native{}
+	}
 }
 
 func init() {
@@ -40,4 +55,10 @@ func init() {
 	Register(CSV{})
 	Register(JSON{})
 	Register(Text{})
+
+	// 二进制
+	Register(Binary{})
+
+	// 数据库驱动原生支持的数据类型
+	Register(Native{})
 }

@@ -49,6 +49,10 @@ func (d MariaDB) QuoteQualifiedIdentifier(parts ...string) string {
 	return strings.Join(quoted, ".")
 }
 
+func (MariaDB) LimitOffsetRequiresOrderBy() bool {
+	return (MySQL{}).LimitOffsetRequiresOrderBy()
+}
+
 // LimitOffsetClause 生成 LIMIT/OFFSET 语句。
 // 与 MySQL 一致。
 func (MariaDB) LimitOffsetClause(limit, offset int) string {
@@ -115,8 +119,8 @@ func (d MariaDB) UpsertSQL(table string, count int, columns, conflictCols, updat
 
 var _ dbtype.SchemaDialect = MariaDB{}
 
-func (MariaDB) ColumnType(kind dbtype.Kind, size int) string {
-	return (MySQL{}).ColumnType(kind, size)
+func (MariaDB) ColumnKindType(kind dbtype.Kind, size int) string {
+	return (MySQL{}).ColumnKindType(kind, size)
 }
 
 func (d MariaDB) ColumnString(fs dbtype.ColumnSchema) string {

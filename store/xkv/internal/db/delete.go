@@ -36,9 +36,9 @@ type DeleteItem struct {
 }
 
 func (d DeleteItem) deleteAll(ctx context.Context, tx xdb.TxCore) error {
-	key := d.Meta.Key
 	orm := d.Meta.orm(tx)
-	value, found, err := orm.First(ctx, "k=?", key)
+	orm.SelectFields("dt")
+	value, found, err := orm.First(ctx, "k=?", d.Meta.KeyHash[:])
 	if err != nil || !found {
 		return err
 	}
@@ -47,31 +47,31 @@ func (d DeleteItem) deleteAll(ctx context.Context, tx xdb.TxCore) error {
 	case internal.DataTypeString:
 		data := &String{
 			Table: d.StringTable,
-			Key:   key,
+			Meta:  d.Meta,
 		}
 		err = data.deleteWithKey(ctx, tx)
 	case internal.DataTypeList:
 		data := &List{
 			Table: d.ListTable,
-			Key:   key,
+			Meta:  d.Meta,
 		}
 		err = data.deleteWithKey(ctx, tx)
 	case internal.DataTypeHash:
 		data := &Hash{
 			Table: d.HashTable,
-			Key:   key,
+			Meta:  d.Meta,
 		}
 		err = data.deleteWithKey(ctx, tx)
 	case internal.DataTypeSet:
 		data := &Set{
 			Table: d.SetTable,
-			Key:   key,
+			Meta:  d.Meta,
 		}
 		err = data.deleteWithKey(ctx, tx)
 	case internal.DataTypeZSet:
 		data := ZSet{
 			Table: d.ZSetTable,
-			Key:   key,
+			Meta:  d.Meta,
 		}
 		err = data.deleteWithKey(ctx, tx)
 	default:

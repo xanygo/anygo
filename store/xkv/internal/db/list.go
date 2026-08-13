@@ -11,8 +11,10 @@ import (
 )
 
 type ListModel struct {
-	Key     string `db:"k,unique_index:idx_k_i"`
-	Index   int64  `db:"idx,unique_index:idx_k_i"`
+	KeyHash [32]byte `db:"k,pk"`
+	Index   int64    `db:"idx,pk"
+`
+	KeyRaw  string `db:"k_raw"`
 	Value   string `db:"v"`
 	Created int64  `db:"c"`
 }
@@ -21,7 +23,6 @@ var _ xkv.List[string] = (*List)(nil)
 
 type List struct {
 	Table string
-	Key   string
 	Meta  *Meta
 }
 
@@ -35,7 +36,7 @@ func (l *List) GetTable() string {
 func (l *List) deleteWithKey(ctx context.Context, tx xdb.TxCore) error {
 	orm := xdb.NewMode[ListModel](tx)
 	orm.Table(l.GetTable())
-	_, err := orm.Delete(ctx, "k=?", l.Key)
+	_, err := orm.Delete(ctx, "k=?", l.Meta.KeyHash[:])
 	return err
 }
 
@@ -43,7 +44,7 @@ func (l *List) xxPush(ctx context.Context, field string, dealt int64, values ...
 	if len(values) == 0 {
 		return 0, nil
 	}
-	now := time.Now().Unix()
+	now := time.Now().UnixNano()
 	err = l.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		meta, err1 := l.Meta.load(ctx, tx)
 		if err1 != nil {
@@ -54,7 +55,8 @@ func (l *List) xxPush(ctx context.Context, field string, dealt int64, values ...
 			var idx int64
 			meta, idx = meta.incr(field, dealt)
 			item := ListModel{
-				Key:     l.Key,
+				KeyHash: l.Meta.KeyHash,
+				KeyRaw:  l.Meta.KeyRaw,
 				Value:   value,
 				Index:   idx,
 				Created: now,
@@ -71,7 +73,7 @@ func (l *List) xxPush(ctx context.Context, field string, dealt int64, values ...
 		if err1 != nil {
 			return err1
 		}
-		num, err1 = orm.Count(ctx, "*", "k=?", l.Key)
+		num, err1 = orm.Count(ctx, "*", "k=?", l.Meta.KeyHash[:])
 		return err1
 	})
 	return num, err
@@ -95,13 +97,13 @@ func (l *List) lPopXX(ctx context.Context, orderBy string) (value string, found 
 		orm.Table(l.GetTable())
 		orm.SelectFields("v", "idx")
 
-		v, ok, err2 := orm.First(ctx, "k=? order by idx "+orderBy, l.Key)
+		v, ok, err2 := orm.First(ctx, "k=? order by idx "+orderBy, l.Meta.KeyHash[:])
 		if err2 != nil || !ok {
 			return err2
 		}
 		value = v.Value
 		found = true
-		_, err2 = orm.Delete(ctx, "k=? and idx=?", l.Key, v.Index)
+		_, err2 = orm.Delete(ctx, "k=? and idx=?", l.Meta.KeyHash[:], v.Index)
 		if err2 != nil {
 			return err2
 		}
@@ -127,7 +129,7 @@ func (l *List) lPopNXX(ctx context.Context, count int, orderBy string) (result [
 		orm := xdb.NewMode[ListModel](tx)
 		orm.Table(l.GetTable())
 		orm.SelectFields("v", "idx").Limit(count)
-		items, err2 := orm.List(ctx, "k=? order by idx "+orderBy, l.Key)
+		items, err2 := orm.List(ctx, "k=? order by idx "+orderBy, l.Meta.KeyHash[:])
 		if err2 != nil || len(items) == 0 {
 			return err2
 		}
@@ -137,7 +139,7 @@ func (l *List) lPopNXX(ctx context.Context, count int, orderBy string) (result [
 			idxList = append(idxList, item.Index)
 		}
 		cond := xdb.Condition{}
-		cond.And("k=?", l.Key)
+		cond.And("k=?", l.Meta.KeyHash[:])
 		cond.AndInFmt("idx in (%s)", xslice.ToAnys(idxList))
 		where, args, err3 := cond.Build()
 		if err3 != nil {
@@ -166,7 +168,7 @@ func (l *List) checkExists(ctx context.Context, orm *xdb.Model[ListModel]) error
 	orm.Table(l.GetTable())
 	orm.SelectFields("c")
 
-	_, found, err := orm.First(ctx, "k=?", l.Key)
+	_, found, err := orm.First(ctx, "k=?", l.Meta.KeyHash[:])
 	if err != nil {
 		return err
 	}
@@ -186,7 +188,7 @@ func (l *List) LRem(ctx context.Context, count int64, element string) (num int64
 			orm := xdb.NewMode[ListModel](tx)
 			orm.Table(l.GetTable())
 			var err2 error
-			num, err2 = orm.Delete(ctx, "k=? and v=?", l.Key, element)
+			num, err2 = orm.Delete(ctx, "k=? and v=?", l.Meta.KeyHash[:], element)
 			if err2 != nil {
 				return err2
 			}
@@ -205,7 +207,7 @@ func (l *List) LRem(ctx context.Context, count int64, element string) (num int64
 			orm.Table(l.GetTable())
 			orm.Limit(int(count))
 			var err2 error
-			num, err2 = orm.Delete(ctx, "k=? and v=? order by idx asc", l.Key, element)
+			num, err2 = orm.Delete(ctx, "k=? and v=? order by idx asc", l.Meta.KeyHash[:], element)
 			if err2 != nil {
 				return err2
 			}
@@ -226,7 +228,7 @@ func (l *List) LRem(ctx context.Context, count int64, element string) (num int64
 		orm.Table(l.GetTable())
 		orm.Limit(int(count))
 		var err2 error
-		num, err2 = orm.Delete(ctx, "k=? and v=? order by idx desc", l.Key, element)
+		num, err2 = orm.Delete(ctx, "k=? and v=? order by idx desc", l.Meta.KeyHash[:], element)
 		if err2 != nil {
 			return err2
 		}
@@ -241,7 +243,7 @@ func (l *List) Range(ctx context.Context, fn func(val string) bool) error {
 		orm.Table(l.GetTable())
 		orm.SelectFields("v")
 
-		for item, err1 := range orm.ListIter(ctx, "k=?", l.Key) {
+		for item, err1 := range orm.ListIter(ctx, "k=?", l.Meta.KeyHash[:]) {
 			if err1 != nil {
 				return err1
 			}
@@ -260,7 +262,7 @@ func (l *List) LRange(ctx context.Context, fn func(val string) bool) error {
 		orm.Table(l.GetTable())
 		orm.SelectFields("v")
 
-		for item, err1 := range orm.ListIter(ctx, "k=? order by idx asc", l.Key) {
+		for item, err1 := range orm.ListIter(ctx, "k=? order by idx asc", l.Meta.KeyHash[:]) {
 			if err1 != nil {
 				return err1
 			}
@@ -279,7 +281,7 @@ func (l *List) RRange(ctx context.Context, fn func(val string) bool) error {
 		orm.Table(l.GetTable())
 		orm.SelectFields("v")
 
-		for item, err1 := range orm.ListIter(ctx, "k=? order by idx desc", l.Key) {
+		for item, err1 := range orm.ListIter(ctx, "k=? order by idx desc", l.Meta.KeyHash[:]) {
 			if err1 != nil {
 				return err1
 			}
@@ -300,7 +302,7 @@ func (l *List) LLen(ctx context.Context) (num int64, err error) {
 		orm := xdb.NewMode[ListModel](tx)
 		orm.Table(l.GetTable())
 		var err1 error
-		num, err1 = orm.Count(ctx, "*", "k=?", l.Key)
+		num, err1 = orm.Count(ctx, "*", "k=?", l.Meta.KeyHash[:])
 		return err1
 	})
 	return num, err

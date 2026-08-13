@@ -87,3 +87,13 @@ func BytesValue(obj any) ([]byte, bool) {
 
 	return nil, false
 }
+
+// ArrayToSlice 将 array 类型转换为 slice (调用前，需要提前判断好类型是 array 类型)
+func ArrayToSlice(rv reflect.Value) any {
+	n := rv.Len()
+	slice := reflect.MakeSlice(reflect.SliceOf(rv.Type().Elem()), n, n)
+	for i := 0; i < n; i++ {
+		slice.Index(i).Set(rv.Index(i))
+	}
+	return slice.Interface()
+}

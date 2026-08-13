@@ -12,6 +12,9 @@ import (
 	"github.com/xanygo/anygo/xerror"
 )
 
+// ErrNoPK 错误：没有主键
+var ErrNoPK = errors.New("no primary key column")
+
 type TableSchema struct {
 	Table       string                  // 数据库表名，可能为空
 	Columns     []ColumnSchema          // 字段列表
@@ -27,16 +30,15 @@ func (ts *TableSchema) ColumnByName(name string) (ColumnSchema, error) {
 	return f, fmt.Errorf("column %q %w", name, xerror.NotFound)
 }
 
-var errNoPK = errors.New("no primary key column")
-
-// PKColumn 查找主键字段(单字段主键)
-func (ts *TableSchema) PKColumn() (z ColumnSchema, err error) {
+// PKColumns 返回表中的主键字段，允许有多个字段（多个字段联合为主键）。
+func (ts *TableSchema) PKColumns() []ColumnSchema {
+	var result []ColumnSchema
 	for _, col := range ts.Columns {
 		if col.IsPrimaryKey {
-			return col, nil
+			result = append(result, col)
 		}
 	}
-	return z, errNoPK
+	return result
 }
 
 type ColumnSchema struct {
@@ -52,7 +54,7 @@ type ColumnSchema struct {
 	Codec         Codec               // 字段编解码器
 	Native        string              // 数据库原生类型
 	Default       *DefaultValueSchema // 默认值
-	ReflectType   reflect.Type
+	ReflectType   reflect.Type        // struct 中字段的类型
 }
 
 func (scf *ColumnSchema) String() string {

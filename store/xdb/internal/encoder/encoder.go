@@ -234,6 +234,7 @@ func (e Encoder[T]) encodeStructFieldValue(schema dbtype.ColumnSchema, val any) 
 	if !rv.IsValid() {
 		return nil, fmt.Errorf("invalid value: %v", val)
 	}
+
 	// 处理指针
 	if rv.Kind() == reflect.Pointer {
 		if rv.IsNil() {
@@ -244,64 +245,53 @@ func (e Encoder[T]) encodeStructFieldValue(schema dbtype.ColumnSchema, val any) 
 			val = rv.Interface()
 		}
 	}
+	// 类型的判断处理应该有 schema parser 处理好，传入正确的 Codec 即可
+	if schema.Codec != nil {
+		return schema.Codec.Encode(val)
+	}
+	return val, nil
+}
 
-	// 优先查找方言里有没有针对类型的 codec
-	if dc, ok := e.Dialect.(dbtype.CoderDialect); ok {
-		if encoder, err := dc.ColumnCodec(rv.Type()); err != nil {
-			return nil, err
-		} else if encoder != nil {
-			return encoder.Encode(val)
+func (e Encoder[T]) PKNameAndValues(obj T) (map[string]any, error) {
+	cols, values, err := e.PrimaryKeys(obj)
+	if err != nil {
+		return nil, err
+	}
+	if len(cols) == 0 {
+		return nil, dbtype.ErrNoPK
+	}
+	result := make(map[string]any, len(cols))
+	for i, col := range cols {
+		value, err1 := e.encodeStructFieldValue(col, values[i].Interface())
+		if err1 != nil {
+			return nil, err1
 		}
+		result[col.Name] = value
 	}
-
-	if schema.Kind == dbtype.KindNative || zreflect.IsBasicKind(rv.Kind()) {
-		return val, nil
-	}
-
-	// 对 slice / map / struct / pointer 类型用 serializer
-	if schema.Codec == nil {
-		return val, nil
-	}
-	return schema.Codec.Encode(val)
+	return result, nil
 }
 
-// PKNameAndValue 查找主键 key，并返回其值，并且要求值为非零值。
-func (e Encoder[T]) PKNameAndValue(obj T) (name string, value any, err error) {
-	cs, fv, err := e.PrimaryKey(obj)
-	if err != nil {
-		return "", nil, err
-	}
-	if fv.IsZero() {
-		return "", nil, fmt.Errorf("pk(%q) is zero value", cs.Name)
-	}
-	value, err = e.encodeStructFieldValue(cs, fv.Interface())
-	if err != nil {
-		return "", nil, err
-	}
-	return cs.Name, value, err
-}
-
-func (e Encoder[T]) PrimaryKey(obj T) (cs dbtype.ColumnSchema, fv reflect.Value, err error) {
+func (e Encoder[T]) PrimaryKeys(obj T) (columns []dbtype.ColumnSchema, values []reflect.Value, err error) {
 	v := reflect.ValueOf(obj)
 	if !v.IsValid() {
-		return cs, fv, fmt.Errorf("invalid value: %v", v)
+		return nil, nil, fmt.Errorf("invalid value: %v", v)
 	}
 
 	// 支持指针类型
 	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
-			return cs, fv, fmt.Errorf("nil pointer: %#v", obj)
+			return nil, nil, fmt.Errorf("nil pointer: %#v", obj)
 		}
 		v = v.Elem()
 	}
 
 	if v.Kind() != reflect.Struct {
-		return cs, fv, fmt.Errorf("invalid value: %#v", obj)
+		return nil, nil, fmt.Errorf("invalid value: %#v", obj)
 	}
 
 	schema, err := dbschema.Schema(e.Dialect, obj)
 	if err != nil {
-		return cs, fv, err
+		return nil, nil, err
 	}
 
 	t := v.Type()
@@ -310,22 +300,23 @@ func (e Encoder[T]) PrimaryKey(obj T) (cs dbtype.ColumnSchema, fv reflect.Value,
 		if !v.Field(i).CanInterface() {
 			continue
 		}
-		fv = v.Field(i)
 
 		tag := xstruct.ParserTag(field.Tag.Get(dbschema.TagName()))
 		name := tag.Name()
 		if name == "-" || name == "" {
 			continue
 		}
-		cs, err = schema.ColumnByName(name)
+		col, err := schema.ColumnByName(name)
 		if err != nil {
-			return cs, fv, err
+			return nil, nil, err
 		}
-		if !cs.IsPrimaryKey {
+		if !col.IsPrimaryKey {
 			continue
 		}
-		return cs, fv, nil
+		// columns 和 values 同时 append
+		columns = append(columns, col)
+		values = append(values, v.Field(i))
 	}
 
-	return cs, fv, fmt.Errorf("no primary key column found for %T", obj)
+	return columns, values, nil
 }

@@ -28,6 +28,10 @@ type Dialect interface {
 	// 如果不需要可以用默认实现（库层提供 helper）。
 	QuoteQualifiedIdentifier(parts ...string) string
 
+	// LimitOffsetRequiresOrderBy 返回 LimitOffsetClause 是否要求 SQL语句同时存在 ORDER BY
+	// 目前的 sqlserver 是需要的
+	LimitOffsetRequiresOrderBy() bool
+
 	// LimitOffsetClause 返回给定 limit/offset 的 SQL 片段（不包含前后的空格）
 	// 举例："LIMIT 10 OFFSET 20" 或 "LIMIT 20, 10"（MySQL）。
 	// 当 limit<0 且 offset<=0 时返回 ""。
@@ -69,13 +73,15 @@ type UpsertDialect interface {
 }
 
 type CoderDialect interface {
-	ColumnCodec(p reflect.Type) (Codec, error)
+	// ColumnCodec 字段类型转换为方言类型。
+	// 返回值：类型，编解码器，数据库字段类型
+	ColumnCodec(p reflect.Type) (Kind, Codec, string)
 }
 
 // SchemaDialect DDL 相关扩展（创建表、列类型等）
 type SchemaDialect interface {
-	// ColumnType 将通用列类型映射为方言列类型（例如 "string" -> "VARCHAR(255)"）
-	ColumnType(kind Kind, size int) string
+	// ColumnKindType 将通用列类型映射为方言列类型（例如 "string" -> "VARCHAR(255)"）
+	ColumnKindType(kind Kind, size int) string
 
 	// ColumnString 创建字段的 schema
 	ColumnString(schema ColumnSchema) string

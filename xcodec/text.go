@@ -56,11 +56,21 @@ func (t TextCodec) Decode(bytes []byte, obj any) error {
 	case reflect.String:
 		elem.SetString(string(bytes))
 		return nil
-	case reflect.Slice, reflect.Array:
+	case reflect.Slice:
 		if elem.Type().Elem().Kind() == reflect.Uint8 {
 			elem.SetBytes(slices.Clone(bytes))
 			return nil
 		}
+	case reflect.Array:
+		if elem.Type().Elem().Kind() == reflect.Uint8 {
+			if len(bytes) > elem.Len() {
+				return fmt.Errorf("cannot decode into %T with %d bytes", obj, len(bytes))
+			}
+			reflect.Copy(elem, reflect.ValueOf(slices.Clone(bytes)))
+			return nil
+		}
+	default:
+		// pass
 	}
 	if zreflect.IsBasicKind(kind) {
 		ev, err := zreflect.ParseBasicValue(string(bytes), elem.Type())

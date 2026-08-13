@@ -10,6 +10,7 @@ import (
 )
 
 var _ dbtype.Codec = (*CSV)(nil)
+var _ dbtype.HasKind = (*CSV)(nil)
 
 type CSV struct {
 }

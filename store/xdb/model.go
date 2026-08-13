@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -54,7 +55,7 @@ type Model[T any] struct {
 	selectIgnoreFields []string // 查询时要忽略的字段列表。当 selectFields 为空时才生效
 
 	schema *dbtype.TableSchema
-	pk     *dbtype.ColumnSchema // 可能为 nil
+	pk     []dbtype.ColumnSchema // 可能为 nil
 
 	err error
 }
@@ -67,9 +68,7 @@ func (m *Model[T]) init() {
 	}
 	if m.schema != nil {
 		m.table = m.schema.Table
-		if pk, _ := m.schema.PKColumn(); pk.Name != "" {
-			m.pk = &pk
-		}
+		m.pk = m.schema.PKColumns()
 	}
 }
 
@@ -218,9 +217,9 @@ func (m *Model[T]) Insert(ctx context.Context, v T) error {
 
 	qcols := make([]string, 0, len(kv))
 	args := make([]any, 0, len(kv))
-	for k, v := range kv {
-		qcols = append(qcols, m.dialect.QuoteIdentifier(k))
-		args = append(args, v)
+	for field, value := range kv {
+		qcols = append(qcols, m.dialect.QuoteIdentifier(field))
+		args = append(args, value)
 	}
 
 	sqlStr := fmt.Sprintf(
@@ -274,8 +273,8 @@ func (m *Model[T]) InsertReturningID(ctx context.Context, v T) (int64, error) {
 	sli := m.dialect.SupportLastInsertId()
 	if !sli && m.dialect.SupportReturning() {
 		rd, ok := m.dialect.(dbtype.ReturningDialect)
-		if ok && m.pk != nil && m.pk.AutoIncrement {
-			sqlStr += " " + rd.ReturningClause(m.pk.Name)
+		if ok && len(m.pk) == 1 && m.pk[0].AutoIncrement {
+			sqlStr += " " + rd.ReturningClause(m.pk[0].Name)
 			return m.execReturning(ctx, m.client, sqlStr, args...)
 		}
 	}
@@ -299,6 +298,7 @@ func (m *Model[T]) execReturning(ctx context.Context, client HasDriver, sql stri
 	if !ok {
 		return 0, fmt.Errorf("client (%T) is not RowQuerier", client)
 	}
+
 	var id int64
 	err := db.QueryRowContext(ctx, sql, args...).Scan(&id)
 	return id, err
@@ -333,9 +333,6 @@ func (m *Model[T]) InsertBatch(ctx context.Context, vs ...T) (int64, error) {
 		strings.Join(qCols, ","),
 		strings.Join(valuePlaceHolders, ", "),
 	)
-	if r, ok := any(m.dialect).(dbtype.ReturningDialect); ok {
-		sqlStr += " " + r.ReturningClause()
-	}
 
 	db, ok := m.client.(Execer)
 	if !ok {
@@ -455,15 +452,18 @@ func (m *Model[T]) doUpdate(ctx context.Context, v T, where string, args ...any)
 //
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 func (m *Model[T]) UpdateByPK(ctx context.Context, v T) (int64, error) {
-	pk, value, err := m.getEncoder(encoder.ActionUpdate).PKNameAndValue(v)
+	pkData, err := m.getEncoder(encoder.ActionUpdate).PKNameAndValues(v)
 	if err != nil {
 		return 0, err
 	}
-	where := m.dialect.QuoteIdentifier(pk) + "=?"
+	where, args, err := m.mapWhere(pkData)
+	if err != nil {
+		return 0, err
+	}
 
 	m1 := m.Clone()
-	m1.AppendUpsertIgnore(pk)
-	return m1.doUpdate(ctx, v, where, value)
+	m1.AppendUpsertIgnore(xmap.Keys(pkData)...)
+	return m1.doUpdate(ctx, v, where, args...)
 }
 
 // Delete 执行 delete 语句
@@ -499,12 +499,23 @@ func (m *Model[T]) Delete(ctx context.Context, where string, args ...any) (int64
 //
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 func (m *Model[T]) DeleteByPK(ctx context.Context, v T) (int64, error) {
-	pk, value, err := m.getEncoder(encoder.ActionDelete).PKNameAndValue(v)
+	pkData, err := m.getEncoder(encoder.ActionDelete).PKNameAndValues(v)
 	if err != nil {
 		return 0, err
 	}
-	where := m.dialect.QuoteIdentifier(pk) + "=?"
-	return m.Delete(ctx, where, value)
+	where, args, err := m.mapWhere(pkData)
+	if err != nil {
+		return 0, err
+	}
+	return m.Delete(ctx, where, args...)
+}
+
+func (m *Model[T]) mapWhere(data map[string]any) (string, []any, error) {
+	cond := &Condition{}
+	for key, value := range data {
+		cond.And(m.dialect.QuoteIdentifier(key)+"=?", value)
+	}
+	return cond.Build()
 }
 
 // First 使用 select xx from table where xxx limit 1 查询满足条件的第一条数据
@@ -523,11 +534,10 @@ func (m *Model[T]) First(ctx context.Context, where string, args ...any) (v T, o
 		return v, false, err
 	}
 	sqlStr := fmt.Sprintf(
-		"SELECT %s FROM %s %s %s",
+		"SELECT %s FROM %s %s",
 		field,
 		m.dialect.QuoteIdentifier(m.table),
-		m.connectWhere(where),
-		m.dialect.LimitOffsetClause(1, 0),
+		m.whereLimitOffset(where, 1, 0),
 	)
 	db, ok := m.client.(Queryer)
 	if !ok {
@@ -536,18 +546,36 @@ func (m *Model[T]) First(ctx context.Context, where string, args ...any) (v T, o
 	return QueryOne[T](ctx, db, sqlStr, args...)
 }
 
+var reOrderBy = regexp.MustCompile(`(?i)\border\s+by\b`)
+
+func (m *Model[T]) whereLimitOffset(where string, limit int, offset int) string {
+	where = m.connectWhere(where)
+	after := m.dialect.LimitOffsetClause(limit, offset)
+	if after == "" {
+		return where
+	}
+	if !m.dialect.LimitOffsetRequiresOrderBy() || reOrderBy.MatchString(where) {
+		return where + " " + after
+	}
+	// 目前只有 sqlserver 需要，SELECT NULL 使其满足语法要求
+	return where + " ORDER BY (SELECT NULL) " + after
+}
+
 // FindByPK 使用主键查找数据
 //
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 //
 //	可通过 SelectFields、SelectIgnore 限制查询返回的字段
 func (m *Model[T]) FindByPK(ctx context.Context, v T) (nv T, ok bool, err error) {
-	pk, value, err := m.getEncoder(encoder.ActionSelect).PKNameAndValue(v)
+	pkData, err := m.getEncoder(encoder.ActionSelect).PKNameAndValues(v)
 	if err != nil {
 		return nv, false, err
 	}
-	where := m.dialect.QuoteIdentifier(pk) + "=?"
-	return m.First(ctx, where, value)
+	where, args, err := m.mapWhere(pkData)
+	if err != nil {
+		return nv, false, err
+	}
+	return m.First(ctx, where, args...)
 }
 
 // List 查询并返回满足条件的数据。
@@ -593,11 +621,10 @@ func (m *Model[T]) ListIter(ctx context.Context, where string, args ...any) iter
 		}
 
 		sqlStr := fmt.Sprintf(
-			"SELECT %s FROM %s %s %s",
+			"SELECT %s FROM %s %s",
 			field,
 			m.dialect.QuoteIdentifier(m.table),
-			m.connectWhere(where),
-			m.dialect.LimitOffsetClause(m.limit, m.offset),
+			m.whereLimitOffset(where, m.limit, m.offset),
 		)
 
 		db, ok := m.client.(Queryer)

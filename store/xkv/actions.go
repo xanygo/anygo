@@ -9,7 +9,7 @@ const (
 	DataTypeSet    DataType = "Set"
 	DataTypeHash   DataType = "Hash"
 	DataTypeZSet   DataType = "ZSet"
-	DataTypeKey    DataType = "Key"
+	DataTypeKey    DataType = "KeyRaw"
 )
 
 const (

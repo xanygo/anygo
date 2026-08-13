@@ -48,6 +48,10 @@ func (d SQLite3) QuoteQualifiedIdentifier(parts ...string) string {
 	return strings.Join(quoted, ".")
 }
 
+func (SQLite3) LimitOffsetRequiresOrderBy() bool {
+	return false
+}
+
 // LimitOffsetClause 生成 LIMIT/OFFSET 子句。
 // SQLite3 支持标准写法 "LIMIT ? OFFSET ?"
 func (SQLite3) LimitOffsetClause(limit, offset int) string {
@@ -139,7 +143,7 @@ func (d SQLite3) UpsertSQL(table string, count int, columns, conflictCols, updat
 
 var _ dbtype.SchemaDialect = SQLite3{}
 
-func (SQLite3) ColumnType(kind dbtype.Kind, size int) string {
+func (SQLite3) ColumnKindType(kind dbtype.Kind, size int) string {
 	switch kind {
 	case dbtype.KindString:
 		return "TEXT"
@@ -153,6 +157,8 @@ func (SQLite3) ColumnType(kind dbtype.Kind, size int) string {
 	case dbtype.KindJSON:
 		// SQLite3 3.38+ 支持 JSON 函数，但底层仍 TEXT
 		return "TEXT"
+	case dbtype.KindBinary:
+		return "BLOB"
 	default:
 		return "TEXT"
 	}
@@ -162,7 +168,10 @@ func (d SQLite3) ColumnString(fs dbtype.ColumnSchema) string {
 	var sb strings.Builder
 	sb.WriteString(d.QuoteIdentifier(fs.Name))
 	sb.WriteString(" ")
-	baseType := d.ColumnType(fs.Kind, fs.Size)
+	baseType := fs.Native
+	if baseType == "" {
+		baseType = d.ColumnKindType(fs.Kind, fs.Size)
+	}
 	sb.WriteString(baseType)
 	if fs.NotNull {
 		sb.WriteString(" NOT NULL")

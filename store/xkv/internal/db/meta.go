@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"time"
 
@@ -10,8 +11,21 @@ import (
 	"github.com/xanygo/anygo/store/xkv/internal"
 )
 
+// KeyHash 计算字符串的 hash 值
+// 由于部分数据库（如mssql）的索引长度限制，同时为了让查询效率更高。
+// 所以对于字符串类型的字段，分别存储 hash 值和原文，给 hash 值添加索引用于查询
+func KeyHash(str string) [32]byte {
+	return sha256.Sum256([]byte(str))
+}
+
+func keyHashBytes(str string) []byte {
+	h := sha256.Sum256([]byte(str))
+	return h[:]
+}
+
 type MetaModel struct {
-	Key      string            `db:"k,pk"`
+	KeyHash  [32]byte          `db:"k,pk"`  // key 的 hash
+	KeyRaw   string            `db:"k_raw"` // 原始的 key
 	DataType internal.DataType `db:"dt"`
 	Created  int64             `db:"c"`
 	Updated  int64             `db:"u"`
@@ -36,7 +50,8 @@ func (m MetaModel) incr(field string, dealt int64) (nm MetaModel, num int64) {
 type Meta struct {
 	Table    string
 	DB       *xdb.Client
-	Key      string
+	KeyRaw   string   // 原始的 KeyRaw
+	KeyHash  [32]byte // key 的 hash 值
 	DataType internal.DataType
 }
 
@@ -55,12 +70,12 @@ func (m *Meta) orm(tx xdb.HasDriver) *xdb.Model[MetaModel] {
 
 func (m *Meta) delete(ctx context.Context, tx xdb.HasDriver) error {
 	orm := m.orm(tx)
-	_, err := orm.Delete(ctx, "k=?", m.Key)
+	_, err := orm.Delete(ctx, "k=?", m.KeyHash[:])
 	return err
 }
 
 func (m *Meta) save(ctx context.Context, tx xdb.TxCore, data MetaModel) error {
-	now := time.Now().Unix()
+	now := time.Now().UnixNano()
 	orm := m.orm(tx)
 	if data.Created == 0 {
 		data.Created = now
@@ -105,7 +120,7 @@ func (m *Meta) checkWriteType(ctx context.Context, tx xdb.TxCore) error {
 	orm := m.orm(tx)
 	orm.SelectFields("dt")
 
-	old, found, err := orm.First(ctx, "k=?", m.Key)
+	old, found, err := orm.First(ctx, "k=?", m.KeyHash[:])
 	if err != nil {
 		return err
 	}
@@ -115,9 +130,10 @@ func (m *Meta) checkWriteType(ctx context.Context, tx xdb.TxCore) error {
 		}
 		return fmt.Errorf("canot write %s on type %s", m.DataType.String(), old.DataType.String())
 	}
-	now := time.Now().Unix()
+	now := time.Now().UnixNano()
 	data := MetaModel{
-		Key:      m.Key,
+		KeyHash:  m.KeyHash,
+		KeyRaw:   m.KeyRaw,
 		DataType: m.DataType,
 		Created:  now,
 		Updated:  now,
@@ -132,7 +148,7 @@ func (m *Meta) load(ctx context.Context, tx xdb.TxCore) (MetaModel, error) {
 
 func (m *Meta) loadExists(ctx context.Context, tx xdb.TxCore) (MetaModel, bool, error) {
 	orm := m.orm(tx)
-	value, found, err := orm.First(ctx, "k=?", m.Key)
+	value, found, err := orm.First(ctx, "k=?", m.KeyHash[:])
 	if err != nil {
 		return MetaModel{}, false, err
 	}
@@ -143,7 +159,8 @@ func (m *Meta) loadExists(ctx context.Context, tx xdb.TxCore) (MetaModel, bool, 
 		return MetaModel{}, false, fmt.Errorf("canot load %s on type %s", m.DataType.String(), value.DataType.String())
 	}
 	return MetaModel{
-		Key:      m.Key,
+		KeyRaw:   m.KeyRaw,
+		KeyHash:  m.KeyHash,
 		DataType: m.DataType,
 	}, false, nil
 }
@@ -151,7 +168,7 @@ func (m *Meta) loadExists(ctx context.Context, tx xdb.TxCore) (MetaModel, bool, 
 func (m *Meta) checkReadType(ctx context.Context, tx xdb.TxCore) (bool, error) {
 	orm := m.orm(tx)
 	orm.SelectFields("dt")
-	value, found, err := orm.First(ctx, "k=?", m.Key)
+	value, found, err := orm.First(ctx, "k=?", m.KeyHash[:])
 	if err != nil {
 		return false, err
 	}

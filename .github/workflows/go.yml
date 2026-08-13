@@ -122,9 +122,7 @@ jobs:
       run: |
         go test  -timeout=120s  -race ./...
         ( cd cmd/example/db/ && go test -timeout=120s  -race  ./... )
-        ( cd cmd/example/db/sqlite && go run main.go )
-        ( cd cmd/example/db/mysql && go run main.go )
-        ( cd cmd/example/db/pgx && go run main.go )
+
 
   cross:
     strategy:

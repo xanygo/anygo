@@ -5,7 +5,6 @@
 package dbtype
 
 import (
-	"fmt"
 	"reflect"
 	"time"
 )
@@ -42,17 +41,21 @@ var specTypeToKindMap = map[reflect.Type]Kind{
 	reflect.TypeFor[[]byte]():    KindBinary,
 }
 
-func ReflectToKind(rt reflect.Type) (Kind, error) {
+func ReflectToKind(rt reflect.Type) (Kind, bool) {
+	if (rt.Kind() == reflect.Array || rt.Kind() == reflect.Slice) && rt.Elem().Kind() == reflect.Uint8 {
+		return KindBinary, true
+	}
+
 	if k, ok := specTypeToKindMap[rt]; ok {
-		return k, nil
+		return k, true
 	}
 	kind := rt.Kind()
 	if k, ok := typeToKindMap[kind]; ok {
-		return k, nil
+		return k, true
 	}
 	if kind == reflect.Pointer {
 		return ReflectToKind(rt.Elem())
 	}
 
-	return KindInvalid, fmt.Errorf("invalid data type: %s", rt.String())
+	return KindInvalid, false
 }

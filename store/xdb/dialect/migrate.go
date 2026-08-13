@@ -13,12 +13,17 @@ import (
 )
 
 func createTableSQL(ts dbtype.TableSchema, d dbtype.Dialect, sd dbtype.SchemaDialect) string {
+	pks := ts.PKColumns()
+
 	str := sd.CreateTableIfNotExists(ts.Table) + " (\n"
 
 	var lines []string
 	indexMap := map[string][]*dbtype.IndexSchema{}
 	uniqIndexMap := map[string][]*dbtype.IndexSchema{}
 	for _, field := range ts.Columns {
+		if len(pks) > 1 && field.IsPrimaryKey {
+			field.IsPrimaryKey = false // 后面统一生成联合主键
+		}
 		tmp := sd.ColumnString(field)
 		lines = append(lines, tmp)
 		if field.Index != nil {
@@ -54,6 +59,14 @@ func createTableSQL(ts dbtype.TableSchema, d dbtype.Dialect, sd dbtype.SchemaDia
 		tmp := sd.UniqIndex(indexName, names)
 		lines = append(lines, tmp)
 	}
+	if len(pks) > 1 {
+		var pkCols []string
+		for _, field := range pks {
+			pkCols = append(pkCols, d.QuoteIdentifier(field.Name))
+		}
+		tmp := "PRIMARY KEY(" + strings.Join(pkCols, ",") + ")"
+		lines = append(lines, tmp)
+	}
 	str += strings.Join(lines, ",\n") + ")"
 	return str
 }
@@ -61,7 +74,7 @@ func createTableSQL(ts dbtype.TableSchema, d dbtype.Dialect, sd dbtype.SchemaDia
 // 返回创建表和创建索引的语句是独立的。sqlite 使用中
 func createTableSQLList(ts dbtype.TableSchema, d dbtype.Dialect, sd dbtype.SchemaDialect) []string {
 	var result []string
-
+	pks := ts.PKColumns()
 	indexMap := map[string][]*dbtype.IndexSchema{}
 	uniqIndexMap := map[string][]*dbtype.IndexSchema{}
 
@@ -70,6 +83,9 @@ func createTableSQLList(ts dbtype.TableSchema, d dbtype.Dialect, sd dbtype.Schem
 		str := sd.CreateTableIfNotExists(ts.Table) + " (\n"
 		var lines []string
 		for _, field := range ts.Columns {
+			if len(pks) > 1 && field.IsPrimaryKey {
+				field.IsPrimaryKey = false // 后面统一生成联合主键
+			}
 			tmp := sd.ColumnString(field)
 			lines = append(lines, tmp)
 			if field.Index != nil {
@@ -81,6 +97,16 @@ func createTableSQLList(ts dbtype.TableSchema, d dbtype.Dialect, sd dbtype.Schem
 				uniqIndexMap[indexName] = append(uniqIndexMap[indexName], field.UniqueIndex)
 			}
 		}
+
+		if len(pks) > 1 {
+			var pkCols []string
+			for _, field := range pks {
+				pkCols = append(pkCols, d.QuoteIdentifier(field.Name))
+			}
+			tmp := "PRIMARY KEY(" + strings.Join(pkCols, ",") + ")"
+			lines = append(lines, tmp)
+		}
+
 		str += strings.Join(lines, ",\n") + ")"
 		result = append(result, str)
 	}

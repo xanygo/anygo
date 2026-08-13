@@ -13,6 +13,7 @@ import (
 
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/internal/zreflect"
+	"github.com/xanygo/anygo/store/xdb/dbcodec"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
@@ -46,6 +47,10 @@ func (d Postgres) QuoteQualifiedIdentifier(parts ...string) string {
 		quoted[i] = d.QuoteIdentifier(p)
 	}
 	return strings.Join(quoted, ".")
+}
+
+func (Postgres) LimitOffsetRequiresOrderBy() bool {
+	return false
 }
 
 // LimitOffsetClause 生成 LIMIT/OFFSET 子句
@@ -138,8 +143,8 @@ func (d Postgres) UpsertSQL(table string, count int, cols, conflictCols, updateC
 
 var _ dbtype.SchemaDialect = Postgres{}
 
-// ColumnType 映射通用类型到 Postgres 类型
-func (Postgres) ColumnType(kind dbtype.Kind, size int) string {
+// ColumnKindType 映射通用类型到 Postgres 类型
+func (Postgres) ColumnKindType(kind dbtype.Kind, size int) string {
 	switch kind {
 	case dbtype.KindString:
 		if size <= 0 {
@@ -174,6 +179,39 @@ func (Postgres) ColumnType(kind dbtype.Kind, size int) string {
 	}
 }
 
+var _ dbtype.CoderDialect = Postgres{}
+
+var arrCodec = pgAnyArrayCodec{}
+
+func (Postgres) ColumnCodec(ft reflect.Type) (dbtype.Kind, dbtype.Codec, string) {
+	switch ft.Kind() {
+	case reflect.Slice, reflect.Array:
+		switch ft.Elem().Kind() {
+		case reflect.String:
+			return dbtype.KindArray, arrCodec, "text[]"
+		case reflect.Uint8: // 实际就是 []byte
+			return dbtype.KindBinary, dbcodec.Binary{}, "BYTEA"
+		case reflect.Int, reflect.Uint, reflect.Int64, reflect.Uint32:
+			return dbtype.KindArray, arrCodec, "bigint[]"
+		case reflect.Int8, reflect.Int16:
+			return dbtype.KindArray, arrCodec, "smallint[]"
+		case reflect.Uint16, reflect.Int32:
+			return dbtype.KindArray, arrCodec, "integer[]"
+		case reflect.Uint64:
+			return dbtype.KindArray, arrCodec, "NUMERIC(20,0)[]"
+		case reflect.Float32:
+			return dbtype.KindArray, arrCodec, "REAL[]"
+		case reflect.Float64:
+			return dbtype.KindArray, arrCodec, "DOUBLE PRECISION[]"
+		default:
+			// pass
+		}
+	default:
+		// pass
+	}
+	return dbtype.KindInvalid, nil, ""
+}
+
 func (d Postgres) CreateTableIfNotExists(table string) string {
 	return "CREATE TABLE IF NOT EXISTS " + d.QuoteIdentifier(table)
 }
@@ -202,7 +240,7 @@ func (d Postgres) ColumnString(fs dbtype.ColumnSchema) string {
 	sb.WriteString(" ")
 	baseType := fs.Native
 	if baseType == "" {
-		baseType = d.ColumnType(fs.Kind, fs.Size)
+		baseType = d.ColumnKindType(fs.Kind, fs.Size)
 	}
 	if fs.AutoIncrement {
 		sb.WriteString(d.autoIncrementColumnType(baseType))
@@ -255,20 +293,6 @@ func (d Postgres) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.T
 	return nil
 }
 
-var _ dbtype.CoderDialect = Postgres{}
-
-func (d Postgres) ColumnCodec(p reflect.Type) (dbtype.Codec, error) {
-	switch p.Kind() {
-	default:
-		return nil, nil
-	case reflect.Slice, reflect.Array:
-		if zreflect.IsBasicKind(p.Elem().Kind()) {
-			return pgAnyArrayCodec{}, nil
-		}
-		return nil, nil
-	}
-}
-
 var _ dbtype.DescDialect = Postgres{}
 
 func (d Postgres) CurrentDatabase(ctx context.Context, q dbtype.Queryer) (string, error) {
@@ -301,9 +325,8 @@ WHERE table_schema = current_schema() AND table_name = $1 ORDER BY ordinal_posit
 var _ dbtype.Codec = pgAnyArrayCodec{}
 
 // pgAnyArrayCodec 数组类型的编解码功能
-// 当字段这样定义包含 type:auto_json 的时候，会使用：
 //
-//	Scores []int `db:"scores,type:auto_json,native:int[]"`
+//	Scores []int `db:"scores,codec:auto_json"`
 type pgAnyArrayCodec struct{}
 
 func (p pgAnyArrayCodec) Name() string {
@@ -311,6 +334,13 @@ func (p pgAnyArrayCodec) Name() string {
 }
 
 func (p pgAnyArrayCodec) Encode(a any) (any, error) {
+	if a == nil {
+		return nil, nil
+	}
+	rv := reflect.ValueOf(a)
+	if rv.Kind() == reflect.Array {
+		return zreflect.ArrayToSlice(rv), nil
+	}
 	return a, nil
 }
 

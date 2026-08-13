@@ -45,6 +45,12 @@ func (d SQLServer) QuoteQualifiedIdentifier(parts ...string) string {
 	return strings.Join(quoted, ".")
 }
 
+func (SQLServer) LimitOffsetRequiresOrderBy() bool {
+	// SELECT * FROM [user] ORDER BY id OFFSET 20 ROWS;
+	// SQLServer 必须要有 order by 语句
+	return true
+}
+
 // LimitOffsetClause 生成 OFFSET/FETCH 子句
 func (SQLServer) LimitOffsetClause(limit, offset int) string {
 	if limit <= 0 && offset <= 0 {
@@ -81,13 +87,13 @@ func (SQLServer) SupportLastInsertId() bool {
 }
 
 // ReturningClause SQL Server 用 OUTPUT 子句实现
-func (SQLServer) ReturningClause(columns ...string) string {
+func (d SQLServer) ReturningClause(columns ...string) string {
 	if len(columns) == 0 {
 		return "OUTPUT inserted.*"
 	}
 	quoted := make([]string, len(columns))
 	for i, c := range columns {
-		quoted[i] = "inserted." + fmt.Sprintf("[%s]", c)
+		quoted[i] = "inserted." + d.QuoteIdentifier(c)
 	}
 	return "OUTPUT " + strings.Join(quoted, ", ")
 }
@@ -181,8 +187,8 @@ ON %s`,
 
 var _ dbtype.SchemaDialect = SQLServer{}
 
-// ColumnType 映射通用类型到 SQL Server 类型
-func (SQLServer) ColumnType(kind dbtype.Kind, size int) string {
+// ColumnKindType 映射通用类型到 SQL Server 类型
+func (SQLServer) ColumnKindType(kind dbtype.Kind, size int) string {
 	switch kind {
 	case dbtype.KindString:
 		if size <= 0 {
@@ -211,6 +217,9 @@ func (SQLServer) ColumnType(kind dbtype.Kind, size int) string {
 		return "FLOAT"
 
 	case dbtype.KindBinary:
+		if size > 0 {
+			return fmt.Sprintf("BINARY(%d)", size)
+		}
 		return "VARBINARY(MAX)"
 
 	case dbtype.KindJSON:
@@ -235,7 +244,7 @@ func (d SQLServer) ColumnString(fs dbtype.ColumnSchema) string {
 	sb.WriteString(" ")
 	baseType := fs.Native
 	if baseType == "" {
-		baseType = d.ColumnType(fs.Kind, fs.Size)
+		baseType = d.ColumnKindType(fs.Kind, fs.Size)
 	}
 	sb.WriteString(baseType)
 	if fs.AutoIncrement && strings.Contains(baseType, "INT") {
@@ -289,13 +298,8 @@ func (d SQLServer) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.
 var _ dbtype.DescDialect = SQLServer{}
 
 func (d SQLServer) CurrentDatabase(ctx context.Context, q dbtype.Queryer) (string, error) {
-	rows, err := q.QueryContext(ctx, "SELECT DB_NAME()")
-	if err != nil {
-		return "", err
-	}
-	var name string
-	err = rows.Scan(&name)
-	return name, err
+	const str = "SELECT DB_NAME()"
+	return queryOneString(ctx, q, str)
 }
 
 func (d SQLServer) Databases(ctx context.Context, q dbtype.Queryer) ([]string, error) {
@@ -309,12 +313,11 @@ func (d SQLServer) Tables(ctx context.Context, q dbtype.Queryer) ([]string, erro
 }
 
 func (d SQLServer) TableExists(ctx context.Context, q dbtype.Queryer, table string) (bool, error) {
-	const str = `SELECT CASE WHEN EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES HERE TABLE_NAME = @p1 ) THEN 1 ELSE 0 END;`
+	const str = `SELECT CASE WHEN EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = @p1 ) THEN 1 ELSE 0 END`
 	return queryBool(ctx, q, str, table)
 }
 
 func (d SQLServer) TableColumns(ctx context.Context, q dbtype.Queryer, table string) ([]string, error) {
-	const str = `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
-WHERE TABLE_NAME = @p1 ORDER BY ORDINAL_POSITION`
+	const str = `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @p1 ORDER BY ORDINAL_POSITION`
 	return querySliceString(ctx, q, str, table)
 }

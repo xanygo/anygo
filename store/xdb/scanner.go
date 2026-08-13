@@ -46,15 +46,13 @@ func ScanRows[T any](db HasDriver, rows *sql.Rows) ([]T, error) {
 	return ScanRowsLimit[T](db, rows, -1)
 }
 
+// ScanRowsFirst 读取出首条数据
 func ScanRowsFirst[T any](db HasDriver, rows *sql.Rows) (v T, ok bool, err error) {
-	items, err := ScanRowsLimit[T](db, rows, -1)
-	if err != nil {
+	items, err := ScanRowsLimit[T](db, rows, 1)
+	if err != nil || len(items) != 1 {
 		return v, false, err
 	}
-	if len(items) == 1 {
-		return items[0], true, nil
-	}
-	return v, false, nil
+	return items[0], true, nil
 }
 
 func ScanRowsLimit[T any](db HasDriver, rows *sql.Rows, limit int) ([]T, error) {
@@ -262,7 +260,7 @@ func scanRowsAsStruct[T any](rows *sql.Rows, cols []string, schema *dbtype.Table
 	return v, nil
 }
 
-func unmarshallingField(field reflect.Value, codec dbtype.Codec, sPtr *sql.NullString) error {
+func unmarshallingField(field reflect.Value, codec dbtype.Decoder, sPtr *sql.NullString) error {
 	if !sPtr.Valid || sPtr.String == "" {
 		// NULL 或空字符串，跳过或置为零值
 		return nil
@@ -271,7 +269,7 @@ func unmarshallingField(field reflect.Value, codec dbtype.Codec, sPtr *sql.NullS
 		return errors.New("miss codec")
 	}
 	ptr := reflect.New(field.Type())
-	if err := codec.Decode(sPtr.String, ptr.Interface()); err != nil {
+	if err := dbtype.Decode(codec, sPtr.String, ptr.Interface()); err != nil {
 		return err
 	}
 	field.Set(ptr.Elem())

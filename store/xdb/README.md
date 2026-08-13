@@ -49,17 +49,17 @@ func (a Admin)TableName()string{
   ```
 支持属性如下：
 
-| 名称           | 说明                                  | 示例                      |
-|--------------|-------------------------------------|-------------------------|
-| pk           | 主键，也可以写作 primaryKey                 |                         |
-| codec        | 对于复杂的类型，在写入数据库时编码，在查询出来后，解码         | codec:csv 或者 codec:json |
-| auto_inc     | 标记此字段为数据库主键。Encode 时，若字段为零值，则忽略该字段  |                         |
-| uniq         | 唯一键，不需要值，也可以是完整的 unique，Migrate 时使用 | uniq                    |
-| index        | 索引，Migrate 时使用                      | 详见下文                    |
-| unique_index | 唯一索引，Migrate 时使用                    | 格式同 index               |
-| size         | 值类型的容量, String 类型的时候有用，Migrate 时使用  | size:255                |
-| not-null     | Not Null，Migrate 时使用                |                         |
-| default      | 默认值，Migrate 时使用                     | 详见下文                    |
+| 名称           | 说明                                         | 示例                      |
+|--------------|--------------------------------------------|-------------------------|
+| pk           | 主键，也可以写作 primaryKey。允许在多个字段定义 pk 属性（联合主键）。 |                         |
+| codec        | 对于复杂的类型，在写入数据库时编码，在查询出来后，解码                | codec:csv 或者 codec:json |
+| auto_inc     | 标记此字段为数据库主键。Encode 时，若字段为零值，则忽略该字段         |                         |
+| uniq         | 唯一键，不需要值，也可以是完整的 unique，Migrate 时使用        | uniq                    |
+| index        | 索引，Migrate 时使用                             | 详见下文                    |
+| unique_index | 唯一索引，Migrate 时使用                           | 格式同 index               |
+| size         | 值类型的容量, String 类型的时候有用，Migrate 时使用         | size:255                |
+| not-null     | Not Null，Migrate 时使用                       |                         |
+| default      | 默认值，Migrate 时使用                            | 详见下文                    |
 
 
 #### index/uniqueIndex
@@ -89,22 +89,31 @@ uniqueIndex 示例：
 ### codec 参数
 数据编解码的方式：
 
-| 名称        | 说明                                             | 输出示例                  |
-|-----------|------------------------------------------------|-----------------------|
-| csv       | csv 格式，支持 string、number、bool 类型的 slice 或 array | `a,b,c`               |
-| json      | JSON 格式， 可用于 slice、array 、struct、map 类型的字段     | `25`                  |
-| text      | 编码为字符串                                         | `alice@example.com`   |
-| date      | 可用于 time.Time 类型的字段                            | `2025-11-11 13:00:00` |
-| date_time | 可用于 time.Time 类型的字段                            | `2025-11-11 13:00:00` |
-| timespan  | 可用于 time.Time 类型的字段,数据库中存储的 int 类型的值           | `1234567890`          |
+| 名称         | 说明                                             | 输出示例                  |
+|------------|------------------------------------------------|-----------------------|
+| csv        | csv 格式，支持 string、number、bool 类型的 slice 或 array | `a,b,c`               |
+| json       | JSON 格式， 可用于 slice、array 、struct、map 类型的字段     | `25`                  |
+| auto_json  | 需要数据库方言来判断类型，若方言判断不出来，则默认使用 json 编解码           |                       |
+| text       | 编码为字符串                                         | `alice@example.com`   |
+| date       | 可用于 time.Time 类型的字段                            | `2025-11-11 13:00:00` |
+| date_time  | 可用于 time.Time 类型的字段                            | `2025-11-11 13:00:00` |
+| timespan   | 可用于 time.Time 类型的字段,数据库中存储的 int 类型的值           | `1234567890`          |
 
 通过 codec 参数指定复杂类型在编码为 SQL 语句时的序列化方式，以及从数据库中读取出来后反序列化的方式。
 除了上述内置的 codec，还可以通过 dbcodec.Register 注册自定义的 codec。
 
+`auto_json` 可以这样用：
+```
+Scores       []int     `db:"scores,codec:auto_json"`
+```
+对于数据库引擎支持数组的，如 pgx，其方言会依据数据类型做出自动编码。
+对于不支持数组的，如 sqlite, 会退化为 json 编码，数据库字段类型时 Text 类型。
+
+
 ## 驱动
-| 名称        | import path                     | 说明                      |
-|-----------|---------------------------------|-------------------------|
-| mysql     | github.com/go-sql-driver/mysql  | 支持 MySQL 和 MariaDB      |
-| sqlite3   | github.com/mattn/go-sqlite3     | 支持 sqlite3, 需要 cGo=1    |
-| pgx       | github.com/jackc/pgx/v5         | 支持 postgres             |
-| sqlserver | github.com/microsoft/go-mssqldb | 支持 Microsoft SQL server |
+| 名称        | 别名     | import path                     | 说明                      |
+|-----------|--------|---------------------------------|-------------------------|
+| mysql     |        | github.com/go-sql-driver/mysql  | 支持 MySQL 和 MariaDB      |
+| sqlite3   | sqlite | github.com/mattn/go-sqlite3     | 支持 sqlite3, 需要 cGo=1    |
+| postgres  | pgx    | github.com/jackc/pgx/v5         | 支持 postgres             |
+| sqlserver | mssql  | github.com/microsoft/go-mssqldb | 支持 Microsoft SQL server |

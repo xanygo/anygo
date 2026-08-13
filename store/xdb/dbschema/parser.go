@@ -138,8 +138,9 @@ func (sp schemaParser) getSchema(rt reflect.Type) (*dbtype.TableSchema, error) {
 }
 
 func (sp schemaParser) parserField(f reflect.StructField, tag xstruct.Tag) (dbtype.ColumnSchema, error) {
+	ft := f.Type
 	field := dbtype.ColumnSchema{
-		ReflectType: f.Type,
+		ReflectType: ft,
 
 		Name:          tag.Name(),
 		AutoIncrement: TagHasAutoInc(tag),
@@ -147,6 +148,11 @@ func (sp schemaParser) parserField(f reflect.StructField, tag xstruct.Tag) (dbty
 		NotNull:       tag.Has(TagNotNull),
 		Unique:        TagHasUnique(tag),
 		Native:        tag.Value(TagNative),
+		Kind:          dbtype.Kind(tag.Value(TagType)),
+	}
+
+	if field.Kind != "" && !field.Kind.IsOK() {
+		return field, fmt.Errorf("invalid type: %q", field.Kind)
 	}
 
 	var err error
@@ -154,75 +160,102 @@ func (sp schemaParser) parserField(f reflect.StructField, tag xstruct.Tag) (dbty
 	if err == nil {
 		field.UniqueIndex, err = sp.parserIndex(field.Name, tag, true)
 	}
-	if err != nil {
-		return field, err
-	}
 
-	if size, has := tag.Get(TagSize); has {
-		num, err0 := strconv.Atoi(size)
-		if err0 != nil || num <= 0 {
-			return field, fmt.Errorf("invalid size: %s", size)
-		}
-		field.Size = num
-	}
-
-	tp := tag.Value(TagType)
-	if tp != "" {
-		tk := dbtype.Kind(tp)
-		if !tk.IsValid() {
-			return field, fmt.Errorf("invalid type: %q", tp)
-		}
-		field.Kind = tk
-	}
-
-	codecName := tag.Value(TagCodec)
-	if codecName != "" && !dbtype.KindAutoJSON.Is(codecName) {
-		field.Codec, err = findCodec(sp.dialect, codecName)
-		if err != nil {
-			return field, err
-		}
-	}
-
-	if field.Codec == nil {
-		if dz, ok := sp.dialect.(dbtype.CoderDialect); ok {
-			field.Codec, err = dz.ColumnCodec(f.Type)
-			if err != nil {
-				return field, err
-			}
-		}
-	}
-
-	if field.Codec != nil && !field.Kind.IsValid() {
-		// 当有明确的 Codec 的时候，使用 Codec 的 Kind
-		field.Kind = field.Codec.Kind()
-	}
-
-	if field.Codec == nil {
-		if codecName != "" && dbtype.KindAutoJSON.Is(codecName) {
-			field.Codec = dbcodec.JSON{}
-		} else {
-			field.Codec, err = findCodec(sp.dialect, dbcodec.TextName)
-			if err != nil {
-				return field, err
-			}
-		}
-	}
-
-	if !field.Kind.IsValid() {
-		field.Kind, err = dbtype.ReflectToKind(f.Type)
-	}
-
-	if err != nil {
-		return field, err
-	}
 	if def, ok := tag.Get(TagDefault); ok {
 		field.Default, err = sp.parserDefault(def)
 	}
+
+	if err != nil {
+		return field, err
+	}
+
+	// 解析 size 字段属性
+	{
+		if size, has := tag.Get(TagSize); has {
+			num, err0 := strconv.Atoi(size)
+			if err0 != nil || num <= 0 {
+				return field, fmt.Errorf("invalid size: %s", size)
+			}
+			field.Size = num
+		}
+
+		// 获取数组 [N]byte 的长度
+		if field.Size == 0 && ft.Kind() == reflect.Array && ft.Elem().Kind() == reflect.Uint8 {
+			field.Size = ft.Len()
+		}
+	}
+
+	if err = sp.parserCodec(&field, f, tag); err != nil {
+		return field, err
+	}
+
 	return field, err
 }
 
-func findCodec(d dbtype.Dialect, name string) (dbtype.Codec, error) {
-	return dbcodec.Find(name+"@"+d.Name(), name)
+func (sp schemaParser) trySetKindByCodec(field *dbtype.ColumnSchema) {
+	if field.Kind.IsOK() {
+		return
+	}
+	if hc, ok := field.Codec.(dbtype.HasKind); ok {
+		field.Kind = hc.Kind()
+	}
+}
+
+func (sp schemaParser) parserCodec(field *dbtype.ColumnSchema, f reflect.StructField, tag xstruct.Tag) (err error) {
+	codecName := tag.Value(TagCodec)
+	if codecName != "" && codecName != codecAutoJSON {
+		codec := findCodec(sp.dialect, codecName)
+		if codec == nil {
+			return fmt.Errorf("invalid codec %q", codecName)
+		}
+		field.Codec = codec
+
+		sp.trySetKindByCodec(field)
+	}
+
+	if dz, ok := sp.dialect.(dbtype.CoderDialect); ok {
+		kind, codec, native := dz.ColumnCodec(f.Type)
+		if !field.Kind.IsOK() {
+			field.Kind = kind
+		}
+		if field.Codec == nil {
+			field.Codec = codec
+		}
+		if field.Native == "" {
+			field.Native = native
+		}
+	}
+
+	if !field.Kind.IsOK() {
+		field.Kind, _ = dbtype.ReflectToKind(f.Type)
+	}
+
+	if field.Codec == nil && field.Kind == dbtype.KindBinary {
+		field.Codec = dbcodec.Binary{}
+	}
+
+	if field.Codec == nil && codecName == codecAutoJSON {
+		field.Codec = dbcodec.JSON{}
+	}
+
+	sp.trySetKindByCodec(field)
+
+	if field.Codec == nil && field.Kind.IsOK() {
+		field.Codec = dbcodec.FindByKind(field.Kind)
+	}
+
+	if field.Codec == nil {
+		if zreflect.IsBasicKind(f.Type.Kind()) {
+			field.Codec = dbcodec.Native{}
+		} else {
+			field.Codec = findCodec(sp.dialect, dbcodec.TextName)
+		}
+	}
+	return nil
+}
+
+func findCodec(d dbtype.Dialect, name string) dbtype.Codec {
+	return dbcodec.FindByName(name+"@"+d.Name(), name)
 }
 
 // parserIndex 解析定义的索引字段

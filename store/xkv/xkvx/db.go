@@ -46,27 +46,24 @@ func (tr *TableProvider) migrate(ctx context.Context, db xdb.DBCore, obj any, de
 //
 // --- xkv_meta: 存储元信息（所有的 key 以及数据类型）的表
 // --- 下面所有表中的 c 和 u 分别表示数据的创建时间和更新时间，是 unix 时间戳
-// CREATE TABLE IF NOT EXISTS xkv_meta (k TEXT PRIMARY KEY,dt INTEGER,meta TEXT,c INTEGER,u INTEGER);
+// CREATE TABLE IF NOT EXISTS xkv_meta (k BLOB PRIMARY KEY,k_raw Text,dt INTEGER,meta TEXT,c INTEGER,u INTEGER);
 //
 // --- xkv_string：存储 String 类型的数据
-// CREATE TABLE IF NOT EXISTS xkv_string (k TEXT PRIMARY KEY,v TEXT,c INTEGER,u INTEGER);
+// CREATE TABLE IF NOT EXISTS xkv_string (k BLOB PRIMARY KEY,k_raw Text,v TEXT,c INTEGER,u INTEGER);
 //
 // --- xkv_list： 存储 List 类型的数据
-// CREATE TABLE IF NOT EXISTS xkv_list (k TEXT,idx INTEGER,v TEXT,c INTEGER);
-// CREATE UNIQUE INDEX IF NOT EXISTS idx_k_i on xkv_list(k,idx);
+// CREATE TABLE IF NOT EXISTS xkv_list (k BLOB,k_raw Text,idx INTEGER,v TEXT,c INTEGER,PRIMARY KEY(k,idx));
 //
 // ---  xkv_hash： 存储 Hash 类型数据
-// CREATE TABLE IF NOT EXISTS xkv_hash (k TEXT,f TEXT,v TEXT,c INTEGER,u INTEGER);
-// CREATE UNIQUE INDEX IF NOT EXISTS idx_k_f on xkv_hash(k,f);
+// CREATE TABLE IF NOT EXISTS xkv_hash (k BLOB,k_raw Text,f BLOB,f_raw TEXT,v TEXT,c INTEGER,u INTEGER,PRIMARY KEY(k,f));
 //
 // --- xkv_set：存储 Set 类型数据
-// CREATE TABLE IF NOT EXISTS xkv_set (k TEXT,m TEXT,c INTEGER);
+// CREATE TABLE IF NOT EXISTS xkv_set (k BLOB,k_raw Text,m BLOB,m_raw TEXT,c INTEGER);
 // CREATE UNIQUE INDEX IF NOT EXISTS idx_k_m on xkv_set(k,m);
 //
 // ---  xkv_zset：存储 ZSet 类型数据
-// CREATE TABLE IF NOT EXISTS xkv_zset (k TEXT,m TEXT,s REAL,c INTEGER,u INTEGER);
+// CREATE TABLE IF NOT EXISTS xkv_zset (k BLOB,k_raw TEXT,m BLOB,m_raw TEXT,s REAL,c INTEGER,u INTEGER,PRIMARY KEY(k,m));
 // CREATE INDEX IF NOT EXISTS idx_k_i on xkv_zset(k,s);
-// CREATE UNIQUE INDEX IF NOT EXISTS idx_k_m on xkv_zset(k,m);
 type DatabaseStore struct {
 	// DB 必填字段
 	DB *xdb.Client
@@ -98,16 +95,16 @@ func (d *DatabaseStore) getString(key string) *db.String {
 	return &db.String{
 		Meta:  d.getMeta(key, internal.DataTypeString),
 		Table: d.StringTable.getTable(key),
-		Key:   key,
 	}
 }
 
 func (d *DatabaseStore) getMeta(key string, dt internal.DataType) *db.Meta {
 	return &db.Meta{
 		Table:    d.MetaTable.getTable(key),
-		Key:      key,
+		KeyRaw:   key,
+		KeyHash:  db.KeyHash(key),
 		DB:       d.DB,
-		DataType: internal.DataTypeString,
+		DataType: dt,
 	}
 }
 
@@ -119,7 +116,6 @@ func (d *DatabaseStore) getList(key string) *db.List {
 	return &db.List{
 		Meta:  d.getMeta(key, internal.DataTypeList),
 		Table: d.ListTable.getTable(key),
-		Key:   key,
 	}
 }
 
@@ -131,7 +127,6 @@ func (d *DatabaseStore) getHash(key string) *db.Hash {
 	return &db.Hash{
 		Meta:  d.getMeta(key, internal.DataTypeHash),
 		Table: d.HashTable.getTable(key),
-		Key:   key,
 	}
 }
 
@@ -143,7 +138,6 @@ func (d *DatabaseStore) getSet(key string) *db.Set {
 	return &db.Set{
 		Meta:  d.getMeta(key, internal.DataTypeSet),
 		Table: d.SetTable.getTable(key),
-		Key:   key,
 	}
 }
 
@@ -155,7 +149,6 @@ func (d *DatabaseStore) getZSet(key string) *db.ZSet {
 	return &db.ZSet{
 		Meta:  d.getMeta(key, internal.DataTypeZSet),
 		Table: d.ZSetTable.getTable(key),
-		Key:   key,
 	}
 }
 

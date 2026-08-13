@@ -13,9 +13,9 @@ import (
 )
 
 var _ dbtype.Codec = (*TimeSpan)(nil)
+var _ dbtype.HasKind = (*TimeSpan)(nil)
 
-type TimeSpan struct {
-}
+type TimeSpan struct{}
 
 func (t TimeSpan) Kind() dbtype.Kind {
 	return dbtype.KindInt64

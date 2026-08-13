@@ -4,15 +4,31 @@
 
 package dbtype
 
-type Codec interface {
+import "fmt"
+
+type Decoder interface {
+	Name() string
+
+	// Decode 解码
+	Decode(b string, a any) error
+}
+
+type Encoder interface {
 	Name() string
 
 	// Encode 编码为基础类型
 	Encode(a any) (any, error)
+}
 
-	// Decode 解码
-	Decode(b string, a any) error
+type Codec interface {
+	Encoder
+	Decoder
+}
 
-	// Kind 数据库中存储的数据类型
-	Kind() Kind
+func Decode(d Decoder, str string, obj any) error {
+	err := d.Decode(str, obj)
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("%q dbcodec: %w", d.Name(), err)
 }

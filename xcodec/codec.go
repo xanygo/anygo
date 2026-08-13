@@ -242,7 +242,7 @@ type DecodeExtra interface {
 func Decode(decoder Decoder, content []byte, obj any) error {
 	err := decoder.Decode(content, obj)
 	if err != nil {
-		return fmt.Errorf("%s/%d: %w", Name(decoder), len(content), err)
+		return fmt.Errorf("xcodec.Decoder %q, %d bytes, %w", Name(decoder), len(content), err)
 	}
 	return doDecodeExtra(decoder, content, obj)
 }

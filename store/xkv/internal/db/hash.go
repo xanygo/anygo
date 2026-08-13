@@ -2,19 +2,21 @@ package db
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"strconv"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xkv"
 )
 
 type HashModel struct {
-	Key   string `db:"k,unique_index:idx_k_f"`
-	Field string `db:"f,unique_index:idx_k_f"`
+	KeyHash   [32]byte `db:"k,pk"`
+	FieldHash [32]byte `db:"f,pk"`
+
+	KeyRaw   string `db:"k_raw"`
+	FieldRaw string `db:"f_raw"`
+
 	Value string `db:"v"`
 
 	Created int64 `db:"c"`
@@ -25,7 +27,6 @@ var _ xkv.Hash[string] = (*Hash)(nil)
 
 type Hash struct {
 	Table string
-	Key   string
 	Meta  *Meta
 }
 
@@ -39,22 +40,25 @@ func (h *Hash) GetTable() string {
 func (h *Hash) deleteWithKey(ctx context.Context, tx xdb.TxCore) error {
 	orm := xdb.NewMode[HashModel](tx)
 	orm.Table(h.GetTable())
-	_, err := orm.Delete(ctx, "k=?", h.Key)
+	_, err := orm.Delete(ctx, "k=?", h.Meta.KeyHash[:])
 	return err
 }
 
 func (h *Hash) HSet(ctx context.Context, field string, value string) error {
-	now := time.Now().Unix()
+	now := time.Now().UnixNano()
+	fieldHash := KeyHash(field)
 	return h.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[HashModel](tx)
 		orm.Table(h.GetTable())
 
 		data := HashModel{
-			Key:     h.Key,
-			Field:   field,
-			Value:   value,
-			Updated: now,
-			Created: now,
+			KeyHash:   h.Meta.KeyHash,
+			KeyRaw:    h.Meta.KeyRaw,
+			FieldHash: fieldHash,
+			FieldRaw:  field,
+			Value:     value,
+			Updated:   now,
+			Created:   now,
 		}
 		_, err := orm.Upsert(ctx, []string{"k", "f"}, []string{"v", "u"}, data)
 		return err
@@ -65,18 +69,20 @@ func (h *Hash) HMSet(ctx context.Context, data map[string]string) error {
 	if len(data) == 0 {
 		return nil
 	}
-	now := time.Now().Unix()
+	now := time.Now().UnixNano()
 	return h.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[HashModel](tx)
 		orm.Table(h.GetTable())
 		var items []HashModel
 		for field, value := range data {
 			item := HashModel{
-				Key:     h.Key,
-				Field:   field,
-				Value:   value,
-				Created: now,
-				Updated: now,
+				KeyHash:   h.Meta.KeyHash,
+				KeyRaw:    h.Meta.KeyRaw,
+				FieldHash: KeyHash(field),
+				FieldRaw:  field,
+				Value:     value,
+				Created:   now,
+				Updated:   now,
 			}
 			items = append(items, item)
 		}
@@ -86,6 +92,7 @@ func (h *Hash) HMSet(ctx context.Context, data map[string]string) error {
 }
 
 func (h *Hash) HGet(ctx context.Context, field string) (value string, found bool, err error) {
+	fieldHash := KeyHash(field)
 	err = h.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
 		if !hasMeta {
 			return nil
@@ -94,7 +101,7 @@ func (h *Hash) HGet(ctx context.Context, field string) (value string, found bool
 		orm.Table(h.GetTable())
 		orm.SelectFields("v")
 
-		v, ok, err1 := orm.First(ctx, "k=? and f=?", h.Key, field)
+		v, ok, err1 := orm.First(ctx, "k=? and f=?", h.Meta.KeyHash[:], fieldHash[:])
 		if err1 != nil || !ok {
 			return err1
 		}
@@ -109,9 +116,14 @@ func (h *Hash) HMGet(ctx context.Context, fields ...string) (result map[string]s
 	if len(fields) == 0 {
 		return nil, nil
 	}
+	fs := make([]any, 0, len(fields))
+	for _, f := range fields {
+		fs = append(fs, keyHashBytes(f))
+	}
+
 	cond := xdb.Condition{}
-	cond.And("k=?", h.Key)
-	cond.AndInFmt("f in (%s)", xslice.ToAnys(fields))
+	cond.And("k=?", h.Meta.KeyHash[:])
+	cond.AndInFmt("f in (%s)", fs)
 	where, args, err := cond.Build()
 	if err != nil {
 		return nil, err
@@ -122,7 +134,7 @@ func (h *Hash) HMGet(ctx context.Context, fields ...string) (result map[string]s
 		}
 		orm := xdb.NewMode[HashModel](tx)
 		orm.Table(h.GetTable())
-		orm.SelectFields("f", "v")
+		orm.SelectFields("f_raw", "v")
 
 		items, err1 := orm.List(ctx, where, args...)
 		if err1 != nil {
@@ -130,7 +142,7 @@ func (h *Hash) HMGet(ctx context.Context, fields ...string) (result map[string]s
 		}
 		result = make(map[string]string, len(items))
 		for _, item := range items {
-			result[item.Field] = item.Value
+			result[item.FieldRaw] = item.Value
 		}
 		return nil
 	})
@@ -142,7 +154,7 @@ func (h *Hash) checkExists(ctx context.Context, orm *xdb.Model[HashModel]) error
 	orm = orm.Clone().Reset()
 	orm.Table(h.GetTable())
 	orm.SelectFields("c")
-	_, found, err := orm.First(ctx, "k=?", h.Key)
+	_, found, err := orm.First(ctx, "k=?", h.Meta.KeyHash[:])
 	if err != nil {
 		return err
 	}
@@ -153,6 +165,15 @@ func (h *Hash) checkExists(ctx context.Context, orm *xdb.Model[HashModel]) error
 }
 
 func (h *Hash) HDel(ctx context.Context, fields ...string) error {
+	if len(fields) == 0 {
+		return nil
+	}
+
+	fs := make([]any, 0, len(fields))
+	for _, f := range fields {
+		fs = append(fs, keyHashBytes(f))
+	}
+
 	return h.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		_, err := h.Meta.load(ctx, tx)
 		if err != nil {
@@ -161,8 +182,8 @@ func (h *Hash) HDel(ctx context.Context, fields ...string) error {
 		orm := xdb.NewMode[HashModel](tx)
 		orm.Table(h.GetTable())
 		b := xdb.Condition{}
-		b.And("k=?", h.Key)
-		b.And(fmt.Sprintf("f in(%s)", xdb.Placeholder(len(fields))), xslice.ToAnys(fields)...)
+		b.And("k=?", h.Meta.KeyHash[:])
+		b.AndInFmt("f in (%s)", fs)
 		where, args, err1 := b.Build()
 		if err1 != nil {
 			return err1
@@ -179,12 +200,12 @@ func (h *Hash) HRange(ctx context.Context, fn func(field string, value string) b
 	return h.Meta.WithReadTx(ctx, func(as context.Context, tx xdb.TxCore, hasMeta bool) error {
 		orm := xdb.NewMode[HashModel](tx)
 		orm.Table(h.GetTable())
-		orm.SelectFields("f", "v")
-		for item, err1 := range orm.ListIter(ctx, "k=?", h.Key) {
+		orm.SelectFields("f_raw", "v")
+		for item, err1 := range orm.ListIter(ctx, "k=?", h.Meta.KeyHash[:]) {
 			if err1 != nil {
 				return err1
 			}
-			if !fn(item.Field, item.Value) {
+			if !fn(item.FieldRaw, item.Value) {
 				return io.EOF
 			}
 		}
@@ -202,6 +223,7 @@ func (h *Hash) HGetAll(ctx context.Context) (map[string]string, error) {
 }
 
 func (h *Hash) HExists(ctx context.Context, field string) (found bool, err error) {
+	fieldHash := keyHashBytes(field)
 	err = h.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
 		if !hasMeta {
 			return nil
@@ -209,7 +231,7 @@ func (h *Hash) HExists(ctx context.Context, field string) (found bool, err error
 		orm := xdb.NewMode[HashModel](tx)
 		orm.Table(h.GetTable())
 		orm.SelectFields("c")
-		_, ok, err1 := orm.First(ctx, "k=? and f=?", h.Key, field)
+		_, ok, err1 := orm.First(ctx, "k=? and f=?", h.Meta.KeyHash[:], fieldHash)
 		if ok {
 			found = true
 		}
@@ -219,13 +241,14 @@ func (h *Hash) HExists(ctx context.Context, field string) (found bool, err error
 }
 
 func (h *Hash) HIncrBy(ctx context.Context, field string, increment int64) (num int64, err error) {
-	now := time.Now().Unix()
+	fieldHash := KeyHash(field)
+	now := time.Now().UnixNano()
 	err = h.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[HashModel](tx)
 		orm.Table(h.GetTable())
 		orm.SelectFields("v")
 
-		old, found, err1 := orm.First(ctx, "k=? and f=?", h.Key, field)
+		old, found, err1 := orm.First(ctx, "k=? and f=?", h.Meta.KeyHash[:], fieldHash[:])
 		if err1 != nil {
 			return err1
 		}
@@ -238,11 +261,13 @@ func (h *Hash) HIncrBy(ctx context.Context, field string, increment int64) (num 
 			num += oldNum
 		}
 		data := HashModel{
-			Key:     h.Key,
-			Field:   field,
-			Value:   strconv.FormatInt(num, 10),
-			Created: now,
-			Updated: now,
+			KeyHash:   h.Meta.KeyHash,
+			KeyRaw:    h.Meta.KeyRaw,
+			FieldHash: fieldHash,
+			FieldRaw:  field,
+			Value:     strconv.FormatInt(num, 10),
+			Created:   now,
+			Updated:   now,
 		}
 		_, err3 := orm.Upsert(ctx, []string{"k", "f"}, []string{"v", "u"}, data)
 		return err3
@@ -257,7 +282,7 @@ func (h *Hash) HLen(ctx context.Context) (num int64, err error) {
 		}
 		orm := xdb.NewMode[HashModel](tx)
 		orm.Table(h.GetTable())
-		count, err1 := orm.Count(ctx, "*", "k=?", h.Key)
+		count, err1 := orm.Count(ctx, "*", "k=?", h.Meta.KeyHash[:])
 		if err1 == nil {
 			num = count
 		}

@@ -2,6 +2,7 @@ package xcmp
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 )
 
@@ -43,10 +44,14 @@ func (b *Bound[T]) ParserMin(str string) error {
 	if str == "" {
 		return errEmptyBound
 	}
+	if str == "+inf" {
+		return fmt.Errorf("canot parser %q with ParserMin", str)
+	}
 	if str == "-inf" {
 		b.Inf = true
 		return nil
 	}
+
 	if str[0] == '(' {
 		b.Exclude = true
 		str = str[1:]
@@ -59,6 +64,9 @@ func (b *Bound[T]) ParserMax(str string) error {
 	*b = Bound[T]{}
 	if str == "" {
 		return errEmptyBound
+	}
+	if str == "-inf" {
+		return fmt.Errorf("canot parser %q with ParserMax", str)
 	}
 	if str == "+inf" {
 		b.Inf = true

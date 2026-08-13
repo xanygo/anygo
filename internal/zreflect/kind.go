@@ -75,3 +75,7 @@ func NumberEqual(a, b reflect.Value) bool {
 
 	return false
 }
+
+func IsBytesArray(rt reflect.Type) bool {
+	return rt.Kind() == reflect.Array && rt.Elem().Kind() == reflect.Uint8
+}

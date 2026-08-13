@@ -6,11 +6,11 @@ package model
 
 import (
 	"context"
-	"log"
+	"testing"
 	"time"
 
-	"github.com/xanygo/anygo/cli/xcolor"
 	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/xt"
 )
 
 var _ xdb.HasTable = User{}
@@ -23,7 +23,7 @@ type User struct {
 	Status       Status    `db:"status,not-null"`
 	RegisterTime time.Time `db:"register_time,codec:date_time,default:fn|CURRENT_TIMESTAMP"`
 	Idx          *int64    `db:"idx,not-null"`
-	Scores       []int     `db:"scores,codec:auto_json,native:varchar(2048)"`
+	Scores       []int     `db:"scores,codec:auto_json"`
 	Enable       bool      `db:"enable,not-null"`
 	a            int
 	UserEmb1
@@ -40,16 +40,18 @@ type UserJS1 struct {
 }
 
 func (u User) TableName() string {
-	return "user"
+	return "ut_user"
 }
 
 type Status uint
 
-func WithUser(ctx context.Context, client *xdb.Client) {
-	err := xdb.Migrate(client, User{})
-	if err != nil {
-		log.Fatalln("Migrate:", errorText(err))
-	}
+func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
+	sc := xdb.MustNewSchemaAPI(client)
+	err := sc.DropTableIfExists(ctx, User{}.TableName())
+	xt.NoError(t, err)
+
+	err = xdb.Migrate(client, User{})
+	xt.NoError(t, err)
 
 	orm := xdb.NewMode[User](client)
 	u := User{
@@ -60,23 +62,32 @@ func WithUser(ctx context.Context, client *xdb.Client) {
 		a:            123,
 	}
 	id, err := orm.InsertReturningID(ctx, u)
-	log.Println("insert", id, errorText(err))
+	xt.NoError(t, err)
+	xt.True(t, id == 1 || id == 0) // 目前 mssql 不能返回id
+	if id == 0 {
+		id = 1
+	}
 
 	items, err := orm.List(ctx, "")
-	log.Println("list=", items, errorText(err))
+	xt.NoError(t, err)
+	xt.NotEmpty(t, items)
 
-	ret, err := orm.Update(ctx, u, "id=?", 3)
-	log.Println("Update:", ret, errorText(err))
+	u.Status = 2
+	ret, err := orm.Update(ctx, u, "id=?", id)
+	xt.NoError(t, err)
+	xt.Equal(t, ret, 1)
 
 	u2 := User{
-		ID:       4,
+		ID:       uint64(id),
 		Password: "hello",
 	}
 	ret, err = orm.UpdateByPK(ctx, u2)
-	log.Println("UpdateByPK:", ret, errorText(err))
+	xt.NoError(t, err)
+	xt.Equal(t, ret, 1)
 
 	cnt, err := orm.Count(ctx, "id", "")
-	log.Println("Count:", cnt, errorText(err))
+	xt.NoError(t, err)
+	xt.Equal(t, cnt, 1)
 
 	u3 := User{
 		Username:     "user2",
@@ -84,12 +95,6 @@ func WithUser(ctx context.Context, client *xdb.Client) {
 		RegisterTime: time.Now(),
 	}
 	cnt, err = orm.Upsert(ctx, []string{"username"}, []string{"register_time"}, u3)
-	log.Println("Upsert:", cnt, errorText(err))
-}
-
-func errorText(err error) string {
-	if err == nil {
-		return ""
-	}
-	return xcolor.RedString(err.Error())
+	xt.NoError(t, err)
+	xt.Equal(t, cnt, 1)
 }

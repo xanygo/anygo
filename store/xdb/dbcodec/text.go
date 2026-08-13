@@ -12,6 +12,7 @@ import (
 const TextName = "text"
 
 var _ dbtype.Codec = (*Text)(nil)
+var _ dbtype.HasKind = (*Text)(nil)
 
 type Text struct{}
 

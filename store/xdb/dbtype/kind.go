@@ -6,7 +6,7 @@ package dbtype
 
 type Kind string
 
-func (k Kind) IsValid() bool {
+func (k Kind) IsOK() bool {
 	return allKinds[k]
 }
 
@@ -18,12 +18,15 @@ func (k Kind) String() string {
 	return string(k)
 }
 
+type HasKind interface {
+	// Kind 数据库中存储的数据类型
+	Kind() Kind
+}
+
 const (
 	KindInvalid Kind = "invalid"
 
-	KindNative   Kind = "native"    // 原生类型，数据库驱动已支持该类型，不需要额外的 Codec
-	KindAutoJSON Kind = "auto_json" // 需要数据库方言来不判断类型，若方言判断不出来，则默认使用 json 编解码
-
+	KindNative Kind = "native" // 特殊的类型，数据库驱动支持该数据类型
 	KindString Kind = "string"
 
 	KindInt   Kind = "int"
@@ -43,8 +46,8 @@ const (
 	KindFloat32 Kind = "float32"
 	KindFloat64 Kind = "float64" // 8 字节（双精度）
 
-	KindBinary Kind = "binary"
-	KindArray  Kind = "array" // 数组类型
+	KindBinary Kind = "binary" // 二进制类型，可用于 []byte  和 [N]byte 类型的数据字段
+	KindArray  Kind = "array"  // 数组类型
 	KindJSON   Kind = "json"
 
 	KindDate     Kind = "date"      // 仅日期 '2000-01-01'
@@ -74,9 +77,6 @@ var allKinds = map[Kind]bool{
 	KindBinary: true,
 	KindJSON:   true,
 	KindArray:  true,
-
-	KindNative:   true,
-	KindAutoJSON: true,
 
 	KindDate:     true,
 	KindDateTime: true,

@@ -91,6 +91,24 @@ func (c *Client) Driver() string {
 	return c.driver
 }
 
+func (c *Client) PingContext(ctx context.Context) (err error) {
+	its := allInterceptors(ctx)
+	if len(its) > 0 {
+		event := Event{
+			Action: "Ping",
+			Start:  time.Now(),
+			Client: c.Name(),
+			Driver: c.Driver(),
+		}
+		defer func() {
+			event.End = time.Now()
+			event.Error = err
+			its.CallAfter(ctx, event)
+		}()
+	}
+	return c.db.PingContext(ctx)
+}
+
 var _ Queryer = (*Client)(nil)
 
 func (c *Client) QueryContext(ctx context.Context, query string, args ...any) (rows *sql.Rows, err error) {

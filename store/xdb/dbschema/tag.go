@@ -78,3 +78,5 @@ func TagHasPrimaryKey(tag xstruct.Tag) bool {
 func TagHasUnique(tag xstruct.Tag) bool {
 	return tag.Has(TagUnique) || tag.Has("unique")
 }
+
+const codecAutoJSON = "auto_json" // 需要数据库方言来判断类型，若方言判断不出来，则默认使用 json 编解码
