@@ -54,14 +54,6 @@ func TestMSSQL(t *testing.T) {
 	defer db.Close()
 	client := xdb.NewClient("sqlserver", "demo", db)
 
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	defer cancel()
-
-	if client.PingContext(ctx) == nil {
-		sc := xdb.MustNewSchemaAPI(client)
-		_ = sc.CreateDatabase(ctx, "demo")
-	}
-
 	checkDB(t, client)
 }
 
@@ -70,7 +62,7 @@ func checkDB(t *testing.T, db *xdb.Client) {
 	defer cancel()
 
 	err := db.PingContext(ctx)
-	if err != nil && strings.Contains(err.Error(), "No connection could be made") {
+	if err != nil && (strings.Contains(err.Error(), "No connection could be made") || strings.Contains(err.Error(), "connection refused")) {
 		t.Skipf("Ping failed: %v", err)
 		return
 	}

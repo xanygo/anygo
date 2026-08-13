@@ -17,7 +17,7 @@ func NewMySQL() (*sql.DB, error) {
 }
 
 func NewMSSQL() (*sql.DB, error) {
-	const dsn = `sqlserver://sa:123456-Abc@localhost:1433?database=demo`
+	const dsn = `sqlserver://sa:123456-Abc@localhost:1433?database=master`
 	return sql.Open("sqlserver", dsn)
 }
 
