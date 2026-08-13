@@ -5,13 +5,13 @@ import (
 	"database/sql"
 	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xkv"
 	"github.com/xanygo/anygo/store/xkv/xkvx"
-	"github.com/xanygo/anygo/store/xredis"
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xt"
 
@@ -60,10 +60,12 @@ func checkDB(t *testing.T, db *xdb.Client) {
 	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 
-	if err := db.PingContext(ctx); err != nil {
+	err := db.PingContext(ctx)
+	if err != nil && strings.Contains(err.Error(), "No connection could be made") {
 		t.Skipf("Ping failed: %v", err)
 		return
 	}
+	xt.NoError(t, err)
 
 	kvs := &xkvx.DatabaseStore{
 		DB: db,
@@ -179,17 +181,16 @@ func checkMySQLBase(t *testing.T, dialect string) {
 }
 
 func TestRedis(t *testing.T) {
-	rdsURI := os.Getenv("anygo_ut_redis")
-	if rdsURI == "" {
-		t.Skip("no test redis uri found, skipped")
-		return
-	}
-	_, client, err := xredis.NewClientByURI("demo", rdsURI)
-	xt.NoError(t, err)
+	client := internal.NewRedis()
 
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
+	err := client.Ping(ctx)
+	if err != nil {
+		t.Skip(err.Error())
+		return
+	}
 	xt.NoError(t, client.Select(ctx, 10))
 	xt.NoError(t, client.FlushB(ctx, true))
 

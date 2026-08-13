@@ -166,7 +166,7 @@ func StmtQueryMany[T any](ctx context.Context, q Statement, args ...any) ([]T, e
 	return ScanRows[T](q, rows)
 }
 
-func StmtQueryOne[T any](ctx context.Context, q Statement, query string, args ...any) (v T, ok bool, err error) {
+func StmtQueryOne[T any](ctx context.Context, q Statement, args ...any) (v T, ok bool, err error) {
 	rows, err := q.QueryContext(ctx, args...)
 	if err != nil {
 		return v, false, err

@@ -7,6 +7,7 @@ package xredis
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/xanygo/anygo/ds/xslice"
@@ -212,4 +213,14 @@ func (c *Client) FlushB(ctx context.Context, sync bool) error {
 	cmd := resp3.NewRequest(resp3.DataTypeSimpleString, "FLUSHDB", op)
 	resp := c.do(ctx, cmd)
 	return resp3.ToOkStatus(resp.result, resp.err)
+}
+
+func (c *Client) Ping(ctx context.Context) error {
+	cmd := resp3.NewRequest(resp3.DataTypeSimpleString, "PING")
+	resp := c.do(ctx, cmd)
+	result, err := resp3.ToString(resp.result, resp.err)
+	if err != nil || result == "PONG" {
+		return err
+	}
+	return fmt.Errorf("expect PONG got %q", result)
 }

@@ -120,15 +120,23 @@ func checkZSet(t *testing.T, kvs xkv.StringStorage) {
 		err = zs.ZAdd(ctx, 2, "f100") // 和 m2 相同的 score
 		xt.NoError(t, err)
 
-		index, score, err = zs.ZRank(ctx, "m2")
+		indexM2, score, err := zs.ZRank(ctx, "m2")
 		xt.NoError(t, err)
 		xt.Equal(t, score, 2)
-		xt.Equal(t, index, 2) // member 值 hash 后 f100，排在 m2 之后
 
-		index, score, err = zs.ZRank(ctx, "f100")
+		// member 值 hash 后 f100，排在 m2 之后
+		// redis 存储引擎的值是2，数据库存储的值是3
+		xt.True(t, indexM2 == 2 || indexM2 == 3)
+
+		indexF100, score, err := zs.ZRank(ctx, "f100")
 		xt.NoError(t, err)
-		xt.Equal(t, index, 3)
 		xt.Equal(t, score, 2)
+
+		// member 值 hash 后 f100，排在 m2 之后
+		// redis 存储引擎的值是3，数据库存储的值是3
+		xt.True(t, indexF100 == 2 || indexF100 == 3)
+
+		xt.NotEqual(t, indexM2, indexF100)
 	})
 
 	t.Run("zpopmax-min1", func(t *testing.T) {

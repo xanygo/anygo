@@ -90,8 +90,8 @@ func (c *Client) Do(ctx context.Context, cmd Cmder) error {
 
 func init() {
 	handler := dsession.StartFunc(startSession)
-	dsession.RegisterProtocol(Protocol, handler)
-	dsession.RegisterProtocol("Redis", handler)
+	_ = dsession.RegisterProtocol(Protocol, handler)
+	_ = dsession.RegisterProtocol("Redis", handler)
 }
 
 // 创建连接后，和 redis server 握手

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -63,10 +64,12 @@ func TestPostgres(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
-	if err = db.PingContext(ctx); err != nil {
+	err = db.PingContext(ctx)
+	if err != nil && strings.Contains(err.Error(), "No connection could be made") {
 		t.Skipf("PingContext failed: %s ,skipped", err.Error())
 		return
 	}
+	xt.NoError(t, err)
 
 	client := xdb.NewClient("pgx", "demo", db)
 	for _, table := range tables {
@@ -95,10 +98,12 @@ func checkMySQLBase(t *testing.T, dialect string) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
-	if err = db.PingContext(ctx); err != nil {
+	err = db.PingContext(ctx)
+	if err != nil && strings.Contains(err.Error(), "No connection could be made") {
 		t.Skipf("PingContext failed: %s ,skipped", err.Error())
 		return
 	}
+	xt.NoError(t, err)
 
 	client := xdb.NewClient(dialect, "demo", db)
 	for _, table := range tables {
