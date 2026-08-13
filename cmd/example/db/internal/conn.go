@@ -2,6 +2,7 @@ package internal
 
 import (
 	"database/sql"
+	"strings"
 
 	"github.com/xanygo/anygo/store/xredis"
 )
@@ -28,4 +29,9 @@ func NewRedis() *xredis.Client {
 		panic(err)
 	}
 	return client
+}
+
+func IsConnectFailedErr(err error) bool {
+	return err != nil && (strings.Contains(err.Error(), "connection refused") ||
+		strings.Contains(err.Error(), "No connection could be made"))
 }

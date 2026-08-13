@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"log"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -62,7 +61,7 @@ func checkDB(t *testing.T, db *xdb.Client) {
 	defer cancel()
 
 	err := db.PingContext(ctx)
-	if err != nil && (strings.Contains(err.Error(), "No connection could be made") || strings.Contains(err.Error(), "connection refused")) {
+	if err != nil && internal.IsConnectFailedErr(err) {
 		t.Skipf("Ping failed: %v", err)
 		return
 	}

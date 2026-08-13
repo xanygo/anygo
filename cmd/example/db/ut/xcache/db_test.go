@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -65,7 +64,7 @@ func TestPostgres(t *testing.T) {
 	defer cancel()
 
 	err = db.PingContext(ctx)
-	if err != nil && strings.Contains(err.Error(), "No connection could be made") {
+	if err != nil && internal.IsConnectFailedErr(err) {
 		t.Skipf("PingContext failed: %s ,skipped", err.Error())
 		return
 	}
@@ -99,7 +98,7 @@ func checkMySQLBase(t *testing.T, dialect string) {
 	defer cancel()
 
 	err = db.PingContext(ctx)
-	if err != nil && strings.Contains(err.Error(), "No connection could be made") {
+	if err != nil && internal.IsConnectFailedErr(err) {
 		t.Skipf("PingContext failed: %s ,skipped", err.Error())
 		return
 	}
