@@ -21,7 +21,7 @@ func TestHedging_Run(t *testing.T) {
 				return 1, nil
 			},
 		}
-		got, err := h1.Run(context.Background())
+		got, err := h1.Run(t.Context())
 		xt.NoError(t, err)
 		xt.Equal(t, got, 1)
 	})
@@ -31,7 +31,7 @@ func TestHedging_Run(t *testing.T) {
 				return 0, io.EOF
 			},
 		}
-		got, err := h1.Run(context.Background())
+		got, err := h1.Run(t.Context())
 		xt.Error(t, err)
 		xt.Equal(t, got, 0)
 	})
@@ -48,7 +48,7 @@ func TestHedging_Run(t *testing.T) {
 		h1.Add(10*time.Microsecond, func(ctx context.Context) (int, error) {
 			return 2, nil
 		})
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 		defer cancel()
 		got, err := h1.Run(ctx)
 		xt.NoError(t, err)
@@ -75,7 +75,7 @@ func TestHedging_Run(t *testing.T) {
 		h1.Add(30*time.Microsecond, func(ctx context.Context) (int, error) {
 			return 3, nil
 		})
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 		defer cancel()
 		got, err := h1.Run(ctx)
 		xt.NoError(t, err)
@@ -101,7 +101,7 @@ func TestHedging_Run(t *testing.T) {
 		h1.Add(40*time.Microsecond, func(ctx context.Context) (int, error) {
 			return 3, nil
 		})
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 		defer cancel()
 		got, err := h1.Run(ctx)
 		xt.NoError(t, err)
@@ -126,7 +126,7 @@ func TestHedging_Run(t *testing.T) {
 		h1.Add(30*time.Microsecond, func(ctx context.Context) (int, error) {
 			return 3, nil
 		})
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 		defer cancel()
 		got, err := h1.Run(ctx)
 		xt.NoError(t, err)

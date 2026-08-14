@@ -26,7 +26,7 @@ func TestConcurrency(t *testing.T) {
 
 		<-done
 		{
-			ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
+			ctx, cancel := context.WithTimeout(t.Context(), time.Millisecond)
 			defer cancel()
 			fn, err := c.WaitContext(ctx)
 			xt.Error(t, err)
@@ -36,7 +36,7 @@ func TestConcurrency(t *testing.T) {
 		time.Sleep(3 * time.Millisecond)
 
 		{
-			ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
+			ctx, cancel := context.WithTimeout(t.Context(), time.Millisecond)
 			defer cancel()
 			fn, err := c.WaitContext(ctx)
 			xt.NoError(t, err)

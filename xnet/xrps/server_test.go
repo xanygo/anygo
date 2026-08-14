@@ -43,7 +43,7 @@ func TestTCPServer(t *testing.T) {
 		})
 	}
 	xt.NoError(t, conn.Close())
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 	xt.NoError(t, ser.Shutdown(ctx))
 	xt.NoError(t, l.Close())

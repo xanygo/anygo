@@ -22,14 +22,14 @@ func TestReader_Get(t *testing.T) {
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
 		wg.Go(func() {
-			v, err := rd1.Get(context.Background(), i)
+			v, err := rd1.Get(t.Context(), i)
 			xt.NoError(t, err)
 			xt.Equal(t, v, strconv.Itoa(i))
 		})
 	}
 	wg.Wait()
 
-	v, err := rd1.Flush(context.Background(), 1)
+	v, err := rd1.Flush(t.Context(), 1)
 	xt.NoError(t, err)
 	xt.Equal(t, v, "1")
 }

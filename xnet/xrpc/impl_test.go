@@ -22,7 +22,7 @@ func TestOptBlockPrivateIPs(t *testing.T) {
 		w.Write(body)
 	}))
 	defer ts.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 
 	t.Run("case 1 success", func(t *testing.T) {

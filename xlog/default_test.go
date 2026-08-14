@@ -5,7 +5,6 @@
 package xlog
 
 import (
-	"context"
 	"testing"
 
 	"github.com/xanygo/anygo/xt"
@@ -13,10 +12,10 @@ import (
 
 func TestDefault(t *testing.T) {
 	check := func(t *testing.T) {
-		Error(context.Background(), "hello")
-		Info(context.Background(), "hello")
-		Debug(context.Background(), "hello")
-		Warn(context.Background(), "hello")
+		Error(t.Context(), "hello")
+		Info(t.Context(), "hello")
+		Debug(t.Context(), "hello")
+		Warn(t.Context(), "hello")
 	}
 	xt.NotNil(t, Default())
 	check(t)

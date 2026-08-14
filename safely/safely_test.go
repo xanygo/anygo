@@ -51,11 +51,11 @@ func TestRun(t *testing.T) {
 
 func TestRunCtxVoid(t *testing.T) {
 	var num int
-	RunCtxVoid(context.Background(), func(ctx context.Context) {
+	RunCtxVoid(t.Context(), func(ctx context.Context) {
 		num++
 		panic("hello")
 	})
-	RunCtxVoid(context.Background(), func(ctx context.Context) error {
+	RunCtxVoid(t.Context(), func(ctx context.Context) error {
 		num++
 		panic("hello")
 	})
@@ -64,18 +64,18 @@ func TestRunCtxVoid(t *testing.T) {
 
 func TestRunCtx(t *testing.T) {
 	var num int
-	xt.NoError(t, RunCtx(context.Background(), func(ctx context.Context) { num++ }))
-	xt.NoError(t, RunCtx(context.Background(), func(ctx context.Context) error {
+	xt.NoError(t, RunCtx(t.Context(), func(ctx context.Context) { num++ }))
+	xt.NoError(t, RunCtx(t.Context(), func(ctx context.Context) error {
 		num++
 		return nil
 	}))
 	xt.Equal(t, num, 2)
 
-	xt.Error(t, RunCtx(context.Background(), func(ctx context.Context) {
+	xt.Error(t, RunCtx(t.Context(), func(ctx context.Context) {
 		num++
 		panic("hello")
 	}))
-	xt.Error(t, RunCtx(context.Background(), func(ctx context.Context) error {
+	xt.Error(t, RunCtx(t.Context(), func(ctx context.Context) error {
 		num++
 		panic("hello")
 	}))

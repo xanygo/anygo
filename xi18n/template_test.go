@@ -151,7 +151,7 @@ func TestRA(t *testing.T) {
 	b.MustLocalize(LangZh).MustAdd("index", &Message{Key: "k2", Other: "你好 {0}"})
 	b.MustLocalize(LangEn).MustAdd("index", &Message{Key: "k2", Other: "hello {0}"})
 
-	_, err0 := RA(context.Background(), "index/k1")
+	_, err0 := RA(t.Context(), "index/k1")
 	xt.Error(t, err0)
 
 	ctx1 := ContextWithBundle(context.Background(), b, "")

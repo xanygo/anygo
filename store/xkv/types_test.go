@@ -5,7 +5,6 @@
 package xkv_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/xanygo/anygo/internal/ut/xkvut"
@@ -39,12 +38,12 @@ func benchStorage(b *testing.B, st xkv.StringStorage) {
 		s1 := st.String("str1")
 		b.Run("set", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				_ = s1.Set(context.Background(), "v1")
+				_ = s1.Set(b.Context(), "v1")
 			}
 		})
 		b.Run("get", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				s1.Get(context.Background())
+				s1.Get(b.Context())
 			}
 		})
 	})
@@ -52,11 +51,11 @@ func benchStorage(b *testing.B, st xkv.StringStorage) {
 	b.Run("list", func(b *testing.B) {
 		l1 := st.List("list1")
 		for i := 0; i < b.N; i++ {
-			_, err1 := l1.LPush(context.Background(), "v1")
+			_, err1 := l1.LPush(b.Context(), "v1")
 			if err1 != nil {
 				b.Fatal(err1.Error())
 			}
-			got, found, err2 := l1.LPop(context.Background())
+			got, found, err2 := l1.LPop(b.Context())
 			if err2 != nil {
 				b.Fatal(err2.Error())
 			}

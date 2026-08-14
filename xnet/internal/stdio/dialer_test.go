@@ -19,7 +19,7 @@ import (
 
 func TestDialer_DialContext(t *testing.T) {
 	var d stdio.Dialer
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 
 	fp := filepath.Join("../../../cmd/example/stdio-ping/", "main.go")

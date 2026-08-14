@@ -35,7 +35,7 @@ func TestTemplateHook(t *testing.T) {
 		{
 			name: "include.toml",
 			args: args{
-				ctx:     context.Background(),
+				ctx:     t.Context(),
 				cfPath:  "testdata/include.toml",
 				content: mustRead("testdata/include.toml"),
 			},
@@ -56,7 +56,7 @@ Z="z"
 		{
 			name: "include not found",
 			args: args{
-				ctx:     context.Background(),
+				ctx:     t.Context(),
 				cfPath:  "testdata/include_e1.toml",
 				content: mustRead("testdata/include_e1.toml"),
 			},
@@ -65,7 +65,7 @@ Z="z"
 		{
 			name: "include FilePath Empty",
 			args: args{
-				ctx:     context.Background(),
+				ctx:     t.Context(),
 				cfPath:  "",
 				content: mustRead("testdata/include_e1.toml"),
 			},
@@ -74,7 +74,7 @@ Z="z"
 		{
 			name: "include not enable",
 			args: args{
-				ctx:     context.Background(),
+				ctx:     t.Context(),
 				cfPath:  "",
 				content: mustRead("testdata/include_not_enable.toml"),
 			},

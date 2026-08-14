@@ -25,7 +25,7 @@ func TestClient_Script(t *testing.T) {
 
 	_, client, errClient := xredis.NewClientByURI("demo", ts.URI())
 	xt.NoError(t, errClient)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 
 	t.Run("EVAL", func(t *testing.T) {

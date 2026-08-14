@@ -5,7 +5,6 @@
 package xnaming
 
 import (
-	"context"
 	"testing"
 
 	"github.com/xanygo/anygo/xt"
@@ -13,15 +12,15 @@ import (
 
 func TestCommand_Lookup(t *testing.T) {
 	si := &Stdio{}
-	items, err := si.Lookup(context.Background(), "test", `{"Path":"echo"}`)
+	items, err := si.Lookup(t.Context(), "test", `{"Path":"echo"}`)
 	xt.NoError(t, err)
 	xt.Len(t, items, 1)
 
-	items, err = si.Lookup(context.Background(), "test", `{"Path":"echo","Args":["a"]}`)
+	items, err = si.Lookup(t.Context(), "test", `{"Path":"echo","Args":["a"]}`)
 	xt.NoError(t, err)
 	xt.Len(t, items, 1)
 
-	items, err = si.Lookup(context.Background(), "test", `{"Args":["a"]}`)
+	items, err = si.Lookup(t.Context(), "test", `{"Args":["a"]}`)
 	xt.Error(t, err)
 	xt.Len(t, items, 0)
 }

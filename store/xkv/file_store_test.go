@@ -5,7 +5,6 @@
 package xkv_test
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -56,12 +55,12 @@ func TestFileStorageCipher(t *testing.T) {
 	t.Run("list", func(t *testing.T) {
 		store := xkv.AsList[user](ff, coder, "list1")
 
-		num, err := store.RPush(context.Background(), u1)
+		num, err := store.RPush(t.Context(), u1)
 		xt.NoError(t, err)
 		xt.Equal(t, 1, num)
 
 		var cnt int
-		err = store.Range(context.Background(), func(val user) bool {
+		err = store.Range(t.Context(), func(val user) bool {
 			xt.Equal(t, val, u1)
 			cnt++
 			return true
@@ -73,20 +72,20 @@ func TestFileStorageCipher(t *testing.T) {
 	t.Run("hash", func(t *testing.T) {
 		store := xkv.AsHash[user](ff, coder, "hash1")
 
-		err := store.HSet(context.Background(), "f1", u1)
+		err := store.HSet(t.Context(), "f1", u1)
 		xt.NoError(t, err)
 
-		us, err := store.HGetAll(context.Background())
+		us, err := store.HGetAll(t.Context())
 		xt.NoError(t, err)
 		xt.NotEmpty(t, us)
 	})
 
 	t.Run("zset", func(t *testing.T) {
 		store := xkv.AsZSet[user](ff, coder, "zset1")
-		err := store.ZAdd(context.Background(), 1, u1)
+		err := store.ZAdd(t.Context(), 1, u1)
 		xt.NoError(t, err)
 		var cnt int
-		err = store.ZRange(context.Background(), func(member user, score float64) bool {
+		err = store.ZRange(t.Context(), func(member user, score float64) bool {
 			xt.Equal(t, member.Name, u1.Name)
 			xt.Equal(t, score, 1)
 			cnt++

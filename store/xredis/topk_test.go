@@ -24,7 +24,7 @@ func TestTopK(t *testing.T) {
 	t.Logf("uri= %q", ts.URI())
 	_, client, errClient := NewClientByURI("demo", ts.URI())
 	xt.NoError(t, errClient)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 
 	// t.Run("TopKReserve", func(t *testing.T) {

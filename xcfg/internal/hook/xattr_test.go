@@ -5,7 +5,6 @@
 package hook
 
 import (
-	"context"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -117,7 +116,7 @@ func TestXAttrVars(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotOutput, err := XAttrVars(context.Background(), "", tt.args.input)
+			gotOutput, err := XAttrVars(t.Context(), "", tt.args.input)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
 				return

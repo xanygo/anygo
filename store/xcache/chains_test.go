@@ -28,7 +28,7 @@ func TestNewChains(t *testing.T) {
 		},
 	}
 	c := xcache.NewChains(l1, l2)
-	ctx := context.Background()
+	ctx := t.Context()
 	for range 10 {
 		value1, err1 := c.Get(ctx, "k1")
 		xt.Error(t, err1)

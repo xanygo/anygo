@@ -89,13 +89,13 @@ func TestWaitFirst(t *testing.T) {
 	t.Run("case 6 ctx nil", func(t *testing.T) {
 		var wg xsync.WaitFirst
 		var cnt atomic.Int32
-		wg.GoCtx(context.Background(), func(ctx context.Context) {
+		wg.GoCtx(t.Context(), func(ctx context.Context) {
 			cnt.Add(1)
 		})
 		xt.NoError(t, wg.Wait())
 		xt.Equal(t, cnt.Load(), int32(1))
 
-		wg.GoCtx(context.Background(), func(ctx context.Context) {
+		wg.GoCtx(t.Context(), func(ctx context.Context) {
 			cnt.Add(1)
 		})
 		xt.Equal(t, cnt.Load(), int32(1))
@@ -104,14 +104,14 @@ func TestWaitFirst(t *testing.T) {
 	t.Run("case 7 ctxerr nil", func(t *testing.T) {
 		var wg xsync.WaitFirst
 		var cnt atomic.Int32
-		wg.GoCtxErr(context.Background(), func(ctx context.Context) error {
+		wg.GoCtxErr(t.Context(), func(ctx context.Context) error {
 			cnt.Add(1)
 			return nil
 		})
 		xt.NoError(t, wg.Wait())
 		xt.Equal(t, cnt.Load(), int32(1))
 
-		wg.GoCtxErr(context.Background(), func(ctx context.Context) error {
+		wg.GoCtxErr(t.Context(), func(ctx context.Context) error {
 			cnt.Add(1)
 			return nil
 		})
@@ -121,14 +121,14 @@ func TestWaitFirst(t *testing.T) {
 	t.Run("case 8 ctxerr err", func(t *testing.T) {
 		var wg xsync.WaitFirst
 		var cnt atomic.Int32
-		wg.GoCtxErr(context.Background(), func(ctx context.Context) error {
+		wg.GoCtxErr(t.Context(), func(ctx context.Context) error {
 			cnt.Add(1)
 			return io.EOF
 		})
 		xt.Error(t, wg.Wait())
 		xt.Equal(t, cnt.Load(), int32(1))
 
-		wg.GoCtxErr(context.Background(), func(ctx context.Context) error {
+		wg.GoCtxErr(t.Context(), func(ctx context.Context) error {
 			cnt.Add(1)
 			return io.EOF
 		})

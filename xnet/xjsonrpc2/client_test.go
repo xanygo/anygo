@@ -53,7 +53,7 @@ func TestClientRequest1(t *testing.T) {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 
 	t.Run("case 1 over http", func(t *testing.T) {
@@ -184,7 +184,7 @@ func TestClient(t *testing.T) {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 
 	srv, err := xservice.NewServiceByURL("test", ts.URL)

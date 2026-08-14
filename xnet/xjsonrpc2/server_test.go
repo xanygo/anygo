@@ -26,7 +26,7 @@ func TestRouter_Handle(t *testing.T) {
 `
 			bf := strings.NewReader(input)
 			w := &bytes.Buffer{}
-			err := router.Serve(context.Background(), bf, w)
+			err := router.Serve(t.Context(), bf, w)
 			xt.NoError(t, err)
 			want1 := `{"jsonrpc":"2.0","id":"1","result":"world"}
 {"jsonrpc":"2.0","id":"2","result":"world"}

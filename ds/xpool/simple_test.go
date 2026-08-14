@@ -26,7 +26,7 @@ func TestSimple(t *testing.T) {
 	p1 := xpool.New[*testCloser](nil, ct1)
 	for i := range 10 {
 		t.Run(fmt.Sprintf("1_loop_%d", i), func(t *testing.T) {
-			v1, err1 := p1.Get(context.Background())
+			v1, err1 := p1.Get(t.Context())
 			xt.NoError(t, err1)
 			xt.NotEmpty(t, v1)
 			xt.Equal(t, v1.Raw().id, 1)
@@ -36,7 +36,7 @@ func TestSimple(t *testing.T) {
 
 	for i := range 10 {
 		t.Run(fmt.Sprintf("2_loop_%d", i), func(t *testing.T) {
-			v1, err1 := p1.Get(context.Background())
+			v1, err1 := p1.Get(t.Context())
 			t.Log("eid=", v1.ID())
 			xt.NoError(t, err1)
 			xt.NotEmpty(t, v1)

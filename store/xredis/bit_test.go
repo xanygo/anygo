@@ -23,7 +23,7 @@ func TestBit(t *testing.T) {
 	t.Logf("uri= %q", ts.URI())
 	_, client, errClient := NewClientByURI("demo", ts.URI())
 	xt.NoError(t, errClient)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 
 	t.Run("BitCount", func(t *testing.T) {
@@ -46,7 +46,7 @@ func TestBit(t *testing.T) {
 
 		// 会返回  nil，0 的case
 		// BITFIELD BitField-1 OVERFLOW FAIL INCRBY u8 0 256  GET u8 0
-		got, err = client.BitField(context.Background(), "BitField-1",
+		got, err = client.BitField(t.Context(), "BitField-1",
 			BitFieldOverflow{FAIL: true},
 			BitFieldIncrBy{Encoding: "u8", Increment: 256},
 			BitFieldGet{Encoding: "u8"})

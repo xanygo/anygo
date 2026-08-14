@@ -49,7 +49,7 @@ func TestCacheClient(t *testing.T) {
 	for i := range 100 {
 		t.Run(fmt.Sprintf("i_%d", i), func(t *testing.T) {
 			resp := &xhttpc.StoredResponse{}
-			err := hc.Invoke(context.Background(), resp)
+			err := hc.Invoke(t.Context(), resp)
 			xt.NoError(t, err)
 			xt.Equal(t, string(resp.Body), "1")
 			xt.Equal(t, resp.Header.Get("X-Ok"), "Ok")
@@ -70,7 +70,7 @@ func TestCacheClient(t *testing.T) {
 		time.Sleep(1001 * time.Second)
 
 		resp1 := &xhttpc.StoredResponse{}
-		err1 := hc.Invoke(context.Background(), resp1)
+		err1 := hc.Invoke(t.Context(), resp1)
 		xt.NoError(t, err1)
 		xt.Equal(t, string(resp1.Body), "1")
 		xt.Equal(t, resp1.Header.Get("X-Ok"), "Ok")
@@ -88,7 +88,7 @@ func TestClient(t *testing.T) {
 		t.Logf("HandlerFunc io.Copy %d,%v", n, err)
 	}))
 	defer ts.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 
 	t.Run("Get", func(t *testing.T) {
@@ -154,7 +154,7 @@ func TestClientRetry(t *testing.T) {
 
 	t.Run("get-ok", func(t *testing.T) {
 		requestID.Store(0)
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 		ctx = xlog.NewContext(ctx)
 		xlog.WithLogID(ctx, xlog.NewLogID())
 		defer cancel()
@@ -168,7 +168,7 @@ func TestClientRetry(t *testing.T) {
 
 	t.Run("get-timeout-retry", func(t *testing.T) {
 		requestID.Store(0)
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 		ctx = xlog.NewContext(ctx)
 		xlog.WithLogID(ctx, xlog.NewLogID())
 		defer cancel()
@@ -183,7 +183,7 @@ func TestClientRetry(t *testing.T) {
 
 	t.Run("Post-timeout-always-retry", func(t *testing.T) {
 		requestID.Store(0)
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 		ctx = xlog.NewContext(ctx)
 		xlog.WithLogID(ctx, xlog.NewLogID())
 		defer cancel()
@@ -200,7 +200,7 @@ func TestClientRetry(t *testing.T) {
 		// 默认重试策略：Post timeout 错误，不能重试
 
 		requestID.Store(0)
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 		ctx = xlog.NewContext(ctx)
 		xlog.WithLogID(ctx, xlog.NewLogID())
 		defer cancel()

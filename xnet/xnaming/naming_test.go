@@ -5,14 +5,13 @@
 package xnaming
 
 import (
-	"context"
 	"testing"
 
 	"github.com/xanygo/anygo/xt"
 )
 
 func TestLookup(t *testing.T) {
-	nodes1, err1 := Lookup(context.Background(), "", "bj", "example.com:80")
+	nodes1, err1 := Lookup(t.Context(), "", "bj", "example.com:80")
 	xt.NoError(t, err1)
 	testNodesEqual(t, nodes1, []string{"example.com:80"})
 }

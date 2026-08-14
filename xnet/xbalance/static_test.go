@@ -5,7 +5,6 @@
 package xbalance
 
 import (
-	"context"
 	"testing"
 
 	"github.com/xanygo/anygo/xnet"
@@ -15,7 +14,7 @@ import (
 func TestStatic_Pick(t *testing.T) {
 	as := NewStaticByAddr(xnet.NewAddr("tcp", "127.0.0.1:8080"), xnet.NewAddr("tcp", "127.0.0.2:8080"))
 	for range 100 {
-		node, err := as.Pick(context.Background())
+		node, err := as.Pick(t.Context())
 		xt.NoError(t, err)
 		xt.NotNil(t, node)
 	}

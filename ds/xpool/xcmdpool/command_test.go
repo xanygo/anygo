@@ -25,7 +25,7 @@ func TestCommand1(t *testing.T) {
 		Path: "go",
 		Args: []string{"run", filepath.Join("../../../cmd/example/stdio-ping/", "main.go")},
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	ts := &xt.Collector{}

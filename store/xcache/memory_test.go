@@ -20,7 +20,7 @@ import (
 func TestLRU(t *testing.T) {
 	c1 := xcache.NewLRU[string, int](10)
 	testCache(t, c1)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 	defer cancel()
 
 	var allKeys []string
@@ -60,7 +60,7 @@ func TestLRU(t *testing.T) {
 func TestMemoryFIFO(t *testing.T) {
 	c1 := xcache.NewMemoryFIFO[string, int](10)
 	testCache(t, c1)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 	defer cancel()
 
 	var allKeys []string

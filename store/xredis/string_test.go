@@ -24,7 +24,7 @@ func TestClientString(t *testing.T) {
 
 	_, client, errClient := NewClientByURI("demo", ts.URI())
 	xt.NoError(t, errClient)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 
 	t.Run("get", func(t *testing.T) {
@@ -175,7 +175,7 @@ func TestClientString(t *testing.T) {
 }
 
 func testSetKeyString(t *testing.T, client *Client, key string) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 	_, err := client.Del(ctx, key)
 	xt.NoError(t, err)

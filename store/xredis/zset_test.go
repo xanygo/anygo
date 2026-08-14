@@ -26,7 +26,7 @@ func TestClientZSet(t *testing.T) {
 
 	_, client, errClient := NewClientByURI("demo", ts.URI())
 	xt.NoError(t, errClient)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 
 	t.Run("ZAdd", func(t *testing.T) {

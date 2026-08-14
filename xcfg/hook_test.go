@@ -79,7 +79,7 @@ func TestHelpersExecute(t *testing.T) {
 			p := &HookParam{
 				Content: tt.args.input,
 			}
-			gotOutput, err := tt.args.helpers.Execute(context.Background(), p)
+			gotOutput, err := tt.args.helpers.Execute(t.Context(), p)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("WithFunc() error = %v, wantErr %v", err, tt.wantErr)
 				return

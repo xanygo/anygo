@@ -5,7 +5,6 @@
 package xnet
 
 import (
-	"context"
 	"net"
 	"testing"
 
@@ -23,18 +22,18 @@ func TestNewAddr(t *testing.T) {
 	addr.Attr().Set("idc", "test")
 	xt.Equal(t, addr.Attr().GetFirst("idc"), "test")
 
-	ctx := ContextWithAddr(context.Background(), addr)
+	ctx := ContextWithAddr(t.Context(), addr)
 	g1 := AddrFromContext(ctx)
 	xt.True(t, addr.Equal(g1))
-	xt.Nil(t, AddrFromContext(context.Background()))
+	xt.Nil(t, AddrFromContext(t.Context()))
 }
 
 func TestContextWithAddr(t *testing.T) {
 	addr := NewAddr(NetworkTCP, "127.0.0.1:8080")
-	ctx := ContextWithAddr(context.Background(), addr)
+	ctx := ContextWithAddr(t.Context(), addr)
 	g1 := AddrFromContext(ctx)
 	xt.True(t, addr.Equal(g1))
-	xt.Nil(t, AddrFromContext(context.Background()))
+	xt.Nil(t, AddrFromContext(t.Context()))
 }
 
 func TestIP4ToLong(t *testing.T) {
