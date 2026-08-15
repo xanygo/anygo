@@ -444,3 +444,20 @@ func Panic(t Testing, fn func()) {
 	}
 	t.Fatalf("func should panic")
 }
+
+func NoPanic(t Testing, fn func()) {
+	if h, ok := t.(Helper); ok {
+		h.Helper()
+	}
+	var re any
+	func() {
+		defer func() {
+			re = recover()
+		}()
+		fn()
+	}()
+	if re == nil {
+		return
+	}
+	t.Fatalf("func panic: %v", re)
+}

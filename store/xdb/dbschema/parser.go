@@ -5,15 +5,12 @@
 package dbschema
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 
-	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xstruct"
 	"github.com/xanygo/anygo/internal/zcache"
 	"github.com/xanygo/anygo/internal/zreflect"
@@ -41,28 +38,33 @@ func (sp schemaParser) Parser(obj any) (*dbtype.TableSchema, error) {
 		rt = rt.Elem()
 	}
 	if rt.Kind() != reflect.Struct {
-		return nil, errors.New("obj is not a struct")
-	}
-	var table string
-	if ht, ok := obj.(hasTable); ok {
-		table = ht.TableName()
+		return nil, fmt.Errorf("dbschema: invalid type %T, should struct or *struct", obj)
 	}
 
-	if table == "" && !isPtr {
-		rv := reflect.ValueOf(obj)
-		ptr := reflect.New(rv.Type())
-		ptr.Elem().Set(rv)
-		if ht, ok := ptr.Interface().(hasTable); ok {
+	value := schemaCache.Get2(schemaCacheKey{Type: rt, Dialect: sp.dialect.Name()}, func(key schemaCacheKey) *schemaCacheValue {
+		cv := sp.getSchemaCacheValue(key)
+		if cv.Err != nil {
+			return cv
+		}
+		var table string
+		if ht, ok := obj.(hasTable); ok {
 			table = ht.TableName()
 		}
-	}
-
-	value := schemaCache.Get2(schemaCacheKey{Type: rt, Dialect: sp.dialect.Name()}, sp.getSchemaCacheValue)
+		if table == "" && !isPtr {
+			rv := reflect.ValueOf(obj)
+			ptr := reflect.New(rv.Type())
+			ptr.Elem().Set(rv)
+			if ht, ok := ptr.Interface().(hasTable); ok {
+				table = ht.TableName()
+			}
+		}
+		cv.Schema.Table = table
+		return cv
+	})
 	if value.Err != nil {
 		return nil, value.Err
 	}
 	sc := value.Schema
-	sc.Table = table
 	return &sc, nil
 }
 
@@ -126,14 +128,13 @@ func (sp schemaParser) getSchema(rt reflect.Type) (*dbtype.TableSchema, error) {
 			}
 			sc.Name2Column[name] = scf
 			sc.Columns = append(sc.Columns, scf)
+			sc.ColumnNames = append(sc.ColumnNames, name)
 			return nil
 		})
 		return err
 	}
 
 	err := scan(rt)
-	sc.ColumnNames = xmap.Keys(sc.Name2Column)
-	slices.Sort(sc.ColumnNames)
 	return sc, err
 }
 

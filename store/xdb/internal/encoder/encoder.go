@@ -190,42 +190,42 @@ func (e Encoder[T]) encodeMap(v reflect.Value) (map[string]any, error) {
 	return result, nil
 }
 
-// Fields 获取 data 的字段列表。
+// Fields 获取 data 的字段列表（未过滤的）。
 //
-//  1. 当类型是 struct 的时候，返回所有有效的 db tag 的字段
-//     若返回的字段列表为空，会报错。
-//  2. 当类型是 map 时，返回 nil, nil
+//  1. 当类型是 struct 或者 *struct 的时候，返回所有有效的 db tag 的字段
+//  2. 当类型是 map[string]any 时，返回 map keys, nil
 //  3. 其他类型，返回 error
 func (e Encoder[T]) Fields(data T) ([]string, error) {
+	sc, _ := dbschema.Schema(e.Dialect, data)
+	if sc != nil {
+		return sc.ColumnNames, nil
+	}
+
 	v := reflect.ValueOf(data)
 	if !v.IsValid() {
-		return nil, fmt.Errorf("invalid value: %v", v)
+		return nil, fmt.Errorf("encoder.Fields with invalid value: %#v", v)
 	}
 
 	// 支持指针类型
 	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
-			return nil, fmt.Errorf("nil pointer: %#v", data)
+			return nil, fmt.Errorf("encoder.Fields with nil pointer: %#v", data)
 		}
 		v = v.Elem()
 	}
-
-	switch v.Kind() {
-	case reflect.Struct:
-		return e.structFields(data)
-	case reflect.Map:
-		return nil, nil
-	default:
-		return nil, fmt.Errorf("unsupported type %T", data)
+	if v.Kind() != reflect.Map {
+		return nil, fmt.Errorf("encoder.Fields with invalid type: %T", data)
 	}
-}
 
-func (e Encoder[T]) structFields(v T) ([]string, error) {
-	sc, err := dbschema.Schema(e.Dialect, v)
-	if err != nil {
-		return nil, err
+	result := make([]string, 0, v.Len())
+	for _, k := range v.MapKeys() {
+		val := v.MapIndex(k).Interface()
+		if k.Kind() != reflect.String {
+			return nil, fmt.Errorf("key %#v is not a string", val)
+		}
+		result = append(result, k.String())
 	}
-	return sc.ColumnNames, nil
+	return result, nil
 }
 
 // encodeStructFieldValue 对单个字段根据类型和 serializer 转换

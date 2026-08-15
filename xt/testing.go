@@ -5,6 +5,7 @@
 package xt
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"path/filepath"
@@ -23,6 +24,7 @@ type Helper interface {
 }
 
 type TB interface {
+	Context() context.Context
 	Run(name string, fn func(t TB))
 	TestReporter
 	Helper
@@ -46,6 +48,8 @@ type Collector struct {
 	logs        []logLine
 	failed      bool
 	mux         sync.Mutex
+	ctx         context.Context
+	cancel      context.CancelFunc
 }
 
 type logLine struct {
@@ -71,6 +75,9 @@ func (t *Collector) setFailed() {
 	t.mux.Lock()
 	defer t.mux.Unlock()
 	t.failed = true
+	if t.cancel != nil {
+		t.cancel()
+	}
 }
 
 func (t *Collector) FailNow() {
@@ -79,11 +86,25 @@ func (t *Collector) FailNow() {
 
 func (t *Collector) Helper() {}
 
+func (t *Collector) Context() context.Context {
+	t.mux.Lock()
+	defer t.mux.Unlock()
+	if t.ctx == nil {
+		t.ctx, t.cancel = context.WithCancel(context.Background())
+	}
+	return t.ctx
+}
+
 func (t *Collector) Run(name string, fn func(t TB)) {
+	ctx, cancel := context.WithCancel(t.Context())
+	
 	t.mux.Lock()
 	nc := &Collector{
 		parentNames: slices.Clone(t.parentNames),
+		ctx:         ctx,
+		cancel:      cancel,
 	}
+
 	rawName := name
 	for i := 1; ; i++ {
 		if slices.Contains(t.peerNames, name) {

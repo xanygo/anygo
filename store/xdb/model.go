@@ -98,7 +98,10 @@ func (m *Model[T]) Clone() *Model[T] {
 		table:   m.table,
 		limit:   m.limit,
 		offset:  m.offset,
-		err:     m.err,
+
+		pk:     slices.Clone(m.pk),
+		schema: m.schema,
+		err:    m.err,
 
 		upsertFields:       slices.Clone(m.upsertFields),
 		upsertIgnoreFields: slices.Clone(m.upsertIgnoreFields),
@@ -421,10 +424,8 @@ func (m *Model[T]) doUpdate(ctx context.Context, v T, where string, args ...any)
 		return 0, errors.New("no update values")
 	}
 
-	where, args, err = m.buildWhere(len(assigns), where, args)
-	if err != nil {
-		return 0, err
-	}
+	where, args = m.buildWhere(len(assigns), where, args)
+
 	if len(where) == 0 || len(args) == 0 {
 		return 0, errors.New("empty where clause")
 	}
@@ -471,11 +472,7 @@ func (m *Model[T]) Delete(ctx context.Context, where string, args ...any) (int64
 	if m.err != nil {
 		return 0, m.err
 	}
-	var err error
-	where, args, err = m.buildWhere(0, where, args)
-	if err != nil {
-		return 0, err
-	}
+	where, args = m.buildWhere(0, where, args)
 	if len(where) == 0 || len(args) == 0 {
 		return 0, errors.New("empty where clause")
 	}
@@ -525,10 +522,8 @@ func (m *Model[T]) First(ctx context.Context, where string, args ...any) (v T, o
 	if m.err != nil {
 		return v, false, m.err
 	}
-	where, args, err = m.buildWhere(0, where, args)
-	if err != nil {
-		return v, false, err
-	}
+	where, args = m.buildWhere(0, where, args)
+
 	field, err := m.getSelectFields()
 	if err != nil {
 		return v, false, err
@@ -614,11 +609,7 @@ func (m *Model[T]) ListIter(ctx context.Context, where string, args ...any) iter
 			return
 		}
 
-		where, args, err = m.buildWhere(0, where, args)
-		if err != nil {
-			yield(zero, err)
-			return
-		}
+		where, args = m.buildWhere(0, where, args)
 
 		sqlStr := fmt.Sprintf(
 			"SELECT %s FROM %s %s",
@@ -648,7 +639,7 @@ func (m *Model[T]) connectWhere(where string) string {
 	return " where " + where
 }
 
-func (m *Model[T]) buildWhere(indexStart int, where string, args []any) (string, []any, error) {
+func (m *Model[T]) buildWhere(indexStart int, where string, args []any) (string, []any) {
 	// 将 ? 替换为方言的占位符，如 $1, $2 ...
 	if m.dialect.BindVar(0) != "?" {
 		var sb strings.Builder
@@ -670,14 +661,11 @@ func (m *Model[T]) buildWhere(indexStart int, where string, args []any) (string,
 			where = strings.ReplaceAll(where, KWRand, dr)
 		}
 	}
-	return where, args, nil
+	return where, args
 }
 
 func (m *Model[T]) Count(ctx context.Context, field string, where string, args ...any) (num int64, err error) {
-	where, args, err = m.buildWhere(0, where, args)
-	if err != nil {
-		return 0, err
-	}
+	where, args = m.buildWhere(0, where, args)
 	if field == "" {
 		field = "*"
 	} else if field != "*" && !strings.ContainsRune(field, ' ') {
@@ -706,10 +694,8 @@ func (m *Model[T]) ListPage(ctx context.Context, page int, size int, where strin
 	if size < 1 {
 		return Pagination{}, nil, fmt.Errorf("invalid size=%d", size)
 	}
-	where, args, err := m.buildWhere(0, where, args)
-	if err != nil {
-		return Pagination{}, nil, err
-	}
+	where, args = m.buildWhere(0, where, args)
+
 	page = max(page, 1) // 最小值为 1
 	total, err := m.doCount(ctx, "*", where, args...)
 	if err != nil {

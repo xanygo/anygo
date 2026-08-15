@@ -326,6 +326,18 @@ func TestPanic(t *testing.T) {
 	})
 }
 
+func TestNoPanic(t *testing.T) {
+	mt := newMyTesting(t)
+	mt.Fail(func(t Testing) {
+		NoPanic(t, func() {
+			panic("ok")
+		})
+	})
+	mt.Success(func(t Testing) {
+		NoPanic(t, func() {})
+	})
+}
+
 func TestHasPrefix(t *testing.T) {
 	type str1 string
 	type str2 []byte

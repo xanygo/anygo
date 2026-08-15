@@ -170,13 +170,21 @@ func TestSchemaUser3(t *testing.T) {
 		xt.Equal(t, sc.Table, "ut3")
 	})
 
-	xt.Panic(t, func() {
+	xt.NoPanic(t, func() {
 		var u *userTable3
 		// 目前不支持这样用
 		dbschema.Schema(dialect.MySQL{}, u)
 	})
 
-	t.Run("case 3 struct ptr", func(t *testing.T) {
+	t.Run("case 3 nil ptr", func(t *testing.T) {
+		var u *userTable3
+		sc, err := dbschema.Schema(dialect.MySQL{}, u)
+		xt.NoError(t, err)
+		xt.Equal(t, sc.Table, "ut3")
+		xt.Equal(t, sc.ColumnNames, []string{"id"})
+	})
+
+	t.Run("case 4 struct ptr", func(t *testing.T) {
 		u := &userTable3{}
 		sc, err := dbschema.Schema(dialect.MySQL{}, u)
 		xt.NoError(t, err)
@@ -198,4 +206,13 @@ func TestSchemaUser4(t *testing.T) {
 	xt.NoError(t, err)
 	xt.Equal(t, sc.Table, "")
 	// todo:check uniq_index
+}
+
+func BenchmarkSchema(b *testing.B) {
+	md := dialect.MySQL{}
+	u := &userTable4{}
+	for i := 0; i < b.N; i++ {
+		_, err := dbschema.Schema(md, u)
+		xt.NoError(b, err)
+	}
 }
