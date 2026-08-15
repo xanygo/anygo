@@ -97,7 +97,7 @@ func (t *Collector) Context() context.Context {
 
 func (t *Collector) Run(name string, fn func(t TB)) {
 	ctx, cancel := context.WithCancel(t.Context())
-	
+
 	t.mux.Lock()
 	nc := &Collector{
 		parentNames: slices.Clone(t.parentNames),

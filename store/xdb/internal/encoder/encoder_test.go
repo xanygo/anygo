@@ -224,6 +224,6 @@ func TestEncoder_Fields(t *testing.T) {
 
 		got, err = enc.Fields(map[string]string{"k1": "v1", "k2": "v2"})
 		xt.NoError(t, err)
-		xt.Equal(t, got, []string{"k1", "k2"})
+		xt.SliceSortEqual(t, got, []string{"k1", "k2"})
 	})
 }
