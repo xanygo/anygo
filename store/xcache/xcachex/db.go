@@ -85,7 +85,7 @@ func (d *Database) Has(ctx context.Context, key string) (bool, error) {
 
 func (d *Database) get(ctx context.Context, key string) (*dbModel, error) {
 	orm := d.orm()
-	orm.SelectFields("e", "v")
+	orm.SetSelectFields("e", "v")
 	value, found, err := orm.First(ctx, "k=?", key)
 	if err != nil {
 		return nil, err
@@ -185,7 +185,7 @@ func (d *Database) MGet(ctx context.Context, keys ...string) (result map[string]
 		return nil, err
 	}
 	orm := d.orm()
-	orm.SelectFields("k", "v", "e").Limit(len(keys))
+	orm.SetSelectFields("k", "v", "e").Limit(len(keys))
 	items, err := orm.List(ctx, where, args...)
 	if err != nil {
 		return nil, err
@@ -231,7 +231,7 @@ func (d *Database) deleteExpired(ctx context.Context, keys ...string) (int64, er
 func (d *Database) ClearExpired(ctx context.Context, limit int, batchNum int) (int64, error) {
 	var deleted int64
 	orm := d.orm()
-	orm.SelectFields("k", "e")
+	orm.SetSelectFields("k", "e")
 	needDelete := limit
 	for needDelete > 0 {
 		select {

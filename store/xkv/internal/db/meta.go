@@ -29,7 +29,7 @@ type MetaModel struct {
 	DataType internal.DataType `db:"dt"`
 	Created  int64             `db:"c"`
 	Updated  int64             `db:"u"`
-	Meta     map[string]any    `db:"meta,codec:json"`
+	Meta     map[string]any    `db:"meta,codec=json"`
 }
 
 func (m MetaModel) incr(field string, dealt int64) (nm MetaModel, num int64) {
@@ -118,7 +118,7 @@ func (m *Meta) WithTx(ctx context.Context, do func(ctx context.Context, tx xdb.T
 
 func (m *Meta) checkWriteType(ctx context.Context, tx xdb.TxCore) error {
 	orm := m.orm(tx)
-	orm.SelectFields("dt")
+	orm.SetSelectFields("dt")
 
 	old, found, err := orm.First(ctx, "k=?", m.KeyHash[:])
 	if err != nil {
@@ -167,7 +167,7 @@ func (m *Meta) loadExists(ctx context.Context, tx xdb.TxCore) (MetaModel, bool, 
 
 func (m *Meta) checkReadType(ctx context.Context, tx xdb.TxCore) (bool, error) {
 	orm := m.orm(tx)
-	orm.SelectFields("dt")
+	orm.SetSelectFields("dt")
 	value, found, err := orm.First(ctx, "k=?", m.KeyHash[:])
 	if err != nil {
 		return false, err

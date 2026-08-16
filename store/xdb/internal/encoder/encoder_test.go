@@ -6,6 +6,7 @@ package encoder_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/xanygo/anygo/store/xdb/dialect"
 	"github.com/xanygo/anygo/store/xdb/internal/encoder"
@@ -18,19 +19,19 @@ type testUser1 struct {
 	Name   string            `db:"name"`
 	Enable bool              `db:"enable"`
 	Score  float64           `db:"score"`
-	IDs1   []int             `db:"ids1,codec:json"`
-	IDs2   []int             `db:"ids2,codec:json"`
+	IDs1   []int             `db:"ids1,codec=json"`
+	IDs2   []int             `db:"ids2,codec=json"`
 	IDs3   []int             // 没有定义 db tag，会被忽略
-	Md1    map[string]any    `db:"md1,codec:json"`
-	Md2    map[string]string `db:"md2,codec:json"`
+	Md1    map[string]any    `db:"md1,codec=json"`
+	Md2    map[string]string `db:"md2,codec=json"`
 
 	Bs1 []byte `db:"bs1"`
 	ID2 *int   `db:"id2"`
 }
 
 type TestUser2 struct {
-	CSV1 []int             `db:"csv1,codec:csv"`
-	MP1  map[string]string `db:"mp1,codec:json"`
+	CSV1 []int             `db:"csv1,codec=csv"`
+	MP1  map[string]string `db:"mp1,codec=json"`
 }
 
 type TestUser21 struct {
@@ -60,8 +61,8 @@ type testUser4 struct {
 var _ = testUser4{skip: "ok"}
 
 type testUser5 struct {
-	CSV1 []int             `db:"csv1,codec:csv"`
-	MP1  map[string]string `db:"mp1,codec:json"`
+	CSV1 []int             `db:"csv1,codec=csv"`
+	MP1  map[string]string `db:"mp1,codec=json"`
 }
 
 type testUser6 struct {
@@ -72,7 +73,14 @@ type testUser6 struct {
 
 var _ = testUser6{skip: "ok"}
 
-func TestEncode(t *testing.T) {
+type testUser7 struct {
+	Name    string    `db:"name"`
+	Leave   time.Time `db:"leave"`
+	Created time.Time `db:"c,auto=Created"`
+	Updated int64     `db:"u,auto=Updated"`
+}
+
+func TestEncodeInsert(t *testing.T) {
 	dz := dialect.MySQL{}
 	t.Run("testUser1", func(t *testing.T) {
 		user1 := &testUser1{
@@ -91,7 +99,7 @@ func TestEncode(t *testing.T) {
 		}
 		// id := 1
 		// user1.ID2 = &id
-		out1, err := encoder.Encode(dz, user1)
+		out1, err := encoder.EncodeInsert(dz, user1)
 		xt.NoError(t, err)
 		t.Logf("out: %#v", out1)
 		xt.NotEmpty(t, out1)
@@ -119,7 +127,7 @@ func TestEncode(t *testing.T) {
 				MP1:  map[string]string{"key1": "value1"},
 			},
 		}
-		out1, err := encoder.Encode(dz, u3)
+		out1, err := encoder.EncodeInsert(dz, u3)
 		xt.NoError(t, err)
 		t.Logf("out: %#v", out1)
 		want := map[string]any{
@@ -138,7 +146,7 @@ func TestEncode(t *testing.T) {
 				MP1:  map[string]string{"key1": "value1"},
 			},
 		}
-		out1, err := encoder.Encode(dz, u3)
+		out1, err := encoder.EncodeInsert(dz, u3)
 		xt.NoError(t, err)
 		t.Logf("out: %#v", out1)
 		want := map[string]any{
@@ -160,7 +168,7 @@ func TestEncode(t *testing.T) {
 				},
 			},
 		}
-		out1, err := encoder.Encode(dz, u22)
+		out1, err := encoder.EncodeInsert(dz, u22)
 		xt.NoError(t, err)
 		t.Logf("out: %#v", out1)
 		want := map[string]any{
@@ -170,6 +178,19 @@ func TestEncode(t *testing.T) {
 			"mp1":  `{"key1":"value1"}`,
 		}
 		xt.Equal(t, out1, want)
+	})
+
+	t.Run("testUser7", func(t *testing.T) {
+		u3 := testUser7{
+			Name: "name",
+		}
+		out1, err := encoder.EncodeInsert(dz, u3)
+		xt.NoError(t, err)
+		t.Logf("out: %#v", out1)
+		xt.Len(t, out1, 3)
+		xt.NotEmpty(t, out1["name"])
+		xt.NotEmpty(t, out1["c"])
+		xt.NotEmpty(t, out1["u"])
 	})
 }
 
@@ -183,7 +204,7 @@ func BenchmarkEncodeStruct(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		encoder.Encode(dialect.MySQL{}, u1)
+		encoder.EncodeInsert(dialect.MySQL{}, u1)
 	}
 }
 

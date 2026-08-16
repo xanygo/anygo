@@ -99,7 +99,7 @@ func (h *Hash) HGet(ctx context.Context, field string) (value string, found bool
 		}
 		orm := xdb.NewMode[HashModel](tx)
 		orm.Table(h.GetTable())
-		orm.SelectFields("v")
+		orm.SetSelectFields("v")
 
 		v, ok, err1 := orm.First(ctx, "k=? and f=?", h.Meta.KeyHash[:], fieldHash[:])
 		if err1 != nil || !ok {
@@ -134,7 +134,7 @@ func (h *Hash) HMGet(ctx context.Context, fields ...string) (result map[string]s
 		}
 		orm := xdb.NewMode[HashModel](tx)
 		orm.Table(h.GetTable())
-		orm.SelectFields("f_raw", "v")
+		orm.SetSelectFields("f_raw", "v")
 
 		items, err1 := orm.List(ctx, where, args...)
 		if err1 != nil {
@@ -153,7 +153,7 @@ func (h *Hash) HMGet(ctx context.Context, fields ...string) (result map[string]s
 func (h *Hash) checkExists(ctx context.Context, orm *xdb.Model[HashModel]) error {
 	orm = orm.Clone().Reset()
 	orm.Table(h.GetTable())
-	orm.SelectFields("c")
+	orm.SetSelectFields("c")
 	_, found, err := orm.First(ctx, "k=?", h.Meta.KeyHash[:])
 	if err != nil {
 		return err
@@ -200,7 +200,7 @@ func (h *Hash) HRange(ctx context.Context, fn func(field string, value string) b
 	return h.Meta.WithReadTx(ctx, func(as context.Context, tx xdb.TxCore, hasMeta bool) error {
 		orm := xdb.NewMode[HashModel](tx)
 		orm.Table(h.GetTable())
-		orm.SelectFields("f_raw", "v")
+		orm.SetSelectFields("f_raw", "v")
 		for item, err1 := range orm.ListIter(ctx, "k=?", h.Meta.KeyHash[:]) {
 			if err1 != nil {
 				return err1
@@ -230,7 +230,7 @@ func (h *Hash) HExists(ctx context.Context, field string) (found bool, err error
 		}
 		orm := xdb.NewMode[HashModel](tx)
 		orm.Table(h.GetTable())
-		orm.SelectFields("c")
+		orm.SetSelectFields("c")
 		_, ok, err1 := orm.First(ctx, "k=? and f=?", h.Meta.KeyHash[:], fieldHash)
 		if ok {
 			found = true
@@ -246,7 +246,7 @@ func (h *Hash) HIncrBy(ctx context.Context, field string, increment int64) (num 
 	err = h.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[HashModel](tx)
 		orm.Table(h.GetTable())
-		orm.SelectFields("v")
+		orm.SetSelectFields("v")
 
 		old, found, err1 := orm.First(ctx, "k=? and f=?", h.Meta.KeyHash[:], fieldHash[:])
 		if err1 != nil {

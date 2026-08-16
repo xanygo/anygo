@@ -11,8 +11,8 @@ import (
 var _ xdb.HasTable = MPK{}
 
 type MPK struct {
-	Class string `db:"c,pk,size:255"`
-	Name  string `db:"name,pk,size:255"` // mssql 需要size 才能正常创建联合主键
+	Class string `db:"c,pk,size=255"`
+	Name  string `db:"name,pk,size=255"` // mssql 需要size 才能正常创建联合主键
 	Note  string `db:"note"`
 }
 

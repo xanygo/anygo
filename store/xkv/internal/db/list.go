@@ -94,7 +94,7 @@ func (l *List) lPopXX(ctx context.Context, orderBy string) (value string, found 
 		}
 		orm := xdb.NewMode[ListModel](tx)
 		orm.Table(l.GetTable())
-		orm.SelectFields("v", "idx")
+		orm.SetSelectFields("v", "idx")
 
 		v, ok, err2 := orm.First(ctx, "k=? order by idx "+orderBy, l.Meta.KeyHash[:])
 		if err2 != nil || !ok {
@@ -127,7 +127,7 @@ func (l *List) lPopNXX(ctx context.Context, count int, orderBy string) (result [
 		}
 		orm := xdb.NewMode[ListModel](tx)
 		orm.Table(l.GetTable())
-		orm.SelectFields("v", "idx").Limit(count)
+		orm.SetSelectFields("v", "idx").Limit(count)
 		items, err2 := orm.List(ctx, "k=? order by idx "+orderBy, l.Meta.KeyHash[:])
 		if err2 != nil || len(items) == 0 {
 			return err2
@@ -165,7 +165,7 @@ func (l *List) RPopN(ctx context.Context, count int) (result []string, err error
 func (l *List) checkExists(ctx context.Context, orm *xdb.Model[ListModel]) error {
 	orm = orm.Clone().Reset()
 	orm.Table(l.GetTable())
-	orm.SelectFields("c")
+	orm.SetSelectFields("c")
 
 	_, found, err := orm.First(ctx, "k=?", l.Meta.KeyHash[:])
 	if err != nil {
@@ -240,7 +240,7 @@ func (l *List) Range(ctx context.Context, fn func(val string) bool) error {
 	err := l.Meta.WithReadTx(ctx, func(as context.Context, tx xdb.TxCore, hasMeta bool) error {
 		orm := xdb.NewMode[ListModel](tx)
 		orm.Table(l.GetTable())
-		orm.SelectFields("v")
+		orm.SetSelectFields("v")
 
 		for item, err1 := range orm.ListIter(ctx, "k=?", l.Meta.KeyHash[:]) {
 			if err1 != nil {
@@ -259,7 +259,7 @@ func (l *List) LRange(ctx context.Context, fn func(val string) bool) error {
 	err := l.Meta.WithReadTx(ctx, func(as context.Context, tx xdb.TxCore, hasMeta bool) error {
 		orm := xdb.NewMode[ListModel](tx)
 		orm.Table(l.GetTable())
-		orm.SelectFields("v")
+		orm.SetSelectFields("v")
 
 		for item, err1 := range orm.ListIter(ctx, "k=? order by idx asc", l.Meta.KeyHash[:]) {
 			if err1 != nil {
@@ -278,7 +278,7 @@ func (l *List) RRange(ctx context.Context, fn func(val string) bool) error {
 	err := l.Meta.WithReadTx(ctx, func(as context.Context, tx xdb.TxCore, hasMeta bool) error {
 		orm := xdb.NewMode[ListModel](tx)
 		orm.Table(l.GetTable())
-		orm.SelectFields("v")
+		orm.SetSelectFields("v")
 
 		for item, err1 := range orm.ListIter(ctx, "k=? order by idx desc", l.Meta.KeyHash[:]) {
 			if err1 != nil {

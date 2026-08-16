@@ -12,13 +12,13 @@ import (
 )
 
 type ZSetModel struct {
-	KeyHash    [32]byte `db:"k,pk,index:idx_k_i"`
+	KeyHash    [32]byte `db:"k,pk,index=idx_k_i"`
 	MemberHash [32]byte `db:"m,pk"`
 
 	KeyRaw    string `db:"k_raw"`
 	MemberRaw string `db:"m_raw"`
 
-	Score   float64 `db:"s,index:idx_k_i"`
+	Score   float64 `db:"s,index=idx_k_i"`
 	Created int64   `db:"c"`
 	Updated int64   `db:"u"`
 }
@@ -72,7 +72,7 @@ func (z *ZSet) ZIncrBy(ctx context.Context, inc float64, member string) (num flo
 	memberHash := KeyHash(member)
 	err = z.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := z.orm(tx)
-		orm.SelectFields("s")
+		orm.SetSelectFields("s")
 
 		item, ok, err1 := orm.First(ctx, "k=? and m=?", z.Meta.KeyHash[:], memberHash[:])
 		if err1 != nil {
@@ -150,7 +150,7 @@ func (z *ZSet) ZScore(ctx context.Context, member string) (score float64, found 
 			return nil
 		}
 		orm := z.orm(tx)
-		orm.SelectFields("s")
+		orm.SetSelectFields("s")
 
 		item, ok, err1 := orm.First(ctx, "k=? and m=?", z.Meta.KeyHash[:], memberHash)
 		if err1 != nil || !ok {
@@ -169,7 +169,7 @@ func (z *ZSet) ZRange(ctx context.Context, fn func(member string, score float64)
 			return nil
 		}
 		orm := z.orm(tx)
-		orm.SelectFields("m_raw", "s")
+		orm.SetSelectFields("m_raw", "s")
 
 		for item, err := range orm.ListIter(ctx, "k=? order by s asc", z.Meta.KeyHash[:]) {
 			if err != nil {
@@ -194,7 +194,7 @@ func (z *ZSet) ZRangeByScore(ctx context.Context, min string, max string, fn fun
 			return nil
 		}
 		orm := z.orm(tx)
-		orm.SelectFields("m_raw", "s")
+		orm.SetSelectFields("m_raw", "s")
 
 		for item, err := range orm.ListIter(ctx, where+" order by s asc", args...) {
 			if err != nil {
@@ -259,7 +259,7 @@ func (z *ZSet) ZRemRangeByScore(ctx context.Context, min, max string) (num int64
 
 // checkExists 检查 key 是否还存在，若不存在，则删除 meta
 func (z *ZSet) checkExists(ctx context.Context, orm *xdb.Model[ZSetModel]) error {
-	orm.SelectFields("c")
+	orm.SetSelectFields("c")
 	_, found, err := orm.First(ctx, "k=?", z.Meta.KeyHash[:])
 	if err != nil || found {
 		return err
@@ -272,7 +272,7 @@ func (z *ZSet) ZRank(ctx context.Context, member string) (index int64, score flo
 	memberHash := keyHashBytes(member)
 	err = z.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := z.orm(tx)
-		orm.SelectFields("s")
+		orm.SetSelectFields("s")
 
 		one, found, err1 := orm.First(ctx, "k=? and m=?", z.Meta.KeyHash[:], memberHash)
 		if err1 != nil || !found {
@@ -299,7 +299,7 @@ func (z *ZSet) popXX(ctx context.Context, count int, orderBy string) (members []
 	}
 	err = z.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := z.orm(tx)
-		orm.SelectFields("s", "m", "m_raw").Limit(count)
+		orm.SetSelectFields("s", "m", "m_raw").Limit(count)
 		values, err1 := orm.List(ctx, "k=? order by s "+orderBy, z.Meta.KeyHash[:])
 		if err1 != nil {
 			return err1

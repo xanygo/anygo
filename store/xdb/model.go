@@ -13,12 +13,15 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/xanygo/anygo/cli/xcolor"
 	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb/dbschema"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 	"github.com/xanygo/anygo/store/xdb/dialect"
 	"github.com/xanygo/anygo/store/xdb/internal/encoder"
+	"github.com/xanygo/anygo/xerror"
 )
 
 // HasTable 给 Model 使用的 struct 可以选择实现该接口，以自动读取数据库表名
@@ -91,17 +94,28 @@ func (m *Model[T]) Reset() *Model[T] {
 	return m
 }
 
+func (m *Model[T]) CloneBase() *Model[T] {
+	return &Model[T]{
+		dialect: m.dialect,
+		client:  m.client,
+		table:   m.table,
+		pk:      slices.Clone(m.pk),
+		schema:  m.schema,
+		err:     m.err,
+	}
+}
+
 func (m *Model[T]) Clone() *Model[T] {
 	return &Model[T]{
 		dialect: m.dialect,
 		client:  m.client,
 		table:   m.table,
-		limit:   m.limit,
-		offset:  m.offset,
+		pk:      slices.Clone(m.pk),
+		schema:  m.schema,
+		err:     m.err,
 
-		pk:     slices.Clone(m.pk),
-		schema: m.schema,
-		err:    m.err,
+		limit:  m.limit,
+		offset: m.offset,
 
 		upsertFields:       slices.Clone(m.upsertFields),
 		upsertIgnoreFields: slices.Clone(m.upsertIgnoreFields),
@@ -111,8 +125,8 @@ func (m *Model[T]) Clone() *Model[T] {
 	}
 }
 
-// SelectFields 设置查询字段列表，设置为空，则查询所有字段
-func (m *Model[T]) SelectFields(fields ...string) *Model[T] {
+// SetSelectFields 设置查询字段列表，设置为空，则查询所有字段
+func (m *Model[T]) SetSelectFields(fields ...string) *Model[T] {
 	if len(fields) == 1 && fields[0] == "*" {
 		m.selectFields = "*"
 	} else if len(fields) == 0 {
@@ -123,8 +137,8 @@ func (m *Model[T]) SelectFields(fields ...string) *Model[T] {
 	return m
 }
 
-// SelectIgnore 设置查询时忽略的字段列表，未设置 SelectFields 时生效
-func (m *Model[T]) SelectIgnore(fields ...string) *Model[T] {
+// SetSelectIgnore 设置查询时忽略的字段列表，未设置 SetSelectFields 时生效
+func (m *Model[T]) SetSelectIgnore(fields ...string) *Model[T] {
 	m.selectIgnoreFields = fields
 	return m
 }
@@ -158,8 +172,8 @@ func (m *Model[T]) getSelectFields() (string, error) {
 	return strings.Join(xslice.MapFunc(fields, m.dialect.QuoteIdentifier), ","), nil
 }
 
-// UpsertFields 设置 insert、update 的字段列表，默认为空时，写入所有字段
-func (m *Model[T]) UpsertFields(fields ...string) *Model[T] {
+// SetUpsertFields 设置 insert、update 的字段列表，默认为空时，写入所有字段
+func (m *Model[T]) SetUpsertFields(fields ...string) *Model[T] {
 	m.upsertFields = fields
 	return m
 }
@@ -169,8 +183,8 @@ func (m *Model[T]) AppendUpsertFields(fields ...string) *Model[T] {
 	return m
 }
 
-// UpsertIgnore 设置 insert 和 update 时候，需要忽略的字段，默认为空
-func (m *Model[T]) UpsertIgnore(fields ...string) *Model[T] {
+// SetUpsertIgnore 设置 insert 和 update 时候，需要忽略的字段，默认为空
+func (m *Model[T]) SetUpsertIgnore(fields ...string) *Model[T] {
 	m.upsertIgnoreFields = fields
 	return m
 }
@@ -410,6 +424,10 @@ func (m *Model[T]) doUpdate(ctx context.Context, v T, where string, args ...any)
 	if err != nil {
 		return 0, err
 	}
+	return m.doUpdateMap(ctx, kv, where, args...)
+}
+
+func (m *Model[T]) doUpdateMap(ctx context.Context, kv map[string]any, where string, args ...any) (int64, error) {
 	cols := xmap.Keys(kv)
 
 	assigns := make([]string, 0, len(cols))
@@ -453,7 +471,7 @@ func (m *Model[T]) doUpdate(ctx context.Context, v T, where string, args ...any)
 //
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 func (m *Model[T]) UpdateByPK(ctx context.Context, v T) (int64, error) {
-	pkData, err := m.getEncoder(encoder.ActionUpdate).PKNameAndValues(v)
+	pkData, err := m.getEncoder(encoder.ActionSelect).PKNameAndValues(v)
 	if err != nil {
 		return 0, err
 	}
@@ -467,7 +485,88 @@ func (m *Model[T]) UpdateByPK(ctx context.Context, v T) (int64, error) {
 	return m1.doUpdate(ctx, v, where, args...)
 }
 
-// Delete 执行 delete 语句
+// Modify 增量更新新一条数据
+// old: 更新前的旧数据
+// update: 更新处理，返回的数据会和 old 做 diff，然后只更新 diff 字段
+func (m *Model[T]) Modify(ctx context.Context, old T, update func(nv T) T, where string, args ...any) (int64, error) {
+	nv := update(zreflect.Clone(old))
+	return m.UpdateDiff(ctx, old, nv, where, args...)
+}
+
+// UpdateDiff 增量更新数据
+func (m *Model[T]) UpdateDiff(ctx context.Context, old T, newValue T, where string, args ...any) (int64, error) {
+	enc := m.getEncoder(encoder.ActionUpdate)
+	diff, err := enc.Diff(newValue, old)
+	if err != nil || len(diff) == 0 {
+		return 0, err
+	}
+	return m.doUpdateMap(ctx, diff, where, args...)
+}
+
+// ModifyFirstByPK 使用主键查找，然后更新数据。若查找不到会返回错误
+// q: 查询条件，主键字段必须有值。若主键字段有多个，但是只给部分字段赋值，可能会导致多条数据被更新
+func (m *Model[T]) ModifyFirstByPK(ctx context.Context, q T, update func(nv T) T) (int64, error) {
+	m1 := m.CloneBase()
+	where, args, err := m1.pkWhereArgs(q, encoder.ActionSelect)
+	xcolor.Red("Dump %s", zreflect.DumpString(args))
+	if err != nil {
+		return 0, err
+	}
+
+	old, found, err := m1.First(ctx, where, args...)
+	if err != nil {
+		return 0, err
+	}
+	if !found {
+		return 0, xerror.NotFound
+	}
+	return m1.Modify(ctx, old, update, where, args...)
+}
+
+// ModifyFirst 查找数据然后更新，若查找不到会返回错误
+//
+// 注意：若 where 条件返回多条，会查询第一条数据，并以此位基础更新所有数据
+func (m *Model[T]) ModifyFirst(ctx context.Context, update func(nv T) T, where string, args ...any) (int64, error) {
+	m1 := m.CloneBase()
+	old, found, err := m1.First(ctx, where, args...)
+	if err != nil {
+		return 0, err
+	}
+	if !found {
+		return 0, xerror.NotFound
+	}
+	return m1.Modify(ctx, old, update, where, args...)
+}
+
+// ModifyEach 逐条更新满足条件的每一条数据。
+//
+// 数据 T 需要定义主键
+func (m *Model[T]) ModifyEach(ctx context.Context, update func(nv T) (T, bool), where string, args ...any) (int64, error) {
+	m1 := m.CloneBase()
+	var num int64
+	for item, err := range m1.ListIter(ctx, where, args...) {
+		if err != nil {
+			return num, err
+		}
+		where1, args1, err1 := m1.pkWhereArgs(item, encoder.ActionSelect)
+		if err1 != nil {
+			return num, err1
+		}
+		newValue, ok := update(item)
+		if !ok {
+			break
+		}
+		n, err2 := m.UpdateDiff(ctx, item, newValue, where1, args1...)
+		if err2 != nil {
+			return num, err2
+		}
+		num += n
+	}
+
+	return num, nil
+}
+
+// Delete 执行 delete 语句 （不受 Limit offset 影响）
 func (m *Model[T]) Delete(ctx context.Context, where string, args ...any) (int64, error) {
 	if m.err != nil {
 		return 0, m.err
@@ -496,11 +595,7 @@ func (m *Model[T]) Delete(ctx context.Context, where string, args ...any) (int64
 //
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 func (m *Model[T]) DeleteByPK(ctx context.Context, v T) (int64, error) {
-	pkData, err := m.getEncoder(encoder.ActionDelete).PKNameAndValues(v)
-	if err != nil {
-		return 0, err
-	}
-	where, args, err := m.mapWhere(pkData)
+	where, args, err := m.pkWhereArgs(v, encoder.ActionSelect)
 	if err != nil {
 		return 0, err
 	}
@@ -508,6 +603,9 @@ func (m *Model[T]) DeleteByPK(ctx context.Context, v T) (int64, error) {
 }
 
 func (m *Model[T]) mapWhere(data map[string]any) (string, []any, error) {
+	if len(data) == 0 {
+		return "", nil, errors.New("no primary key")
+	}
 	cond := &Condition{}
 	for key, value := range data {
 		cond.And(m.dialect.QuoteIdentifier(key)+"=?", value)
@@ -515,9 +613,49 @@ func (m *Model[T]) mapWhere(data map[string]any) (string, []any, error) {
 	return cond.Build()
 }
 
+func (m *Model[T]) pkWhereArgs(q T, action encoder.Action) (string, []any, error) {
+	pkData, err := m.getEncoder(action).PKNameAndValues(q)
+	if err != nil {
+		return "", nil, err
+	}
+	return m.mapWhere(pkData)
+}
+
+func (m *Model[T]) connectWhere(where string) string {
+	if where == "" {
+		return ""
+	}
+	return " where " + where
+}
+
+func (m *Model[T]) buildWhere(indexStart int, where string, args []any) (string, []any) {
+	// 将 ? 替换为方言的占位符，如 $1, $2 ...
+	if m.dialect.BindVar(0) != "?" {
+		var sb strings.Builder
+		idx := 1
+		for i := 0; i < len(where); i++ {
+			if where[i] == '?' {
+				sb.WriteString(m.dialect.BindVar(indexStart + idx))
+				idx++
+			} else {
+				sb.WriteByte(where[i])
+			}
+		}
+		where = sb.String()
+	}
+
+	// 将条件中的 RAND() 换成方言
+	if strings.Contains(where, KWRand) {
+		if dr := m.dialect.RandomOrder(); dr != KWRand {
+			where = strings.ReplaceAll(where, KWRand, dr)
+		}
+	}
+	return where, args
+}
+
 // First 使用 select xx from table where xxx limit 1 查询满足条件的第一条数据
 //
-// 可通过 SelectFields、SelectIgnore 限制查询返回的字段
+// 可通过 SetSelectFields、SetSelectIgnore 限制查询返回的字段
 func (m *Model[T]) First(ctx context.Context, where string, args ...any) (v T, ok bool, err error) {
 	if m.err != nil {
 		return v, false, m.err
@@ -560,13 +698,9 @@ func (m *Model[T]) whereLimitOffset(where string, limit int, offset int) string 
 //
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 //
-//	可通过 SelectFields、SelectIgnore 限制查询返回的字段
+//	可通过 SetSelectFields、SetSelectIgnore 限制查询返回的字段
 func (m *Model[T]) FindByPK(ctx context.Context, v T) (nv T, ok bool, err error) {
-	pkData, err := m.getEncoder(encoder.ActionSelect).PKNameAndValues(v)
-	if err != nil {
-		return nv, false, err
-	}
-	where, args, err := m.mapWhere(pkData)
+	where, args, err := m.pkWhereArgs(v, encoder.ActionSelect)
 	if err != nil {
 		return nv, false, err
 	}
@@ -576,7 +710,7 @@ func (m *Model[T]) FindByPK(ctx context.Context, v T) (nv T, ok bool, err error)
 // List 查询并返回满足条件的数据。
 //
 //	可以使用 Limit(xxx).Offset(xxx) 限制返回条数和偏移量
-//	可通过 SelectFields、SelectIgnore 限制查询返回的字段
+//	可通过 SetSelectFields、SetSelectIgnore 限制查询返回的字段
 func (m *Model[T]) List(ctx context.Context, where string, args ...any) ([]T, error) {
 	if m.err != nil {
 		return nil, m.err
@@ -594,7 +728,7 @@ func (m *Model[T]) List(ctx context.Context, where string, args ...any) ([]T, er
 // ListIter 查询满足条件的数据并返回一个迭代器。数据是流式从数据库返回的。
 //
 //	可以使用 Limit(xxx).Offset(xxx) 限制返回条数和偏移量
-//	可通过 SelectFields、SelectIgnore 限制查询返回的字段
+//	可通过 SetSelectFields、SetSelectIgnore 限制查询返回的字段
 func (m *Model[T]) ListIter(ctx context.Context, where string, args ...any) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
 		var zero T
@@ -632,38 +766,6 @@ func (m *Model[T]) ListIter(ctx context.Context, where string, args ...any) iter
 	}
 }
 
-func (m *Model[T]) connectWhere(where string) string {
-	if where == "" {
-		return ""
-	}
-	return " where " + where
-}
-
-func (m *Model[T]) buildWhere(indexStart int, where string, args []any) (string, []any) {
-	// 将 ? 替换为方言的占位符，如 $1, $2 ...
-	if m.dialect.BindVar(0) != "?" {
-		var sb strings.Builder
-		idx := 1
-		for i := 0; i < len(where); i++ {
-			if where[i] == '?' {
-				sb.WriteString(m.dialect.BindVar(indexStart + idx))
-				idx++
-			} else {
-				sb.WriteByte(where[i])
-			}
-		}
-		where = sb.String()
-	}
-
-	// 将条件中的 RAND() 换成方言
-	if strings.Contains(where, KWRand) {
-		if dr := m.dialect.RandomOrder(); dr != KWRand {
-			where = strings.ReplaceAll(where, KWRand, dr)
-		}
-	}
-	return where, args
-}
-
 func (m *Model[T]) Count(ctx context.Context, field string, where string, args ...any) (num int64, err error) {
 	where, args = m.buildWhere(0, where, args)
 	if field == "" {
@@ -689,7 +791,7 @@ func (m *Model[T]) doCount(ctx context.Context, field string, where string, args
 
 // ListPage 分页查询，适应于数据量不太大的场景
 //
-//	可通过 SelectFields、SelectIgnore 限制查询返回的字段
+//	可通过 SetSelectFields、SetSelectIgnore 限制查询返回的字段
 func (m *Model[T]) ListPage(ctx context.Context, page int, size int, where string, args ...any) (Pagination, []PageRecord[T], error) {
 	if size < 1 {
 		return Pagination{}, nil, fmt.Errorf("invalid size=%d", size)

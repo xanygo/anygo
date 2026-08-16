@@ -18,11 +18,11 @@ type testUser1 struct {
 	Name   string            `db:"name"`
 	Enable bool              `db:"enable"`
 	Score  float64           `db:"score"`
-	IDs1   []int             `db:"ids1,codec:json"`
-	IDs2   []int             `db:"ids2,codec:json"`
+	IDs1   []int             `db:"ids1,codec=json"`
+	IDs2   []int             `db:"ids2,codec=json"`
 	IDs3   []int             // 没有定义 db tag，会被忽略
-	Md1    map[string]any    `db:"md1,codec:json"`
-	Md2    map[string]string `db:"md2,codec:json"`
+	Md1    map[string]any    `db:"md1,codec=json"`
+	Md2    map[string]string `db:"md2,codec=json"`
 
 	Bs1 []byte `db:"bs1"`
 	ID2 *int   `db:"id2"`
@@ -31,8 +31,8 @@ type testUser1 struct {
 var _ = &testUser1{sid: 1}
 
 type TestUser2 struct {
-	CSV1 []int             `db:"csv1,codec:csv"`
-	MP1  map[string]string `db:"mp1,codec:json"`
+	CSV1 []int             `db:"csv1,codec=csv"`
+	MP1  map[string]string `db:"mp1,codec=json"`
 }
 
 type TestUser21 struct {
@@ -62,8 +62,8 @@ type testUser4 struct {
 var _ = testUser4{skip: "ok"}
 
 type testUser5 struct {
-	CSV1 []int             `db:"csv1,codec:csv"`
-	MP1  map[string]string `db:"mp1,codec:json"`
+	CSV1 []int             `db:"csv1,codec=csv"`
+	MP1  map[string]string `db:"mp1,codec=json"`
 }
 
 type testUser6 struct {

@@ -18,16 +18,16 @@ var _ xdb.HasTable = User{}
 type User struct {
 	ID           uint64    `db:"id,pk,auto_inc"`
 	Email        string    // 不添加 db 标签
-	Username     string    `db:"username,unique_index,size:200"`
+	Username     string    `db:"username,unique_index,size=200"`
 	Password     string    `db:"password,not-null"`
 	Status       Status    `db:"status,not-null"`
-	RegisterTime time.Time `db:"register_time,codec:date_time,default:fn|CURRENT_TIMESTAMP"`
+	RegisterTime time.Time `db:"register_time,codec=date_time,default=fn|CURRENT_TIMESTAMP"`
 	Idx          *int64    `db:"idx,not-null"`
-	Scores       []int     `db:"scores,codec:auto_json"`
+	Scores       []int     `db:"scores,codec=auto_json"`
 	Enable       bool      `db:"enable,not-null"`
 	a            int
 	UserEmb1
-	JS1 *UserJS1 `db:"js1,not-null,codec:json"`
+	JS1 *UserJS1 `db:"js1,not-null,codec=json"`
 }
 
 type UserEmb1 struct {
@@ -97,4 +97,19 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 	cnt, err = orm.Upsert(ctx, []string{"username"}, []string{"register_time"}, u3)
 	xt.NoError(t, err)
 	xt.Equal(t, cnt, 1)
+
+	t.Run("ModifyFirstByPK", func(t *testing.T) {
+		num, err := orm.ModifyFirstByPK(ctx, u2, func(nv User) User {
+			return nv
+		})
+		xt.NoError(t, err)
+		xt.Equal(t, num, 0)
+
+		num, err = orm.ModifyFirstByPK(ctx, u2, func(nv User) User {
+			nv.Username = "user-3000"
+			return nv
+		})
+		xt.NoError(t, err)
+		xt.Equal(t, num, 1)
+	})
 }

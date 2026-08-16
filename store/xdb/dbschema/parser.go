@@ -18,17 +18,22 @@ import (
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
-// Schema 传入一个 struct，获取其 db schema 定义
+// Schema 传入一个 struct，获取其 db schema 定义.
+//
+// schema 的 tag 字段来自于：
+//  1. 若 obj 有实现 type xxx interface{  XDBTag()string  }
+//  2. 使用  TagName()，默认值为 "db"
 func Schema(fy dbtype.Dialect, obj any) (*dbtype.TableSchema, error) {
-	return (schemaParser{dialect: fy}).Parser(obj)
-}
-
-type hasTable interface {
-	TableName() string
+	tn := zreflect.CallStringMethod(obj, "XDBTag")
+	if tn == "" {
+		tn = TagName()
+	}
+	return (schemaParser{dialect: fy, tagName: tn}).Parser(obj)
 }
 
 type schemaParser struct {
 	dialect dbtype.Dialect
+	tagName string // 在 struct 里定义的 db 的 tag 名称
 }
 
 func (sp schemaParser) Parser(obj any) (*dbtype.TableSchema, error) {
@@ -46,19 +51,7 @@ func (sp schemaParser) Parser(obj any) (*dbtype.TableSchema, error) {
 		if cv.Err != nil {
 			return cv
 		}
-		var table string
-		if ht, ok := obj.(hasTable); ok {
-			table = ht.TableName()
-		}
-		if table == "" && !isPtr {
-			rv := reflect.ValueOf(obj)
-			ptr := reflect.New(rv.Type())
-			ptr.Elem().Set(rv)
-			if ht, ok := ptr.Interface().(hasTable); ok {
-				table = ht.TableName()
-			}
-		}
-		cv.Schema.Table = table
+		cv.Schema.Table = zreflect.CallStringMethod(obj, "TableName")
 		return cv
 	})
 	if value.Err != nil {
@@ -95,7 +88,6 @@ func (sp schemaParser) getSchema(rt reflect.Type) (*dbtype.TableSchema, error) {
 
 	var scan func(reflect.Type) error
 
-	tn := TagName()
 	scan = func(rt reflect.Type) error {
 		err := zreflect.RangeStructFields(rt, func(field reflect.StructField) error {
 			// embed 类型的，详见 testUser3、testUser4
@@ -114,7 +106,7 @@ func (sp schemaParser) getSchema(rt reflect.Type) (*dbtype.TableSchema, error) {
 				return nil
 			}
 
-			tag := xstruct.ParserTagCached(field.Tag, tn)
+			tag := xstruct.ParserTagCached(field.Tag, sp.tagName)
 			name := tag.Name()
 			if name == "-" || name == "" {
 				return nil
@@ -141,15 +133,15 @@ func (sp schemaParser) getSchema(rt reflect.Type) (*dbtype.TableSchema, error) {
 func (sp schemaParser) parserField(f reflect.StructField, tag xstruct.Tag) (dbtype.ColumnSchema, error) {
 	ft := f.Type
 	field := dbtype.ColumnSchema{
-		ReflectType: ft,
-
+		ReflectType:   ft,
 		Name:          tag.Name(),
 		AutoIncrement: TagHasAutoInc(tag),
 		IsPrimaryKey:  TagHasPrimaryKey(tag),
-		NotNull:       tag.Has(TagNotNull),
+		NotNull:       tag.Has(TagNotNull) || !tag.Has(TagNull),
 		Unique:        TagHasUnique(tag),
 		Native:        tag.Value(TagNative),
 		Kind:          dbtype.Kind(tag.Value(TagType)),
+		Auto:          tag.Value(TagAuto),
 	}
 
 	if field.Kind != "" && !field.Kind.IsOK() {

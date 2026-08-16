@@ -99,7 +99,7 @@ func (s *Set) SRem(ctx context.Context, members ...string) error {
 func (s *Set) checkExists(ctx context.Context, orm *xdb.Model[SetModel]) error {
 	orm = orm.Clone().Reset()
 	orm.Table(s.GetTable())
-	orm.SelectFields("c")
+	orm.SetSelectFields("c")
 	_, found, err := orm.First(ctx, "k=?", s.Meta.KeyHash[:])
 	if err != nil {
 		return err
@@ -114,7 +114,7 @@ func (s *Set) SRange(ctx context.Context, fn func(member string) bool) error {
 	return s.Meta.WithReadTx(ctx, func(as context.Context, tx xdb.TxCore, hasMeta bool) error {
 		orm := xdb.NewMode[SetModel](tx)
 		orm.Table(s.GetTable())
-		orm.SelectFields("m_raw")
+		orm.SetSelectFields("m_raw")
 		for item, err1 := range orm.ListIter(ctx, "k=? order by c asc", s.Meta.KeyHash[:]) {
 			if err1 != nil {
 				return err1
@@ -158,7 +158,7 @@ func (s *Set) SIsMember(ctx context.Context, member string) (ok bool, err error)
 		}
 		orm := xdb.NewMode[SetModel](tx)
 		orm.Table(s.GetTable())
-		orm.SelectFields("c")
+		orm.SetSelectFields("c")
 		_, found, err1 := orm.First(ctx, "k=? and m=?", s.Meta.KeyHash[:], memberHash[:])
 		if err1 == nil {
 			ok = found
@@ -183,7 +183,7 @@ func (s *Set) SMIsMember(ctx context.Context, members []string) (oks []bool, err
 		}
 		orm := xdb.NewMode[SetModel](tx)
 		orm.Table(s.GetTable())
-		orm.SelectFields("m_raw")
+		orm.SetSelectFields("m_raw")
 
 		cond := xdb.Condition{}
 		cond.And("k=?", s.Meta.KeyHash[:])
@@ -221,7 +221,7 @@ func (s *Set) SPop(ctx context.Context) (v string, found bool, err error) {
 		if total < 1 {
 			return nil
 		}
-		orm.Limit(1).Offset(rand.IntN(int(total))).SelectFields("m", "m_raw")
+		orm.Limit(1).Offset(rand.IntN(int(total))).SetSelectFields("m", "m_raw")
 		rows, err2 := orm.List(ctx, "k=?", s.Meta.KeyHash[:])
 		if err2 != nil || len(rows) == 0 {
 			return err2
@@ -255,7 +255,7 @@ func (s *Set) SPopN(ctx context.Context, count int) (result []string, err error)
 		if total < 1 {
 			return nil
 		}
-		orm.Limit(count).SelectFields("m", "m_raw")
+		orm.Limit(count).SetSelectFields("m", "m_raw")
 		rows, err2 := orm.List(ctx, "k=? ORDER BY X:RAND()", s.Meta.KeyHash[:])
 		if err2 != nil || len(rows) == 0 {
 			return err2
@@ -296,7 +296,7 @@ func (s *Set) SRandMember(ctx context.Context) (v string, found bool, err error)
 		if total < 1 {
 			return nil
 		}
-		orm.Limit(1).Offset(rand.IntN(int(total))).SelectFields("m_raw")
+		orm.Limit(1).Offset(rand.IntN(int(total))).SetSelectFields("m_raw")
 		rows, err2 := orm.List(ctx, "k=?", s.Meta.KeyHash[:])
 		if err2 != nil || len(rows) == 0 {
 			return err2
@@ -325,7 +325,7 @@ func (s *Set) SRandMemberN(ctx context.Context, count int) (result []string, err
 		if total < 1 {
 			return nil
 		}
-		orm.Limit(count).SelectFields("m_raw")
+		orm.Limit(count).SetSelectFields("m_raw")
 		rows, err2 := orm.List(ctx, "k=? ORDER BY X:RAND()", s.Meta.KeyHash[:])
 		if err2 != nil || len(rows) == 0 {
 			return err2

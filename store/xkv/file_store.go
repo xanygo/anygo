@@ -62,7 +62,8 @@ func (f *FileStore) doCompact() {
 	zos.GlobalLock()
 	defer zos.GlobalUnlock()
 
-	deleted, err := xfs.RemoveEmptyDir(f.DataDir)
+	expire := time.Now().Add(-5 * time.Minute)
+	deleted, err := xfs.RemoveEmptyDir(f.DataDir, expire)
 	if err != nil {
 		xlog.Warn(context.Background(), "anygo_xkv_FileStorage_gc", xlog.ErrorAttr("error", err))
 	} else {

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/ds/xstruct"
@@ -16,23 +17,20 @@ import (
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
-type Action uint8
-
-const (
-	ActionUnset Action = iota
-	ActionInsert
-	ActionUpdate
-	ActionUpsert
-	ActionDelete
-	ActionSelect
-	ActionOther
-)
-
 type Encoder[T any] struct {
 	Action       Action
 	Dialect      dbtype.Dialect // 方言，必填
 	OnlyFields   []string       // 当不为空时，输出结果的 key 只限定此列表中的
 	IgnoreFields []string       // 当不为空时，输出结果的 key 限定不能是此列表中的
+}
+
+func (e Encoder[T]) WithAction(action Action) Encoder[T] {
+	return Encoder[T]{
+		Action:       action,
+		Dialect:      e.Dialect,
+		OnlyFields:   e.OnlyFields,
+		IgnoreFields: e.IgnoreFields,
+	}
 }
 
 func (e Encoder[T]) Encode(data T) (map[string]any, error) {
@@ -78,6 +76,27 @@ func (e Encoder[T]) EncodeBatch(items ...T) ([]map[string]any, error) {
 	return result, nil
 }
 
+// Diff 得到 newValue 和 oldValue 中值不一样的字段和值
+func (e Encoder[T]) Diff(newValue T, oldValue T) (map[string]any, error) {
+	data1, err1 := e.Encode(newValue)
+	if err1 != nil {
+		return nil, err1
+	}
+	// 使用 ActionSelect，确保 oldValue 的 Created 和 Updated 等字段不会被自动更新并编码
+	data2, err2 := e.WithAction(ActionSelect).Encode(oldValue)
+	if err2 != nil {
+		return nil, err2
+	}
+	diff := make(map[string]any, len(data1))
+	for k1, v1 := range data1 {
+		v2, ok := data2[k1]
+		if !ok || !reflect.DeepEqual(v1, v2) {
+			diff[k1] = v1
+		}
+	}
+	return diff, nil
+}
+
 // encodeStruct 处理 struct
 func (e Encoder[T]) encodeStruct(v reflect.Value, schema *dbtype.TableSchema) (map[string]any, error) {
 	result := make(map[string]any, len(e.OnlyFields))
@@ -94,6 +113,9 @@ func (e Encoder[T]) encodeStruct(v reflect.Value, schema *dbtype.TableSchema) (m
 		}
 		encodedVal, err := e.encodeStructFieldValue(fs, value.Interface())
 		if err != nil {
+			if errors.Is(err, errSkip) {
+				return nil
+			}
 			return fmt.Errorf("encode field %q: %w", field.Name, err)
 		}
 		result[name] = encodedVal
@@ -228,8 +250,28 @@ func (e Encoder[T]) Fields(data T) ([]string, error) {
 	return result, nil
 }
 
+var errSkip = errors.New("skip")
+
 // encodeStructFieldValue 对单个字段根据类型和 serializer 转换
 func (e Encoder[T]) encodeStructFieldValue(schema dbtype.ColumnSchema, val any) (any, error) {
+	if schema.Auto != "" {
+		if e.Action.IsInsert() {
+			if nv, ok := insertAutoFns.do(schema, val); ok {
+				val = nv
+			} else if nv, ok = updateAutoFns.do(schema, val); ok {
+				val = nv
+			}
+		} else if e.Action.IsUpdate() {
+			if nv, ok := updateAutoFns.do(schema, val); ok {
+				val = nv
+			}
+		}
+	}
+
+	if tm, ok := val.(time.Time); ok && tm.IsZero() {
+		return nil, errSkip
+	}
+
 	rv := reflect.ValueOf(val)
 	if !rv.IsValid() {
 		return nil, fmt.Errorf("invalid value: %v", val)

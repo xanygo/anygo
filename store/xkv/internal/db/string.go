@@ -96,7 +96,7 @@ func (d *String) Get(ctx context.Context) (val string, ok bool, err error) {
 		}
 		orm := xdb.NewMode[StringModel](tx)
 		orm.Table(d.GetTable())
-		orm.SelectFields("v")
+		orm.SetSelectFields("v")
 		value, found, err1 := orm.First(ctx, "k=?", d.Meta.KeyHash[:])
 		if err1 != nil {
 			return err1
@@ -118,7 +118,7 @@ func (d *String) GetDel(ctx context.Context) (val string, ok bool, err error) {
 		}
 		orm := xdb.NewMode[StringModel](tx)
 		orm.Table(d.GetTable())
-		orm.SelectFields("v")
+		orm.SetSelectFields("v")
 		value, found, err2 := orm.First(ctx, "k=?", d.Meta.KeyHash[:])
 		if err2 != nil || !found {
 			return err2
@@ -136,7 +136,7 @@ func (d *String) GetSet(ctx context.Context, value string) (old string, ok bool,
 	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[StringModel](tx)
 		orm.Table(d.GetTable())
-		orm.SelectFields("v")
+		orm.SetSelectFields("v")
 		item, found, err2 := orm.First(ctx, "k=?", d.Meta.KeyHash[:])
 		if err2 != nil {
 			return err2
@@ -171,7 +171,7 @@ func (d *String) IncrBy(ctx context.Context, incr int64) (num int64, err error) 
 	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[StringModel](tx)
 		orm.Table(d.GetTable())
-		orm.SelectFields("v")
+		orm.SetSelectFields("v")
 		val, found, err1 := orm.First(ctx, "k=?", d.Meta.KeyHash[:])
 		if err1 != nil {
 			return err1
@@ -208,7 +208,7 @@ func (d *String) IncrByFloat(ctx context.Context, incr float64) (num float64, er
 	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
 		orm := xdb.NewMode[StringModel](tx)
 		orm.Table(d.GetTable())
-		orm.SelectFields("v")
+		orm.SetSelectFields("v")
 		val, found, err1 := orm.First(ctx, "k=?", d.Meta.KeyHash[:])
 		if err1 != nil {
 			return err1

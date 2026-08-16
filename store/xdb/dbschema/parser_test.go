@@ -23,6 +23,7 @@ var testUser1Cols = []dbtype.ColumnSchema{
 		Kind:          dbtype.KindUint64,
 		AutoIncrement: true,
 		Codec:         dbcodec.Native{},
+		NotNull:       true,
 	},
 	{
 		Name:    "name",
@@ -37,23 +38,25 @@ var testUser1Cols = []dbtype.ColumnSchema{
 		Codec: dbcodec.CSV{},
 	},
 	{
-		Name:  "attrs",
-		Kind:  dbtype.KindJSON,
-		Codec: dbcodec.JSON{},
+		Name:    "attrs",
+		Kind:    dbtype.KindJSON,
+		NotNull: true,
+		Codec:   dbcodec.JSON{},
 	},
 	{
-		Name:  "sign",
-		Kind:  dbtype.KindBinary,
-		Codec: dbcodec.Binary{},
-		Size:  32,
+		Name:    "sign",
+		Kind:    dbtype.KindBinary,
+		NotNull: true,
+		Codec:   dbcodec.Binary{},
+		Size:    32,
 	},
 }
 
 type User1 struct {
 	ID    uint64            `db:"id,pk,auto_inc"`
 	Name  string            `db:"name,not-null,unique"`
-	Roles []int             `db:"roles,codec:csv"`
-	Attrs map[string]string `db:"attrs,codec:json"`
+	Roles []int             `db:"roles,codec=csv,null"`
+	Attrs map[string]string `db:"attrs,codec=json"`
 	Sign  [32]byte          `db:"sign"`
 }
 
@@ -97,9 +100,10 @@ type Admin1 struct {
 func TestSchemaAdmin1(t *testing.T) {
 	cols := slices.Clone(testUser1Cols)
 	cols = append(cols, dbtype.ColumnSchema{
-		Name:  "class",
-		Kind:  dbtype.KindString,
-		Codec: dbcodec.Text{},
+		Name:    "class",
+		Kind:    dbtype.KindString,
+		NotNull: true,
+		Codec:   dbcodec.Text{},
 	})
 	check := func(t *testing.T, sc *dbtype.TableSchema) {
 		xt.Empty(t, sc.Table)

@@ -79,7 +79,7 @@ func ParserTag(str string) Tag {
 		if t.values == nil {
 			t.values = make(map[string]string)
 		}
-		st := strings.SplitN(value, ":", 2)
+		st := strings.SplitN(value, "=", 2)
 		switch len(st) {
 		case 2:
 			t.values[strings.TrimSpace(st[0])] = strings.TrimSpace(st[1])

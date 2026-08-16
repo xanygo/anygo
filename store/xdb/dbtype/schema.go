@@ -42,7 +42,7 @@ func (ts *TableSchema) PKColumns() []ColumnSchema {
 }
 
 type ColumnSchema struct {
-	Name          string              // 字段名
+	Name          string              // 数据库字段名
 	IsPrimaryKey  bool                // 是否主键
 	AutoIncrement bool                // 自增长
 	Kind          Kind                // 数据类型
@@ -54,7 +54,9 @@ type ColumnSchema struct {
 	Codec         Codec               // 字段编解码器
 	Native        string              // 数据库原生类型
 	Default       *DefaultValueSchema // 默认值
-	ReflectType   reflect.Type        // struct 中字段的类型
+	Auto          string              // 编码数据是自动化处理规则，可选值如，created，updated
+
+	ReflectType reflect.Type // struct 中字段的类型
 }
 
 func (scf *ColumnSchema) String() string {

@@ -9,20 +9,32 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"time"
 )
 
-// RemoveEmptyDir 查找并删除空目录
-func RemoveEmptyDir(root string) (int, error) {
+// RemoveEmptyDir 查找并删除 ModTime 在 expire 之前的空目录
+func RemoveEmptyDir(root string, expire time.Time) (int, error) {
 	emptyDirs := make(map[string]bool, 10)
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if path == root {
-			return nil
+		if path == root || err != nil {
+			return err
 		}
 		parent := filepath.Dir(path)
 		delete(emptyDirs, parent)
-
 		if d.IsDir() {
-			emptyDirs[path] = true
+			if expire.IsZero() {
+				emptyDirs[path] = true
+				return nil
+			}
+
+			info, err1 := d.Info()
+			if err1 != nil {
+				return err1
+			}
+			if info.ModTime().Before(expire) {
+				emptyDirs[path] = true
+			}
+
 			return nil
 		}
 		return nil

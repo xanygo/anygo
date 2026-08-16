@@ -53,6 +53,9 @@ const (
 	// TagNotNull 数据库里该字段定义添加 NOT NULL 属性
 	TagNotNull = "not-null"
 
+	// TagNull 数据库里该字段定义添加不添加 NOT NULL 属性
+	TagNull = "null"
+
 	// TagNative 数据库原生的类型定义
 	TagNative = "native"
 
@@ -65,6 +68,8 @@ const (
 	// 3.默认值为字符串：“name,default:string|hello”
 	// 4.默认值为数据库函数：“name,default:fn|CURRENT_TIMESTAMP”
 	TagDefault = "default" // 默认值
+
+	TagAuto = "auto"
 )
 
 func TagHasAutoInc(tag xstruct.Tag) bool {
