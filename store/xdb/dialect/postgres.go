@@ -266,6 +266,21 @@ func (d Postgres) ColumnString(fs dbtype.ColumnSchema) string {
 		default:
 			panic(fmt.Sprintf("unknown default value type: %v", dv.Type))
 		}
+	} else if fs.NotNull && !fs.AutoIncrement {
+		if baseType == "JSONB" || strings.HasSuffix(baseType, "]") {
+			sb.WriteString(" DEFAULT '{}'")
+		} else if strings.HasPrefix(baseType, "VARCHAR") {
+			sb.WriteString(" DEFAULT ''")
+		} else {
+			switch baseType {
+			case "BYTEA", "TEXT":
+				sb.WriteString(" DEFAULT ''")
+			case "BIGINT", "INTEGER", "SMALLINT", "REAL", "DOUBLE PRECISION":
+				sb.WriteString(" DEFAULT 0")
+			case "BOOLEAN":
+				sb.WriteString(" DEFAULT false")
+			}
+		}
 	}
 	return sb.String()
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb/dbschema"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
+	"github.com/xanygo/anygo/xerror"
 )
 
 type Encoder[T any] struct {
@@ -113,7 +114,7 @@ func (e Encoder[T]) encodeStruct(v reflect.Value, schema *dbtype.TableSchema) (m
 		}
 		encodedVal, err := e.encodeStructFieldValue(fs, value.Interface())
 		if err != nil {
-			if errors.Is(err, errSkip) {
+			if errors.Is(err, xerror.SkipOne) {
 				return nil
 			}
 			return fmt.Errorf("encode field %q: %w", field.Name, err)
@@ -250,8 +251,6 @@ func (e Encoder[T]) Fields(data T) ([]string, error) {
 	return result, nil
 }
 
-var errSkip = errors.New("skip")
-
 // encodeStructFieldValue 对单个字段根据类型和 serializer 转换
 func (e Encoder[T]) encodeStructFieldValue(schema dbtype.ColumnSchema, val any) (any, error) {
 	if schema.Auto != "" {
@@ -269,17 +268,23 @@ func (e Encoder[T]) encodeStructFieldValue(schema dbtype.ColumnSchema, val any) 
 	}
 
 	if tm, ok := val.(time.Time); ok && tm.IsZero() {
-		return nil, errSkip
+		return nil, xerror.SkipOne
 	}
 
 	rv := reflect.ValueOf(val)
 	if !rv.IsValid() {
 		return nil, fmt.Errorf("invalid value: %v", val)
 	}
+	// 依据 schema.NotNull 对 *nil ptr 的处理规则：
+	// 若是 insert：NotNull==true，将 nil 转换为空值
+	// 若是 update：NotNull==true，值为 nil 则忽略
 
 	// 处理指针
 	if rv.Kind() == reflect.Pointer {
 		if rv.IsNil() {
+			if e.Action.IsInsertOrUpdate() && schema.NotNull {
+				return nil, xerror.SkipOne
+			}
 			rv = reflect.New(rv.Type().Elem()).Elem()
 			val = rv.Interface()
 		} else {
@@ -287,6 +292,11 @@ func (e Encoder[T]) encodeStructFieldValue(schema dbtype.ColumnSchema, val any) 
 			val = rv.Interface()
 		}
 	}
+
+	if e.Action.IsInsertOrUpdate() && schema.NotNull && rv.Kind() == reflect.Slice && rv.IsNil() {
+		return nil, xerror.SkipOne
+	}
+
 	// 类型的判断处理应该有 schema parser 处理好，传入正确的 Codec 即可
 	if schema.Codec != nil {
 		return schema.Codec.Encode(val)

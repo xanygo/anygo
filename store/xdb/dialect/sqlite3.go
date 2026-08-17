@@ -196,6 +196,13 @@ func (d SQLite3) ColumnString(fs dbtype.ColumnSchema) string {
 		default:
 			panic(fmt.Sprintf("unknown default value type: %v", dv.Type))
 		}
+	} else if fs.NotNull && !fs.AutoIncrement {
+		switch baseType {
+		case "TEXT", "BLOB":
+			sb.WriteString(" DEFAULT ''")
+		case "INTEGER", "REAL":
+			sb.WriteString(" DEFAULT 0")
+		}
 	}
 
 	return sb.String()

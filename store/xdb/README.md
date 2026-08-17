@@ -27,7 +27,7 @@ type User struct {
   Updated  time.Time `db:"update_time,auto=Updated"` // 该条数据更新时间
 }
 
-// "not-null" 可以不写，是默认的，若允许 NULL，可以添加 "null" 属性
+
 
 type Admin struct {
   User           // 支持 Embed 类型
@@ -39,6 +39,7 @@ func (a Admin) TableName() string {
 }
 
 ```
+
 ### 自动赋值字段
 1. tag 定义的 `auto`值为 `Created`、`CreatedUnix`（是 `Created` 的别名）、`CreatedNano` 的字段被认为是数据的创建字段，当类型是 `time.Time` 或者 `int64` 类型的时候：
 ```
@@ -97,6 +98,9 @@ func (a Admin) TableName() string {
 | null         | 允许存储 NULL，Migrate 时使用                      |                         |
 | default      | 默认值，Migrate 时使用                            | 详见下文                    |
 
+
+#### not-null/null
+// "not-null" 可以不写，是默认的，若允许 NULL，可以添加 "null" 属性
 
 #### index/uniqueIndex
 index 示例： 

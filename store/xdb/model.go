@@ -13,7 +13,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/xanygo/anygo/cli/xcolor"
 	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/internal/zreflect"
@@ -508,7 +507,6 @@ func (m *Model[T]) UpdateDiff(ctx context.Context, old T, newValue T, where stri
 func (m *Model[T]) ModifyFirstByPK(ctx context.Context, q T, update func(nv T) T) (int64, error) {
 	m1 := m.CloneBase()
 	where, args, err := m1.pkWhereArgs(q, encoder.ActionSelect)
-	xcolor.Red("Dump %s", zreflect.DumpString(args))
 	if err != nil {
 		return 0, err
 	}

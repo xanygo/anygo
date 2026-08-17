@@ -27,7 +27,7 @@ type User struct {
 	Enable       bool      `db:"enable,not-null"`
 	a            int
 	UserEmb1
-	JS1 *UserJS1 `db:"js1,not-null,codec=json"`
+	JS1 *UserJS1 `db:"js1,codec=json"`
 }
 
 type UserEmb1 struct {
@@ -54,9 +54,11 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 	xt.NoError(t, err)
 
 	orm := xdb.NewMode[User](client)
+	num := int64(1)
 	u := User{
 		Password:     "demo",
 		Username:     "user1",
+		Idx:          &num,
 		RegisterTime: time.Now(),
 		Scores:       []int{1, 2, 3},
 		a:            123,

@@ -269,6 +269,12 @@ func (d SQLServer) ColumnString(fs dbtype.ColumnSchema) string {
 		default:
 			panic(fmt.Sprintf("unknown default value type: %v", dv.Type))
 		}
+	} else if fs.NotNull && !fs.AutoIncrement {
+		if strings.HasSuffix(baseType, "INT") || baseType == "REAL" || baseType == "FLOAT" {
+			sb.WriteString(" DEFAULT 0")
+		} else if strings.HasPrefix(baseType, "NVARCHAR") || strings.HasPrefix(baseType, "VARBINARY") {
+			sb.WriteString(" DEFAULT ''")
+		}
 	}
 	return sb.String()
 }

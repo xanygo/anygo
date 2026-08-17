@@ -22,6 +22,7 @@ const (
 	CodeInvalidParam
 	CodeDuplicateKey
 	CodeClosed
+	CodeSkip
 )
 
 var (
@@ -30,6 +31,7 @@ var (
 	AlreadyExist = NewCodeError(CodeAlreadyExist, "already exists")        // 错误：已存在
 	InvalidParam = NewCodeError(CodeInvalidParam, "invalid param")         // 错误：无效的请求参数
 	DuplicateKey = NewCodeError(CodeDuplicateKey, "duplicate primary key") // 错误：重复的主键
+	SkipOne      = NewCodeError(CodeSkip, "skip one")                      // 跳过当前数据
 )
 
 // IsNotFound 判断是否资源不存在错误

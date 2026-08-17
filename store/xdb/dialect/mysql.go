@@ -165,7 +165,7 @@ func (MySQL) ColumnKindType(kind dbtype.Kind, size int) string {
 		}
 		return "BLOB"
 	case dbtype.KindJSON:
-		return "LONGTEXT"
+		return "TEXT"
 	case dbtype.KindDate:
 		return "DATE"
 	case dbtype.KindDateTime:
@@ -223,6 +223,18 @@ func (d MySQL) ColumnString(fs dbtype.ColumnSchema) string {
 		default:
 			panic(fmt.Sprintf("unknown default value type: %v", dv.Type))
 		}
+	} else if fs.NotNull && !fs.AutoIncrement {
+		if baseType == "FLOAT" ||
+			baseType == "DOUBLE" ||
+			strings.HasPrefix(baseType, "TINYINT") ||
+			strings.HasSuffix(baseType, "INT") ||
+			strings.HasSuffix(baseType, "UNSIGNED") {
+			sb.WriteString(" DEFAULT 0")
+		} else if baseType == "TEXT" || baseType == "LONGTEXT" || strings.HasPrefix(baseType, "VARCHAR") {
+			sb.WriteString(" DEFAULT ''")
+		} else {
+		}
+
 	}
 	return sb.String()
 }
