@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"time"
 
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/ds/xstruct"
@@ -265,10 +264,6 @@ func (e Encoder[T]) encodeStructFieldValue(schema dbtype.ColumnSchema, val any) 
 				val = nv
 			}
 		}
-	}
-
-	if tm, ok := val.(time.Time); ok && tm.IsZero() {
-		return nil, xerror.SkipOne
 	}
 
 	rv := reflect.ValueOf(val)

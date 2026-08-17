@@ -75,7 +75,8 @@ var _ = testUser6{skip: "ok"}
 
 type testUser7 struct {
 	Name    string    `db:"name"`
-	Leave   time.Time `db:"leave"`
+	Number  int64     `db:"number,auto=Incr"`
+	Leave   time.Time `db:"leave,auto=Now"`
 	Created time.Time `db:"c,auto=Created"`
 	Updated int64     `db:"u,auto=Updated"`
 }
@@ -185,10 +186,13 @@ func TestEncodeInsert(t *testing.T) {
 		out1, err := encoder.EncodeInsert(dz, u3)
 		xt.NoError(t, err)
 		t.Logf("out: %#v", out1)
-		xt.Len(t, out1, 3)
+		xt.Len(t, out1, 5)
 		xt.NotEmpty(t, out1["name"])
-		xt.NotEmpty(t, out1["c"])
+		date := time.Now().Format("2006-01-02")
+		xt.HasPrefix(t, out1["c"].(string), date)
 		xt.NotEmpty(t, out1["u"])
+		xt.Equal[any](t, out1["number"], int64(1))    // Incr
+		xt.HasPrefix(t, out1["leave"].(string), date) // Now
 	})
 }
 

@@ -259,7 +259,10 @@ func (d Postgres) ColumnString(fs dbtype.ColumnSchema) string {
 	if dv := fs.Default; dv != nil {
 		sb.WriteString(" DEFAULT ")
 		switch dv.Type {
-		case dbtype.DefaultValueTypeNumber, dbtype.DefaultValueTypeFn:
+		case dbtype.DefaultValueTypeNumber:
+			sb.WriteString(dv.Value)
+		case dbtype.DefaultValueTypeFn:
+			// pgx 内置支持 CURRENT_DATE (2026-08-08),CURRENT_TIMESTAMP (2026-08-08 08:08:08)
 			sb.WriteString(dv.Value)
 		case dbtype.DefaultValueTypeString:
 			sb.WriteString(d.QuoteIdentifier(fs.Default.Value))

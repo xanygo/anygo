@@ -48,7 +48,7 @@ func (a Admin) TableName() string {
 ```
 在 insert 的时候，若值为零值，则自动赋值当前时间。
 
-| auto 值      | 字段类型      | 赋值                    |
+| auto 值      | 支持的字段类型   | 赋值                    |
 |-------------|-----------|-----------------------|
 | Created     | time.Time | time.Now()            |
 | Created     | int64     | time.Now().Unix()     |
@@ -64,12 +64,14 @@ func (a Admin) TableName() string {
 ```
 在 insert 或者 update 的时候，自动赋值当前时间。
 
-| auto 值      | 字段类型      | 赋值                    |
-|-------------|-----------|-----------------------|
-| Updated     | time.Time | time.Now()            |
-| Updated     | int64     | time.Now().Unix()     |
-| UpdatedNano | time.Time | time.Now()            |
-| UpdatedNano | int64     | time.Now().UnixNano() |
+| auto 值      | 支持的字段类型                          | 赋值                    |
+|-------------|----------------------------------|-----------------------|
+| Updated     | time.Time                        | time.Now()            |
+| Updated     | int64                            | time.Now().Unix()     |
+| UpdatedNano | time.Time                        | time.Now()            |
+| UpdatedNano | int64                            | time.Now().UnixNano() |
+| Now         | time.Time                        | time.Now()            |
+| Incr        | int/int64/uint64/float64/float32 | value + 1             |
 
 ### Tag
   默认的 tag 名称为 `db`，可以使用 `SetTagName` 方法修改。
@@ -100,7 +102,9 @@ func (a Admin) TableName() string {
 
 
 #### not-null/null
-// "not-null" 可以不写，是默认的，若允许 NULL，可以添加 "null" 属性
+数据库是否允许存储 NULL 值。
+
+`not-null` 可以不写，是默认的，若允许 `NULL`，可以添加 `null` 属性。
 
 #### index/uniqueIndex
 index 示例： 
@@ -114,14 +118,23 @@ uniqueIndex 示例：
   3. unique_index=idx_uniq_uid_class,1    -> 创建联合索引，索引名称为 idx_uniq_uid_class，此字段在索引中排序为 1
 
 #### default
-格式为 `default:[[fn|string|number]|]value`。只在 Migrate 时使用，Encode 时不会使用
+格式为 `default=[[fn|string|number]|]value`。只在 Migrate 时使用，Encode 时不会使用。
+若是字段为 NOT-NULL, 即使没有设置 `default` tag, 在 Migrate 生成 table schema 时，也会自动生成对于类型的默认值。
 
 示例：
   1. 默认值为空字符串：“name,default”
   2. 默认值为数字：“name,default=number|123”
   3. 默认值为字符串：“name,default=string|hello”
-  4. 默认值为数据库函数：“name,default=fn|CURRENT_TIMESTAMP”
+  4. 默认值为数据库函数：“name,default=fn|XXX”
 
+`default=fn|XXX` 的函数示例：
+
+| Fn                | 说明      | Go 类型     | 数据库中的值              |
+|-------------------|---------|-----------|---------------------| 
+| CURRENT_DATE      | 当前日期    | time.Time | 2026-08-08          |
+| CURRENT_TIMESTAMP | 当前日期+时间 | time.Time | 2026-08-08 08:08:08 |
+
+默认值 `CURRENT_DATE` 和 `CURRENT_TIMESTAMP` 会转换为数据库支持的方言，除此之外其他的值会直接传给数据库。
 
 #### native
 设置数据库中字段类型使用数据库原生类型，如 `native:varchar(32)`
@@ -129,15 +142,18 @@ uniqueIndex 示例：
 ### codec 参数
 数据编解码的方式：
 
-| 名称         | 说明                                             | 输出示例                  |
-|------------|------------------------------------------------|-----------------------|
-| csv        | csv 格式，支持 string、number、bool 类型的 slice 或 array | `a,b,c`               |
-| json       | JSON 格式， 可用于 slice、array 、struct、map 类型的字段     | `25`                  |
-| auto_json  | 需要数据库方言来判断类型，若方言判断不出来，则默认使用 json 编解码           |                       |
-| text       | 编码为字符串                                         | `alice@example.com`   |
-| date       | 可用于 time.Time 类型的字段                            | `2025-11-11 13:00:00` |
-| date_time  | 可用于 time.Time 类型的字段                            | `2025-11-11 13:00:00` |
-| timespan   | 可用于 time.Time 类型的字段,数据库中存储的 int 类型的值           | `1234567890`          |
+| 名称           | 说明                                                                | 输出示例                  |
+|--------------|-------------------------------------------------------------------|-----------------------|
+| csv          | csv 格式，支持 string、number、bool 类型的 slice 或 array                    | `a,b,c`               |
+| json         | JSON 格式， 可用于 slice、array 、struct、map 类型的字段                        | `25`                  |
+| auto_json    | 需要数据库方言来判断类型，若方言判断不出来，则默认使用 json 编解码                              |                       |
+| text         | 编码为字符串                                                            | `alice@example.com`   |
+| date         | 可用于 time.Time 类型的字段，数据库中存储日期                                      | `2025-11-11`          |
+| date_time    | 可用于 time.Time 类型的字段，数据库中存储日期+时间                                   | `2025-11-11 13:00:00` |
+| timespan     | 可用于 time.Time 类型的字段，数据库中存储的 bigint 类型的值(秒：time.Time.Unix())       | `1234567890`          |
+| milliseconds | 可用于 time.Time 类型的字段，数据库中存储的 bigint 类型的值(毫秒：time.Time.UnixMilli()) | `1786931063369`       |
+| microseconds | 可用于 time.Time 类型的字段，数据库中存储的 bigint 类型的值(微秒：time.Time.UnixMicro()) | `1786931063369864`    |
+| nanoseconds  | 可用于 time.Time 类型的字段，数据库中存储的 bigint 类型的值(纳秒：time.Time.UnixNano())  | `1786931063369864300` |
 
 通过 codec 参数指定复杂类型在编码为 SQL 语句时的序列化方式，以及从数据库中读取出来后反序列化的方式。
 除了上述内置的 codec，还可以通过 dbcodec.Register 注册自定义的 codec。

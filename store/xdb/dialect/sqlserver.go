@@ -262,8 +262,17 @@ func (d SQLServer) ColumnString(fs dbtype.ColumnSchema) string {
 	if dv := fs.Default; dv != nil {
 		sb.WriteString(" DEFAULT ")
 		switch dv.Type {
-		case dbtype.DefaultValueTypeNumber, dbtype.DefaultValueTypeFn:
+		case dbtype.DefaultValueTypeNumber:
 			sb.WriteString(dv.Value)
+		case dbtype.DefaultValueTypeFn:
+			switch dv.Value {
+			case dbtype.CurrentDate: // 2026-08-08
+				sb.WriteString("CAST(GETDATE() AS date)")
+			case dbtype.CurrentTimestamp: // 2026-08-08 08:08:08
+				sb.WriteString("SYSDATETIME()") // 用 datetime2 类型存储
+			default:
+				sb.WriteString(dv.Value)
+			}
 		case dbtype.DefaultValueTypeString:
 			sb.WriteString(d.QuoteIdentifier(fs.Default.Value))
 		default:

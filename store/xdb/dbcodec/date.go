@@ -14,6 +14,7 @@ import (
 var _ dbtype.Codec = (*Date)(nil)
 var _ dbtype.HasKind = (*Date)(nil)
 
+// Date 日期格式，可用于 time.Time 类型，输出格式为 "2025-10-10"
 type Date struct{}
 
 func (t Date) Kind() dbtype.Kind {
@@ -28,9 +29,6 @@ func (t Date) Encode(a any) (any, error) {
 	tm, ok := a.(time.Time)
 	if !ok {
 		return nil, fmt.Errorf("expect time.Time but got %T", a)
-	}
-	if tm.IsZero() {
-		return nil, nil
 	}
 	return tm.Format("2006"), nil
 }

@@ -50,6 +50,9 @@ func init() {
 	Register(Date{})
 	Register(DateTime{})
 	Register(TimeSpan{})
+	Register(Milliseconds{})
+	Register(Microseconds{})
+	Register(Nanoseconds{})
 
 	// 文本格式相关的：
 	Register(CSV{})

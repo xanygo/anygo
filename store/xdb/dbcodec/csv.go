@@ -12,6 +12,7 @@ import (
 var _ dbtype.Codec = (*CSV)(nil)
 var _ dbtype.HasKind = (*CSV)(nil)
 
+// CSV 可用于 []number 类型的数据的编解码
 type CSV struct {
 }
 

@@ -15,6 +15,7 @@ import (
 var _ dbtype.Codec = (*TimeSpan)(nil)
 var _ dbtype.HasKind = (*TimeSpan)(nil)
 
+// TimeSpan 用于 time.Time 类型的数据，将时间编码为 time.Time.Unix()
 type TimeSpan struct{}
 
 func (t TimeSpan) Kind() dbtype.Kind {
@@ -29,9 +30,6 @@ func (t TimeSpan) Encode(a any) (any, error) {
 	tm, ok := a.(time.Time)
 	if !ok {
 		return nil, fmt.Errorf("expect time.Time but got %T", a)
-	}
-	if tm.IsZero() {
-		return nil, nil
 	}
 	return tm.Unix(), nil
 }

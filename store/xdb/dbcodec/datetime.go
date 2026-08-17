@@ -14,6 +14,7 @@ import (
 var _ dbtype.Codec = (*DateTime)(nil)
 var _ dbtype.HasKind = (*DateTime)(nil)
 
+// DateTime 不包含时区的日期时间格式，可用于 time.Time 类型，输出格式为 "2025-10-10 10:10:10"
 type DateTime struct{}
 
 func (t DateTime) Kind() dbtype.Kind {
@@ -28,9 +29,6 @@ func (t DateTime) Encode(a any) (any, error) {
 	tm, ok := a.(time.Time)
 	if !ok {
 		return nil, fmt.Errorf("expect time.Time but got %T", a)
-	}
-	if tm.IsZero() {
-		return nil, nil
 	}
 	return tm.Format(time.DateTime), nil
 }

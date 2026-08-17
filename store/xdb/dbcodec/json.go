@@ -12,8 +12,8 @@ import (
 var _ dbtype.Codec = (*JSON)(nil)
 var _ dbtype.HasKind = (*JSON)(nil)
 
-type JSON struct {
-}
+// JSON 格式，可用于 slice、array、map、struct ,*struct 类型的字段,输出为 JSON 字符串
+type JSON struct{}
 
 func (j JSON) Kind() dbtype.Kind {
 	return dbtype.KindJSON
