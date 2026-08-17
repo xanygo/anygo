@@ -69,7 +69,9 @@ const (
 	// 4.默认值为数据库函数：“name,default:fn|CURRENT_TIMESTAMP”
 	TagDefault = "default" // 默认值
 
-	TagAuto = "auto"
+	TagAuto = "auto" // 用于数据写入 Model 的 Encoder 自动化处理逻辑
+
+	TagGroup = "group" // 分组标签
 )
 
 func TagHasAutoInc(tag xstruct.Tag) bool {

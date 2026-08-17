@@ -30,6 +30,19 @@ func TestRangeStructFields(t *testing.T) {
 		xt.Equal(t, zreflect.StructMetaCache.Count(), 1)
 	})
 
+	zreflect.StructMetaCache.Clear()
+	t.Run("structMeta-ptr-ptr", func(t *testing.T) {
+		t1 := reflect.TypeFor[**structMeta]()
+		var names []string
+		err := zreflect.RangeStructFields(t1, func(f reflect.StructField) error {
+			names = append(names, f.Name)
+			return nil
+		})
+		xt.NoError(t, err)
+		xt.Equal(t, names, []string{"Fields"})
+		xt.Equal(t, zreflect.StructMetaCache.Count(), 1)
+	})
+
 	t.Run("structMeta", func(t *testing.T) {
 		t1 := reflect.TypeFor[structMeta]()
 		var names []string
@@ -60,6 +73,19 @@ func TestRangeStructFields(t *testing.T) {
 		xt.SliceSortEqual(t, []string{"Name", "Class", "age"}, names)
 
 		xt.Equal(t, zreflect.StructMetaCache.Count(), 3)
+	})
+
+	t.Run("invalid-type", func(t *testing.T) {
+		t1 := reflect.TypeOf("hello")
+		var names []string
+		err := zreflect.RangeStructFields(t1, func(f reflect.StructField) error {
+			names = append(names, f.Name)
+			return nil
+		})
+		xt.Error(t, err)
+		xt.Empty(t, names)
+
+		xt.Equal(t, zreflect.StructMetaCache.Count(), 4)
 	})
 }
 

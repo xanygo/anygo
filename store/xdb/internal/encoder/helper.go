@@ -1,12 +1,17 @@
 package encoder
 
 import (
+	"github.com/xanygo/anygo/store/xdb/dbschema"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
-// EncodeInsert 将结构体或 map 转成 map[string]any，用于 SQL insert
+// EncodeInsert 将结构体转成 map[string]any，用于 SQL insert
 func EncodeInsert[T any](fy dbtype.Dialect, data T, cols ...string) (map[string]any, error) {
-	return Encoder[T]{Dialect: fy, Action: ActionInsert, OnlyFields: cols}.Encode(data)
+	schema, err := dbschema.Schema(fy, data)
+	if err != nil {
+		return nil, err
+	}
+	return Encoder[T]{Dialect: fy, Action: ActionInsert, OnlyFields: cols, Schema: schema}.Encode(data)
 }
 
 // func EncodeBatch[T any](fy dbtype.Dialect, items []T, fields ...string) ([]map[string]any, error) {

@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/xanygo/anygo/ds/xstr"
 	"github.com/xanygo/anygo/ds/xstruct"
 	"github.com/xanygo/anygo/internal/zcache"
 	"github.com/xanygo/anygo/internal/zreflect"
@@ -38,27 +39,24 @@ type schemaParser struct {
 
 func (sp schemaParser) Parser(obj any) (*dbtype.TableSchema, error) {
 	rt := reflect.TypeOf(obj)
-	isPtr := rt.Kind() == reflect.Pointer
-	if isPtr {
-		rt = rt.Elem()
-	}
-	if rt.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("dbschema: invalid type %T, should struct or *struct", obj)
-	}
 
 	value := schemaCache.Get2(schemaCacheKey{Type: rt, Dialect: sp.dialect.Name()}, func(key schemaCacheKey) *schemaCacheValue {
-		cv := sp.getSchemaCacheValue(key)
-		if cv.Err != nil {
-			return cv
-		}
-		cv.Schema.Table = zreflect.CallStringMethod(obj, "TableName")
-		return cv
+		return sp.parserFromCache(key, obj)
 	})
 	if value.Err != nil {
 		return nil, value.Err
 	}
 	sc := value.Schema
 	return &sc, nil
+}
+
+func (sp schemaParser) parserFromCache(key schemaCacheKey, obj any) *schemaCacheValue {
+	cv := sp.getSchemaCacheValue(key)
+	if cv.Err != nil {
+		return cv
+	}
+	cv.Schema.Table = zreflect.CallStringMethod(obj, "TableName")
+	return cv
 }
 
 type schemaCacheKey struct {
@@ -83,7 +81,16 @@ func (sp schemaParser) getSchemaCacheValue(key schemaCacheKey) *schemaCacheValue
 
 func (sp schemaParser) getSchema(rt reflect.Type) (*dbtype.TableSchema, error) {
 	sc := &dbtype.TableSchema{
+		TagName:     sp.tagName,
 		Name2Column: make(map[string]dbtype.ColumnSchema),
+	}
+
+	raw := rt
+	for rt.Kind() == reflect.Pointer {
+		rt = rt.Elem()
+	}
+	if rt.Kind() != reflect.Struct {
+		return sc, fmt.Errorf("dbschema: invalid type %T, should struct or *struct", raw.String())
 	}
 
 	var scan func(reflect.Type) error
@@ -142,6 +149,7 @@ func (sp schemaParser) parserField(f reflect.StructField, tag xstruct.Tag) (dbty
 		Native:        tag.Value(TagNative),
 		Kind:          dbtype.Kind(tag.Value(TagType)),
 		Auto:          tag.Value(TagAuto),
+		Group:         xstr.ToStrings(tag.Value(TagGroup), ","),
 	}
 
 	if field.Kind != "" && !field.Kind.IsOK() {

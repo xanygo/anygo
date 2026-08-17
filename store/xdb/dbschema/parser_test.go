@@ -24,6 +24,7 @@ var testUser1Cols = []dbtype.ColumnSchema{
 		AutoIncrement: true,
 		Codec:         dbcodec.Native{},
 		NotNull:       true,
+		Group:         []string{},
 	},
 	{
 		Name:    "name",
@@ -31,17 +32,20 @@ var testUser1Cols = []dbtype.ColumnSchema{
 		NotNull: true,
 		Unique:  true,
 		Codec:   dbcodec.Text{},
+		Group:   []string{"a"},
 	},
 	{
 		Name:  "roles",
 		Kind:  dbtype.KindString,
 		Codec: dbcodec.CSV{},
+		Group: []string{},
 	},
 	{
 		Name:    "attrs",
 		Kind:    dbtype.KindJSON,
 		NotNull: true,
 		Codec:   dbcodec.JSON{},
+		Group:   []string{},
 	},
 	{
 		Name:    "sign",
@@ -49,12 +53,13 @@ var testUser1Cols = []dbtype.ColumnSchema{
 		NotNull: true,
 		Codec:   dbcodec.Binary{},
 		Size:    32,
+		Group:   []string{},
 	},
 }
 
 type User1 struct {
 	ID    uint64            `db:"id,pk,auto_inc"`
-	Name  string            `db:"name,not-null,unique"`
+	Name  string            `db:"name,not-null,unique,group=a"`
 	Roles []int             `db:"roles,codec=csv,null"`
 	Attrs map[string]string `db:"attrs,codec=json"`
 	Sign  [32]byte          `db:"sign"`
@@ -104,6 +109,7 @@ func TestSchemaAdmin1(t *testing.T) {
 		Kind:    dbtype.KindString,
 		NotNull: true,
 		Codec:   dbcodec.Text{},
+		Group:   []string{},
 	})
 	check := func(t *testing.T, sc *dbtype.TableSchema) {
 		xt.Empty(t, sc.Table)

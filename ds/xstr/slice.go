@@ -5,13 +5,17 @@
 package xstr
 
 import (
+	"errors"
 	"strconv"
 	"strings"
+
+	"github.com/xanygo/anygo/xerror"
 )
 
 // ToSliceFunc 将字符串使用 sep 拆分，并使用 fn 对每个子串解析，返回解析后的内容
 //
-//	使用 sep 拆分后的子串会先 trim space，若子串为空则会跳过
+//	sep: 分隔符，使用 sep 拆分后的子串会先 trim space，若子串为空则会跳过
+//	fn：回调方法，若返回的 err 是 xerror.SkipOne 则会跳过这条。否则终止并报错。
 func ToSliceFunc[T any](str string, sep string, fn func(sub string) (T, error)) ([]T, error) {
 	arr := strings.Split(str, sep)
 	result := make([]T, 0, len(arr))
@@ -20,11 +24,14 @@ func ToSliceFunc[T any](str string, sep string, fn func(sub string) (T, error)) 
 		if v == "" {
 			continue
 		}
-		num, err := fn(v)
+		value, err := fn(v)
 		if err != nil {
+			if errors.Is(err, xerror.SkipOne) {
+				continue
+			}
 			return nil, err
 		}
-		result = append(result, num)
+		result = append(result, value)
 	}
 	return result, nil
 }

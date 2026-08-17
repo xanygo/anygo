@@ -17,15 +17,19 @@ import (
 	"github.com/xanygo/anygo/xerror"
 )
 
+// Encoder 将数据 T 编码为 可以直接用于 sql 语句的值
+// T 应该是 struct 或者 *struct
 type Encoder[T any] struct {
-	Action       Action
-	Dialect      dbtype.Dialect // 方言，必填
-	OnlyFields   []string       // 当不为空时，输出结果的 key 只限定此列表中的
-	IgnoreFields []string       // 当不为空时，输出结果的 key 限定不能是此列表中的
+	Schema       *dbtype.TableSchema // 必填
+	Action       Action              // 必填
+	Dialect      dbtype.Dialect      // 方言，必填
+	OnlyFields   []string            // 当不为空时，输出结果的 key 只限定此列表中的
+	IgnoreFields []string            // 当不为空时，输出结果的 key 限定不能是此列表中的
 }
 
 func (e Encoder[T]) WithAction(action Action) Encoder[T] {
 	return Encoder[T]{
+		Schema:       e.Schema,
 		Action:       action,
 		Dialect:      e.Dialect,
 		OnlyFields:   e.OnlyFields,
@@ -33,6 +37,7 @@ func (e Encoder[T]) WithAction(action Action) Encoder[T] {
 	}
 }
 
+// Encode 将 struct 或者 *struct 编码为数据
 func (e Encoder[T]) Encode(data T) (map[string]any, error) {
 	v := reflect.ValueOf(data)
 	if !v.IsValid() {
@@ -40,25 +45,16 @@ func (e Encoder[T]) Encode(data T) (map[string]any, error) {
 	}
 
 	// 支持指针类型
-	if v.Kind() == reflect.Pointer {
+	for v.Kind() == reflect.Pointer {
 		if v.IsNil() {
 			return nil, fmt.Errorf("nil pointer: %#v", data)
 		}
 		v = v.Elem()
 	}
-
-	switch v.Kind() {
-	case reflect.Struct:
-		schema, err := dbschema.Schema(e.Dialect, data)
-		if err != nil {
-			return nil, err
-		}
-		return e.encodeStruct(v, schema)
-	case reflect.Map:
-		return e.encodeMap(v)
-	default:
-		return nil, fmt.Errorf("unsupported type %T", data)
+	if v.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("invalid value: %#v, expect struct", data)
 	}
+	return e.encodeStruct(v)
 }
 
 func (e Encoder[T]) EncodeBatch(items ...T) ([]map[string]any, error) {
@@ -98,10 +94,10 @@ func (e Encoder[T]) Diff(newValue T, oldValue T) (map[string]any, error) {
 }
 
 // encodeStruct 处理 struct
-func (e Encoder[T]) encodeStruct(v reflect.Value, schema *dbtype.TableSchema) (map[string]any, error) {
+func (e Encoder[T]) encodeStruct(v reflect.Value) (map[string]any, error) {
 	result := make(map[string]any, len(e.OnlyFields))
 	err := e.withStruct(v, func(name string, tag xstruct.Tag, field reflect.StructField, value reflect.Value) error {
-		fs, err := schema.ColumnByName(name)
+		fs, err := e.Schema.ColumnByName(name)
 		if err != nil {
 			return err
 		}
@@ -140,7 +136,6 @@ func (e Encoder[T]) withStruct(v reflect.Value, fn func(name string, tag xstruct
 	keys := make(map[string]struct{}, len(e.OnlyFields))
 	fieldsLimit := e.sliceToMapTrue(e.OnlyFields)
 	fieldsIgnore := e.sliceToMapTrue(e.IgnoreFields)
-	tn := dbschema.TagName()
 	err := zreflect.RangeStructFields(v.Type(), func(field reflect.StructField) error {
 		// embed 类型的，详见 testUser3、testUser4
 		if field.Anonymous {
@@ -162,7 +157,7 @@ func (e Encoder[T]) withStruct(v reflect.Value, fn func(name string, tag xstruct
 			return nil
 		}
 
-		tag := xstruct.ParserTagCached(field.Tag, tn)
+		tag := xstruct.ParserTagCached(field.Tag, e.Schema.TagName)
 		name := tag.Name()
 		if name == "-" || name == "" {
 			return nil
@@ -188,66 +183,6 @@ func (e Encoder[T]) withStruct(v reflect.Value, fn func(name string, tag xstruct
 		return nil
 	})
 	return err
-}
-
-// encodeMap 处理 map[string]any
-func (e Encoder[T]) encodeMap(v reflect.Value) (map[string]any, error) {
-	fieldsLimit := e.sliceToMapTrue(e.OnlyFields)
-	fieldsIgnore := e.sliceToMapTrue(e.IgnoreFields)
-	result := make(map[string]any)
-	for _, k := range v.MapKeys() {
-		val := v.MapIndex(k).Interface()
-		if k.Kind() != reflect.String {
-			return nil, fmt.Errorf("key %#v is not a string", val)
-		}
-		key := k.String()
-		if len(fieldsLimit) > 0 && !fieldsLimit[key] {
-			continue
-		}
-		if len(fieldsIgnore) > 0 && fieldsIgnore[key] {
-			continue
-		}
-		result[key] = val
-	}
-	return result, nil
-}
-
-// Fields 获取 data 的字段列表（未过滤的）。
-//
-//  1. 当类型是 struct 或者 *struct 的时候，返回所有有效的 db tag 的字段
-//  2. 当类型是 map[string]any 时，返回 map keys, nil
-//  3. 其他类型，返回 error
-func (e Encoder[T]) Fields(data T) ([]string, error) {
-	sc, _ := dbschema.Schema(e.Dialect, data)
-	if sc != nil {
-		return sc.ColumnNames, nil
-	}
-
-	v := reflect.ValueOf(data)
-	if !v.IsValid() {
-		return nil, fmt.Errorf("encoder.Fields with invalid value: %#v", v)
-	}
-
-	// 支持指针类型
-	if v.Kind() == reflect.Pointer {
-		if v.IsNil() {
-			return nil, fmt.Errorf("encoder.Fields with nil pointer: %#v", data)
-		}
-		v = v.Elem()
-	}
-	if v.Kind() != reflect.Map {
-		return nil, fmt.Errorf("encoder.Fields with invalid type: %T", data)
-	}
-
-	result := make([]string, 0, v.Len())
-	for _, k := range v.MapKeys() {
-		val := v.MapIndex(k).Interface()
-		if k.Kind() != reflect.String {
-			return nil, fmt.Errorf("key %#v is not a string", val)
-		}
-		result = append(result, k.String())
-	}
-	return result, nil
 }
 
 // encodeStructFieldValue 对单个字段根据类型和 serializer 转换

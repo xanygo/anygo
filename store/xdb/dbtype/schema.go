@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 
 	"github.com/xanygo/anygo/xerror"
 )
@@ -20,6 +21,7 @@ type TableSchema struct {
 	Columns     []ColumnSchema          // 字段列表
 	Name2Column map[string]ColumnSchema // 数据库字段名 <---> 字段属性的映射
 	ColumnNames []string                // 数据库中的字段名
+	TagName     string
 }
 
 func (ts *TableSchema) ColumnByName(name string) (ColumnSchema, error) {
@@ -31,12 +33,47 @@ func (ts *TableSchema) ColumnByName(name string) (ColumnSchema, error) {
 }
 
 // PKColumns 返回表中的主键字段，允许有多个字段（多个字段联合为主键）。
-func (ts *TableSchema) PKColumns() []ColumnSchema {
+func (ts *TableSchema) PKColumns() ColumnSchemas {
 	var result []ColumnSchema
 	for _, col := range ts.Columns {
 		if col.IsPrimaryKey {
 			result = append(result, col)
 		}
+	}
+	return result
+}
+
+func (ts *TableSchema) FilterByGroup(group string) ColumnSchemas {
+	if group == "" {
+		return nil
+	}
+	var result ColumnSchemas
+	for _, col := range ts.Columns {
+		if col.IsGroup(group) {
+			result = append(result, col)
+		}
+	}
+
+	if len(result) == 0 {
+		for _, col := range ts.Columns {
+			if col.UniqueIndex != nil && col.UniqueIndex.IndexName == group {
+				result = append(result, col)
+			}
+		}
+	}
+	return result
+}
+
+type ColumnSchemas []ColumnSchema
+
+func (cs ColumnSchemas) Len() int {
+	return len(cs)
+}
+
+func (cs ColumnSchemas) Names() []string {
+	result := make([]string, 0, len(cs))
+	for _, c := range cs {
+		result = append(result, c.Name)
 	}
 	return result
 }
@@ -57,9 +94,14 @@ type ColumnSchema struct {
 	Auto          string              // 编码数据是自动化处理规则，可选值如，created，updated
 
 	ReflectType reflect.Type // struct 中字段的类型
+	Group       []string     // 分组标签
 }
 
-func (scf *ColumnSchema) String() string {
+func (scf ColumnSchema) IsGroup(group string) bool {
+	return slices.Contains(scf.Group, group)
+}
+
+func (scf ColumnSchema) String() string {
 	return fmt.Sprintf("%#v", scf)
 }
 

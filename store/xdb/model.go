@@ -57,7 +57,7 @@ type Model[T any] struct {
 	selectIgnoreFields []string // 查询时要忽略的字段列表。当 selectFields 为空时才生效
 
 	schema *dbtype.TableSchema
-	pk     []dbtype.ColumnSchema // 可能为 nil
+	pk     dbtype.ColumnSchemas // 可能为 nil
 
 	err error
 }
@@ -147,18 +147,7 @@ func (m *Model[T]) getSelectFields() (string, error) {
 		return m.selectFields, nil
 	}
 
-	var fields []string
-
-	if m.schema != nil {
-		fields = slices.Clone(m.schema.ColumnNames)
-	} else {
-		var zero T
-		var err error
-		fields, err = m.getEncoder(encoder.ActionSelect).Fields(zero)
-		if err != nil {
-			return "", err
-		}
-	}
+	fields := slices.Clone(m.schema.ColumnNames)
 
 	if len(m.selectIgnoreFields) != 0 {
 		fields = xslice.DeleteValue(fields, m.selectIgnoreFields...)
@@ -211,6 +200,7 @@ func (m *Model[T]) Offset(num int) *Model[T] {
 
 func (m *Model[T]) getEncoder(action encoder.Action) encoder.Encoder[T] {
 	return encoder.Encoder[T]{
+		Schema:       m.schema,
 		Action:       action,
 		Dialect:      m.dialect,
 		OnlyFields:   m.upsertFields,
@@ -373,12 +363,15 @@ func (m *Model[T]) InsertBatch(ctx context.Context, vs ...T) (int64, error) {
 //
 // 输入参数：
 //
-//	conflictCols: 冲突字段名，必填，不可为空，应该数主键或者唯一索引的字段
+//	conflictCols: 冲突字段名，可选，若为空则，自动读取 pk 字段。
 //	updateCols: 若冲突发生，执行更新的字段列表，可选。若为空，则冲突发生后，该条数据丢弃。
 //	values: 数据列表，必填
 //
 //	返回值：受影响条数，错误
 func (m *Model[T]) Upsert(ctx context.Context, conflictCols []string, updateCols []string, values ...T) (int64, error) {
+	if m.err != nil {
+		return 0, m.err
+	}
 	if len(values) == 0 {
 		return 0, errors.New("no values")
 	}
@@ -389,6 +382,13 @@ func (m *Model[T]) Upsert(ctx context.Context, conflictCols []string, updateCols
 	db, ok := m.client.(Execer)
 	if !ok {
 		return 0, fmt.Errorf("client (%T) is not Execer", m.client)
+	}
+
+	if len(conflictCols) == 0 {
+		conflictCols = m.pk.Names()
+	}
+	if len(conflictCols) == 0 {
+		return 0, errors.New("empty conflict columns list")
 	}
 
 	kvSlice, err := m.getEncoder(encoder.ActionInsert).EncodeBatch(values...)
@@ -408,6 +408,32 @@ func (m *Model[T]) Upsert(ctx context.Context, conflictCols []string, updateCols
 	sqlStr := dup.UpsertSQL(m.table, len(values), cols, conflictCols, updateCols, nil)
 	ret, err := Exec(ctx, db, sqlStr, args...)
 	return RowsAffected(ret, err)
+}
+
+// UpsertByGroup 根据预定义的字段分组执行 Upsert
+//
+// conflictGroup: 冲突的主键分组名称
+// updateGroup: 冲突后更新字段分组名称。若值为空，或者 分组对于的字段列表为空，则冲突后不更新（丢弃）
+// 若 group 不存在则会取查找 uniq_index 的明治为 group 的。
+//
+//	比如：
+//
+//	 type User struct{
+//			ID    string    `db:"id,pk"`
+//			Sign  string    `db:"sign,unique_index=uniq_sign"`
+//			Name  string    `db:"name,group=update"`
+//			Class int       `db:"class,group=update"`
+//			Age   int       `db:"age,group=update"`
+//		}
+//
+//	 m.UpsertByGroup(ctx,"uniq_sign","update",user1)
+func (m *Model[T]) UpsertByGroup(ctx context.Context, conflictGroup string, updateGroup string, values ...T) (int64, error) {
+	if m.err != nil {
+		return 0, m.err
+	}
+	conflictCols := m.schema.FilterByGroup(conflictGroup).Names()
+	updateCols := m.schema.FilterByGroup(updateGroup).Names()
+	return m.Upsert(ctx, conflictCols, updateCols, values...)
 }
 
 // Update 执行 update 语句
@@ -470,6 +496,9 @@ func (m *Model[T]) doUpdateMap(ctx context.Context, kv map[string]any, where str
 //
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 func (m *Model[T]) UpdateByPK(ctx context.Context, v T) (int64, error) {
+	if m.err != nil {
+		return 0, m.err
+	}
 	pkData, err := m.getEncoder(encoder.ActionSelect).PKNameAndValues(v)
 	if err != nil {
 		return 0, err
@@ -488,12 +517,18 @@ func (m *Model[T]) UpdateByPK(ctx context.Context, v T) (int64, error) {
 // old: 更新前的旧数据
 // update: 更新处理，返回的数据会和 old 做 diff，然后只更新 diff 字段
 func (m *Model[T]) Modify(ctx context.Context, old T, update func(nv T) T, where string, args ...any) (int64, error) {
+	if m.err != nil {
+		return 0, m.err
+	}
 	nv := update(zreflect.Clone(old))
 	return m.UpdateDiff(ctx, old, nv, where, args...)
 }
 
 // UpdateDiff 增量更新数据
 func (m *Model[T]) UpdateDiff(ctx context.Context, old T, newValue T, where string, args ...any) (int64, error) {
+	if m.err != nil {
+		return 0, m.err
+	}
 	enc := m.getEncoder(encoder.ActionUpdate)
 	diff, err := enc.Diff(newValue, old)
 	if err != nil || len(diff) == 0 {
@@ -505,6 +540,9 @@ func (m *Model[T]) UpdateDiff(ctx context.Context, old T, newValue T, where stri
 // ModifyFirstByPK 使用主键查找，然后更新数据。若查找不到会返回错误
 // q: 查询条件，主键字段必须有值。若主键字段有多个，但是只给部分字段赋值，可能会导致多条数据被更新
 func (m *Model[T]) ModifyFirstByPK(ctx context.Context, q T, update func(nv T) T) (int64, error) {
+	if m.err != nil {
+		return 0, m.err
+	}
 	m1 := m.CloneBase()
 	where, args, err := m1.pkWhereArgs(q, encoder.ActionSelect)
 	if err != nil {
@@ -525,6 +563,9 @@ func (m *Model[T]) ModifyFirstByPK(ctx context.Context, q T, update func(nv T) T
 //
 // 注意：若 where 条件返回多条，会查询第一条数据，并以此位基础更新所有数据
 func (m *Model[T]) ModifyFirst(ctx context.Context, update func(nv T) T, where string, args ...any) (int64, error) {
+	if m.err != nil {
+		return 0, m.err
+	}
 	m1 := m.CloneBase()
 	old, found, err := m1.First(ctx, where, args...)
 	if err != nil {
@@ -540,6 +581,9 @@ func (m *Model[T]) ModifyFirst(ctx context.Context, update func(nv T) T, where s
 //
 // 数据 T 需要定义主键
 func (m *Model[T]) ModifyEach(ctx context.Context, update func(nv T) (T, bool), where string, args ...any) (int64, error) {
+	if m.err != nil {
+		return 0, m.err
+	}
 	m1 := m.CloneBase()
 	var num int64
 	for item, err := range m1.ListIter(ctx, where, args...) {
@@ -593,6 +637,9 @@ func (m *Model[T]) Delete(ctx context.Context, where string, args ...any) (int64
 //
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 func (m *Model[T]) DeleteByPK(ctx context.Context, v T) (int64, error) {
+	if m.err != nil {
+		return 0, m.err
+	}
 	where, args, err := m.pkWhereArgs(v, encoder.ActionSelect)
 	if err != nil {
 		return 0, err
@@ -698,6 +745,9 @@ func (m *Model[T]) whereLimitOffset(where string, limit int, offset int) string 
 //
 //	可通过 SetSelectFields、SetSelectIgnore 限制查询返回的字段
 func (m *Model[T]) FindByPK(ctx context.Context, v T) (nv T, ok bool, err error) {
+	if m.err != nil {
+		return nv, false, m.err
+	}
 	where, args, err := m.pkWhereArgs(v, encoder.ActionSelect)
 	if err != nil {
 		return nv, false, err
@@ -765,6 +815,9 @@ func (m *Model[T]) ListIter(ctx context.Context, where string, args ...any) iter
 }
 
 func (m *Model[T]) Count(ctx context.Context, field string, where string, args ...any) (num int64, err error) {
+	if m.err != nil {
+		return 0, m.err
+	}
 	where, args = m.buildWhere(0, where, args)
 	if field == "" {
 		field = "*"
@@ -791,6 +844,9 @@ func (m *Model[T]) doCount(ctx context.Context, field string, where string, args
 //
 //	可通过 SetSelectFields、SetSelectIgnore 限制查询返回的字段
 func (m *Model[T]) ListPage(ctx context.Context, page int, size int, where string, args ...any) (Pagination, []PageRecord[T], error) {
+	if m.err != nil {
+		return Pagination{}, nil, m.err
+	}
 	if size < 1 {
 		return Pagination{}, nil, fmt.Errorf("invalid size=%d", size)
 	}
