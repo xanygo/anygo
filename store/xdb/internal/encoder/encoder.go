@@ -12,7 +12,6 @@ import (
 	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/ds/xstruct"
 	"github.com/xanygo/anygo/internal/zreflect"
-	"github.com/xanygo/anygo/store/xdb/dbschema"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 	"github.com/xanygo/anygo/xerror"
 )
@@ -39,22 +38,26 @@ func (e Encoder[T]) WithAction(action Action) Encoder[T] {
 
 // Encode 将 struct 或者 *struct 编码为数据
 func (e Encoder[T]) Encode(data T) (map[string]any, error) {
+	v, err := e.reflectValue(data)
+	if err != nil {
+		return nil, err
+	}
+	return e.encodeStruct(v)
+}
+
+func (e Encoder[T]) reflectValue(data T) (reflect.Value, error) {
 	v := reflect.ValueOf(data)
 	if !v.IsValid() {
-		return nil, fmt.Errorf("invalid value: %v", v)
+		return reflect.Value{}, fmt.Errorf("invalid value: %v", v)
 	}
 
-	// 支持指针类型
 	for v.Kind() == reflect.Pointer {
 		if v.IsNil() {
-			return nil, fmt.Errorf("nil pointer: %#v", data)
+			return reflect.Value{}, fmt.Errorf("nil pointer: %#v", data)
 		}
 		v = v.Elem()
 	}
-	if v.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("invalid value: %#v, expect struct", data)
-	}
-	return e.encodeStruct(v)
+	return v, nil
 }
 
 func (e Encoder[T]) EncodeBatch(items ...T) ([]map[string]any, error) {
@@ -96,23 +99,27 @@ func (e Encoder[T]) Diff(newValue T, oldValue T) (map[string]any, error) {
 // encodeStruct 处理 struct
 func (e Encoder[T]) encodeStruct(v reflect.Value) (map[string]any, error) {
 	result := make(map[string]any, len(e.OnlyFields))
-	err := e.withStruct(v, func(name string, tag xstruct.Tag, field reflect.StructField, value reflect.Value) error {
-		fs, err := e.Schema.ColumnByName(name)
-		if err != nil {
-			return err
+	err := e.rangeStructFieldsWithFilter(v, func(fieldSchema dbtype.ColumnSchema, value reflect.Value) error {
+		if fieldSchema.AutoIncrement {
+			if e.Action.IsInsert() && value.IsZero() {
+				// 当是自增长类型、并且是零值，则跳过该字段
+				return nil
+			}
+
+			if e.Action.IsUpdate() {
+				// 更新的时候，将自增长类型的字段忽略掉
+				// 如 sql server，在更新的字段列表中，包含【自增长】类型的字段，
+				// 将报错：mssql: Cannot update identity column 'id'
+				return nil
+			}
 		}
-		if e.Action == ActionUpdate && fs.AutoIncrement {
-			// 更新的时候，将自增长类型的字段忽略掉
-			// 如 sql server，在更新的字段列表中，包含【自增长】类型的字段，
-			// 将报错：mssql: Cannot update identity column 'id'
-			return nil
-		}
-		encodedVal, err := e.encodeStructFieldValue(fs, value.Interface())
+		name := fieldSchema.Name
+		encodedVal, err := e.encodeStructFieldValue(fieldSchema, value.Interface())
 		if err != nil {
 			if errors.Is(err, xerror.SkipOne) {
 				return nil
 			}
-			return fmt.Errorf("encode field %q: %w", field.Name, err)
+			return fmt.Errorf("encode field %q: %w", name, err)
 		}
 		result[name] = encodedVal
 		return nil
@@ -126,34 +133,49 @@ func (e Encoder[T]) sliceToMapTrue(s []string) map[string]bool {
 	if len(s) == 0 {
 		return sliceEmpty
 	}
-	return xslice.ToMap(e.OnlyFields, true)
+	return xslice.ToMap(s, true)
 }
 
-func (e Encoder[T]) withStruct(v reflect.Value, fn func(name string, tag xstruct.Tag, field reflect.StructField, value reflect.Value) error) error {
-	if v.Kind() != reflect.Struct {
-		return fmt.Errorf("unsupported type %s, expect struct", v.Kind().String())
-	}
-	keys := make(map[string]struct{}, len(e.OnlyFields))
+// rangeStructFields 遍历 value 里所有的字段，同时剔除过滤字段
+func (e Encoder[T]) rangeStructFieldsWithFilter(v reflect.Value, fn func(fieldSchema dbtype.ColumnSchema, value reflect.Value) error) error {
 	fieldsLimit := e.sliceToMapTrue(e.OnlyFields)
 	fieldsIgnore := e.sliceToMapTrue(e.IgnoreFields)
-	err := zreflect.RangeStructFields(v.Type(), func(field reflect.StructField) error {
+
+	return e.rangeStructFields(v, func(fieldSchema dbtype.ColumnSchema, value reflect.Value) error {
+		name := fieldSchema.Name
+		if len(fieldsLimit) > 0 && !fieldsLimit[name] {
+			return nil
+		}
+		if len(fieldsIgnore) > 0 && fieldsIgnore[name] {
+			return nil
+		}
+		return fn(fieldSchema, value)
+	})
+}
+
+// rangeStructFields 遍历 value 里所有的字段
+func (e Encoder[T]) rangeStructFields(v reflect.Value, fn func(fieldSchema dbtype.ColumnSchema, value reflect.Value) error) error {
+	// 不需要检查 v 的类型是 struct, RangeStructFields 会检查
+	return zreflect.RangeStructFields(v.Type(), func(field reflect.StructField) error {
 		// embed 类型的，详见 testUser3、testUser4
 		if field.Anonymous {
-			fv := v.FieldByName(field.Name)
-			switch fv.Kind() {
+			fieldValue := v.FieldByName(field.Name)
+			switch fieldValue.Kind() {
 			case reflect.Struct:
-				return e.withStruct(fv, fn)
+				return e.rangeStructFields(fieldValue, fn)
 			case reflect.Pointer:
-				return e.withStruct(fv.Elem(), fn)
+				return e.rangeStructFields(fieldValue.Elem(), fn)
 			default:
-				panic(fmt.Sprintf("what Anonymous %s: %v", fv.Kind(), fv))
+				// 理论上不会出现
+				return fmt.Errorf("invalid Anonymous %s: %v", fieldValue.Kind(), fieldValue)
 			}
 		}
+
 		if !field.IsExported() {
 			return nil
 		}
-		fv := v.FieldByName(field.Name)
-		if !fv.CanInterface() {
+		fieldValue := v.FieldByName(field.Name)
+		if !fieldValue.CanInterface() {
 			return nil
 		}
 
@@ -162,27 +184,13 @@ func (e Encoder[T]) withStruct(v reflect.Value, fn func(name string, tag xstruct
 		if name == "-" || name == "" {
 			return nil
 		}
-		if _, has := keys[name]; has {
-			return fmt.Errorf("duplicate field %q", name)
-		}
 
-		if len(fieldsLimit) > 0 && !fieldsLimit[name] {
-			return nil
-		}
-		if len(fieldsIgnore) > 0 && fieldsIgnore[name] {
-			return nil
-		}
-		if dbschema.TagHasAutoInc(tag) && fv.IsZero() {
-			// 当是自增长类型、并且是零值，则跳过该字段
-			return nil
-		}
-		if err := fn(name, tag, field, fv); err != nil {
+		fieldSchema, err := e.Schema.ColumnByName(name)
+		if err != nil {
 			return err
 		}
-		keys[name] = struct{}{}
-		return nil
+		return fn(fieldSchema, fieldValue)
 	})
-	return err
 }
 
 // encodeStructFieldValue 对单个字段根据类型和 serializer 转换
@@ -210,7 +218,7 @@ func (e Encoder[T]) encodeStructFieldValue(schema dbtype.ColumnSchema, val any) 
 	// 若是 update：NotNull==true，值为 nil 则忽略
 
 	// 处理指针
-	if rv.Kind() == reflect.Pointer {
+	for rv.Kind() == reflect.Pointer {
 		if rv.IsNil() {
 			if e.Action.IsInsertOrUpdate() && schema.NotNull {
 				return nil, xerror.SkipOne
@@ -254,51 +262,19 @@ func (e Encoder[T]) PKNameAndValues(obj T) (map[string]any, error) {
 }
 
 func (e Encoder[T]) PrimaryKeys(obj T) (columns []dbtype.ColumnSchema, values []reflect.Value, err error) {
-	v := reflect.ValueOf(obj)
-	if !v.IsValid() {
-		return nil, nil, fmt.Errorf("invalid value: %v", v)
-	}
-
-	// 支持指针类型
-	if v.Kind() == reflect.Pointer {
-		if v.IsNil() {
-			return nil, nil, fmt.Errorf("nil pointer: %#v", obj)
-		}
-		v = v.Elem()
-	}
-
-	if v.Kind() != reflect.Struct {
-		return nil, nil, fmt.Errorf("invalid value: %#v", obj)
-	}
-
-	schema, err := dbschema.Schema(e.Dialect, obj)
+	v, err := e.reflectValue(obj)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	t := v.Type()
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		if !v.Field(i).CanInterface() {
-			continue
+	err = e.rangeStructFields(v, func(fieldSchema dbtype.ColumnSchema, value reflect.Value) error {
+		if fieldSchema.IsPrimaryKey {
+			columns = append(columns, fieldSchema)
+			values = append(values, value)
 		}
-
-		tag := xstruct.ParserTag(field.Tag.Get(dbschema.TagName()))
-		name := tag.Name()
-		if name == "-" || name == "" {
-			continue
-		}
-		col, err := schema.ColumnByName(name)
-		if err != nil {
-			return nil, nil, err
-		}
-		if !col.IsPrimaryKey {
-			continue
-		}
-		// columns 和 values 同时 append
-		columns = append(columns, col)
-		values = append(values, v.Field(i))
+		return nil
+	})
+	if err != nil {
+		return nil, nil, err
 	}
-
 	return columns, values, nil
 }

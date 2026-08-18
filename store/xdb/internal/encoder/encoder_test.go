@@ -79,6 +79,14 @@ type testUser7 struct {
 	Leave   time.Time `db:"leave,auto=Now"`
 	Created time.Time `db:"c,auto=Created"`
 	Updated int64     `db:"u,auto=Updated"`
+	Version *int64    `db:"v"`
+}
+
+type testUser8 struct {
+	Name string   `db:"name"`
+	Num1 *int64   `db:"num1"`
+	Num2 **int64  `db:"num2"`
+	Num3 ***int64 `db:"num3"`
 }
 
 func TestEncodeInsert(t *testing.T) {
@@ -179,20 +187,91 @@ func TestEncodeInsert(t *testing.T) {
 		xt.Equal(t, out1, want)
 	})
 
-	t.Run("testUser7", func(t *testing.T) {
+	t.Run("testUser7-1", func(t *testing.T) {
+		checkUser7 := func(t *testing.T, v any, name string) {
+			t.Run(name, func(t *testing.T) {
+				out1, err := encoder.EncodeInsert(dz, v)
+				xt.NoError(t, err)
+				t.Logf("out: %#v", out1)
+				xt.Len(t, out1, 5)
+				xt.NotEmpty(t, out1["name"])
+				date := time.Now().Format("2006-01-02")
+				xt.HasPrefix(t, out1["c"].(string), date)
+				xt.NotEmpty(t, out1["u"])
+				xt.Equal[any](t, out1["number"], int64(1))    // Incr
+				xt.HasPrefix(t, out1["leave"].(string), date) // Now
+			})
+		}
 		u3 := testUser7{
 			Name: "name",
 		}
-		out1, err := encoder.EncodeInsert(dz, u3)
+		checkUser7(t, u3, "1-struct")
+		checkUser7(t, &u3, "2-struct-ptr")
+	})
+	t.Run("testUser7-2", func(t *testing.T) {
+		checkUser7 := func(t *testing.T, v any, name string) {
+			t.Run(name, func(t *testing.T) {
+				out1, err := encoder.EncodeInsert(dz, v)
+				xt.NoError(t, err)
+				t.Logf("out: %#v", out1)
+				xt.Len(t, out1, 6)
+				xt.NotEmpty(t, out1["name"])
+				date := time.Now().Format("2006-01-02")
+				xt.HasPrefix(t, out1["c"].(string), date)
+				xt.NotEmpty(t, out1["u"])
+				xt.Equal[any](t, out1["number"], int64(1))    // Incr
+				xt.HasPrefix(t, out1["leave"].(string), date) // Now
+			})
+		}
+		num := int64(2)
+		u3 := testUser7{
+			Name:    "name",
+			Version: &num,
+		}
+		checkUser7(t, u3, "1-struct")
+		checkUser7(t, &u3, "2-struct-ptr")
+	})
+
+	t.Run("testUser8", func(t *testing.T) {
+		u1 := testUser8{
+			Name: "name",
+		}
+		out1, err := encoder.EncodeInsert(dz, u1)
 		xt.NoError(t, err)
-		t.Logf("out: %#v", out1)
-		xt.Len(t, out1, 5)
-		xt.NotEmpty(t, out1["name"])
-		date := time.Now().Format("2006-01-02")
-		xt.HasPrefix(t, out1["c"].(string), date)
-		xt.NotEmpty(t, out1["u"])
-		xt.Equal[any](t, out1["number"], int64(1))    // Incr
-		xt.HasPrefix(t, out1["leave"].(string), date) // Now
+		xt.Equal(t, out1, map[string]any{"name": "name"})
+
+		num1 := int64(1)
+		u2 := testUser8{
+			Name: "name",
+			Num1: &num1,
+		}
+		out2, err := encoder.EncodeInsert(dz, u2)
+		xt.NoError(t, err)
+		xt.Equal(t, out2, map[string]any{"name": "name", "num1": int64(1)})
+
+		num2 := int64(2)
+		num2Ptr := &num2
+		u3 := testUser8{
+			Name: "name",
+			Num1: &num1,
+			Num2: &num2Ptr,
+		}
+		out3, err := encoder.EncodeInsert(dz, u3)
+		xt.NoError(t, err)
+		xt.Equal(t, out3, map[string]any{"name": "name", "num1": int64(1), "num2": int64(2)})
+
+		num3 := int64(3)
+		num3Ptr := &num3
+		num3PtrPtr := &num3Ptr
+		u4 := testUser8{
+			Name: "name",
+			Num1: &num1,
+			Num2: &num2Ptr,
+			Num3: &num3PtrPtr,
+		}
+		out4, err := encoder.EncodeInsert(dz, u4)
+		xt.NoError(t, err)
+		xt.Equal(t, out4, map[string]any{"name": "name", "num1": int64(1), "num2": int64(2), "num3": int64(3)})
 	})
 }
 

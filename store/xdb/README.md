@@ -13,6 +13,9 @@ DSN="{{.Username}}:{{.Password}}@{{.Network}}({{.HOST_PORT}})/{{.DBName}}?charse
 
 ## 数据模型(Model)
 
+轻量 ORM 支持，内置已支持 MariaDB、MySQL、SQL Server、Sqlite、Postgres
+- 注：需要在使用是注册对应数据库的驱动
+
 ```go
 package dao
 
