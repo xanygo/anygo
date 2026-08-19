@@ -7,9 +7,11 @@ package dialect
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
@@ -279,4 +281,25 @@ func (d MySQL) TableColumns(ctx context.Context, q dbtype.Queryer, table string)
 	const str = `SELECT column_name FROM information_schema.columns
 WHERE table_schema = DATABASE() AND table_name = ? ORDER BY ordinal_position`
 	return querySliceString(ctx, q, str, table)
+}
+
+// EncodeValue 将 Go 值转换为当前数据库驱动可接受的参数值。
+func (d MySQL) EncodeValue(value any) (any, error) {
+	rv := reflect.ValueOf(value)
+	for rv.IsValid() && rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			return nil, nil
+		}
+		rv = rv.Elem()
+	}
+
+	if !rv.IsValid() {
+		return nil, nil
+	}
+	switch rv.Kind() {
+	case reflect.Array:
+		return zreflect.ArrayToSlice(rv), nil
+	default:
+		return rv.Interface(), nil
+	}
 }

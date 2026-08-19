@@ -7,8 +7,10 @@ package dialect
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 
+	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
@@ -335,4 +337,29 @@ func (d SQLServer) TableExists(ctx context.Context, q dbtype.Queryer, table stri
 func (d SQLServer) TableColumns(ctx context.Context, q dbtype.Queryer, table string) ([]string, error) {
 	const str = `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @p1 ORDER BY ORDINAL_POSITION`
 	return querySliceString(ctx, q, str, table)
+}
+
+func (d SQLServer) EncodeValue(value any) (any, error) {
+	rv := reflect.ValueOf(value)
+	for rv.IsValid() && rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			return nil, nil
+		}
+		rv = rv.Elem()
+	}
+
+	if !rv.IsValid() {
+		return nil, nil
+	}
+	switch rv.Kind() {
+	case reflect.Array:
+		return zreflect.ArrayToSlice(rv), nil
+	case reflect.Bool:
+		if rv.Bool() {
+			return 1, nil
+		}
+		return 0, nil
+	default:
+		return rv.Interface(), nil
+	}
 }

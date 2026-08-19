@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xt"
 )
 
@@ -25,9 +26,12 @@ type User struct {
 	Idx          *int64    `db:"idx,not-null"`
 	Scores       []int     `db:"scores,codec=auto_json"`
 	Enable       bool      `db:"enable,not-null"`
+	Version      int64     `db:"version,auto=Incr"`
 	a            int
 	UserEmb1
-	JS1 *UserJS1 `db:"js1,codec=json"`
+	JS1     *UserJS1  `db:"js1,codec=json"`
+	Created time.Time `db:"created,auto=Created"`
+	Updated time.Time `db:"updated,auto=Updated"`
 }
 
 type UserEmb1 struct {
@@ -101,17 +105,29 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 	xt.Equal(t, cnt, 1)
 
 	t.Run("ModifyFirstByPK", func(t *testing.T) {
-		num, err := orm.ModifyFirstByPK(ctx, u2, func(nv User) User {
-			return nv
+		num, err := orm.ModifyFirstByPK(ctx, u2, func(nv User) (User, error) {
+			return nv, xerror.SkipOne
 		})
 		xt.NoError(t, err)
 		xt.Equal(t, num, 0)
 
-		num, err = orm.ModifyFirstByPK(ctx, u2, func(nv User) User {
+		num, err = orm.ModifyFirstByPK(ctx, u2, func(nv User) (User, error) {
 			nv.Username = "user-3000"
-			return nv
+			return nv, nil
 		})
 		xt.NoError(t, err)
 		xt.Equal(t, num, 1)
+	})
+
+	t.Run("where-bool", func(t *testing.T) {
+		u1 := User{
+			Username: "enable-true",
+			Enable:   true,
+		}
+		err1 := orm.Insert(ctx, u1)
+		xt.NoError(t, err1)
+		list, err1 := orm.List(ctx, "enable=?", true)
+		xt.NoError(t, err1)
+		xt.NotEmpty(t, list)
 	})
 }

@@ -7,6 +7,7 @@ package tplfn
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 // MathAdd 支持混合类型的数字相加，若包含 float 类型，则结果返回 float64, 否则返回 int64 类型
@@ -140,7 +141,11 @@ func MathPercent(val float64) string {
 	} else if val == 1 {
 		return "100%"
 	}
-	return fmt.Sprintf("%.3f%%", val*100)
+	return percent3f(val)
+}
+
+func percent3f(val float64) string {
+	return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.3f", val*100), "0"), ".") + "%"
 }
 
 func MathComplement(val float64) string {
@@ -149,5 +154,5 @@ func MathComplement(val float64) string {
 	} else if val == 1 {
 		return "0%"
 	}
-	return fmt.Sprintf("%.3f%%", (1-val)*100)
+	return percent3f(1 - val)
 }

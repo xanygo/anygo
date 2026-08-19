@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"reflect"
 	"regexp"
 	"slices"
 	"strings"
@@ -456,7 +457,7 @@ func (m *Model[T]) doUpdateMap(ctx context.Context, kv map[string]any, where str
 	cols := xmap.Keys(kv)
 
 	assigns := make([]string, 0, len(cols))
-	values := make([]any, 0, len(args))
+	values := make([]any, 0, len(args)+len(cols))
 	for _, col := range cols {
 		str := fmt.Sprintf(`%s=%s`, m.dialect.QuoteIdentifier(col), m.dialect.BindVar(len(assigns)+1))
 		assigns = append(assigns, str)
@@ -466,8 +467,11 @@ func (m *Model[T]) doUpdateMap(ctx context.Context, kv map[string]any, where str
 	if len(assigns) == 0 {
 		return 0, errors.New("no update values")
 	}
-
-	where, args = m.buildWhere(len(assigns), where, args)
+	var err error
+	where, args, err = m.buildWhere(len(assigns), where, args)
+	if err != nil {
+		return 0, err
+	}
 
 	if len(where) == 0 || len(args) == 0 {
 		return 0, errors.New("empty where clause")
@@ -494,7 +498,7 @@ func (m *Model[T]) doUpdateMap(ctx context.Context, kv map[string]any, where str
 
 // UpdateByPK 使用主键更新数据
 //
-// 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
+// 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`。支持联合主键。
 func (m *Model[T]) UpdateByPK(ctx context.Context, v T) (int64, error) {
 	if m.err != nil {
 		return 0, m.err
@@ -515,12 +519,20 @@ func (m *Model[T]) UpdateByPK(ctx context.Context, v T) (int64, error) {
 
 // Modify 增量更新新一条数据
 // old: 更新前的旧数据
-// update: 更新处理，返回的数据会和 old 做 diff，然后只更新 diff 字段
-func (m *Model[T]) Modify(ctx context.Context, old T, update func(nv T) T, where string, args ...any) (int64, error) {
+//
+// update: 更新处理，返回的数据会和 old 做 diff，然后只更新 diff 字段。
+// 若返回 error 是 xerror.SkipOne 或 xerror.SkipAll 则跳过。其他 error 则直接返回
+func (m *Model[T]) Modify(ctx context.Context, old T, update func(nv T) (T, error), where string, args ...any) (int64, error) {
 	if m.err != nil {
 		return 0, m.err
 	}
-	nv := update(zreflect.Clone(old))
+	nv, err := update(zreflect.Clone(old))
+	if err != nil {
+		if xerror.IsSkip(err) {
+			return 0, nil
+		}
+		return 0, err
+	}
 	return m.UpdateDiff(ctx, old, nv, where, args...)
 }
 
@@ -528,6 +540,9 @@ func (m *Model[T]) Modify(ctx context.Context, old T, update func(nv T) T, where
 func (m *Model[T]) UpdateDiff(ctx context.Context, old T, newValue T, where string, args ...any) (int64, error) {
 	if m.err != nil {
 		return 0, m.err
+	}
+	if reflect.DeepEqual(old, newValue) {
+		return 0, nil
 	}
 	enc := m.getEncoder(encoder.ActionUpdate)
 	diff, err := enc.Diff(newValue, old)
@@ -539,7 +554,7 @@ func (m *Model[T]) UpdateDiff(ctx context.Context, old T, newValue T, where stri
 
 // ModifyFirstByPK 使用主键查找，然后更新数据。若查找不到会返回错误
 // q: 查询条件，主键字段必须有值。若主键字段有多个，但是只给部分字段赋值，可能会导致多条数据被更新
-func (m *Model[T]) ModifyFirstByPK(ctx context.Context, q T, update func(nv T) T) (int64, error) {
+func (m *Model[T]) ModifyFirstByPK(ctx context.Context, q T, update func(nv T) (T, error)) (int64, error) {
 	if m.err != nil {
 		return 0, m.err
 	}
@@ -562,7 +577,9 @@ func (m *Model[T]) ModifyFirstByPK(ctx context.Context, q T, update func(nv T) T
 // ModifyFirst 查找数据然后更新，若查找不到会返回错误
 //
 // 注意：若 where 条件返回多条，会查询第一条数据，并以此位基础更新所有数据
-func (m *Model[T]) ModifyFirst(ctx context.Context, update func(nv T) T, where string, args ...any) (int64, error) {
+//
+// update: 数据更新方法。若返回 error 是 xerror.SkipOne 或 xerror.SkipAll 则跳过。其他 error 则直接返回
+func (m *Model[T]) ModifyFirst(ctx context.Context, update func(nv T) (T, error), where string, args ...any) (int64, error) {
 	if m.err != nil {
 		return 0, m.err
 	}
@@ -579,8 +596,10 @@ func (m *Model[T]) ModifyFirst(ctx context.Context, update func(nv T) T, where s
 
 // ModifyEach 逐条更新满足条件的每一条数据。
 //
-// 数据 T 需要定义主键
-func (m *Model[T]) ModifyEach(ctx context.Context, update func(nv T) (T, bool), where string, args ...any) (int64, error) {
+// 由于最终执行更新是，where 添加中使用的是主键作为条件，所以数据 T 需要定义主键
+//
+// update: 数据更新方法。若返回 error 是 xerror.SkipOne,则跳过此条数据，若是 xerror.SkipAll 则跳过所有。其他 error 则直接返回
+func (m *Model[T]) ModifyEach(ctx context.Context, update func(nv T) (T, error), where string, args ...any) (int64, error) {
 	if m.err != nil {
 		return 0, m.err
 	}
@@ -594,13 +613,19 @@ func (m *Model[T]) ModifyEach(ctx context.Context, update func(nv T) (T, bool), 
 		if err1 != nil {
 			return num, err1
 		}
-		newValue, ok := update(item)
-		if !ok {
-			break
-		}
-		n, err2 := m.UpdateDiff(ctx, item, newValue, where1, args1...)
+		newValue, err2 := update(item)
 		if err2 != nil {
+			if errors.Is(err2, xerror.SkipOne) {
+				continue
+			}
+			if errors.Is(err2, xerror.SkipAll) {
+				break
+			}
 			return num, err2
+		}
+		n, err3 := m.UpdateDiff(ctx, item, newValue, where1, args1...)
+		if err3 != nil {
+			return num, err3
 		}
 		num += n
 	}
@@ -613,7 +638,11 @@ func (m *Model[T]) Delete(ctx context.Context, where string, args ...any) (int64
 	if m.err != nil {
 		return 0, m.err
 	}
-	where, args = m.buildWhere(0, where, args)
+	var err error
+	where, args, err = m.buildWhere(0, where, args)
+	if err != nil {
+		return 0, err
+	}
 	if len(where) == 0 || len(args) == 0 {
 		return 0, errors.New("empty where clause")
 	}
@@ -673,7 +702,12 @@ func (m *Model[T]) connectWhere(where string) string {
 	return " where " + where
 }
 
-func (m *Model[T]) buildWhere(indexStart int, where string, args []any) (string, []any) {
+func (m *Model[T]) buildWhere(indexStart int, where string, args []any) (string, []any, error) {
+	args, err := m.getEncoder(encoder.ActionSelect).EncodeArgs(args...)
+	if err != nil {
+		return "", nil, err
+	}
+
 	// 将 ? 替换为方言的占位符，如 $1, $2 ...
 	if m.dialect.BindVar(0) != "?" {
 		var sb strings.Builder
@@ -695,7 +729,8 @@ func (m *Model[T]) buildWhere(indexStart int, where string, args []any) (string,
 			where = strings.ReplaceAll(where, KWRand, dr)
 		}
 	}
-	return where, args
+
+	return where, args, nil
 }
 
 // First 使用 select xx from table where xxx limit 1 查询满足条件的第一条数据
@@ -705,7 +740,10 @@ func (m *Model[T]) First(ctx context.Context, where string, args ...any) (v T, o
 	if m.err != nil {
 		return v, false, m.err
 	}
-	where, args = m.buildWhere(0, where, args)
+	where, args, err = m.buildWhere(0, where, args)
+	if err != nil {
+		return v, false, err
+	}
 
 	field, err := m.getSelectFields()
 	if err != nil {
@@ -791,7 +829,11 @@ func (m *Model[T]) ListIter(ctx context.Context, where string, args ...any) iter
 			return
 		}
 
-		where, args = m.buildWhere(0, where, args)
+		where, args, err = m.buildWhere(0, where, args)
+		if err != nil {
+			yield(zero, err)
+			return
+		}
 
 		sqlStr := fmt.Sprintf(
 			"SELECT %s FROM %s %s",
@@ -818,7 +860,10 @@ func (m *Model[T]) Count(ctx context.Context, field string, where string, args .
 	if m.err != nil {
 		return 0, m.err
 	}
-	where, args = m.buildWhere(0, where, args)
+	where, args, err = m.buildWhere(0, where, args)
+	if err != nil {
+		return 0, err
+	}
 	if field == "" {
 		field = "*"
 	} else if field != "*" && !strings.ContainsRune(field, ' ') {
@@ -850,7 +895,11 @@ func (m *Model[T]) ListPage(ctx context.Context, page int, size int, where strin
 	if size < 1 {
 		return Pagination{}, nil, fmt.Errorf("invalid size=%d", size)
 	}
-	where, args = m.buildWhere(0, where, args)
+	var err error
+	where, args, err = m.buildWhere(0, where, args)
+	if err != nil {
+		return Pagination{}, nil, err
+	}
 
 	page = max(page, 1) // 最小值为 1
 	total, err := m.doCount(ctx, "*", where, args...)

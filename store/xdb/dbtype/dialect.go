@@ -50,6 +50,9 @@ type Dialect interface {
 
 	// RandomOrder 随机排序算法
 	RandomOrder() string
+
+	// EncodeValue 将 Go 值转换为当前数据库驱动可接受的参数值。
+	EncodeValue(value any) (any, error)
 }
 
 // ReturningDialect 提供 RETURNING 子句生成（仅对支持的方言实现）

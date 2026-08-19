@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/xanygo/anygo/store/xdb/dbschema"
 	"github.com/xanygo/anygo/store/xdb/dialect"
 	"github.com/xanygo/anygo/store/xdb/internal/encoder"
 	"github.com/xanygo/anygo/xt"
@@ -287,4 +288,23 @@ func BenchmarkEncodeStruct(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		encoder.EncodeInsert(dialect.MySQL{}, u1)
 	}
+}
+
+type testUser9 struct {
+	Name   string `db:"name"`
+	Num1   *int64 `db:"num1"`
+	Enable bool   `db:"enable"`
+}
+
+func TestEncoder_EncodeArgs(t *testing.T) {
+	schema, err := dbschema.Schema(dialect.SQLite3{}, testUser9{})
+	xt.NoError(t, err)
+	enc := encoder.Encoder[testUser9]{
+		Schema:  schema,
+		Dialect: dialect.SQLite3{},
+	}
+	ok := true
+	got, err := enc.EncodeArgs(1, true, nil, &ok, false)
+	xt.NoError(t, err)
+	xt.Equal(t, got, []any{1, 1, nil, 1, 0})
 }

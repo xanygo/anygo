@@ -176,3 +176,7 @@ func (d MariaDB) TableExists(ctx context.Context, q dbtype.Queryer, table string
 func (d MariaDB) TableColumns(ctx context.Context, q dbtype.Queryer, table string) ([]string, error) {
 	return MySQL{}.TableColumns(ctx, q, table)
 }
+
+func (d MariaDB) EncodeValue(value any) (any, error) {
+	return MySQL{}.EncodeValue(value)
+}

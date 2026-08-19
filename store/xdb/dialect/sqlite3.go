@@ -7,9 +7,11 @@ package dialect
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
@@ -301,4 +303,29 @@ func (d SQLite3) TableColumns(ctx context.Context, q dbtype.Queryer, table strin
 		columns = append(columns, name)
 	}
 	return columns, nil
+}
+
+func (d SQLite3) EncodeValue(value any) (any, error) {
+	rv := reflect.ValueOf(value)
+	for rv.IsValid() && rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			return nil, nil
+		}
+		rv = rv.Elem()
+	}
+
+	if !rv.IsValid() {
+		return nil, nil
+	}
+	switch rv.Kind() {
+	case reflect.Array:
+		return zreflect.ArrayToSlice(rv), nil
+	case reflect.Bool:
+		if rv.Bool() {
+			return 1, nil
+		}
+		return 0, nil
+	default:
+		return rv.Interface(), nil
+	}
 }

@@ -179,6 +179,26 @@ func (Postgres) ColumnKindType(kind dbtype.Kind, size int) string {
 	}
 }
 
+func (d Postgres) EncodeValue(value any) (any, error) {
+	rv := reflect.ValueOf(value)
+	for rv.IsValid() && rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			return nil, nil
+		}
+		rv = rv.Elem()
+	}
+
+	if !rv.IsValid() {
+		return nil, nil
+	}
+	switch rv.Kind() {
+	case reflect.Array:
+		return zreflect.ArrayToSlice(rv), nil
+	default:
+		return rv.Interface(), nil
+	}
+}
+
 var _ dbtype.CoderDialect = Postgres{}
 
 var arrCodec = pgAnyArrayCodec{}

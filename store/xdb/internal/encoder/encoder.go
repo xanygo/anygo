@@ -5,6 +5,7 @@
 package encoder
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"reflect"
@@ -277,4 +278,29 @@ func (e Encoder[T]) PrimaryKeys(obj T) (columns []dbtype.ColumnSchema, values []
 		return nil, nil, err
 	}
 	return columns, values, nil
+}
+
+// EncodeArgs 对 where 的参数编码
+func (e Encoder[T]) EncodeArgs(args ...any) ([]any, error) {
+	if len(args) == 0 {
+		return nil, nil
+	}
+	result := make([]any, len(args))
+	for i, arg := range args {
+		if na, ok := arg.(sql.NamedArg); ok {
+			v, err := e.Dialect.EncodeValue(na.Value)
+			if err != nil {
+				return nil, fmt.Errorf("encode args %#v: %w", arg, err)
+			}
+			na.Value = v
+			result[i] = na
+			continue
+		}
+		val, err := e.Dialect.EncodeValue(arg)
+		if err != nil {
+			return nil, fmt.Errorf("encode args %#v: %w", arg, err)
+		}
+		result[i] = val
+	}
+	return result, nil
 }
