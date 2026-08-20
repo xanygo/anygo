@@ -1,3 +1,4 @@
+// Package main 查找 go generate 命令，然后并行执行
 package main
 
 import (
@@ -228,6 +229,5 @@ Words:
 		words = append(words, line[0:i])
 		line = line[i:]
 	}
-	log.Println("words=", words)
 	return words, nil
 }

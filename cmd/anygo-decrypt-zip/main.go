@@ -2,6 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2025-01-02
 
+// Package main 解密加密的 zip 文件
 package main
 
 import (

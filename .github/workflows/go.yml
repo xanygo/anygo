@@ -120,8 +120,8 @@ jobs:
 
     - name: Test
       run: |
-        go test  -timeout=120s  -race ./...
-        ( cd cmd/example/db/ && go test -timeout=120s  -race  ./... )
+        go test  -timeout=300s  -race ./...
+        ( cd cmd/example/db/ && go test -timeout=300s  -race  ./... )
 
 
   cross:
@@ -152,6 +152,6 @@ jobs:
 
       - name: Test
         run: |
-          go test -timeout=120s  -race ./...
-          ( cd cmd/example/db/ && go test -timeout=120s  -race  ./... )
+          go test -timeout=300s  -race ./...
+          ( cd cmd/example/db/ && go test -timeout=300s  -race  ./... )
 

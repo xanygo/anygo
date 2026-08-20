@@ -2,6 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2026-03-31
 
+// Package xmeta 提供通用的元信息(meta)的接口定义和方法
 package xmeta
 
 import (

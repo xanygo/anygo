@@ -360,7 +360,11 @@ func (fc *File[K, V]) doCompact() int64 {
 		delete(emptyDirs, parent)
 
 		if d.IsDir() {
-			emptyDirs[path] = true
+			info, err1 := d.Info()
+			// 5 分钟前创建的空文件夹才允许删除，避免创建的文件夹还没有来得及写入就被删除
+			if err1 == nil && time.Since(info.ModTime()) > 5*time.Minute {
+				emptyDirs[path] = true
+			}
 			return nil
 		}
 

@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2025-09-21
 
-// Package xkv 一个通用的 KV 存储的定义和实现
+// Package xkv 一个通用的、仿 Redis API 的、支持多种存储引擎的 KV 存储的定义和实现
 //
 // 内置存储实现：
 //

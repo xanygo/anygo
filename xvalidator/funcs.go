@@ -7,6 +7,7 @@ package xvalidator
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"slices"
 	"strings"
 )
@@ -14,7 +15,11 @@ import (
 // IsHTTPURL 是否有效的 HTTP URL 地址
 func IsHTTPURL(str string) bool {
 	scheme, _, ok := strings.Cut(str, "://")
-	return ok && (scheme == "http" || scheme == "https")
+	if !ok || (scheme != "http" && scheme != "https") {
+		return false
+	}
+	_, err := url.Parse(str)
+	return err == nil
 }
 
 // CheckHTTPURL 是否有效的 HTTP URL 地址,若不是则返回 error

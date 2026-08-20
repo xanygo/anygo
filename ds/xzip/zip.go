@@ -16,6 +16,7 @@ import (
 	"github.com/xanygo/anygo/xcodec"
 )
 
+// FileNames 获取文件名列表
 func FileNames(rd *zip.Reader, strip uint) []string {
 	result := make([]string, 0, len(rd.File))
 	for _, f := range rd.File {

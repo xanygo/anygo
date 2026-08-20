@@ -19,7 +19,7 @@ func register() {
 
 var once sync.Once
 
-// Register 注册
+// Register 调用 mime.AddExtensionType 注册所有的 mime 类型
 func Register() {
 	once.Do(register)
 }
