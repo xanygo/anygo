@@ -54,7 +54,7 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 	err := sc.DropTableIfExists(ctx, User{}.TableName())
 	xt.NoError(t, err)
 
-	err = xdb.Migrate(client, User{})
+	err = xdb.Migrate(ctx, client, User{})
 	xt.NoError(t, err)
 
 	orm := xdb.NewMode[User](client)

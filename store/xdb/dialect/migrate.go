@@ -26,13 +26,13 @@ func createTableSQL(ts dbtype.TableSchema, d dbtype.Dialect, sd dbtype.SchemaDia
 		}
 		tmp := sd.ColumnString(field)
 		lines = append(lines, tmp)
-		if field.Index != nil {
-			indexName := field.Index.IndexName
-			indexMap[indexName] = append(indexMap[indexName], field.Index)
-		}
-		if field.UniqueIndex != nil {
-			indexName := field.UniqueIndex.IndexName
-			uniqIndexMap[indexName] = append(uniqIndexMap[indexName], field.UniqueIndex)
+		for _, index := range field.Indexes {
+			indexName := index.IndexName
+			if index.Unique {
+				uniqIndexMap[indexName] = append(uniqIndexMap[indexName], index)
+			} else {
+				indexMap[indexName] = append(indexMap[indexName], index)
+			}
 		}
 	}
 
@@ -88,13 +88,13 @@ func createTableSQLList(ts dbtype.TableSchema, d dbtype.Dialect, sd dbtype.Schem
 			}
 			tmp := sd.ColumnString(field)
 			lines = append(lines, tmp)
-			if field.Index != nil {
-				indexName := field.Index.IndexName
-				indexMap[indexName] = append(indexMap[indexName], field.Index)
-			}
-			if field.UniqueIndex != nil {
-				indexName := field.UniqueIndex.IndexName
-				uniqIndexMap[indexName] = append(uniqIndexMap[indexName], field.UniqueIndex)
+			for _, index := range field.Indexes {
+				indexName := index.IndexName
+				if index.Unique {
+					uniqIndexMap[indexName] = append(uniqIndexMap[indexName], index)
+				} else {
+					indexMap[indexName] = append(indexMap[indexName], index)
+				}
 			}
 		}
 

@@ -415,19 +415,19 @@ func (m *Model[T]) Upsert(ctx context.Context, conflictCols []string, updateCols
 //
 // conflictGroup: 冲突的主键分组名称
 // updateGroup: 冲突后更新字段分组名称。若值为空，或者 分组对于的字段列表为空，则冲突后不更新（丢弃）
-// 若 group 不存在则会取查找 uniq_index 的明治为 group 的。
 //
 //	比如：
 //
-//	 type User struct{
-//			ID    string    `db:"id,pk"`
-//			Sign  string    `db:"sign,unique_index=uniq_sign"`
-//			Name  string    `db:"name,group=update"`
-//			Class int       `db:"class,group=update"`
-//			Age   int       `db:"age,group=update"`
-//		}
+//	type User struct{
+//		ID       string    `db:"id,pk"`
+//		Sign     string    `db:"sign,unique_index=uniq_sign,group=sign"`
+//		Name     string    `db:"name,group=update"`
+//		Class    int       `db:"class,group=update"`
+//		Age      int       `db:"age,group=update"`
+//	 	Updated  time.Time `db:"updated,auto=Updated,group=*"`
+//	}
 //
-//	 m.UpsertByGroup(ctx,"uniq_sign","update",user1)
+//	m.UpsertByGroup(ctx,"sign","update",user1)
 func (m *Model[T]) UpsertByGroup(ctx context.Context, conflictGroup string, updateGroup string, values ...T) (int64, error) {
 	if m.err != nil {
 		return 0, m.err
@@ -695,9 +695,12 @@ func (m *Model[T]) pkWhereArgs(q T, action encoder.Action) (string, []any, error
 	return m.mapWhere(pkData)
 }
 
+var orderByReg = regexp.MustCompile(`(?i)^order\s+by\s+`)
+
 func (m *Model[T]) connectWhere(where string) string {
-	if where == "" {
-		return ""
+	where = strings.TrimSpace(where)
+	if where == "" || orderByReg.MatchString(where) {
+		return where
 	}
 	return " where " + where
 }

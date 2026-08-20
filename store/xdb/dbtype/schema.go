@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 
 	"github.com/xanygo/anygo/xerror"
 )
@@ -53,14 +54,6 @@ func (ts *TableSchema) FilterByGroup(group string) ColumnSchemas {
 			result = append(result, col)
 		}
 	}
-
-	if len(result) == 0 {
-		for _, col := range ts.Columns {
-			if col.UniqueIndex != nil && col.UniqueIndex.IndexName == group {
-				result = append(result, col)
-			}
-		}
-	}
 	return result
 }
 
@@ -84,8 +77,7 @@ type ColumnSchema struct {
 	AutoIncrement bool                // 自增长
 	Kind          Kind                // 数据类型
 	Unique        bool                // 是否唯一键
-	Index         *IndexSchema        // 索引的名称
-	UniqueIndex   *IndexSchema        // 唯一索引
+	Indexes       []*IndexSchema      // 该字段所属索引列表
 	Size          int                 // 定义列数据类型的大小或长度
 	NotNull       bool                // 是否申明 not null 属性
 	Codec         Codec               // 字段编解码器
@@ -98,7 +90,19 @@ type ColumnSchema struct {
 }
 
 func (scf ColumnSchema) IsGroup(group string) bool {
-	return slices.Contains(scf.Group, group)
+	if (len(scf.Group) == 1 && scf.Group[0] == "*") || slices.Contains(scf.Group, group) {
+		return true
+	}
+	if strings.Contains(group, ",") {
+		arr := strings.Split(group, ",")
+		for _, v := range arr {
+			v = strings.TrimSpace(v)
+			if v != "" && slices.Contains(scf.Group, v) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (scf ColumnSchema) String() string {
@@ -106,8 +110,9 @@ func (scf ColumnSchema) String() string {
 }
 
 type IndexSchema struct {
-	FieldName  string // 数据库字段名
-	IndexName  string // 索引名
+	IndexName  string // 索引名,必填
+	Unique     bool   // 是否唯一索引
+	FieldName  string // 数据库字段名，必填
 	FieldOrder int    // 字段在索引中的顺序
 }
 

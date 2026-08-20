@@ -25,7 +25,7 @@ func withMPK(ctx context.Context, t *testing.T, client *xdb.Client) {
 	err := sc.DropTableIfExists(ctx, MPK{}.TableName())
 	xt.NoError(t, err)
 
-	err = xdb.Migrate(client, MPK{})
+	err = xdb.Migrate(ctx, client, MPK{})
 	xt.NoError(t, err)
 
 	orm := xdb.NewMode[MPK](client)

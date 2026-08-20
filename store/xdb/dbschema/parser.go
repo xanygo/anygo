@@ -157,9 +157,9 @@ func (sp schemaParser) parserField(f reflect.StructField, tag xstruct.Tag) (dbty
 	}
 
 	var err error
-	field.Index, err = sp.parserIndex(field.Name, tag, false)
-	if err == nil {
-		field.UniqueIndex, err = sp.parserIndex(field.Name, tag, true)
+	field.Indexes, err = sp.parserIndexes(field.Name, tag, false)
+	if err != nil {
+		return field, err
 	}
 
 	if def, ok := tag.Get(TagDefault); ok {
@@ -259,45 +259,75 @@ func findCodec(d dbtype.Dialect, name string) dbtype.Codec {
 	return dbcodec.FindByName(name+"@"+d.Name(), name)
 }
 
+var indexReg = regexp.MustCompile(`^(\w+)(?:\[(\d+)\])?$`)
+
 // parserIndex 解析定义的索引字段
-func (sp schemaParser) parserIndex(fieldName string, tag xstruct.Tag, isUniq bool) (*dbtype.IndexSchema, error) {
-	indexTagName := TagIndex
-	indexNamePrefix := "idx_"
-	if isUniq {
-		indexTagName = TagUniqueIndex
-		indexNamePrefix += "uniq_"
-	}
-	index, has := tag.Get(indexTagName)
-	if !has {
-		return nil, nil
-	}
-
-	if index == "" {
-		return &dbtype.IndexSchema{
-			FieldName:  fieldName,
-			IndexName:  indexNamePrefix + fieldName,
-			FieldOrder: -1,
-		}, nil
-	}
-
-	idxName, order, found := strings.Cut(index, ",")
-	if found {
-		num, err := strconv.Atoi(order)
-		if err != nil || num < 0 {
-			return nil, fmt.Errorf("invalid field order in: %q", order)
+func (sp schemaParser) parserIndexes(fieldName string, tag xstruct.Tag, isUniq bool) ([]*dbtype.IndexSchema, error) {
+	var result []*dbtype.IndexSchema
+	parserOne := func(tagName string, isUniq bool, prefix string) error {
+		str, has := tag.Get(tagName)
+		if !has {
+			return nil
 		}
-		return &dbtype.IndexSchema{
-			FieldName:  fieldName,
-			IndexName:  idxName,
-			FieldOrder: num,
-		}, nil
+		// `db:"name,index"` 或者  `db:"name,uniq_index"`
+		if str == "" {
+			index := &dbtype.IndexSchema{
+				Unique:     isUniq,
+				FieldName:  fieldName,
+				IndexName:  prefix + fieldName,
+				FieldOrder: -1,
+			}
+			result = append(result, index)
+			return nil
+		}
+		// `db:"name,index=idx_name"` 或者  `db:"name,uniq_index=name"`
+		// `db:"name,index=idx_name[2]"` 或者  `db:"name,uniq_index=name[2]"`
+		// `db:"name,index=idx_name[2];index_name_class"` 或者  `db:"name,uniq_index=name;name_class"`
+		arr := strings.Split(str, ";")
+		for _, subStr := range arr {
+			subStr = strings.TrimSpace(subStr)
+			if subStr == "" {
+				continue
+			}
+			matches := indexReg.FindStringSubmatch(subStr)
+			if len(matches) == 0 {
+				return fmt.Errorf("invalid index: %q", subStr)
+			}
+			var order int
+			if matches[2] != "" {
+				num, err := strconv.Atoi(matches[2])
+				if err != nil || num < 0 {
+					return fmt.Errorf("invalid field order in: %q", subStr)
+				}
+				order = num
+			}
+			index := &dbtype.IndexSchema{
+				FieldName:  fieldName,
+				Unique:     isUniq,
+				IndexName:  prefix + matches[1],
+				FieldOrder: order,
+			}
+			result = append(result, index)
+		}
+
+		return nil
 	}
 
-	return &dbtype.IndexSchema{
-		FieldName:  fieldName,
-		IndexName:  index,
-		FieldOrder: 0,
-	}, nil
+	if err := parserOne(TagIndex, false, "idx_"); err != nil {
+		return nil, err
+	}
+	if err := parserOne(TagUniqueIndex, true, "uniq_"); err != nil {
+		return nil, err
+	}
+	// 检查是否有重名的
+	names := make(map[string]struct{}, len(result))
+	for _, index := range result {
+		if _, ok := names[index.IndexName]; ok {
+			return nil, fmt.Errorf("duplicate index: %q", index.IndexName)
+		}
+		names[index.IndexName] = struct{}{}
+	}
+	return result, nil
 }
 
 var regNumber = regexp.MustCompile(`^-?\d+(\.\d+)?$`)

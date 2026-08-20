@@ -128,7 +128,11 @@ func (c *Client) QueryContext(ctx context.Context, query string, args ...any) (r
 			its.CallAfter(ctx, event)
 		}()
 	}
-	return c.db.QueryContext(ctx, query, args...)
+	rows, err = c.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		err = newQueryError(err, "QueryContext", query, args)
+	}
+	return rows, err
 }
 
 func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (te TxExecutor, err error) {
@@ -175,7 +179,11 @@ func (c *Client) ExecContext(ctx context.Context, query string, args ...any) (re
 			its.CallAfter(ctx, event)
 		}()
 	}
-	return c.db.ExecContext(ctx, query, args...)
+	ret, err = c.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		err = newQueryError(err, "ExecContext", query, args)
+	}
+	return ret, err
 }
 
 var _ Preparer = (*Client)(nil)
@@ -202,7 +210,7 @@ func (c *Client) PrepareContext(ctx context.Context, query string) (ns Statement
 
 	s, err := c.db.PrepareContext(ctx, query)
 	if err != nil {
-		return nil, err
+		return nil, newQueryError(err, "PrepareContext", query, nil)
 	}
 	return &myStmt{Raw: s, client: c, query: query, stmtID: stmtID}, nil
 }
@@ -266,7 +274,11 @@ func (t *myTx) QueryContext(ctx context.Context, query string, args ...any) (row
 			t.its.CallAfter(ctx, event)
 		}()
 	}
-	return t.Raw.QueryContext(ctx, query, args...)
+	rows, err = t.Raw.QueryContext(ctx, query, args...)
+	if err != nil {
+		err = newQueryError(err, "tx.QueryContext", query, args)
+	}
+	return rows, err
 }
 
 func (t *myTx) ExecContext(ctx context.Context, query string, args ...any) (ret sql.Result, err error) {
@@ -286,7 +298,11 @@ func (t *myTx) ExecContext(ctx context.Context, query string, args ...any) (ret 
 			t.its.CallAfter(ctx, event)
 		}()
 	}
-	return t.Raw.ExecContext(ctx, query, args...)
+	ret, err = t.Raw.ExecContext(ctx, query, args...)
+	if err != nil {
+		err = newQueryError(err, "tx.ExecContext", query, args)
+	}
+	return ret, err
 }
 
 func (t *myTx) PrepareContext(ctx context.Context, query string) (ns Statement, err error) {
@@ -310,7 +326,7 @@ func (t *myTx) PrepareContext(ctx context.Context, query string) (ns Statement, 
 	}
 	s, err := t.Raw.PrepareContext(ctx, query)
 	if err != nil {
-		return nil, err
+		return nil, newQueryError(err, "tx.PrepareContext", query, nil)
 	}
 	return &myStmt{Raw: s, query: query, stmtID: stmtID, txID: t.txID}, nil
 }
@@ -430,7 +446,11 @@ func (s *myStmt) QueryContext(ctx context.Context, args ...any) (rows *sql.Rows,
 			its.CallAfter(ctx, event)
 		}()
 	}
-	return s.Raw.QueryContext(ctx, args...)
+	rows, err = s.Raw.QueryContext(ctx, args...)
+	if err != nil {
+		err = newQueryError(err, "stmt.QueryContext", s.query, args)
+	}
+	return rows, err
 }
 
 func (s *myStmt) ExecContext(ctx context.Context, args ...any) (ret sql.Result, err error) {
@@ -452,7 +472,11 @@ func (s *myStmt) ExecContext(ctx context.Context, args ...any) (ret sql.Result, 
 			its.CallAfter(ctx, event)
 		}()
 	}
-	return s.Raw.ExecContext(ctx, args...)
+	ret, err = s.Raw.ExecContext(ctx, args...)
+	if err != nil {
+		err = newQueryError(err, "stmt.ExecContext", s.query, args)
+	}
+	return ret, err
 }
 
 func (s *myStmt) QueryRowContext(ctx context.Context, args ...any) *sql.Row {

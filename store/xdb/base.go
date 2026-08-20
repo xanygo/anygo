@@ -10,9 +10,9 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"sync"
 
 	"github.com/xanygo/anygo/safely"
-	"github.com/xanygo/anygo/xattr"
 )
 
 type DBCore interface {
@@ -116,9 +116,6 @@ func QueryManyIter[T any](ctx context.Context, q Queryer, query string, args ...
 func QueryOne[T any](ctx context.Context, q Queryer, query string, args ...any) (v T, ok bool, err error) {
 	rows, err := q.QueryContext(ctx, query, args...)
 	if err != nil {
-		if xattr.IsDebugMode() {
-			return v, false, fmt.Errorf("queryOne:%q: %w", query, err)
-		}
 		return v, false, err
 	}
 	return ScanRowsFirst[T](q, rows)
@@ -126,11 +123,7 @@ func QueryOne[T any](ctx context.Context, q Queryer, query string, args ...any) 
 
 // Exec 执行写语句(insert、update、delete)
 func Exec(ctx context.Context, eq Execer, query string, args ...any) (ret sql.Result, err error) {
-	ret, err = eq.ExecContext(ctx, query, args...)
-	if err != nil && xattr.IsDebugMode() {
-		err = fmt.Errorf("exec:%q: %w", query, err)
-	}
-	return ret, err
+	return eq.ExecContext(ctx, query, args...)
 }
 
 func LastInsertID(ret sql.Result, err error) (int64, error) {
@@ -197,4 +190,40 @@ func Count(ctx context.Context, q RowQuerier, query string, args ...any) (num in
 	row := q.QueryRowContext(ctx, query, args...)
 	err = row.Scan(&num)
 	return num, err
+}
+
+var _ error = (*QueryError)(nil)
+
+func newQueryError(err error, caller string, query string, args []any) *QueryError {
+	return &QueryError{
+		Caller: caller,
+		Query:  query,
+		Args:   args,
+		Raw:    err,
+	}
+}
+
+type QueryError struct {
+	Caller string
+	Query  string
+	Args   []any
+	Raw    error
+
+	str  string
+	once sync.Once
+}
+
+func (q *QueryError) Error() string {
+	q.once.Do(func() {
+		var txt string
+		if q.Raw != nil {
+			txt = q.Raw.Error()
+		}
+		q.str = fmt.Sprintf("%s %s, query=%q, args_len=%d", q.Caller, txt, q.Query, len(q.Args))
+	})
+	return q.str
+}
+
+func (q *QueryError) Unwrap() error {
+	return q.Raw
 }

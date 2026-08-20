@@ -10,7 +10,7 @@ jobs:
   linux:
     strategy:
       matrix:
-        go: ['1.26']
+        go: ['1.27']
         servers: [ "ubuntu-latest" ]
     runs-on: ${{ matrix.servers }}
 
@@ -127,7 +127,7 @@ jobs:
   cross:
     strategy:
       matrix:
-        go: ['1.26']
+        go: ['1.27']
         servers: [ "windows-latest","macos-latest","macos-15"]
     runs-on: ${{ matrix.servers }}
 

@@ -1,8 +1,9 @@
+# DataBase
 
 ## service 配置文件段落
 ```toml
 [Database]
-Driver = "sqlite3"  # 可选，mysql
+Driver = "sqlite3"  # 可选，mysql 等
 Username = "user"
 Password = "psw"
 DBName ="demo"
@@ -30,20 +31,132 @@ type User struct {
   Updated  time.Time `db:"update_time,auto=Updated"` // 该条数据更新时间
 }
 
-
-
-type Admin struct {
-  User           // 支持 Embed 类型
-  Roles []string `db:"roles,codec=csv,default"` // 数据库字段名-roles,数据编解码器：csv, 默认值空字符串
-}
-
-func (a Admin) TableName() string {
-  return "admin" // 数据库表名，admin
+func (u User) TableName() string {
+  return "user" // 数据库表名
 }
 
 ```
 
-### 自动赋值字段
+```go
+package main
+
+import (
+  "context"
+  "fmt"
+  
+  "github.com/xanygo/anygo/store/xdb"
+  
+  "myapp/model/dao"
+)
+
+func main() {
+  var client *xdb.Client
+  // 初始化 Client，略
+  orm := xdb.NewMode[dao.User](client)
+  user, found, err := orm.First(context.Background(), "id=?", 1)
+  fmt.Println("user=",user,"found=",found,"err=",error())
+}
+```
+
+
+### Tag
+  默认的 tag 名称为 `db`，可以使用 `SetTagName` 方法修改。
+  格式为：
+  ```
+  db:"{数据库字段名}[,属性1][,属性2]"
+  ```
+  属性格式为 field:value  或者 field，如 
+  ```
+  ID int64 `db:"name,pk,auto_inc"`
+  
+  ArticleIDs []int64  `db:"aids,codec=csv"`
+  ```
+支持属性如下：
+
+| 名称           | 说明                                         | 示例                      |
+|--------------|--------------------------------------------|-------------------------|
+| pk           | 主键，也可以写作 primaryKey。允许在多个字段定义 pk 属性（联合主键）。 |                         |
+| codec        | 对于复杂的类型，在写入数据库时编码，在查询出来后，解码                | codec=csv 或者 codec=json |
+| auto_inc     | 标记此字段为数据库主键。Encode 时，若字段为零值，则忽略该字段         |                         |
+| uniq         | 唯一键，不需要值，也可以是完整的 unique，Migrate 时使用        | uniq                    |
+| index        | 索引，Migrate 时使用                             | 详见下文                    |
+| unique_index | 唯一索引，Migrate 时使用                           | 格式同 index               |
+| size         | 值类型的容量, String 类型的时候有用，Migrate 时使用         | size:255                |
+| not-null     | 不允许存储 NULL，Not Null (默认)，Migrate 时使用       |                         |
+| null         | 允许存储 NULL，Migrate 时使用                      |                         |
+| default      | 默认值，Migrate 时使用                            | 详见下文                    |
+| group        | 字段分组，Model 的部分API可以使用                      | 详见下文                    |
+
+
+#### not-null/null
+数据库是否允许存储 NULL 值。
+
+`not-null` 可以不写，是默认的，若允许 `NULL`，可以添加 `null` 属性。
+
+#### index/uniqueIndex 索引
+index 示例： 
+  1. index                            -> 创建独立索引，索引名称为 idx_字段名
+  2. index=idx_uid                    -> 创建独立索引，索引名称为 idx_uid
+  3. index=idx_uid_class[1]           -> 创建联合索引，索引名称为 idx_uid_class，此字段在索引中排序为 1
+  4. index=idx_uid;idx_uid_class[1]   -> 2 个索引
+
+uniqueIndex 示例：
+  1. unique_index                              -> 创建独立索引，索引名称为 idx_uniq_字段名
+  2. unique_index=idx_uniq_uid                 -> 创建独立索引，索引名称为 idx_uniq_uid
+  3. unique_index=idx_uniq_uid_class[1]        -> 创建联合索引，索引名称为 idx_uniq_uid_class，此字段在索引中排序为 1
+  4. unique_index=idx_uid;uniq_uid_class[1]    -> 2 个索引
+
+需要注意，index 和 uniqIndex 的名称不可重复。
+
+#### default 默认值
+格式为 `default=[[fn|string|number]|]value`。只在 Migrate 时使用，Encode 时不会使用。
+若是字段为 NOT-NULL, 即使没有设置 `default` tag, 在 Migrate 生成 table schema 时，也会自动生成对于类型的默认值。
+
+示例：
+  1. 默认值为空字符串：“name,default”
+  2. 默认值为数字：“name,default=number|123”
+  3. 默认值为字符串：“name,default=string|hello”
+  4. 默认值为数据库函数：“name,default=fn|XXX”
+
+`default=fn|XXX` 的函数示例：
+
+| Fn                | 说明      | Go 类型     | 数据库中的值              |
+|-------------------|---------|-----------|---------------------| 
+| CURRENT_DATE      | 当前日期    | time.Time | 2026-08-08          |
+| CURRENT_TIMESTAMP | 当前日期+时间 | time.Time | 2026-08-08 08:08:08 |
+
+默认值 `CURRENT_DATE` 和 `CURRENT_TIMESTAMP` 会转换为数据库支持的方言，除此之外其他的值会直接传给数据库。
+
+#### native
+设置数据库中字段类型使用数据库原生类型，如 `native:varchar(32)`
+
+#### codec
+数据编解码的方式：
+
+| 名称           | 说明                                                                | 输出示例                  |
+|--------------|-------------------------------------------------------------------|-----------------------|
+| csv          | csv 格式，支持 string、number、bool 类型的 slice 或 array                    | `a,b,c`               |
+| json         | JSON 格式， 可用于 slice、array 、struct、map 类型的字段                        | `25`                  |
+| auto_json    | 需要数据库方言来判断类型，若方言判断不出来，则默认使用 json 编解码                              |                       |
+| text         | 编码为字符串                                                            | `alice@example.com`   |
+| date         | 可用于 time.Time 类型的字段，数据库中存储日期                                      | `2025-11-11`          |
+| date_time    | 可用于 time.Time 类型的字段，数据库中存储日期+时间                                   | `2025-11-11 13:00:00` |
+| timespan     | 可用于 time.Time 类型的字段，数据库中存储的 bigint 类型的值(秒：time.Time.Unix())       | `1234567890`          |
+| milliseconds | 可用于 time.Time 类型的字段，数据库中存储的 bigint 类型的值(毫秒：time.Time.UnixMilli()) | `1786931063369`       |
+| microseconds | 可用于 time.Time 类型的字段，数据库中存储的 bigint 类型的值(微秒：time.Time.UnixMicro()) | `1786931063369864`    |
+| nanoseconds  | 可用于 time.Time 类型的字段，数据库中存储的 bigint 类型的值(纳秒：time.Time.UnixNano())  | `1786931063369864300` |
+
+通过 codec 参数指定复杂类型在编码为 SQL 语句时的序列化方式，以及从数据库中读取出来后反序列化的方式。
+除了上述内置的 codec，还可以通过 dbcodec.Register 注册自定义的 codec。
+
+`auto_json` 可以这样用：
+```
+Scores       []int     `db:"scores,codec=auto_json"`
+```
+对于数据库引擎支持数组的，如 pgx，其方言会依据数据类型做出自动编码。
+对于不支持数组的，如 sqlite, 会退化为 json 编码，数据库字段类型时 Text 类型。
+
+#### auto (自动赋值)
 1. tag 定义的 `auto`值为 `Created`、`CreatedUnix`（是 `Created` 的别名）、`CreatedNano` 的字段被认为是数据的创建字段，当类型是 `time.Time` 或者 `int64` 类型的时候：
 ```
   Created time.time `db:"created_at,auto=Created"`   // 赋值 time.Now()
@@ -76,100 +189,25 @@ func (a Admin) TableName() string {
 | Now         | time.Time                        | time.Now()            |
 | Incr        | int/int64/uint64/float64/float32 | value + 1             |
 
-### Tag
-  默认的 tag 名称为 `db`，可以使用 `SetTagName` 方法修改。
-  格式为：
-  ```
-  db:"{数据库字段名}[,属性1][,属性2]"
-  ```
-  属性格式为 field:value  或者 field，如 
-  ```
-  ID int64 `db:"name,pk,auto_inc"`
-  
-  ArticleIDs []int64  `db:"aids,codec=csv"`
-  ```
-支持属性如下：
 
-| 名称           | 说明                                         | 示例                      |
-|--------------|--------------------------------------------|-------------------------|
-| pk           | 主键，也可以写作 primaryKey。允许在多个字段定义 pk 属性（联合主键）。 |                         |
-| codec        | 对于复杂的类型，在写入数据库时编码，在查询出来后，解码                | codec=csv 或者 codec=json |
-| auto_inc     | 标记此字段为数据库主键。Encode 时，若字段为零值，则忽略该字段         |                         |
-| uniq         | 唯一键，不需要值，也可以是完整的 unique，Migrate 时使用        | uniq                    |
-| index        | 索引，Migrate 时使用                             | 详见下文                    |
-| unique_index | 唯一索引，Migrate 时使用                           | 格式同 index               |
-| size         | 值类型的容量, String 类型的时候有用，Migrate 时使用         | size:255                |
-| not-null     | 不允许存储 NULL，Not Null (默认)，Migrate 时使用       |                         |
-| null         | 允许存储 NULL，Migrate 时使用                      |                         |
-| default      | 默认值，Migrate 时使用                            | 详见下文                    |
-
-
-#### not-null/null
-数据库是否允许存储 NULL 值。
-
-`not-null` 可以不写，是默认的，若允许 `NULL`，可以添加 `null` 属性。
-
-#### index/uniqueIndex
-index 示例： 
-  1. index                 -> 创建独立索引，索引名称为 idx_字段名
-  2. index=idx_uid         -> 创建独立索引，索引名称为 idx_uid
-  3. index=idx_uid_class,1   -> 创建联合索引，索引名称为 idx_uid_class，此字段在索引中排序为 1
-
-uniqueIndex 示例：
-  1. unique_index                         -> 创建独立索引，索引名称为 idx_uniq_字段名
-  2. unique_index=idx_uniq_uid            -> 创建独立索引，索引名称为 idx_uniq_uid
-  3. unique_index=idx_uniq_uid_class,1    -> 创建联合索引，索引名称为 idx_uniq_uid_class，此字段在索引中排序为 1
-
-#### default
-格式为 `default=[[fn|string|number]|]value`。只在 Migrate 时使用，Encode 时不会使用。
-若是字段为 NOT-NULL, 即使没有设置 `default` tag, 在 Migrate 生成 table schema 时，也会自动生成对于类型的默认值。
-
-示例：
-  1. 默认值为空字符串：“name,default”
-  2. 默认值为数字：“name,default=number|123”
-  3. 默认值为字符串：“name,default=string|hello”
-  4. 默认值为数据库函数：“name,default=fn|XXX”
-
-`default=fn|XXX` 的函数示例：
-
-| Fn                | 说明      | Go 类型     | 数据库中的值              |
-|-------------------|---------|-----------|---------------------| 
-| CURRENT_DATE      | 当前日期    | time.Time | 2026-08-08          |
-| CURRENT_TIMESTAMP | 当前日期+时间 | time.Time | 2026-08-08 08:08:08 |
-
-默认值 `CURRENT_DATE` 和 `CURRENT_TIMESTAMP` 会转换为数据库支持的方言，除此之外其他的值会直接传给数据库。
-
-#### native
-设置数据库中字段类型使用数据库原生类型，如 `native:varchar(32)`
-
-### codec 参数
-数据编解码的方式：
-
-| 名称           | 说明                                                                | 输出示例                  |
-|--------------|-------------------------------------------------------------------|-----------------------|
-| csv          | csv 格式，支持 string、number、bool 类型的 slice 或 array                    | `a,b,c`               |
-| json         | JSON 格式， 可用于 slice、array 、struct、map 类型的字段                        | `25`                  |
-| auto_json    | 需要数据库方言来判断类型，若方言判断不出来，则默认使用 json 编解码                              |                       |
-| text         | 编码为字符串                                                            | `alice@example.com`   |
-| date         | 可用于 time.Time 类型的字段，数据库中存储日期                                      | `2025-11-11`          |
-| date_time    | 可用于 time.Time 类型的字段，数据库中存储日期+时间                                   | `2025-11-11 13:00:00` |
-| timespan     | 可用于 time.Time 类型的字段，数据库中存储的 bigint 类型的值(秒：time.Time.Unix())       | `1234567890`          |
-| milliseconds | 可用于 time.Time 类型的字段，数据库中存储的 bigint 类型的值(毫秒：time.Time.UnixMilli()) | `1786931063369`       |
-| microseconds | 可用于 time.Time 类型的字段，数据库中存储的 bigint 类型的值(微秒：time.Time.UnixMicro()) | `1786931063369864`    |
-| nanoseconds  | 可用于 time.Time 类型的字段，数据库中存储的 bigint 类型的值(纳秒：time.Time.UnixNano())  | `1786931063369864300` |
-
-通过 codec 参数指定复杂类型在编码为 SQL 语句时的序列化方式，以及从数据库中读取出来后反序列化的方式。
-除了上述内置的 codec，还可以通过 dbcodec.Register 注册自定义的 codec。
-
-`auto_json` 可以这样用：
+#### group
+字段分组，如：
 ```
-Scores       []int     `db:"scores,codec=auto_json"`
+type User struct{
+    ID       string    `db:"id,pk"`
+    Sign     string    `db:"sign,unique_index=uniq_sign,group=sign"`
+    Name     string    `db:"name,group=update,other"`
+    Class    int       `db:"class,group=update"`
+    Age      int       `db:"age,group=update"`
+    Updated  time.Time `db:"updated,auto=Updated,group=*"` // group=* 会匹配所有 group
+}
 ```
-对于数据库引擎支持数组的，如 pgx，其方言会依据数据类型做出自动编码。
-对于不支持数组的，如 sqlite, 会退化为 json 编码，数据库字段类型时 Text 类型。
+
 
 
 ## 驱动
+在使用 `xdb` 时，需要自行在自己应用的代码中注册对应的驱动。
+
 | 名称        | 别名     | import path                     | 说明                      |
 |-----------|--------|---------------------------------|-------------------------|
 | mysql     |        | github.com/go-sql-driver/mysql  | 支持 MySQL 和 MariaDB      |
