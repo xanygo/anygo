@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"strings"
 	"sync"
 
 	"github.com/xanygo/anygo/safely"
@@ -219,7 +220,17 @@ func (q *QueryError) Error() string {
 		if q.Raw != nil {
 			txt = q.Raw.Error()
 		}
-		q.str = fmt.Sprintf("%s %s, query=%q, args_len=%d", q.Caller, txt, q.Query, len(q.Args))
+		var sb strings.Builder
+		sb.WriteString(q.Caller)
+		sb.WriteString(" ")
+		sb.WriteString(txt)
+		sb.WriteString(", query=")
+		fmt.Fprintf(&sb, "%q", q.Query)
+		fmt.Fprintf(&sb, ", args_len=%d,", len(q.Args))
+		for i, a := range q.Args {
+			fmt.Fprintf(&sb, ", [%d](%T)=%v", i, a, a)
+		}
+		q.str = sb.String()
 	})
 	return q.str
 }

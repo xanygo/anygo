@@ -214,16 +214,11 @@ func (e Encoder[T]) encodeStructFieldValue(schema dbtype.ColumnSchema, val any) 
 	if !rv.IsValid() {
 		return nil, fmt.Errorf("invalid value: %v", val)
 	}
-	// 依据 schema.NotNull 对 *nil ptr 的处理规则：
-	// 若是 insert：NotNull==true，将 nil 转换为空值
-	// 若是 update：NotNull==true，值为 nil 则忽略
 
 	// 处理指针
 	for rv.Kind() == reflect.Pointer {
 		if rv.IsNil() {
-			if e.Action.IsInsertOrUpdate() && schema.NotNull {
-				return nil, xerror.SkipOne
-			}
+			// 为了兼容性更好，不管是否允许 null，全部转换为空值
 			rv = reflect.New(rv.Type().Elem()).Elem()
 			val = rv.Interface()
 		} else {
@@ -232,8 +227,10 @@ func (e Encoder[T]) encodeStructFieldValue(schema dbtype.ColumnSchema, val any) 
 		}
 	}
 
-	if e.Action.IsInsertOrUpdate() && schema.NotNull && rv.Kind() == reflect.Slice && rv.IsNil() {
-		return nil, xerror.SkipOne
+	if rv.Kind() == reflect.Slice && rv.IsNil() {
+		// 将 nil slice, 转换为 空 slice
+		rv = reflect.MakeSlice(rv.Type(), 0, 0)
+		val = rv.Interface()
 	}
 
 	// 类型的判断处理应该有 schema parser 处理好，传入正确的 Codec 即可

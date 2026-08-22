@@ -199,7 +199,7 @@ type User struct{
     Name     string    `db:"name,group=update,other"`
     Class    int       `db:"class,group=update"`
     Age      int       `db:"age,group=update"`
-    Updated  time.Time `db:"updated,auto=Updated,group=*"` // group=* 会匹配所有 group
+    Updated  time.Time `db:"updated,auto=Updated,group=update"`
 }
 ```
 

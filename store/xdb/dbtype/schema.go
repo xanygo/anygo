@@ -90,7 +90,7 @@ type ColumnSchema struct {
 }
 
 func (scf ColumnSchema) IsGroup(group string) bool {
-	if (len(scf.Group) == 1 && scf.Group[0] == "*") || slices.Contains(scf.Group, group) {
+	if slices.Contains(scf.Group, group) {
 		return true
 	}
 	if strings.Contains(group, ",") {

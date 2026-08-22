@@ -413,8 +413,10 @@ func (m *Model[T]) Upsert(ctx context.Context, conflictCols []string, updateCols
 
 // UpsertByGroup 根据预定义的字段分组执行 Upsert
 //
-// conflictGroup: 冲突的主键分组名称
+// conflictGroup: 冲突的主键分组名称，可以为空，为空则使用主键字段
 // updateGroup: 冲突后更新字段分组名称。若值为空，或者 分组对于的字段列表为空，则冲突后不更新（丢弃）
+//
+// conflictGroup 和 updateGroup 都可以使用英文逗号连接多个 group
 //
 //	比如：
 //
@@ -424,7 +426,7 @@ func (m *Model[T]) Upsert(ctx context.Context, conflictCols []string, updateCols
 //		Name     string    `db:"name,group=update"`
 //		Class    int       `db:"class,group=update"`
 //		Age      int       `db:"age,group=update"`
-//	 	Updated  time.Time `db:"updated,auto=Updated,group=*"`
+//	 	Updated  time.Time `db:"updated,auto=Updated,group=update"`
 //	}
 //
 //	m.UpsertByGroup(ctx,"sign","update",user1)
@@ -433,7 +435,13 @@ func (m *Model[T]) UpsertByGroup(ctx context.Context, conflictGroup string, upda
 		return 0, m.err
 	}
 	conflictCols := m.schema.FilterByGroup(conflictGroup).Names()
+	if conflictGroup != "" && len(conflictCols) == -0 {
+		return 0, fmt.Errorf("conflict group %q column list is empty", conflictGroup)
+	}
 	updateCols := m.schema.FilterByGroup(updateGroup).Names()
+	if updateGroup != "" && len(updateCols) == -0 {
+		return 0, fmt.Errorf("update group %q column list is empty", updateGroup)
+	}
 	return m.Upsert(ctx, conflictCols, updateCols, values...)
 }
 

@@ -122,6 +122,8 @@ func TestEncodeInsert(t *testing.T) {
 			"ids2":   "[1,5,3]",
 			"md1":    "null",
 			"md2":    `{"key1":"value1"}`,
+			"bs1":    []byte{},
+			"id2":    0,
 		}
 		xt.Equal(t, out1, want1)
 	})
@@ -194,7 +196,7 @@ func TestEncodeInsert(t *testing.T) {
 				out1, err := encoder.EncodeInsert(dz, v)
 				xt.NoError(t, err)
 				t.Logf("out: %#v", out1)
-				xt.Len(t, out1, 5)
+				xt.Len(t, out1, 6)
 				xt.NotEmpty(t, out1["name"])
 				date := time.Now().Format("2006-01-02")
 				xt.HasPrefix(t, out1["c"].(string), date)
@@ -239,7 +241,7 @@ func TestEncodeInsert(t *testing.T) {
 		}
 		out1, err := encoder.EncodeInsert(dz, u1)
 		xt.NoError(t, err)
-		xt.Equal(t, out1, map[string]any{"name": "name"})
+		xt.Equal(t, out1, map[string]any{"name": "name", "num1": int64(0), "num2": int64(0), "num3": int64(0)})
 
 		num1 := int64(1)
 		u2 := testUser8{
@@ -248,7 +250,7 @@ func TestEncodeInsert(t *testing.T) {
 		}
 		out2, err := encoder.EncodeInsert(dz, u2)
 		xt.NoError(t, err)
-		xt.Equal(t, out2, map[string]any{"name": "name", "num1": int64(1)})
+		xt.Equal(t, out2, map[string]any{"name": "name", "num1": int64(1), "num2": int64(0), "num3": int64(0)})
 
 		num2 := int64(2)
 		num2Ptr := &num2
@@ -259,7 +261,7 @@ func TestEncodeInsert(t *testing.T) {
 		}
 		out3, err := encoder.EncodeInsert(dz, u3)
 		xt.NoError(t, err)
-		xt.Equal(t, out3, map[string]any{"name": "name", "num1": int64(1), "num2": int64(2)})
+		xt.Equal(t, out3, map[string]any{"name": "name", "num1": int64(1), "num2": int64(2), "num3": int64(0)})
 
 		num3 := int64(3)
 		num3Ptr := &num3
