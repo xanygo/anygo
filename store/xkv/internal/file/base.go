@@ -19,6 +19,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/store/xkv/internal"
 	"github.com/xanygo/anygo/xio/xfs"
@@ -83,16 +84,25 @@ func (fb *Base) hasMembers(ctx context.Context) (ok bool, err error) {
 }
 
 func (fb *Base) readMeta() (*Meta, error) {
-	bf, err := os.ReadFile(fb.getMetaFilePath())
+	fp := fb.getMetaFilePath()
+	bf, err := os.ReadFile(fp)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, nil
 		}
 		return nil, err
 	}
+	bf = bytes.TrimSpace(bf)
+	if len(bf) < 2 || bf[0] != '{' || bf[len(bf)-1] != '}' {
+		return nil, nil
+	}
 	meta := &Meta{}
 	err = json.Unmarshal(bf, meta)
-	return meta, err
+	if err == nil {
+		return meta, nil
+	}
+	head := xslice.HeadN(bf, 32)
+	return nil, fmt.Errorf("read meta file %q, json.Unmarshal failed %w, content[:32]=%q", fp, err, head)
 }
 
 func (fb *Base) doWithMeta(ctx context.Context, fn func(ctx context.Context, meta *Meta) error) error {
@@ -144,7 +154,7 @@ func (fb *Base) saveMeta(meta *Meta) error {
 	}
 	bf, err := json.Marshal(meta)
 	if err != nil {
-		return err
+		return fmt.Errorf("saveMeta, json.Marshal failed %w, meta=%#v", err, meta)
 	}
 	fp := fb.getMetaFilePath()
 	return os.WriteFile(fp, bf, 0644)

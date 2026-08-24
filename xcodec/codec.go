@@ -190,43 +190,17 @@ func (f FormCodec) Decode(bf []byte, a any) error {
 	}
 }
 
-// EncodeToString 使用 Encoder 将 obj 编码为 字符串，若 obj 本身就是字符串，则直接返回
+// EncodeToString 使用 Encoder 将 obj 编码为 字符串
 func EncodeToString(enc Encoder, obj any) (string, error) {
-	rv := reflect.ValueOf(obj)
-	for {
-		if rv.Kind() == reflect.String {
-			return rv.String(), nil
-		} else if rv.Kind() == reflect.Pointer {
-			if rv.IsNil() {
-				return "", nil
-			}
-			rv = rv.Elem()
-		} else {
-			break
-		}
-	}
-
-	// 由于无法区分开 []byte 和 []uint8 ，所以不对 []byte 做特殊处理
-
 	bf, err := enc.Encode(obj)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("encode error %w, data=%#v", err, obj)
 	}
 	return unsafe.String(unsafe.SliceData(bf), len(bf)), nil
 }
 
 // DecodeFromString 使用 Decoder 将字符串 解码并赋值给 obj，若 obj 本身是字符串类型，则直接赋值
 func DecodeFromString(dec Decoder, str string, obj any) error {
-	rv := reflect.ValueOf(obj)
-	if rv.Kind() != reflect.Pointer || rv.IsNil() {
-		return fmt.Errorf("obj must be a non-nil pointer, got %T", obj)
-	}
-	elem := rv.Elem()
-	if elem.Kind() == reflect.String {
-		elem.SetString(str)
-		return nil
-	}
-
 	bf := unsafe.Slice(unsafe.StringData(str), len(str))
 	return Decode(dec, bf, obj)
 }

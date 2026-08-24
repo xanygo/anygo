@@ -469,6 +469,8 @@ var FuncMap = template.FuncMap{
 	"xSliceContains": zreflect.SliceContains, // 判断 slice 或者 array 是否包含特定的值
 
 	"xIsDebugMode": xattr.IsDebugMode, // 判断当前应用是否调试模式
+
+	"xMapHasKey": zreflect.MapHasKey,
 }
 
 func Dump(w io.Writer, obj any) {

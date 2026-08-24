@@ -773,6 +773,18 @@ func (m *Model[T]) First(ctx context.Context, where string, args ...any) (v T, o
 	return QueryOne[T](ctx, db, sqlStr, args...)
 }
 
+// GetFirst 查询满足添加的首条数据，若没有则返回错误：xerror.NotFound
+func (m *Model[T]) GetFirst(ctx context.Context, where string, args ...any) (v T, err error) {
+	value, found, err := m.First(ctx, where, args...)
+	if err != nil {
+		return v, err
+	}
+	if found {
+		return value, nil
+	}
+	return v, fmt.Errorf(" %w: where=%q, args=%v", xerror.NotFound, where, args)
+}
+
 var reOrderBy = regexp.MustCompile(`(?i)\border\s+by\b`)
 
 func (m *Model[T]) whereLimitOffset(where string, limit int, offset int) string {
@@ -793,6 +805,8 @@ func (m *Model[T]) whereLimitOffset(where string, limit int, offset int) string 
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 //
 //	可通过 SetSelectFields、SetSelectIgnore 限制查询返回的字段
+//
+// 若查询不到，会返回: zero,false,nil
 func (m *Model[T]) FindByPK(ctx context.Context, v T) (nv T, ok bool, err error) {
 	if m.err != nil {
 		return nv, false, m.err
@@ -802,6 +816,30 @@ func (m *Model[T]) FindByPK(ctx context.Context, v T) (nv T, ok bool, err error)
 		return nv, false, err
 	}
 	return m.First(ctx, where, args...)
+}
+
+// GetByPK 使用主键查找数据,若数据查询不到，会返回 error：xerror.NotFound
+//
+// 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
+//
+//	可通过 SetSelectFields、SetSelectIgnore 限制查询返回的字段
+func (m *Model[T]) GetByPK(ctx context.Context, v T) (nv T, err error) {
+	if m.err != nil {
+		return nv, m.err
+	}
+	where, args, err := m.pkWhereArgs(v, encoder.ActionSelect)
+	if err != nil {
+		return nv, err
+	}
+
+	value, found, err := m.First(ctx, where, args...)
+	if err != nil {
+		return nv, err
+	}
+	if found {
+		return value, nil
+	}
+	return nv, fmt.Errorf("%w: where=%q, args=%v", xerror.NotFound, where, args)
 }
 
 // List 查询并返回满足条件的数据。

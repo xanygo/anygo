@@ -86,6 +86,13 @@ func (c *Condition) Build() (string, []any, error) {
 	return c.builder.String(), c.args, c.err
 }
 
+func (c *Condition) MustBuild() (string, []any) {
+	if c.err != nil {
+		panic(c.err)
+	}
+	return c.builder.String(), c.args
+}
+
 func EmptyBuilder() Builder {
 	return emptyBuilder{}
 }
@@ -202,6 +209,14 @@ func (ib *InsertBuilder) Build() (string, []any, error) {
 	return ib.builder.String(), ib.args, ib.err
 }
 
+func (ib *InsertBuilder) MustBuild() (string, []any) {
+	str, args, err := ib.Build()
+	if err != nil {
+		panic(err)
+	}
+	return str, args
+}
+
 var _ Builder = (*InBuilder)(nil)
 
 type InBuilder struct {
@@ -214,4 +229,12 @@ func (in *InBuilder) Build() (string, []any, error) {
 	}
 	txt := strings.Join(xslice.Repeat("?", len(in.Value)), ",")
 	return txt, in.Value, nil
+}
+
+func (in *InBuilder) MustBuild() (string, []any) {
+	str, args, err := in.Build()
+	if err != nil {
+		panic(err)
+	}
+	return str, args
 }

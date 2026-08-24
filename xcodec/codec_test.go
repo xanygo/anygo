@@ -57,10 +57,10 @@ func TestEncodeToString(t *testing.T) {
 	t.Run("string", func(t *testing.T) {
 		got1, err1 := EncodeToString(JSON, "hello")
 		xt.NoError(t, err1)
-		xt.Equal(t, got1, "hello")
+		xt.Equal(t, got1, `"hello"`)
 
 		var got2 string
-		err2 := DecodeFromString(JSON, "hello", &got2)
+		err2 := DecodeFromString(JSON, `"hello"`, &got2)
 		xt.NoError(t, err2)
 		xt.Equal(t, got2, "hello")
 	})
@@ -80,10 +80,10 @@ func TestEncodeToString(t *testing.T) {
 		type myString string
 		got5, err5 := EncodeToString(JSON, myString("hello"))
 		xt.NoError(t, err5)
-		xt.Equal(t, got5, "hello")
+		xt.Equal(t, got5, `"hello"`)
 
 		var s1 myString
-		err6 := DecodeFromString(JSON, `hello`, &s1)
+		err6 := DecodeFromString(JSON, `"hello"`, &s1)
 		xt.NoError(t, err6)
 		xt.Equal(t, string(s1), "hello")
 	})
@@ -92,10 +92,10 @@ func TestEncodeToString(t *testing.T) {
 		str := myString("hello")
 		got5, err5 := EncodeToString(JSON, &str)
 		xt.NoError(t, err5)
-		xt.Equal(t, got5, "hello")
+		xt.Equal(t, got5, `"hello"`)
 
 		var s1 myString
-		err6 := DecodeFromString(JSON, `hello`, &s1)
+		err6 := DecodeFromString(JSON, `"hello"`, &s1)
 		xt.NoError(t, err6)
 		xt.Equal(t, string(s1), "hello")
 	})
