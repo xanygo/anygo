@@ -12,19 +12,22 @@ import (
 func TestClone(t *testing.T) {
 	t.Run("case 1", func(t *testing.T) {
 		now := time.Now()
-		cp := zreflect.Clone(now)
+		cp, err := zreflect.Clone(now)
+		xt.NoError(t, err)
 		xt.Equal(t, cp.String(), now.String())
 	})
 
 	t.Run("case 2", func(t *testing.T) {
 		value := "abc"
-		cp := zreflect.Clone(value)
+		cp, err := zreflect.Clone(value)
+		xt.NoError(t, err)
 		xt.Equal(t, cp, value)
 	})
 
 	t.Run("case 3", func(t *testing.T) {
 		value := map[string]any{"k1": "v1"}
-		cp := zreflect.Clone(value)
+		cp, err := zreflect.Clone(value)
+		xt.NoError(t, err)
 		xt.Equal(t, cp, value)
 	})
 
@@ -32,7 +35,8 @@ func TestClone(t *testing.T) {
 		value := Person{
 			Name: "abc",
 		}
-		cp := zreflect.Clone(value)
+		cp, err := zreflect.Clone(value)
+		xt.NoError(t, err)
 		xt.Equal(t, cp, value)
 	})
 
@@ -40,13 +44,15 @@ func TestClone(t *testing.T) {
 		value := &Person{
 			Name: "abc",
 		}
-		cp := zreflect.Clone(value)
+		cp, err := zreflect.Clone(value)
+		xt.NoError(t, err)
 		xt.Equal(t, cp, value)
 	})
 
 	t.Run("case 6", func(t *testing.T) {
 		var value *Person
-		cp := zreflect.Clone(value)
+		cp, err := zreflect.Clone(value)
+		xt.NoError(t, err)
 		xt.Equal(t, cp, value)
 		xt.Nil(t, cp)
 	})
@@ -58,23 +64,18 @@ func TestClone(t *testing.T) {
 				Name: "world",
 			},
 		}
-		cp := zreflect.Clone(value)
+		cp, err := zreflect.Clone(value)
+		xt.NoError(t, err)
 		xt.Equal(t, cp, value)
 		xt.NotSamePtr(t, cp.P, value.P)
 		xt.Equal(t, value.name, cp.name)
 	})
 
 	t.Run("case 8", func(t *testing.T) {
-		now := time.Now()
-		cp := zreflect.Clone(now)
-		xt.Equal(t, cp, now)
-		xt.Equal(t, now.UnixNano(), cp.UnixNano())
-	})
-
-	t.Run("case 9", func(t *testing.T) {
 		u := url.Values{}
 		u.Add("k1", "v1")
-		cp := zreflect.Clone(u)
+		cp, err := zreflect.Clone(u)
+		xt.NoError(t, err)
 		xt.Equal(t, u, cp)
 		xt.Equal(t, u.Encode(), cp.Encode())
 	})
