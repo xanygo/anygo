@@ -534,7 +534,11 @@ func (m *Model[T]) Modify(ctx context.Context, old T, update func(nv T) (T, erro
 	if m.err != nil {
 		return 0, m.err
 	}
-	nv, err := update(zreflect.Clone(old))
+	clonedValue, err := zreflect.Clone(old)
+	if err != nil {
+		return 0, err
+	}
+	nv, err := update(clonedValue)
 	if err != nil {
 		if xerror.IsSkip(err) {
 			return 0, nil

@@ -11,13 +11,13 @@ type cloneVisit struct {
 	ptr uintptr
 }
 
-type CloneFunc func(v reflect.Value) reflect.Value
+type CloneFunc func(v reflect.Value) (reflect.Value, error)
 
 var cloneRegistry = make(map[reflect.Type]CloneFunc)
 
 func init() {
-	RegisterCloneValue(reflect.TypeOf(time.Time{}), func(v reflect.Value) reflect.Value {
-		return v
+	RegisterCloneValue(reflect.TypeOf(time.Time{}), func(v reflect.Value) (reflect.Value, error) {
+		return v, nil
 	})
 }
 
@@ -25,14 +25,14 @@ func init() {
 //
 // Example:
 //
-//	RegisterClone(func(v MyType) MyType {
-//	    return v.Clone()
+//	RegisterClone(func(v MyType) (MyType,error) {
+//	    return v.Clone(),nil
 //	})
 func RegisterClone[T any](fn func(T) T) {
 	typ := reflect.TypeOf((*T)(nil)).Elem()
 
-	RegisterCloneValue(typ, func(v reflect.Value) reflect.Value {
-		return reflect.ValueOf(fn(v.Interface().(T)))
+	RegisterCloneValue(typ, func(v reflect.Value) (reflect.Value, error) {
+		return reflect.ValueOf(fn(v.Interface().(T))), nil
 	})
 }
 
@@ -56,21 +56,20 @@ func RegisterCloneValue(typ reflect.Type, fn CloneFunc) {
 //  4. 对于结构体，其导出字段进行深度克隆，未导出字段保持浅复制。
 //  5. 标量类型直接复制。
 //  6. 支持循环引用。
-func Clone[T any](v T) T {
+func Clone[T any](v T) (T, error) {
 	rv := reflect.ValueOf(v)
 
-	if !rv.IsValid() {
+	cv, err := deepClone(rv, make(map[cloneVisit]reflect.Value))
+	if err != nil {
 		var zero T
-		return zero
+		return zero, err
 	}
-
-	cv := deepClone(rv, make(map[cloneVisit]reflect.Value))
-	return cv.Interface().(T)
+	return cv.Interface().(T), nil
 }
 
-func deepClone(v reflect.Value, visited map[cloneVisit]reflect.Value) reflect.Value {
+func deepClone(v reflect.Value, visited map[cloneVisit]reflect.Value) (reflect.Value, error) {
 	if !v.IsValid() {
-		return v
+		return v, fmt.Errorf("invalid value %v cannot clone", v)
 	}
 
 	// 1. 使用已注册的专用 Clone 函数
@@ -80,7 +79,7 @@ func deepClone(v reflect.Value, visited map[cloneVisit]reflect.Value) reflect.Va
 
 	// 2. 尝试使用类型存在的 Clone()T 方法
 	if cloned, ok := callClone(v); ok {
-		return cloned
+		return cloned, nil
 	}
 
 	switch v.Kind() {
@@ -102,12 +101,15 @@ func deepClone(v reflect.Value, visited map[cloneVisit]reflect.Value) reflect.Va
 	case reflect.Map:
 		return cloneMap(v, visited)
 
+	case reflect.Chan:
+		return v, fmt.Errorf("cannot  clone Chan")
+
 	default:
-		// bool, int, uint, float, complex, string, chan,
+		// bool, int, uint, float, complex, string,
 		// func, unsafe.Pointer, etc.
 		//
 		// 直接返回值
-		return v
+		return v, nil
 	}
 }
 
@@ -132,9 +134,9 @@ func callClone(v reflect.Value) (reflect.Value, bool) {
 	return result[0], true
 }
 
-func clonePointer(v reflect.Value, visited map[cloneVisit]reflect.Value) reflect.Value {
+func clonePointer(v reflect.Value, visited map[cloneVisit]reflect.Value) (reflect.Value, error) {
 	if v.IsNil() {
-		return reflect.Zero(v.Type())
+		return reflect.Zero(v.Type()), nil
 	}
 
 	key := cloneVisit{
@@ -143,31 +145,38 @@ func clonePointer(v reflect.Value, visited map[cloneVisit]reflect.Value) reflect
 	}
 
 	if cached, ok := visited[key]; ok {
-		return cached
+		return cached, nil
 	}
 
 	out := reflect.New(v.Type().Elem())
 	visited[key] = out
 
-	out.Elem().Set(deepClone(v.Elem(), visited))
+	val, err := deepClone(v.Elem(), visited)
+	if err != nil {
+		return reflect.Value{}, err
+	}
+	out.Elem().Set(val)
 
-	return out
+	return out, nil
 }
 
-func cloneInterface(v reflect.Value, visited map[cloneVisit]reflect.Value) reflect.Value {
+func cloneInterface(v reflect.Value, visited map[cloneVisit]reflect.Value) (reflect.Value, error) {
 	if v.IsNil() {
-		return reflect.Zero(v.Type())
+		return reflect.Zero(v.Type()), nil
 	}
 
-	elem := deepClone(v.Elem(), visited)
+	elem, err := deepClone(v.Elem(), visited)
+	if err != nil {
+		return reflect.Value{}, err
+	}
 
 	out := reflect.New(v.Type()).Elem()
 	out.Set(elem)
 
-	return out
+	return out, nil
 }
 
-func cloneStruct(v reflect.Value, visited map[cloneVisit]reflect.Value) reflect.Value {
+func cloneStruct(v reflect.Value, visited map[cloneVisit]reflect.Value) (reflect.Value, error) {
 	out := reflect.New(v.Type()).Elem()
 	// 先浅拷贝
 	out.Set(v)
@@ -180,16 +189,19 @@ func cloneStruct(v reflect.Value, visited map[cloneVisit]reflect.Value) reflect.
 		if !dst.CanSet() {
 			continue
 		}
-
-		dst.Set(deepClone(src, visited))
+		val, err := deepClone(src, visited)
+		if err != nil {
+			return out, err
+		}
+		dst.Set(val)
 	}
 
-	return out
+	return out, nil
 }
 
-func cloneSlice(v reflect.Value, visited map[cloneVisit]reflect.Value) reflect.Value {
+func cloneSlice(v reflect.Value, visited map[cloneVisit]reflect.Value) (reflect.Value, error) {
 	if v.IsNil() {
-		return reflect.Zero(v.Type())
+		return reflect.Zero(v.Type()), fmt.Errorf("invalid slice value %v", v)
 	}
 
 	key := cloneVisit{
@@ -198,7 +210,7 @@ func cloneSlice(v reflect.Value, visited map[cloneVisit]reflect.Value) reflect.V
 	}
 
 	if cached, ok := visited[key]; ok {
-		return cached
+		return cached, nil
 	}
 
 	out := reflect.MakeSlice(v.Type(), v.Len(), v.Len())
@@ -207,25 +219,33 @@ func cloneSlice(v reflect.Value, visited map[cloneVisit]reflect.Value) reflect.V
 	visited[key] = out
 
 	for i := 0; i < v.Len(); i++ {
-		out.Index(i).Set(deepClone(v.Index(i), visited))
+		vs, err := deepClone(v.Index(i), visited)
+		if err != nil {
+			return out, err
+		}
+		out.Index(i).Set(vs)
 	}
 
-	return out
+	return out, nil
 }
 
-func cloneArray(v reflect.Value, visited map[cloneVisit]reflect.Value) reflect.Value {
+func cloneArray(v reflect.Value, visited map[cloneVisit]reflect.Value) (reflect.Value, error) {
 	out := reflect.New(v.Type()).Elem()
 
 	for i := 0; i < v.Len(); i++ {
-		out.Index(i).Set(deepClone(v.Index(i), visited))
+		vs, err := deepClone(v.Index(i), visited)
+		if err != nil {
+			return out, err
+		}
+		out.Index(i).Set(vs)
 	}
 
-	return out
+	return out, nil
 }
 
-func cloneMap(v reflect.Value, visited map[cloneVisit]reflect.Value) reflect.Value {
+func cloneMap(v reflect.Value, visited map[cloneVisit]reflect.Value) (reflect.Value, error) {
 	if v.IsNil() {
-		return reflect.Zero(v.Type())
+		return reflect.Zero(v.Type()), nil
 	}
 
 	key := cloneVisit{
@@ -234,7 +254,7 @@ func cloneMap(v reflect.Value, visited map[cloneVisit]reflect.Value) reflect.Val
 	}
 
 	if cached, ok := visited[key]; ok {
-		return cached
+		return cached, nil
 	}
 
 	out := reflect.MakeMapWithSize(v.Type(), v.Len())
@@ -243,11 +263,17 @@ func cloneMap(v reflect.Value, visited map[cloneVisit]reflect.Value) reflect.Val
 
 	iter := v.MapRange()
 	for iter.Next() {
-		newKey := deepClone(iter.Key(), visited)
-		value := deepClone(iter.Value(), visited)
+		newKey, err1 := deepClone(iter.Key(), visited)
+		if err1 != nil {
+			return out, err1
+		}
+		value, err2 := deepClone(iter.Value(), visited)
+		if err2 != nil {
+			return out, err2
+		}
 
 		out.SetMapIndex(newKey, value)
 	}
 
-	return out
+	return out, nil
 }

@@ -374,6 +374,22 @@ func Uint64s(query url.Values, name string, sep string) ([]uint64, error) {
 	return result, nil
 }
 
+func Bool(query url.Values, name string) (bool, error) {
+	str, err := String(query, name)
+	if err != nil {
+		return false, err
+	}
+	return strconv.ParseBool(str)
+}
+
+func BoolDef(query url.Values, name string, def bool) bool {
+	ok, err := Bool(query, name)
+	if err == nil {
+		return ok
+	}
+	return def
+}
+
 // Page 读取 query 中的页码参数，总是返回 >=1 的值
 func Page(query url.Values, name string) int {
 	return ParserPage(query.Get(name))

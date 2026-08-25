@@ -1,6 +1,7 @@
 package zreflect_test
 
 import (
+	"net/url"
 	"testing"
 	"time"
 
@@ -34,6 +35,7 @@ func TestClone(t *testing.T) {
 		cp := zreflect.Clone(value)
 		xt.Equal(t, cp, value)
 	})
+
 	t.Run("case 5", func(t *testing.T) {
 		value := &Person{
 			Name: "abc",
@@ -41,12 +43,14 @@ func TestClone(t *testing.T) {
 		cp := zreflect.Clone(value)
 		xt.Equal(t, cp, value)
 	})
+
 	t.Run("case 6", func(t *testing.T) {
 		var value *Person
 		cp := zreflect.Clone(value)
 		xt.Equal(t, cp, value)
 		xt.Nil(t, cp)
 	})
+
 	t.Run("case 7", func(t *testing.T) {
 		value := &userClone{
 			name: "hello",
@@ -57,6 +61,22 @@ func TestClone(t *testing.T) {
 		cp := zreflect.Clone(value)
 		xt.Equal(t, cp, value)
 		xt.NotSamePtr(t, cp.P, value.P)
+		xt.Equal(t, value.name, cp.name)
+	})
+
+	t.Run("case 8", func(t *testing.T) {
+		now := time.Now()
+		cp := zreflect.Clone(now)
+		xt.Equal(t, cp, now)
+		xt.Equal(t, now.UnixNano(), cp.UnixNano())
+	})
+
+	t.Run("case 9", func(t *testing.T) {
+		u := url.Values{}
+		u.Add("k1", "v1")
+		cp := zreflect.Clone(u)
+		xt.Equal(t, u, cp)
+		xt.Equal(t, u.Encode(), cp.Encode())
 	})
 }
 
