@@ -1,6 +1,7 @@
 package zreflect
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -102,7 +103,7 @@ func deepClone(v reflect.Value, visited map[cloneVisit]reflect.Value) (reflect.V
 		return cloneMap(v, visited)
 
 	case reflect.Chan:
-		return v, fmt.Errorf("cannot  clone Chan")
+		return v, errors.New("cannot clone Chan")
 
 	default:
 		// bool, int, uint, float, complex, string,
@@ -201,7 +202,7 @@ func cloneStruct(v reflect.Value, visited map[cloneVisit]reflect.Value) (reflect
 
 func cloneSlice(v reflect.Value, visited map[cloneVisit]reflect.Value) (reflect.Value, error) {
 	if v.IsNil() {
-		return reflect.Zero(v.Type()), fmt.Errorf("invalid slice value %v", v)
+		return reflect.Zero(v.Type()), nil
 	}
 
 	key := cloneVisit{

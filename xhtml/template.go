@@ -239,9 +239,18 @@ var FuncMap = template.FuncMap{
 	"xCheckedValue": tplfn.InputChecked,
 
 	// 用于 option 类型的 input 的 value 和 checked 属性输出
+	// e.g.:
+	//   <select class="form-select" name="chan_id">
+	//	   <option>全部</option>
+	//	   {{ $opt := xSelectedValue ($.TR.Query "chan_id") }}
+	//	   {{ range $index,$item:=.Channels }}
+	//		   <option {{ $opt.Value $item.ID }}>{{ $item.Name }}</option>
+	//         <!-- 若 $item.ID 和 query 里的 chan_id 的值一样：输出【value="xxx" selected】否则输出【value="xxx"】 -->
+	//	   {{ end }}
+	//   </select>
 	"xSelectedValue": tplfn.InputSelected,
 
-	// 连接多个参数合并为 input 的 name，
+	// 连接多个（ N >= 1 ）参数合并为 input 的 name，
 	// 如 name='{{ xInputObjectName “widget" "name" }}' -> name='widget[name]'
 	"xInputObjectName": tplfn.InputObjectName,
 
