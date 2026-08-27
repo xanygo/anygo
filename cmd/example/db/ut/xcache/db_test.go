@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/mattn/go-sqlite3" // sqlite driver
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/store/xcache/xcachex"
 	"github.com/xanygo/anygo/store/xdb"
@@ -142,6 +143,11 @@ func checkAll(t *testing.T, cache xcache.StringCache) {
 
 		err = cache.Set(ctx, "k1", "v1", time.Minute)
 		xt.NoError(t, err)
+
+		ttl, err := cache.TTL(ctx, "k1")
+		xt.NoError(t, err)
+		xt.Greater(t, ttl, 50*time.Second)
+		xt.LessOrEqual(t, ttl, time.Minute)
 
 		got, err = cache.Get(ctx, "k1")
 		xt.NoError(t, err)
