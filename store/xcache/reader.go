@@ -23,12 +23,12 @@ type Reader[K comparable, V any] struct {
 	// Cache 缓存对象，必填
 	Cache Cache[K, ValueError[V]]
 
-	// TTL 缓存有效期，必填
-	TTL time.Duration
+	// Life 缓存有效期，必填
+	Life time.Duration
 
-	// FailTTL 当 New 方法创建对象失败的时候，可选，缓存的有效期，默认为 0。
+	// FailLife 当 New 方法创建对象失败的时候，可选，缓存的有效期，默认为 0。
 	// > 0 时生效存储 New 失败的 error 信息
-	FailTTL time.Duration
+	FailLife time.Duration
 
 	sf xsync.SingleFlight[K, V]
 }
@@ -53,6 +53,10 @@ func (rd *Reader[K, V]) Has(ctx context.Context, key K) (bool, error) {
 	return rd.Cache.Has(ctx, key)
 }
 
+func (rd *Reader[K, V]) TTL(ctx context.Context, key K) (time.Duration, error) {
+	return rd.Cache.TTL(ctx, key)
+}
+
 // Get 读取数据，若没有，会先查询
 func (rd *Reader[K, V]) Get(ctx context.Context, key K) (v V, err error) {
 	value, err := rd.Cache.Get(ctx, key)
@@ -71,9 +75,9 @@ func (rd *Reader[K, V]) Get(ctx context.Context, key K) (v V, err error) {
 		Err:   err,
 	}
 	if err == nil {
-		err = rd.Cache.Set(ctx, key, value, rd.TTL)
-	} else if rd.FailTTL > 0 {
-		_ = rd.Cache.Set(ctx, key, value, rd.FailTTL)
+		err = rd.Cache.Set(ctx, key, value, rd.Life)
+	} else if rd.FailLife > 0 {
+		_ = rd.Cache.Set(ctx, key, value, rd.FailLife)
 	}
 	return v, err
 }
@@ -90,7 +94,7 @@ func (rd *Reader[K, V]) Flush(ctx context.Context, key K) (v V, err error) {
 		Value: v,
 		Err:   err,
 	}
-	err = rd.Cache.Set(ctx, key, value, rd.TTL)
+	err = rd.Cache.Set(ctx, key, value, rd.Life)
 	return v, err
 }
 

@@ -17,7 +17,7 @@ func TestReader_Get(t *testing.T) {
 			return strconv.Itoa(key), nil
 		},
 		Cache: xcache.NewLRU[int, xcache.ValueError[string]](1000),
-		TTL:   time.Hour,
+		Life:  time.Hour,
 	}
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {

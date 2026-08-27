@@ -66,20 +66,27 @@ type File[K comparable, V any] struct {
 }
 
 func (fc *File[K, V]) Has(ctx context.Context, key K) (bool, error) {
+	ttl, err := fc.TTL(ctx, key)
+	if err != nil {
+		return false, nil
+	}
+	return ttl > 0, nil
+}
+
+func (fc *File[K, V]) TTL(ctx context.Context, key K) (time.Duration, error) {
 	select {
 	case <-ctx.Done():
-		return false, context.Cause(ctx)
+		return 0, context.Cause(ctx)
 	default:
 	}
-
-	expired, _, err := fc.readByKey(key, false)
+	ttl, err := fc.readTTLByKey(key)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return false, nil
+			return 0, nil
 		}
-		return false, err
+		return 0, err
 	}
-	return !expired, nil
+	return ttl, nil
 }
 
 func (fc *File[K, V]) Get(ctx context.Context, key K) (value V, err error) {
@@ -270,6 +277,11 @@ func (fc *File[K, V]) readByKey(key K, needData bool) (expired bool, data []byte
 	return fc.readByPath(fp, needData)
 }
 
+func (fc *File[K, V]) readTTLByKey(key K) (ttl time.Duration, err error) {
+	fp := fc.cacheFilePath(key)
+	return fc.readTTL(fp)
+}
+
 func (fc *File[K, V]) readByPath(fp string, needData bool) (expired bool, data []byte, err error) {
 	file, err := os.Open(fp)
 	if err != nil {
@@ -278,22 +290,13 @@ func (fc *File[K, V]) readByPath(fp string, needData bool) (expired bool, data [
 	defer file.Close()
 
 	br := bufio.NewReader(file)
-	first, _, err := br.ReadLine()
-	if err != nil {
-		return true, nil, fmt.Errorf("read fist line : %w", err)
-	}
-	// 第一行为过期时间，格式为：etime=Unix()
-	etime, ok := bytes.CutPrefix(first, []byte("etime="))
-	if !ok {
-		return true, nil, fmt.Errorf("not valid cache line, expect etime=\\d+, got=%q", first)
-	}
-	expireAt, err := strconv.ParseInt(string(etime), 10, 64)
-	if err != nil {
+
+	ttl, err := fc.parserTTL(br)
+	if err != nil || ttl <= 0 {
 		return true, nil, err
 	}
-	expired = expireAt < time.Now().Unix()
 	if !needData {
-		return expired, nil, nil
+		return false, nil, nil
 	}
 	// 第二行为创建时间，格式为：ctime=unix时间戳,跳过
 	_, _, err = br.ReadLine()
@@ -302,6 +305,38 @@ func (fc *File[K, V]) readByPath(fp string, needData bool) (expired bool, data [
 	}
 	data, err = io.ReadAll(br)
 	return expired, data, err
+}
+
+func (fc *File[K, V]) parserTTL(br *bufio.Reader) (ttl time.Duration, err error) {
+	first, _, err := br.ReadLine()
+	if err != nil {
+		return 0, fmt.Errorf("read fist line : %w", err)
+	}
+	// 第一行为过期时间，格式为：etime=Unix()
+	etime, ok := bytes.CutPrefix(first, []byte("etime="))
+	if !ok {
+		return 0, fmt.Errorf("not valid cache line, expect etime=\\d+, got=%q", first)
+	}
+	expireAt, err := strconv.ParseInt(string(etime), 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	seconds := expireAt - time.Now().Unix()
+	if seconds <= 0 {
+		return 0, nil
+	}
+	return time.Duration(seconds) * time.Second, nil
+}
+
+func (fc *File[K, V]) readTTL(fp string) (ttl time.Duration, err error) {
+	file, err := os.Open(fp)
+	if err != nil {
+		return 0, err
+	}
+	defer file.Close()
+
+	br := bufio.NewReader(file)
+	return fc.parserTTL(br)
 }
 
 func (fc *File[K, V]) autoCompact() {

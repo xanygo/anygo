@@ -88,6 +88,10 @@ func (lo *LatencyObserver[K, V]) Has(ctx context.Context, key K) (bool, error) {
 	return lo.next.Has(ctx, key)
 }
 
+func (lo *LatencyObserver[K, V]) TTL(ctx context.Context, key K) (time.Duration, error) {
+	return lo.next.TTL(ctx, key)
+}
+
 func (lo *LatencyObserver[K, V]) Get(ctx context.Context, key K) (value V, err error) {
 	start := time.Now()
 	value, err = lo.next.Get(ctx, key)

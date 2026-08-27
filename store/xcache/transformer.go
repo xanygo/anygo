@@ -25,6 +25,10 @@ func (t *Transformer[V]) Has(ctx context.Context, key string) (bool, error) {
 	return t.Cache.Has(ctx, key)
 }
 
+func (t *Transformer[V]) TTL(ctx context.Context, key string) (time.Duration, error) {
+	return t.Cache.TTL(ctx, key)
+}
+
 func (t *Transformer[V]) Get(ctx context.Context, key string) (value V, err error) {
 	str, err := t.Cache.Get(ctx, key)
 	if err != nil {

@@ -95,6 +95,29 @@ func (lru *LRU[K, V]) Has(ctx context.Context, key K) (bool, error) {
 	return true, nil
 }
 
+func (lru *LRU[K, V]) TTL(ctx context.Context, key K) (time.Duration, error) {
+	lru.readCnt.Add(1)
+
+	lru.mux.Lock()
+	defer lru.mux.Unlock()
+
+	el, has := lru.data[key]
+	if !has {
+		return 0, nil
+	}
+	val := el.Value.(*MemValue[K, V])
+
+	if val.Expired() {
+		lru.list.Remove(el)
+		delete(lru.data, key)
+		return 0, nil
+	}
+	lru.hitCnt.Add(1)
+	lru.list.MoveToFront(el)
+	ttl := time.Until(val.ExpireAt)
+	return max(ttl, 0), nil
+}
+
 func (lru *LRU[K, V]) Get(_ context.Context, key K) (v V, err error) {
 	return lru.GetNoCtx(key)
 }
@@ -342,6 +365,27 @@ func (m *MemoryXIFO[K, V]) Has(ctx context.Context, key K) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func (m *MemoryXIFO[K, V]) TTL(ctx context.Context, key K) (time.Duration, error) {
+	m.readCnt.Add(1)
+
+	m.mux.Lock()
+	defer m.mux.Unlock()
+
+	el, has := m.data[key]
+	if !has {
+		return 0, nil
+	}
+	val := el.Value.(*MemValue[K, V])
+	if val.Expired() {
+		m.list.Remove(el)
+		delete(m.data, key)
+		return 0, nil
+	}
+	ttl := time.Until(val.ExpireAt)
+	m.hitCnt.Add(1)
+	return max(ttl, 0), nil
 }
 
 func (m *MemoryXIFO[K, V]) Get(_ context.Context, key K) (value V, err error) {

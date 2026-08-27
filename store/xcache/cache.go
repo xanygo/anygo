@@ -19,6 +19,12 @@ type (
 		// 异常： 返回 false,error (error 不会是 xerror.NotFound)
 		Has(ctx context.Context, key K) (bool, error)
 
+		// TTL 返回 key 剩余有效期
+		// key 存在：返回 >0 的  Duration，nil
+		// key 不存在：返回 0，nil
+		// 异常：返回 0，error  (error 不会是 xerror.NotFound)
+		TTL(ctx context.Context, key K) (time.Duration, error)
+
 		Getter[K, V]
 		Setter[K, V]
 		Deleter[K]

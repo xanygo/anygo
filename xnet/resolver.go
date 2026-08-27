@@ -194,9 +194,9 @@ func (r *CachedResolver) createCacheReader() *xcache.Reader[string, []net.IP] {
 		xcache.Registry().TryRegister("sys:ResolverLRU", cc)
 	}
 	cache := &xcache.Reader[string, []net.IP]{
-		Cache:   cc,
-		TTL:     ttl,
-		FailTTL: min(max(ttl/10, 100*time.Millisecond), time.Second),
+		Cache:    cc,
+		Life:     ttl,
+		FailLife: min(max(ttl/10, 100*time.Millisecond), time.Second),
 		New: func(ctx context.Context, key string) ([]net.IP, error) {
 			network, host, _ := strings.Cut(key, "@")
 			return r.getStdResolver().LookupIP(ctx, network, host)

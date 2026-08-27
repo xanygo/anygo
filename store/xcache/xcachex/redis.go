@@ -39,6 +39,22 @@ func (r *Redis) Has(ctx context.Context, key string) (bool, error) {
 	return num == 1, err
 }
 
+const ttlNoExpire = 31 * 24 * time.Hour
+
+func (r *Redis) TTL(ctx context.Context, key string) (time.Duration, error) {
+	ttl, err := r.Client.TTL(ctx, r.KeyPrefix+key)
+	if err != nil {
+		if errors.Is(err, xredis.ErrNil) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	if ttl == -1 { // 理论应该不存在
+		return ttlNoExpire, nil
+	}
+	return ttl, nil
+}
+
 func (r *Redis) fullKey(key string) string {
 	return r.KeyPrefix + key
 }

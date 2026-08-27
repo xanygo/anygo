@@ -32,6 +32,11 @@ func testCache(t *testing.T, c xcache.Cache[string, int]) {
 	t.Logf("check set k1")
 	xt.NoError(t, c.Set(ctx, "k1", 1, 10*time.Second))
 
+	ttl1, err1 := c.TTL(ctx, "k1")
+	xt.NoError(t, err1)
+	xt.Greater(t, ttl1, 9*time.Second)
+	xt.LessOrEqual(t, ttl1, 10*time.Second)
+
 	t.Logf("check get k1")
 	got2, err2 := c.Get(ctx, "k1")
 	xt.NoError(t, err2)

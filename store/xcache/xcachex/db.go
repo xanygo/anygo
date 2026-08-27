@@ -22,7 +22,7 @@ type dbModel struct {
 	Value   string `db:"v"`
 	Created int64  `db:"c"`
 	Updated int64  `db:"u"`
-	Expires int64  `db:"e,index"`
+	Expires int64  `db:"e,index"` // 赋值为： time.Now().UnixMicro()
 }
 
 type Database struct {
@@ -81,6 +81,18 @@ func (d *Database) Has(ctx context.Context, key string) (bool, error) {
 		return false, err
 	}
 	return item != nil, nil
+}
+
+func (d *Database) TTL(ctx context.Context, key string) (time.Duration, error) {
+	item, err := d.get(ctx, key)
+	if err != nil {
+		if errors.Is(err, xerror.NotFound) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	ttl := time.Duration(item.Expires-time.Now().UnixMicro()) * time.Microsecond
+	return max(ttl, 0), nil
 }
 
 func (d *Database) get(ctx context.Context, key string) (*dbModel, error) {

@@ -82,6 +82,16 @@ func (c *chains[K, V]) Has(ctx context.Context, key K) (has bool, err error) {
 	return false, err
 }
 
+func (c *chains[K, V]) TTL(ctx context.Context, key K) (ttl time.Duration, err error) {
+	for _, item := range c.caches {
+		ttl, err = item.Cache.TTL(ctx, key)
+		if ttl > 0 {
+			return ttl, nil
+		}
+	}
+	return 0, err
+}
+
 func (c *chains[K, V]) Get(ctx context.Context, key K) (v V, err error) {
 	var errs []error
 	for idx, item := range c.caches {
