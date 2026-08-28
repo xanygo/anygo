@@ -11,7 +11,8 @@ import (
 )
 
 type StringModel struct {
-	KeyHash [32]byte `db:"k,pk"`
+	ID      int64    `db:"id,pk,auto_inc"`
+	KeyHash [32]byte `db:"k,unique"`
 	KeyRaw  string   `db:"k_raw"`
 	Value   string   `db:"v"`
 	Created int64    `db:"c"`

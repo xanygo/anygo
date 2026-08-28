@@ -55,6 +55,14 @@ func (r *Redis) TTL(ctx context.Context, key string) (time.Duration, error) {
 	return ttl, nil
 }
 
+func (r *Redis) Expire(ctx context.Context, key string, life time.Duration) error {
+	ok, err := r.Client.ExpireOpt(ctx, r.KeyPrefix+key, life, "XX")
+	if ok {
+		return nil
+	}
+	return err
+}
+
 func (r *Redis) fullKey(key string) string {
 	return r.KeyPrefix + key
 }

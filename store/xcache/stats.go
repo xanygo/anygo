@@ -85,11 +85,27 @@ type LatencyObserver[K comparable, V any] struct {
 }
 
 func (lo *LatencyObserver[K, V]) Has(ctx context.Context, key K) (bool, error) {
-	return lo.next.Has(ctx, key)
+	start := time.Now()
+	ok, err := lo.next.Has(ctx, key)
+	cost := time.Since(start)
+	lo.get.IncrAuto(err, cost)
+	return ok, err
 }
 
 func (lo *LatencyObserver[K, V]) TTL(ctx context.Context, key K) (time.Duration, error) {
-	return lo.next.TTL(ctx, key)
+	start := time.Now()
+	ttl, err := lo.next.TTL(ctx, key)
+	cost := time.Since(start)
+	lo.get.IncrAuto(err, cost)
+	return ttl, err
+}
+
+func (lo *LatencyObserver[K, V]) Expire(ctx context.Context, key K, life time.Duration) error {
+	start := time.Now()
+	err := lo.next.Expire(ctx, key, life)
+	cost := time.Since(start)
+	lo.set.IncrAuto(err, cost)
+	return err
 }
 
 func (lo *LatencyObserver[K, V]) Get(ctx context.Context, key K) (value V, err error) {

@@ -14,16 +14,25 @@ import (
 type (
 	Cache[K comparable, V any] interface {
 		// Has 返回，key 是否存在
-		// 存在：返回 true,nil
-		// 不存在：返回 false,nil
-		// 异常： 返回 false,error (error 不会是 xerror.NotFound)
+		//
+		//  存在：返回 true,nil
+		//  不存在：返回 false,nil
+		//  异常： 返回 false,error (error 不会是 xerror.NotFound)
 		Has(ctx context.Context, key K) (bool, error)
 
 		// TTL 返回 key 剩余有效期
-		// key 存在：返回 >0 的  Duration，nil
-		// key 不存在：返回 0，nil
-		// 异常：返回 0，error  (error 不会是 xerror.NotFound)
+		//
+		//  key 存在：返回 Duration(>0)，nil
+		//  key 不存在：返回 0，nil
+		//  异常：返回 0，error  (error 不会是 xerror.NotFound)
 		TTL(ctx context.Context, key K) (time.Duration, error)
+
+		// Expire 给 key 重新设置有效期
+		//
+		//  key 存在且有效，返回 nil
+		//  key 不存在（或已过期），返回  xerror.NotFound
+		//  其他异常，返回 error
+		Expire(ctx context.Context, key K, life time.Duration) error
 
 		Getter[K, V]
 		Setter[K, V]

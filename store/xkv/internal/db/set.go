@@ -11,8 +11,9 @@ import (
 )
 
 type SetModel struct {
-	KeyHash    [32]byte `db:"k,pk"`
-	MemberHash [32]byte `db:"m,pk"`
+	ID         int64    `db:"id,auto_inc,pk"`
+	KeyHash    [32]byte `db:"k,unique_index=k_m[1]"`
+	MemberHash [32]byte `db:"m,unique_index=k_m[2]"`
 
 	KeyRaw    string `db:"k_raw"`
 	MemberRaw string `db:"m_raw"`
@@ -115,7 +116,7 @@ func (s *Set) SRange(ctx context.Context, fn func(member string) bool) error {
 		orm := xdb.NewMode[SetModel](tx)
 		orm.Table(s.GetTable())
 		orm.SetSelectFields("m_raw")
-		for item, err1 := range orm.ListIter(ctx, "k=? order by c asc", s.Meta.KeyHash[:]) {
+		for item, err1 := range orm.ListIter(ctx, "k=? order by id asc", s.Meta.KeyHash[:]) {
 			if err1 != nil {
 				return err1
 			}

@@ -68,6 +68,10 @@ func (n *Nop[K, V]) TTL(ctx context.Context, key K) (time.Duration, error) {
 	return 0, nil
 }
 
+func (n *Nop[K, V]) Expire(ctx context.Context, key K, ttl time.Duration) error {
+	return nil
+}
+
 func (n *Nop[K, V]) Get(ctx context.Context, key K) (value V, err error) {
 	n.readCnt.Add(1)
 	return value, xerror.NotFound

@@ -11,8 +11,9 @@ import (
 )
 
 type ListModel struct {
-	KeyHash [32]byte `db:"k,pk"`
-	Index   int64    `db:"idx,pk"`
+	ID      int64    `db:"id,auto_inc,pk"`
+	KeyHash [32]byte `db:"k,unique_index=k_i[1]"`
+	Index   int64    `db:"idx,unique_index=k_i[2]"`
 	KeyRaw  string   `db:"k_raw"`
 	Value   string   `db:"v"`
 	Created int64    `db:"c"`

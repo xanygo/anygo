@@ -44,26 +44,80 @@ func (tr *TableProvider) migrate(ctx context.Context, db xdb.DBCore, obj any, de
 //
 //	以下是 SQLite 的表结构：
 //
-// --- xkv_meta: 存储元信息（所有的 key 以及数据类型）的表
-// --- 下面所有表中的 c 和 u 分别表示数据的创建时间和更新时间，是 unix 时间戳
-// CREATE TABLE IF NOT EXISTS xkv_meta (k BLOB PRIMARY KEY,k_raw Text,dt INTEGER,meta TEXT,c INTEGER,u INTEGER);
+//	--- xkv_meta: 存储元信息（所有的 key 以及数据类型）的表
+//	--- 下面所有表中的 c 和 u 分别表示数据的创建时间和更新时间，是时间戳(纳秒)
 //
-// --- xkv_string：存储 String 类型的数据
-// CREATE TABLE IF NOT EXISTS xkv_string (k BLOB PRIMARY KEY,k_raw Text,v TEXT,c INTEGER,u INTEGER);
+//	CREATE TABLE "xkv_meta" (
+//	"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+//	"k" BLOB NOT NULL UNIQUE DEFAULT ”,
+//	"k_raw" TEXT NOT NULL DEFAULT ”,
+//	"dt" INTEGER NOT NULL DEFAULT 0,
+//	"c" INTEGER NOT NULL DEFAULT 0,
+//	"u" INTEGER NOT NULL DEFAULT 0,
+//	"meta" TEXT NOT NULL DEFAULT ”);
 //
-// --- xkv_list： 存储 List 类型的数据
-// CREATE TABLE IF NOT EXISTS xkv_list (k BLOB,k_raw Text,idx INTEGER,v TEXT,c INTEGER,PRIMARY KEY(k,idx));
+//	--- xkv_string：存储 String 类型的数据
 //
-// ---  xkv_hash： 存储 Hash 类型数据
-// CREATE TABLE IF NOT EXISTS xkv_hash (k BLOB,k_raw Text,f BLOB,f_raw TEXT,v TEXT,c INTEGER,u INTEGER,PRIMARY KEY(k,f));
+//	CREATE TABLE "xkv_string" (
+//	"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+//	"k" BLOB NOT NULL UNIQUE DEFAULT ”,
+//	"k_raw" TEXT NOT NULL DEFAULT ”,
+//	"v" TEXT NOT NULL DEFAULT ”,
+//	"c" INTEGER NOT NULL DEFAULT 0,
+//	"u" INTEGER NOT NULL DEFAULT 0);
 //
-// --- xkv_set：存储 Set 类型数据
-// CREATE TABLE IF NOT EXISTS xkv_set (k BLOB,k_raw Text,m BLOB,m_raw TEXT,c INTEGER);
-// CREATE UNIQUE INDEX IF NOT EXISTS idx_k_m on xkv_set(k,m);
+//	--- xkv_list： 存储 List 类型的数据
 //
-// ---  xkv_zset：存储 ZSet 类型数据
-// CREATE TABLE IF NOT EXISTS xkv_zset (k BLOB,k_raw TEXT,m BLOB,m_raw TEXT,s REAL,c INTEGER,u INTEGER,PRIMARY KEY(k,m));
-// CREATE INDEX IF NOT EXISTS idx_k_i on xkv_zset(k,s);
+//	CREATE TABLE "xkv_list" (
+//	"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+//	"k" BLOB NOT NULL DEFAULT ”,
+//	"idx" INTEGER NOT NULL DEFAULT 0,
+//	"k_raw" TEXT NOT NULL DEFAULT ”,
+//	"v" TEXT NOT NULL DEFAULT ”,
+//	"c" INTEGER NOT NULL DEFAULT 0);
+//
+//	CREATE UNIQUE INDEX IF NOT EXISTS idx_xkv_list_k_i on xkv_list(k,idx);
+//
+//	---  xkv_hash： 存储 Hash 类型数据
+//
+//	CREATE TABLE "xkv_hash" (
+//	"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+//	"k" BLOB NOT NULL DEFAULT ”,
+//	"f" BLOB NOT NULL DEFAULT ”,
+//	"k_raw" TEXT NOT NULL DEFAULT ”,
+//	"f_raw" TEXT NOT NULL DEFAULT ”,
+//	"v" TEXT NOT NULL DEFAULT ”,
+//	"c" INTEGER NOT NULL DEFAULT 0,
+//	"u" INTEGER NOT NULL DEFAULT 0);
+//
+//	CREATE UNIQUE INDEX IF NOT EXISTS idx_xkv_hash_k_f on xkv_hash(k,f);
+//
+//	--- xkv_set：存储 Set 类型数据
+//
+//	CREATE TABLE "xkv_set" (
+//	"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+//	"k" BLOB NOT NULL DEFAULT ”,
+//	"m" BLOB NOT NULL DEFAULT ”,
+//	"k_raw" TEXT NOT NULL DEFAULT ”,
+//	"m_raw" TEXT NOT NULL DEFAULT ”,
+//	"c" INTEGER NOT NULL DEFAULT 0);
+//
+//	CREATE UNIQUE INDEX IF NOT EXISTS idx_xkv_set_k_m on xkv_set(k,m);
+//
+//	---  xkv_zset：存储 ZSet 类型数据
+//
+//	CREATE TABLE "xkv_zset" (
+//	"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+//	"k" BLOB NOT NULL DEFAULT ”,
+//	"m" BLOB NOT NULL DEFAULT ”,
+//	"k_raw" TEXT NOT NULL DEFAULT ”,
+//	"m_raw" TEXT NOT NULL DEFAULT ”,
+//	"s" REAL NOT NULL DEFAULT 0,
+//	"c" INTEGER NOT NULL DEFAULT 0,
+//	"u" INTEGER NOT NULL DEFAULT 0);
+//
+//	CREATE UNIQUE INDEX IF NOT EXISTS idx_xkv_zset_k_m on xkv_zset(k,m);
+//	CREATE INDEX IF NOT EXISTS idx_xkv_zset_k_s on xkv_zset(k,s);
 type DatabaseStore struct {
 	// DB 必填字段
 	DB *xdb.Client

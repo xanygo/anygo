@@ -95,6 +95,22 @@ func (d *Database) TTL(ctx context.Context, key string) (time.Duration, error) {
 	return max(ttl, 0), nil
 }
 
+func (d *Database) Expire(ctx context.Context, key string, life time.Duration) error {
+	now := time.Now()
+	cond := xdb.Condition{}
+	cond.And("k=?", key)
+	cond.And("e>?", now.UnixMicro())
+
+	where, args := cond.MustBuild()
+	orm := d.orm()
+	ne := now.Add(life)
+	_, err := orm.ModifyFirst(ctx, func(value *dbModel) (*dbModel, error) {
+		value.Expires = ne.UnixMicro()
+		return value, nil
+	}, where, args...)
+	return err
+}
+
 func (d *Database) get(ctx context.Context, key string) (*dbModel, error) {
 	orm := d.orm()
 	orm.SetSelectFields("e", "v")

@@ -29,6 +29,10 @@ func (t *Transformer[V]) TTL(ctx context.Context, key string) (time.Duration, er
 	return t.Cache.TTL(ctx, key)
 }
 
+func (t *Transformer[V]) Expire(ctx context.Context, key string, life time.Duration) error {
+	return t.Cache.Expire(ctx, key, life)
+}
+
 func (t *Transformer[V]) Get(ctx context.Context, key string) (value V, err error) {
 	str, err := t.Cache.Get(ctx, key)
 	if err != nil {

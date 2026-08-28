@@ -89,6 +89,19 @@ func (fc *File[K, V]) TTL(ctx context.Context, key K) (time.Duration, error) {
 	return ttl, nil
 }
 
+func (fc *File[K, V]) Expire(ctx context.Context, key K, life time.Duration) error {
+	select {
+	case <-ctx.Done():
+		return context.Cause(ctx)
+	default:
+	}
+	value, err := fc.doGet(key)
+	if err != nil {
+		return err
+	}
+	return fc.doSet(key, value, life)
+}
+
 func (fc *File[K, V]) Get(ctx context.Context, key K) (value V, err error) {
 	fc.readCnt.Add(1)
 	defer fc.autoCompact()

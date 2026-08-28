@@ -92,6 +92,17 @@ func (c *chains[K, V]) TTL(ctx context.Context, key K) (ttl time.Duration, err e
 	return 0, err
 }
 
+func (c *chains[K, V]) Expire(ctx context.Context, key K, life time.Duration) error {
+	var err error
+	for _, item := range c.caches {
+		if err = item.Cache.Expire(ctx, key, life); err == nil {
+			// 只需要设置成功一个即可
+			break
+		}
+	}
+	return err
+}
+
 func (c *chains[K, V]) Get(ctx context.Context, key K) (v V, err error) {
 	var errs []error
 	for idx, item := range c.caches {

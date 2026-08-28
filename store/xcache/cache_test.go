@@ -32,10 +32,27 @@ func testCache(t *testing.T, c xcache.Cache[string, int]) {
 	t.Logf("check set k1")
 	xt.NoError(t, c.Set(ctx, "k1", 1, 10*time.Second))
 
-	ttl1, err1 := c.TTL(ctx, "k1")
-	xt.NoError(t, err1)
-	xt.Greater(t, ttl1, 9*time.Second)
-	xt.LessOrEqual(t, ttl1, 10*time.Second)
+	t.Run("ttl1", func(t *testing.T) {
+		ttl1, err1 := c.TTL(ctx, "k1")
+		xt.NoError(t, err1)
+		xt.Greater(t, ttl1, 9*time.Second)
+		xt.LessOrEqual(t, ttl1, 10*time.Second)
+	})
+
+	xt.NoError(t, c.Expire(ctx, "k1", time.Hour))
+
+	t.Run("ttl2", func(t *testing.T) {
+		ttl1, err1 := c.TTL(ctx, "k1")
+		xt.NoError(t, err1)
+		xt.Greater(t, ttl1, 59*time.Minute)
+		xt.LessOrEqual(t, ttl1, time.Hour)
+	})
+
+	t.Run("ttl3", func(t *testing.T) {
+		ttl1, err1 := c.TTL(ctx, "k-ttl-not-exists")
+		xt.NoError(t, err1)
+		xt.Equal(t, ttl1, 0)
+	})
 
 	t.Logf("check get k1")
 	got2, err2 := c.Get(ctx, "k1")
@@ -48,6 +65,19 @@ func testCache(t *testing.T, c xcache.Cache[string, int]) {
 	xt.True(t, got3)
 
 	xt.NoError(t, c.Delete(ctx, "k1"))
+
+	t.Run("key-not-exists", func(t *testing.T) {
+		const key = "k-expire-not-exists"
+		ttl1, err1 := c.TTL(ctx, key)
+		xt.NoError(t, err1)
+		xt.Equal(t, ttl1, 0)
+
+		xt.Error(t, c.Expire(ctx, key, time.Hour))
+
+		ttl1, err1 = c.TTL(ctx, key)
+		xt.NoError(t, err1)
+		xt.Equal(t, ttl1, 0)
+	})
 
 	t.Logf("checkNotExists-1")
 	checkNotExists(t)

@@ -149,6 +149,13 @@ func checkAll(t *testing.T, cache xcache.StringCache) {
 		xt.Greater(t, ttl, 50*time.Second)
 		xt.LessOrEqual(t, ttl, time.Minute)
 
+		xt.NoError(t, cache.Expire(ctx, "k1", time.Hour))
+
+		ttl, err = cache.TTL(ctx, "k1")
+		xt.NoError(t, err)
+		xt.Greater(t, ttl, 59*time.Minute)
+		xt.LessOrEqual(t, ttl, time.Hour)
+
 		got, err = cache.Get(ctx, "k1")
 		xt.NoError(t, err)
 		xt.Equal(t, got, "v1")
@@ -163,6 +170,23 @@ func checkAll(t *testing.T, cache xcache.StringCache) {
 		has, err = cache.Has(ctx, "k1")
 		xt.NoError(t, err)
 		xt.False(t, has)
+
+		t.Run("key-not-exists", func(t *testing.T) {
+			const key = "k-not-exists-2026"
+			ok, err := cache.Has(ctx, key)
+			xt.NoError(t, err)
+			xt.False(t, ok)
+
+			ttl, err := cache.TTL(ctx, key)
+			xt.NoError(t, err)
+			xt.Empty(t, ttl)
+
+			xt.Error(t, cache.Expire(ctx, key, time.Minute))
+
+			ok, err = cache.Has(ctx, key)
+			xt.NoError(t, err)
+			xt.False(t, ok)
+		})
 	})
 
 	t.Run("multi", func(t *testing.T) {

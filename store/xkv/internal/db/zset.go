@@ -12,13 +12,14 @@ import (
 )
 
 type ZSetModel struct {
-	KeyHash    [32]byte `db:"k,pk,index=idx_k_i"`
-	MemberHash [32]byte `db:"m,pk"`
+	ID         int64    `db:"id,pk,auto_inc"`
+	KeyHash    [32]byte `db:"k,unique_index=k_m[1],index=k_s[1]"`
+	MemberHash [32]byte `db:"m,unique_index=k_m[2]"`
 
 	KeyRaw    string `db:"k_raw"`
 	MemberRaw string `db:"m_raw"`
 
-	Score   float64 `db:"s,index=idx_k_i"`
+	Score   float64 `db:"s,index=k_s[2]"`
 	Created int64   `db:"c"`
 	Updated int64   `db:"u"`
 }

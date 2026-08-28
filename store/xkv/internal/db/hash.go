@@ -11,8 +11,10 @@ import (
 )
 
 type HashModel struct {
-	KeyHash   [32]byte `db:"k,pk"`
-	FieldHash [32]byte `db:"f,pk"`
+	ID int64 `db:"id,pk,auto_inc"`
+
+	KeyHash   [32]byte `db:"k,unique_index=k_f[1]"`
+	FieldHash [32]byte `db:"f,unique_index=k_f[2]"`
 
 	KeyRaw   string `db:"k_raw"`
 	FieldRaw string `db:"f_raw"`

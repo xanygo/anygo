@@ -57,6 +57,10 @@ func (rd *Reader[K, V]) TTL(ctx context.Context, key K) (time.Duration, error) {
 	return rd.Cache.TTL(ctx, key)
 }
 
+func (rd *Reader[K, V]) Expire(ctx context.Context, key K, life time.Duration) error {
+	return rd.Cache.Expire(ctx, key, life)
+}
+
 // Get 读取数据，若没有，会先查询
 func (rd *Reader[K, V]) Get(ctx context.Context, key K) (v V, err error) {
 	value, err := rd.Cache.Get(ctx, key)

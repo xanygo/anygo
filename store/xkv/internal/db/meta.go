@@ -24,8 +24,9 @@ func keyHashBytes(str string) []byte {
 }
 
 type MetaModel struct {
-	KeyHash  [32]byte          `db:"k,pk"`  // key 的 hash
-	KeyRaw   string            `db:"k_raw"` // 原始的 key
+	ID       int64             `db:"id,pk,auto_inc"`
+	KeyHash  [32]byte          `db:"k,unique"` // key 的 hash
+	KeyRaw   string            `db:"k_raw"`    // 原始的 key
 	DataType internal.DataType `db:"dt"`
 	Created  int64             `db:"c"`
 	Updated  int64             `db:"u"`
