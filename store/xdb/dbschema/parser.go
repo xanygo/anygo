@@ -157,7 +157,7 @@ func (sp schemaParser) parserField(f reflect.StructField, tag xstruct.Tag) (dbty
 	}
 
 	var err error
-	field.Indexes, err = sp.parserIndexes(field.Name, tag, false)
+	field.Indexes, err = sp.parserIndexes(field.Name, tag)
 	if err != nil {
 		return field, err
 	}
@@ -262,7 +262,7 @@ func findCodec(d dbtype.Dialect, name string) dbtype.Codec {
 var indexReg = regexp.MustCompile(`^(\w+)(?:\[(\d+)\])?$`)
 
 // parserIndex 解析定义的索引字段
-func (sp schemaParser) parserIndexes(fieldName string, tag xstruct.Tag, isUniq bool) ([]*dbtype.IndexSchema, error) {
+func (sp schemaParser) parserIndexes(fieldName string, tag xstruct.Tag) ([]*dbtype.IndexSchema, error) {
 	var result []*dbtype.IndexSchema
 	parserOne := func(tagName string, isUniq bool, prefix string) error {
 		str, has := tag.Get(tagName)

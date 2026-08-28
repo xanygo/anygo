@@ -247,12 +247,7 @@ func (d MySQL) ColumnString(fs dbtype.ColumnSchema) string {
 var _ dbtype.MigrateDialect = MySQL{}
 
 func (d MySQL) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.TableSchema) error {
-	sqlStr := createTableSQL(schema, d, d)
-	_, err := db.ExecContext(ctx, sqlStr)
-	if err != nil {
-		return fmt.Errorf("mysql Migrate SQL %q: %w", sqlStr, err)
-	}
-	return nil
+	return doMigrate(ctx, d, db, schema)
 }
 
 var _ dbtype.DescDialect = MySQL{}

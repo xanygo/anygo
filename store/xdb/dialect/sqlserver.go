@@ -304,12 +304,7 @@ func (d SQLServer) AlterCreateIndex(indexType string, name string, table string,
 var _ dbtype.MigrateDialect = SQLServer{}
 
 func (d SQLServer) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.TableSchema) error {
-	sqlStr := createTableSQL(schema, d, d)
-	_, err := db.ExecContext(ctx, sqlStr)
-	if err != nil {
-		return fmt.Errorf("sqlserver Migrate SQL %q: %w", sqlStr, err)
-	}
-	return nil
+	return doMigrate(ctx, d, db, schema)
 }
 
 var _ dbtype.DescDialect = SQLServer{}

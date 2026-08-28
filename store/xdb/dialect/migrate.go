@@ -5,6 +5,8 @@
 package dialect
 
 import (
+	"context"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -12,67 +14,26 @@ import (
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
-func createTableSQL(ts dbtype.TableSchema, d dbtype.Dialect, sd dbtype.SchemaDialect) string {
-	pks := ts.PKColumns()
-
-	str := sd.CreateTableIfNotExists(ts.Table) + " (\n"
-
-	var lines []string
-	indexMap := map[string][]*dbtype.IndexSchema{}
-	uniqIndexMap := map[string][]*dbtype.IndexSchema{}
-	for _, field := range ts.Columns {
-		if len(pks) > 1 && field.IsPrimaryKey {
-			field.IsPrimaryKey = false // 后面统一生成联合主键
-		}
-		tmp := sd.ColumnString(field)
-		lines = append(lines, tmp)
-		for _, index := range field.Indexes {
-			indexName := index.IndexName
-			if index.Unique {
-				uniqIndexMap[indexName] = append(uniqIndexMap[indexName], index)
-			} else {
-				indexMap[indexName] = append(indexMap[indexName], index)
-			}
+func doMigrate(ctx context.Context, d dbtype.Dialect, db dbtype.DBCore, schema dbtype.TableSchema) error {
+	sqls, err := createTableSQLList(schema, d)
+	if err != nil {
+		return err
+	}
+	for _, sql := range sqls {
+		_, err := db.ExecContext(ctx, sql)
+		if err != nil {
+			return fmt.Errorf("%s migrate SQL %q: %w", d.Name(), sql, err)
 		}
 	}
-
-	for indexName, indexes := range indexMap {
-		sort.Slice(indexes, func(i, j int) bool {
-			return indexes[i].FieldOrder < indexes[j].FieldOrder
-		})
-		var names []string
-		for _, index := range indexes {
-			names = append(names, d.QuoteIdentifier(index.FieldName))
-		}
-		tmp := "Index " + indexName + "(" + strings.Join(names, ",") + ")"
-		lines = append(lines, tmp)
-	}
-
-	for indexName, indexes := range uniqIndexMap {
-		sort.Slice(indexes, func(i, j int) bool {
-			return indexes[i].FieldOrder < indexes[j].FieldOrder
-		})
-		var names []string
-		for _, index := range indexes {
-			names = append(names, index.FieldName)
-		}
-		tmp := sd.UniqIndex(indexName, names)
-		lines = append(lines, tmp)
-	}
-	if len(pks) > 1 {
-		var pkCols []string
-		for _, field := range pks {
-			pkCols = append(pkCols, d.QuoteIdentifier(field.Name))
-		}
-		tmp := "PRIMARY KEY(" + strings.Join(pkCols, ",") + ")"
-		lines = append(lines, tmp)
-	}
-	str += strings.Join(lines, ",\n") + ")"
-	return str
+	return nil
 }
 
 // 返回创建表和创建索引的语句是独立的。sqlite 使用中
-func createTableSQLList(ts dbtype.TableSchema, d dbtype.Dialect, sd dbtype.SchemaDialect) []string {
+func createTableSQLList(ts dbtype.TableSchema, d dbtype.Dialect) ([]string, error) {
+	sd, ok := d.(dbtype.SchemaDialect)
+	if !ok {
+		return nil, fmt.Errorf("%s not implemant SchemaDialect", d.Name())
+	}
 	var result []string
 	pks := ts.PKColumns()
 	indexMap := map[string][]*dbtype.IndexSchema{}
@@ -135,7 +96,7 @@ func createTableSQLList(ts dbtype.TableSchema, d dbtype.Dialect, sd dbtype.Schem
 		result = append(result, str)
 	}
 
-	return result
+	return result, nil
 }
 
 func quoteIdentifiersJoin(d dbtype.Dialect, cols []string) string {

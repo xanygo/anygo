@@ -147,12 +147,7 @@ func (d MariaDB) AlterCreateIndex(indexType string, name string, table string, c
 var _ dbtype.MigrateDialect = MariaDB{}
 
 func (d MariaDB) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.TableSchema) error {
-	sqlStr := createTableSQL(schema, d, d)
-	_, err := db.ExecContext(ctx, sqlStr)
-	if err != nil {
-		return fmt.Errorf("mariadb Migrate SQL %q: %w", sqlStr, err)
-	}
-	return nil
+	return doMigrate(ctx, d, db, schema)
 }
 
 var _ dbtype.DescDialect = MariaDB{}

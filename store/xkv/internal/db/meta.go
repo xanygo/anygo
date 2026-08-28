@@ -84,6 +84,7 @@ func (m *Meta) save(ctx context.Context, tx xdb.TxCore, data MetaModel) error {
 	if data.Updated == 0 {
 		data.Updated = now
 	}
+	data.ID = 0 // k 是唯一主键，若upsert 时 id!=0, mssql 会报错
 	_, err := orm.Upsert(ctx, []string{"k"}, []string{"meta", "u"}, data)
 	return err
 }

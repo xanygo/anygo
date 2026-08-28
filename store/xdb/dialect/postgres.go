@@ -321,14 +321,7 @@ func (d Postgres) AlterCreateIndex(indexType string, name string, table string, 
 var _ dbtype.MigrateDialect = Postgres{}
 
 func (d Postgres) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.TableSchema) error {
-	sqls := createTableSQLList(schema, d, d)
-	for _, sql := range sqls {
-		_, err := db.ExecContext(ctx, sql)
-		if err != nil {
-			return fmt.Errorf("postgres migrate SQL %q: %w", sql, err)
-		}
-	}
-	return nil
+	return doMigrate(ctx, d, db, schema)
 }
 
 var _ dbtype.DescDialect = Postgres{}
