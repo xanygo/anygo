@@ -8,6 +8,7 @@ import (
 	"github.com/xanygo/anygo"
 	"github.com/xanygo/anygo/ds/xcmp"
 	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/store/xdb/xor"
 	"github.com/xanygo/anygo/store/xkv"
 )
 
@@ -38,21 +39,21 @@ func (z *ZSet) GetTable() string {
 	return z.Table
 }
 
-func (z *ZSet) orm(tx xdb.TxCore) *xdb.Model[ZSetModel] {
-	orm := xdb.NewMode[ZSetModel](tx)
+func (z *ZSet) orm(tx xdb.DBCore) *xor.Model[ZSetModel] {
+	orm := xor.New[ZSetModel](tx)
 	return orm.Table(z.GetTable())
 }
 
-func (z *ZSet) deleteWithKey(ctx context.Context, tx xdb.TxCore) error {
+func (z *ZSet) deleteWithKey(ctx context.Context, tx xdb.DBCore) error {
 	orm := z.orm(tx)
-	_, err := orm.Delete(ctx, "k=?", z.Meta.KeyHash[:])
+	_, err := orm.Delete(ctx, xor.Where("k=?", z.Meta.KeyHash[:]))
 	return err
 }
 
 func (z *ZSet) ZAdd(ctx context.Context, score float64, member string) error {
 	memberHash := KeyHash(member)
 	now := time.Now().UnixNano()
-	return z.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+	return z.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := z.orm(tx)
 		data := ZSetModel{
 			KeyHash:    z.Meta.KeyHash,
@@ -71,11 +72,10 @@ func (z *ZSet) ZAdd(ctx context.Context, score float64, member string) error {
 func (z *ZSet) ZIncrBy(ctx context.Context, inc float64, member string) (num float64, err error) {
 	now := time.Now().UnixNano()
 	memberHash := KeyHash(member)
-	err = z.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+	err = z.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := z.orm(tx)
-		orm.SetSelectFields("s")
 
-		item, ok, err1 := orm.First(ctx, "k=? and m=?", z.Meta.KeyHash[:], memberHash[:])
+		item, ok, err1 := orm.First(ctx, xor.Where("k=? and m=?", z.Meta.KeyHash[:], memberHash[:]), xor.Columns("s"))
 		if err1 != nil {
 			return err1
 		}
@@ -129,12 +129,12 @@ func (z *ZSet) ZCount(ctx context.Context, min, max string) (num int64, err erro
 	if err1 != nil {
 		return 0, err1
 	}
-	err = z.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+	err = z.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error {
 		if !hasMeta {
 			return nil
 		}
 		orm := z.orm(tx)
-		num, err1 = orm.Count(ctx, "*", where, args...)
+		num, err1 = orm.Count(ctx, "*", xor.Where(where, args...))
 		return err1
 	})
 	return num, err
@@ -146,14 +146,13 @@ func (z *ZSet) ZLen(ctx context.Context) (num int64, err error) {
 
 func (z *ZSet) ZScore(ctx context.Context, member string) (score float64, found bool, err error) {
 	memberHash := keyHashBytes(member)
-	err = z.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+	err = z.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error {
 		if !hasMeta {
 			return nil
 		}
 		orm := z.orm(tx)
-		orm.SetSelectFields("s")
 
-		item, ok, err1 := orm.First(ctx, "k=? and m=?", z.Meta.KeyHash[:], memberHash)
+		item, ok, err1 := orm.First(ctx, xor.Where("k=? and m=?", z.Meta.KeyHash[:], memberHash), xor.Columns("s"))
 		if err1 != nil || !ok {
 			return err1
 		}
@@ -165,14 +164,13 @@ func (z *ZSet) ZScore(ctx context.Context, member string) (score float64, found 
 }
 
 func (z *ZSet) ZRange(ctx context.Context, fn func(member string, score float64) bool) error {
-	return z.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+	return z.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error {
 		if !hasMeta {
 			return nil
 		}
 		orm := z.orm(tx)
-		orm.SetSelectFields("m_raw", "s")
 
-		for item, err := range orm.ListIter(ctx, "k=? order by s asc", z.Meta.KeyHash[:]) {
+		for item, err := range orm.ListIter(ctx, xor.Where("k=?", z.Meta.KeyHash[:]), xor.OrderBy("s asc"), xor.Columns("m_raw", "s")) {
 			if err != nil {
 				return err
 			}
@@ -190,14 +188,13 @@ func (z *ZSet) ZRangeByScore(ctx context.Context, min string, max string, fn fun
 		return err1
 	}
 
-	return z.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+	return z.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error {
 		if !hasMeta {
 			return nil
 		}
 		orm := z.orm(tx)
-		orm.SetSelectFields("m_raw", "s")
 
-		for item, err := range orm.ListIter(ctx, where+" order by s asc", args...) {
+		for item, err := range orm.ListIter(ctx, xor.Where(where, args...), xor.OrderBy("s asc"), xor.Columns("m_raw", "s")) {
 			if err != nil {
 				return err
 			}
@@ -217,20 +214,17 @@ func (z *ZSet) ZRem(ctx context.Context, members ...string) error {
 	for _, member := range members {
 		hashMembers = append(hashMembers, keyHashBytes(member))
 	}
-	return z.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+	return z.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		_, err := z.Meta.load(ctx, tx)
 		if err != nil {
 			return err
 		}
-		cond := xdb.Condition{}
+		cond := &xdb.Condition{}
 		cond.And("k=?", z.Meta.KeyHash[:])
 		cond.AndInFmt("m in(%s)", hashMembers)
-		where, args, err := cond.Build()
-		if err != nil {
-			return err
-		}
+
 		orm := z.orm(tx)
-		_, err = orm.Delete(ctx, where, args...)
+		_, err = orm.Delete(ctx, xor.WhereByCond(cond))
 		if err != nil {
 			return err
 		}
@@ -243,13 +237,13 @@ func (z *ZSet) ZRemRangeByScore(ctx context.Context, min, max string) (num int64
 	if err != nil {
 		return 0, err
 	}
-	err = z.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+	err = z.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		_, err1 := z.Meta.load(ctx, tx)
 		if err1 != nil {
 			return err1
 		}
 		orm := z.orm(tx)
-		num, err1 = orm.Delete(ctx, where, args...)
+		num, err1 = orm.Delete(ctx, xor.Where(where, args...))
 		if err1 != nil {
 			return err1
 		}
@@ -259,36 +253,32 @@ func (z *ZSet) ZRemRangeByScore(ctx context.Context, min, max string) (num int64
 }
 
 // checkExists 检查 key 是否还存在，若不存在，则删除 meta
-func (z *ZSet) checkExists(ctx context.Context, orm *xdb.Model[ZSetModel]) error {
-	orm.SetSelectFields("c")
-	_, found, err := orm.First(ctx, "k=?", z.Meta.KeyHash[:])
+func (z *ZSet) checkExists(ctx context.Context, orm *xor.Model[ZSetModel]) error {
+	_, found, err := orm.First(ctx, xor.Where("k=?", z.Meta.KeyHash[:]), xor.Columns("c"))
 	if err != nil || found {
 		return err
 	}
-	return z.Meta.delete(ctx, orm.Client())
+	return z.Meta.delete(ctx, orm.DB())
 }
 
 func (z *ZSet) ZRank(ctx context.Context, member string) (index int64, score float64, err error) {
 	index = -1
 	memberHash := keyHashBytes(member)
-	err = z.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+	err = z.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := z.orm(tx)
-		orm.SetSelectFields("s")
 
-		one, found, err1 := orm.First(ctx, "k=? and m=?", z.Meta.KeyHash[:], memberHash)
+		one, found, err1 := orm.First(ctx, xor.Where("k=? and m=?", z.Meta.KeyHash[:], memberHash), xor.Columns("s"))
 		if err1 != nil || !found {
 			return err1
 		}
 		score = one.Score
 
-		cond := xdb.Condition{}
+		cond := &xdb.Condition{}
 		cond.And("k=?", z.Meta.KeyHash[:])
 		cond.And("( s<? or ( s=? and m<? ) )", score, score, memberHash)
-		where, args, err2 := cond.Build()
-		if err2 != nil {
-			return err2
-		}
-		index, err2 = orm.Count(ctx, "*", where, args...)
+
+		var err2 error
+		index, err2 = orm.Count(ctx, "*", xor.WhereByCond(cond))
 		return err2
 	})
 	return index, score, err
@@ -298,10 +288,9 @@ func (z *ZSet) popXX(ctx context.Context, count int, orderBy string) (members []
 	if count < 1 {
 		return nil, nil, nil
 	}
-	err = z.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+	err = z.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := z.orm(tx)
-		orm.SetSelectFields("s", "m", "m_raw").Limit(count)
-		values, err1 := orm.List(ctx, "k=? order by s "+orderBy, z.Meta.KeyHash[:])
+		values, err1 := orm.List(ctx, xor.Where("k=?", z.Meta.KeyHash[:]), xor.OrderBy("s "+orderBy), xor.Limit(count), xor.Columns("s", "m", "m_raw"))
 		if err1 != nil {
 			return err1
 		}
@@ -311,14 +300,11 @@ func (z *ZSet) popXX(ctx context.Context, count int, orderBy string) (members []
 			scores = append(scores, item.Score)
 			hashMembers = append(hashMembers, item.MemberHash[:])
 		}
-		cond := xdb.Condition{}
+		cond := &xdb.Condition{}
 		cond.And("k=?", z.Meta.KeyHash[:])
 		cond.AndInFmt("m in (%s)", hashMembers)
-		where, args, err2 := cond.Build()
-		if err2 != nil {
-			return err2
-		}
-		_, err3 := orm.Delete(ctx, where, args...)
+
+		_, err3 := orm.Delete(ctx, xor.WhereByCond(cond))
 		if err3 != nil {
 			return err3
 		}

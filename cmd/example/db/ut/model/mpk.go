@@ -5,10 +5,11 @@ import (
 	"testing"
 
 	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/store/xdb/xor"
 	"github.com/xanygo/anygo/xt"
 )
 
-var _ xdb.HasTable = MPK{}
+var _ xor.HasTable = MPK{}
 
 type MPK struct {
 	Class string `db:"c,pk,size=255"`
@@ -25,10 +26,10 @@ func withMPK(ctx context.Context, t *testing.T, client *xdb.Client) {
 	err := sc.DropTableIfExists(ctx, MPK{}.TableName())
 	xt.NoError(t, err)
 
-	err = xdb.Migrate(ctx, client, MPK{})
+	err = xor.Migrate(ctx, client, MPK{})
 	xt.NoError(t, err)
 
-	orm := xdb.NewMode[MPK](client)
+	orm := xor.New[MPK](client)
 	value := MPK{
 		Class: "a",
 		Name:  "hello",

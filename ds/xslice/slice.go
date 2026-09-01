@@ -472,3 +472,19 @@ func TailN[S ~[]T, T any](s S, n int) S {
 	}
 	return s[len(s)-n:]
 }
+
+func OffsetLimit[S ~[]T, T any](s S, offset int, limit int) S {
+	if offset < 0 {
+		offset = 0
+	}
+	if limit <= 0 || offset >= len(s) {
+		return nil
+	}
+
+	end := offset + limit
+	if end > len(s) {
+		end = len(s)
+	}
+
+	return s[offset:end]
+}

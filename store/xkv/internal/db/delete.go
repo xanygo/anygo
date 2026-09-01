@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/store/xdb/xor"
 	"github.com/xanygo/anygo/store/xkv/internal"
 )
 
@@ -16,7 +17,7 @@ func (d Delete) Delete(ctx context.Context) error {
 	if len(d.Items) == 0 {
 		return nil
 	}
-	return d.Items[0].Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+	return d.Items[0].Meta.WithTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		for _, item := range d.Items {
 			if err := item.deleteAll(ctx, tx); err != nil {
 				return err
@@ -35,10 +36,9 @@ type DeleteItem struct {
 	ZSetTable   string
 }
 
-func (d DeleteItem) deleteAll(ctx context.Context, tx xdb.TxCore) error {
+func (d DeleteItem) deleteAll(ctx context.Context, tx xdb.DBCore) error {
 	orm := d.Meta.orm(tx)
-	orm.SetSelectFields("dt")
-	value, found, err := orm.First(ctx, "k=?", d.Meta.KeyHash[:])
+	value, found, err := orm.First(ctx, xor.Where("k=?", d.Meta.KeyHash[:]), xor.Columns("dt"))
 	if err != nil || !found {
 		return err
 	}

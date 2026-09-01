@@ -259,6 +259,29 @@ func (e Encoder[T]) PKNameAndValues(obj T) (map[string]any, error) {
 	return result, nil
 }
 
+func (e Encoder[T]) NonZero(obj T) (map[string]any, error) {
+	v, err := e.reflectValue(obj)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]any)
+	err = e.rangeStructFields(v, func(fieldSchema dbtype.ColumnSchema, value reflect.Value) error {
+		if value.IsZero() {
+			return nil
+		}
+		ev, err1 := e.encodeStructFieldValue(fieldSchema, value.Interface())
+		if err1 != nil {
+			return err1
+		}
+		result[fieldSchema.Name] = ev
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func (e Encoder[T]) PrimaryKeys(obj T) (columns []dbtype.ColumnSchema, values []reflect.Value, err error) {
 	v, err := e.reflectValue(obj)
 	if err != nil {

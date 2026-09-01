@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/store/xdb/xor"
 	"github.com/xanygo/anygo/store/xkv"
 )
 
@@ -39,18 +40,18 @@ func (h *Hash) GetTable() string {
 	return h.Table
 }
 
-func (h *Hash) deleteWithKey(ctx context.Context, tx xdb.TxCore) error {
-	orm := xdb.NewMode[HashModel](tx)
+func (h *Hash) deleteWithKey(ctx context.Context, tx xdb.DBCore) error {
+	orm := xor.New[HashModel](tx)
 	orm.Table(h.GetTable())
-	_, err := orm.Delete(ctx, "k=?", h.Meta.KeyHash[:])
+	_, err := orm.Delete(ctx, xor.Where("k=?", h.Meta.KeyHash[:]))
 	return err
 }
 
 func (h *Hash) HSet(ctx context.Context, field string, value string) error {
 	now := time.Now().UnixNano()
 	fieldHash := KeyHash(field)
-	return h.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
-		orm := xdb.NewMode[HashModel](tx)
+	return h.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
+		orm := xor.New[HashModel](tx)
 		orm.Table(h.GetTable())
 
 		data := HashModel{
@@ -72,8 +73,8 @@ func (h *Hash) HMSet(ctx context.Context, data map[string]string) error {
 		return nil
 	}
 	now := time.Now().UnixNano()
-	return h.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
-		orm := xdb.NewMode[HashModel](tx)
+	return h.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
+		orm := xor.New[HashModel](tx)
 		orm.Table(h.GetTable())
 		var items []HashModel
 		for field, value := range data {
@@ -95,15 +96,14 @@ func (h *Hash) HMSet(ctx context.Context, data map[string]string) error {
 
 func (h *Hash) HGet(ctx context.Context, field string) (value string, found bool, err error) {
 	fieldHash := KeyHash(field)
-	err = h.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+	err = h.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error {
 		if !hasMeta {
 			return nil
 		}
-		orm := xdb.NewMode[HashModel](tx)
+		orm := xor.New[HashModel](tx)
 		orm.Table(h.GetTable())
-		orm.SetSelectFields("v")
 
-		v, ok, err1 := orm.First(ctx, "k=? and f=?", h.Meta.KeyHash[:], fieldHash[:])
+		v, ok, err1 := orm.First(ctx, xor.Where("k=? and f=?", h.Meta.KeyHash[:], fieldHash[:]), xor.Columns("v"))
 		if err1 != nil || !ok {
 			return err1
 		}
@@ -130,15 +130,14 @@ func (h *Hash) HMGet(ctx context.Context, fields ...string) (result map[string]s
 	if err != nil {
 		return nil, err
 	}
-	err = h.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+	err = h.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error {
 		if !hasMeta {
 			return nil
 		}
-		orm := xdb.NewMode[HashModel](tx)
+		orm := xor.New[HashModel](tx)
 		orm.Table(h.GetTable())
-		orm.SetSelectFields("f_raw", "v")
 
-		items, err1 := orm.List(ctx, where, args...)
+		items, err1 := orm.List(ctx, xor.Where(where, args...), xor.Columns("f_raw", "v"))
 		if err1 != nil {
 			return err1
 		}
@@ -152,18 +151,17 @@ func (h *Hash) HMGet(ctx context.Context, fields ...string) (result map[string]s
 }
 
 // checkExists 检查 key 是否还存在，若不存在，则删除 meta
-func (h *Hash) checkExists(ctx context.Context, orm *xdb.Model[HashModel]) error {
-	orm = orm.Clone().Reset()
+func (h *Hash) checkExists(ctx context.Context, orm *xor.Model[HashModel]) error {
+	orm = orm.New()
 	orm.Table(h.GetTable())
-	orm.SetSelectFields("c")
-	_, found, err := orm.First(ctx, "k=?", h.Meta.KeyHash[:])
+	_, found, err := orm.First(ctx, xor.Where("k=?", h.Meta.KeyHash[:]), xor.Columns("c"))
 	if err != nil {
 		return err
 	}
 	if found {
 		return nil
 	}
-	return h.Meta.delete(ctx, orm.Client())
+	return h.Meta.delete(ctx, orm.DB())
 }
 
 func (h *Hash) HDel(ctx context.Context, fields ...string) error {
@@ -176,21 +174,19 @@ func (h *Hash) HDel(ctx context.Context, fields ...string) error {
 		fs = append(fs, keyHashBytes(f))
 	}
 
-	return h.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+	return h.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		_, err := h.Meta.load(ctx, tx)
 		if err != nil {
 			return err
 		}
-		orm := xdb.NewMode[HashModel](tx)
+		orm := xor.New[HashModel](tx)
 		orm.Table(h.GetTable())
-		b := xdb.Condition{}
+
+		b := &xdb.Condition{}
 		b.And("k=?", h.Meta.KeyHash[:])
 		b.AndInFmt("f in (%s)", fs)
-		where, args, err1 := b.Build()
-		if err1 != nil {
-			return err1
-		}
-		_, err = orm.Delete(ctx, where, args...)
+
+		_, err = orm.Delete(ctx, xor.WhereByCond(b))
 		if err != nil {
 			return err
 		}
@@ -199,11 +195,10 @@ func (h *Hash) HDel(ctx context.Context, fields ...string) error {
 }
 
 func (h *Hash) HRange(ctx context.Context, fn func(field string, value string) bool) error {
-	return h.Meta.WithReadTx(ctx, func(as context.Context, tx xdb.TxCore, hasMeta bool) error {
-		orm := xdb.NewMode[HashModel](tx)
+	return h.Meta.WithReadTx(ctx, func(as context.Context, tx xdb.DBCore, hasMeta bool) error {
+		orm := xor.New[HashModel](tx)
 		orm.Table(h.GetTable())
-		orm.SetSelectFields("f_raw", "v")
-		for item, err1 := range orm.ListIter(ctx, "k=?", h.Meta.KeyHash[:]) {
+		for item, err1 := range orm.ListIter(ctx, xor.Where("k=?", h.Meta.KeyHash[:]), xor.Columns("f_raw", "v")) {
 			if err1 != nil {
 				return err1
 			}
@@ -226,14 +221,13 @@ func (h *Hash) HGetAll(ctx context.Context) (map[string]string, error) {
 
 func (h *Hash) HExists(ctx context.Context, field string) (found bool, err error) {
 	fieldHash := keyHashBytes(field)
-	err = h.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+	err = h.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error {
 		if !hasMeta {
 			return nil
 		}
-		orm := xdb.NewMode[HashModel](tx)
+		orm := xor.New[HashModel](tx)
 		orm.Table(h.GetTable())
-		orm.SetSelectFields("c")
-		_, ok, err1 := orm.First(ctx, "k=? and f=?", h.Meta.KeyHash[:], fieldHash)
+		_, ok, err1 := orm.First(ctx, xor.Where("k=? and f=?", h.Meta.KeyHash[:], fieldHash), xor.Columns("c"))
 		if ok {
 			found = true
 		}
@@ -245,12 +239,11 @@ func (h *Hash) HExists(ctx context.Context, field string) (found bool, err error
 func (h *Hash) HIncrBy(ctx context.Context, field string, increment int64) (num int64, err error) {
 	fieldHash := KeyHash(field)
 	now := time.Now().UnixNano()
-	err = h.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
-		orm := xdb.NewMode[HashModel](tx)
+	err = h.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
+		orm := xor.New[HashModel](tx)
 		orm.Table(h.GetTable())
-		orm.SetSelectFields("v")
 
-		old, found, err1 := orm.First(ctx, "k=? and f=?", h.Meta.KeyHash[:], fieldHash[:])
+		old, found, err1 := orm.First(ctx, xor.Where("k=? and f=?", h.Meta.KeyHash[:], fieldHash[:]), xor.Columns("v"))
 		if err1 != nil {
 			return err1
 		}
@@ -278,13 +271,13 @@ func (h *Hash) HIncrBy(ctx context.Context, field string, increment int64) (num 
 }
 
 func (h *Hash) HLen(ctx context.Context) (num int64, err error) {
-	err = h.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+	err = h.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error {
 		if !hasMeta {
 			return nil
 		}
-		orm := xdb.NewMode[HashModel](tx)
+		orm := xor.New[HashModel](tx)
 		orm.Table(h.GetTable())
-		count, err1 := orm.Count(ctx, "*", "k=?", h.Meta.KeyHash[:])
+		count, err1 := orm.Count(ctx, "*", xor.Where("k=?", h.Meta.KeyHash[:]))
 		if err1 == nil {
 			num = count
 		}

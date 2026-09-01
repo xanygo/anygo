@@ -14,6 +14,8 @@ import (
 	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xstr"
+	"github.com/xanygo/anygo/store/xdb/dbtype"
+	"github.com/xanygo/anygo/store/xdb/dialect"
 	"github.com/xanygo/anygo/xnet/xservice"
 )
 
@@ -91,6 +93,10 @@ func (c *Client) Driver() string {
 	return c.driver
 }
 
+func (c *Client) Dialect() (dbtype.Dialect, error) {
+	return dialect.Find(c.driver)
+}
+
 func (c *Client) PingContext(ctx context.Context) (err error) {
 	its := allInterceptors(ctx)
 	if len(its) > 0 {
@@ -133,6 +139,10 @@ func (c *Client) QueryContext(ctx context.Context, query string, args ...any) (r
 		err = newQueryError(err, "QueryContext", query, args)
 	}
 	return rows, err
+}
+
+type canBeginTx interface {
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (te TxExecutor, err error)
 }
 
 func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (te TxExecutor, err error) {
@@ -245,6 +255,13 @@ func (c *Client) Close() error {
 var _ TxExecutor = (*myTx)(nil)
 var _ HasDriver = (*myTx)(nil)
 
+type canSavePoint interface {
+	TxExecutor
+	SavePoint(ctx context.Context, name string) error
+	RollbackTo(ctx context.Context, name string) error
+	ReleaseSavepoint(ctx context.Context, name string) error
+}
+
 type myTx struct {
 	Raw    *sql.Tx
 	client *Client
@@ -255,6 +272,39 @@ type myTx struct {
 
 func (t *myTx) Driver() string {
 	return t.client.Driver()
+}
+
+func (t *myTx) SavePoint(ctx context.Context, name string) error {
+	d, err := t.client.Dialect()
+	if err != nil {
+		return err
+	}
+	query := d.SavepointSQL(name)
+	_, err = t.ExecContext(ctx, query)
+	return err
+}
+
+func (t *myTx) RollbackTo(ctx context.Context, name string) error {
+	d, err := t.client.Dialect()
+	if err != nil {
+		return err
+	}
+	query := d.RollbackToSavepointSQL(name)
+	_, err = t.ExecContext(ctx, query)
+	return err
+}
+
+func (t *myTx) ReleaseSavepoint(ctx context.Context, name string) error {
+	d, err := t.client.Dialect()
+	if err != nil {
+		return err
+	}
+	query := d.ReleaseSavepointSQL(name)
+	if query == "" {
+		return nil
+	}
+	_, err = t.ExecContext(ctx, query)
+	return err
 }
 
 func (t *myTx) QueryContext(ctx context.Context, query string, args ...any) (rows *sql.Rows, err error) {

@@ -14,7 +14,10 @@ import (
 	"github.com/xanygo/anygo/ds/xslice"
 )
 
-var ErrEmptyBuilder = errors.New("builder is empty")
+var (
+	ErrEmptyBuilder = errors.New("builder is empty")
+	ErrEmptyWhere   = errors.New("empty where clause")
+)
 
 type Builder interface {
 	Build() (string, []any, error)

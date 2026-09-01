@@ -298,3 +298,15 @@ func (d MySQL) EncodeValue(value any) (any, error) {
 		return rv.Interface(), nil
 	}
 }
+
+func (d MySQL) SavepointSQL(name string) string {
+	return "SAVEPOINT " + d.QuoteIdentifier(name)
+}
+
+func (d MySQL) RollbackToSavepointSQL(name string) string {
+	return "ROLLBACK TO SAVEPOINT " + d.QuoteIdentifier(name)
+}
+
+func (d MySQL) ReleaseSavepointSQL(name string) string {
+	return "RELEASE SAVEPOINT " + d.QuoteIdentifier(name)
+}

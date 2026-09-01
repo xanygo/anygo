@@ -358,3 +358,15 @@ func (d SQLServer) EncodeValue(value any) (any, error) {
 		return rv.Interface(), nil
 	}
 }
+
+func (d SQLServer) SavepointSQL(name string) string {
+	return "SAVE TRANSACTION " + d.QuoteIdentifier(name)
+}
+
+func (d SQLServer) RollbackToSavepointSQL(name string) string {
+	return "ROLLBACK TRANSACTION " + d.QuoteIdentifier(name)
+}
+
+func (d SQLServer) ReleaseSavepointSQL(name string) string {
+	return "" // mssql 不支持
+}

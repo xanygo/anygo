@@ -23,6 +23,8 @@ type TableSchema struct {
 	Name2Column map[string]ColumnSchema // 数据库字段名 <---> 字段属性的映射
 	ColumnNames []string                // 数据库中的字段名
 	TagName     string
+
+	ValueType reflect.Type // 模型的类型
 }
 
 func (ts *TableSchema) ColumnByName(name string) (ColumnSchema, error) {

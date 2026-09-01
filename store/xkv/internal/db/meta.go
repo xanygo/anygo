@@ -8,6 +8,7 @@ import (
 
 	"github.com/xanygo/anygo/ds/xcast"
 	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/store/xdb/xor"
 	"github.com/xanygo/anygo/store/xkv/internal"
 )
 
@@ -63,21 +64,19 @@ func (m *Meta) GetTable() string {
 	return m.Table
 }
 
-func (m *Meta) orm(tx xdb.HasDriver) *xdb.Model[MetaModel] {
-	orm := xdb.NewMode[MetaModel](tx)
+func (m *Meta) orm(tx xdb.DBCore) *xor.Model[MetaModel] {
+	orm := xor.New[MetaModel](tx)
 	orm.Table(m.GetTable())
 	return orm
 }
 
-func (m *Meta) delete(ctx context.Context, tx xdb.HasDriver) error {
-	orm := m.orm(tx)
-	_, err := orm.Delete(ctx, "k=?", m.KeyHash[:])
+func (m *Meta) delete(ctx context.Context, tx xdb.DBCore) error {
+	_, err := m.orm(tx).Delete(ctx, xor.Where("k=?", m.KeyHash[:]))
 	return err
 }
 
-func (m *Meta) save(ctx context.Context, tx xdb.TxCore, data MetaModel) error {
+func (m *Meta) save(ctx context.Context, tx xdb.DBCore, data MetaModel) error {
 	now := time.Now().UnixNano()
-	orm := m.orm(tx)
 	if data.Created == 0 {
 		data.Created = now
 	}
@@ -85,12 +84,12 @@ func (m *Meta) save(ctx context.Context, tx xdb.TxCore, data MetaModel) error {
 		data.Updated = now
 	}
 	data.ID = 0 // k 是唯一主键，若upsert 时 id!=0, mssql 会报错
-	_, err := orm.Upsert(ctx, []string{"k"}, []string{"meta", "u"}, data)
+	_, err := m.orm(tx).Upsert(ctx, []string{"k"}, []string{"meta", "u"}, data)
 	return err
 }
 
-func (m *Meta) WithWriteTx(ctx context.Context, do func(ctx context.Context, tx xdb.TxCore) error) error {
-	return m.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+func (m *Meta) WithWriteTx(ctx context.Context, do func(ctx context.Context, tx xdb.DBCore) error) error {
+	return m.WithTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		if err1 := m.checkWriteType(ctx, tx); err1 != nil {
 			return err1
 		}
@@ -98,8 +97,8 @@ func (m *Meta) WithWriteTx(ctx context.Context, do func(ctx context.Context, tx 
 	})
 }
 
-func (m *Meta) WithReadTx(ctx context.Context, do func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error) error {
-	return m.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+func (m *Meta) WithReadTx(ctx context.Context, do func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error) error {
+	return m.WithTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		found, err1 := m.checkReadType(ctx, tx)
 		if err1 != nil {
 			return err1
@@ -108,21 +107,20 @@ func (m *Meta) WithReadTx(ctx context.Context, do func(ctx context.Context, tx x
 	})
 }
 
-func (m *Meta) WithTx(ctx context.Context, do func(ctx context.Context, tx xdb.TxCore) error) error {
+func (m *Meta) WithTx(ctx context.Context, do func(ctx context.Context, tx xdb.DBCore) error) error {
 	te, err := m.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	return xdb.WithTx(ctx, te, func(ctx context.Context, tx xdb.TxCore) error {
+	return xdb.WithTx(ctx, te, func(ctx context.Context, tx xdb.DBCore) error {
 		return do(ctx, te)
 	})
 }
 
-func (m *Meta) checkWriteType(ctx context.Context, tx xdb.TxCore) error {
+func (m *Meta) checkWriteType(ctx context.Context, tx xdb.DBCore) error {
 	orm := m.orm(tx)
-	orm.SetSelectFields("dt")
 
-	old, found, err := orm.First(ctx, "k=?", m.KeyHash[:])
+	old, found, err := orm.First(ctx, xor.Where("k=?", m.KeyHash[:]), xor.Columns("dt"))
 	if err != nil {
 		return err
 	}
@@ -143,14 +141,14 @@ func (m *Meta) checkWriteType(ctx context.Context, tx xdb.TxCore) error {
 	return orm.Insert(ctx, data)
 }
 
-func (m *Meta) load(ctx context.Context, tx xdb.TxCore) (MetaModel, error) {
+func (m *Meta) load(ctx context.Context, tx xdb.DBCore) (MetaModel, error) {
 	v, _, err := m.loadExists(ctx, tx)
 	return v, err
 }
 
-func (m *Meta) loadExists(ctx context.Context, tx xdb.TxCore) (MetaModel, bool, error) {
+func (m *Meta) loadExists(ctx context.Context, tx xdb.DBCore) (MetaModel, bool, error) {
 	orm := m.orm(tx)
-	value, found, err := orm.First(ctx, "k=?", m.KeyHash[:])
+	value, found, err := orm.First(ctx, xor.Where("k=?", m.KeyHash[:]))
 	if err != nil {
 		return MetaModel{}, false, err
 	}
@@ -167,10 +165,9 @@ func (m *Meta) loadExists(ctx context.Context, tx xdb.TxCore) (MetaModel, bool, 
 	}, false, nil
 }
 
-func (m *Meta) checkReadType(ctx context.Context, tx xdb.TxCore) (bool, error) {
+func (m *Meta) checkReadType(ctx context.Context, tx xdb.DBCore) (bool, error) {
 	orm := m.orm(tx)
-	orm.SetSelectFields("dt")
-	value, found, err := orm.First(ctx, "k=?", m.KeyHash[:])
+	value, found, err := orm.First(ctx, xor.Where("k=?", m.KeyHash[:]), xor.Columns("dt"))
 	if err != nil {
 		return false, err
 	}

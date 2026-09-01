@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/store/xdb/xor"
 	"github.com/xanygo/anygo/store/xkv"
 )
 
@@ -34,10 +35,10 @@ func (s *Set) GetTable() string {
 	return s.Table
 }
 
-func (s *Set) deleteWithKey(ctx context.Context, tx xdb.TxCore) error {
-	orm := xdb.NewMode[SetModel](tx)
+func (s *Set) deleteWithKey(ctx context.Context, tx xdb.DBCore) error {
+	orm := xor.New[SetModel](tx)
 	orm.Table(s.GetTable())
-	_, err := orm.Delete(ctx, "k=?", s.Meta.KeyHash[:])
+	_, err := orm.Delete(ctx, xor.Where("k=?", s.Meta.KeyHash[:]))
 	return err
 }
 
@@ -57,8 +58,8 @@ func (s *Set) SAdd(ctx context.Context, members ...string) (num int64, err error
 		}
 		items = append(items, item)
 	}
-	err = s.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
-		orm := xdb.NewMode[SetModel](tx)
+	err = s.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
+		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
 		num, err = orm.Upsert(ctx, []string{"k", "m"}, nil, items...)
 		return err
@@ -74,21 +75,18 @@ func (s *Set) SRem(ctx context.Context, members ...string) error {
 	for _, member := range members {
 		hashMembers = append(hashMembers, keyHashBytes(member))
 	}
-	return s.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.TxCore) error {
+	return s.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		_, err := s.Meta.load(ctx, tx)
 		if err != nil {
 			return err
 		}
-		cond := xdb.Condition{}
+		cond := &xdb.Condition{}
 		cond.And("k=?", s.Meta.KeyHash[:])
 		cond.AndInFmt("m in(%s)", hashMembers)
-		where, args, err := cond.Build()
-		if err != nil {
-			return err
-		}
-		orm := xdb.NewMode[SetModel](tx)
+
+		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
-		_, err = orm.Delete(ctx, where, args...)
+		_, err = orm.Delete(ctx, xor.WhereByCond(cond))
 		if err != nil {
 			return err
 		}
@@ -97,26 +95,24 @@ func (s *Set) SRem(ctx context.Context, members ...string) error {
 }
 
 // checkExists 检查 key 是否还存在，若不存在，则删除 meta
-func (s *Set) checkExists(ctx context.Context, orm *xdb.Model[SetModel]) error {
-	orm = orm.Clone().Reset()
+func (s *Set) checkExists(ctx context.Context, orm *xor.Model[SetModel]) error {
+	orm = orm.New()
 	orm.Table(s.GetTable())
-	orm.SetSelectFields("c")
-	_, found, err := orm.First(ctx, "k=?", s.Meta.KeyHash[:])
+	_, found, err := orm.First(ctx, xor.Where("k=?", s.Meta.KeyHash[:]), xor.Columns("c"))
 	if err != nil {
 		return err
 	}
 	if found {
 		return nil
 	}
-	return s.Meta.delete(ctx, orm.Client())
+	return s.Meta.delete(ctx, orm.DB())
 }
 
 func (s *Set) SRange(ctx context.Context, fn func(member string) bool) error {
-	return s.Meta.WithReadTx(ctx, func(as context.Context, tx xdb.TxCore, hasMeta bool) error {
-		orm := xdb.NewMode[SetModel](tx)
+	return s.Meta.WithReadTx(ctx, func(as context.Context, tx xdb.DBCore, hasMeta bool) error {
+		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
-		orm.SetSelectFields("m_raw")
-		for item, err1 := range orm.ListIter(ctx, "k=? order by id asc", s.Meta.KeyHash[:]) {
+		for item, err1 := range orm.ListIter(ctx, xor.Where("k=?", s.Meta.KeyHash[:]), xor.OrderBy("id asc"), xor.Columns("m_raw")) {
 			if err1 != nil {
 				return err1
 			}
@@ -138,14 +134,14 @@ func (s *Set) SMembers(ctx context.Context) ([]string, error) {
 }
 
 func (s *Set) SCard(ctx context.Context) (num int64, err error) {
-	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error {
 		if !hasMeta {
 			return nil
 		}
-		orm := xdb.NewMode[SetModel](tx)
+		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
 		var err1 error
-		num, err1 = orm.Count(ctx, "*", "k=?", s.Meta.KeyHash[:])
+		num, err1 = orm.Count(ctx, "*", xor.Where("k=?", s.Meta.KeyHash[:]))
 		return err1
 	})
 	return num, err
@@ -153,14 +149,13 @@ func (s *Set) SCard(ctx context.Context) (num int64, err error) {
 
 func (s *Set) SIsMember(ctx context.Context, member string) (ok bool, err error) {
 	memberHash := KeyHash(member)
-	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error {
 		if !hasMeta {
 			return nil
 		}
-		orm := xdb.NewMode[SetModel](tx)
+		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
-		orm.SetSelectFields("c")
-		_, found, err1 := orm.First(ctx, "k=? and m=?", s.Meta.KeyHash[:], memberHash[:])
+		_, found, err1 := orm.First(ctx, xor.Where("k=? and m=?", s.Meta.KeyHash[:], memberHash[:]), xor.Columns("c"))
 		if err1 == nil {
 			ok = found
 		}
@@ -178,22 +173,18 @@ func (s *Set) SMIsMember(ctx context.Context, members []string) (oks []bool, err
 	for _, member := range members {
 		hashMembers = append(hashMembers, keyHashBytes(member))
 	}
-	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error {
 		if !hasMeta {
 			return nil
 		}
-		orm := xdb.NewMode[SetModel](tx)
+		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
-		orm.SetSelectFields("m_raw")
 
-		cond := xdb.Condition{}
+		cond := &xdb.Condition{}
 		cond.And("k=?", s.Meta.KeyHash[:])
 		cond.AndInFmt("m in (%s)", hashMembers)
-		where, args, err0 := cond.Build()
-		if err0 != nil {
-			return err0
-		}
-		items, err1 := orm.List(ctx, where, args...)
+
+		items, err1 := orm.List(ctx, xor.WhereByCond(cond), xor.Columns("m_raw"))
 		if err1 == nil {
 			mp := make(map[string]bool, len(items))
 			for _, item := range items {
@@ -209,26 +200,25 @@ func (s *Set) SMIsMember(ctx context.Context, members []string) (oks []bool, err
 }
 
 func (s *Set) SPop(ctx context.Context) (v string, found bool, err error) {
-	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error {
 		if !hasMeta {
 			return nil
 		}
-		orm := xdb.NewMode[SetModel](tx)
+		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
-		total, err1 := orm.Count(ctx, "*", "k=?", s.Meta.KeyHash[:])
+		total, err1 := orm.Count(ctx, "*", xor.Where("k=?", s.Meta.KeyHash[:]))
 		if err1 != nil {
 			return err1
 		}
 		if total < 1 {
 			return nil
 		}
-		orm.Limit(1).Offset(rand.IntN(int(total))).SetSelectFields("m", "m_raw")
-		rows, err2 := orm.List(ctx, "k=?", s.Meta.KeyHash[:])
+		rows, err2 := orm.List(ctx, xor.Where("k=?", s.Meta.KeyHash[:]), xor.LimitOffset(1, rand.IntN(int(total))), xor.Columns("m", "m_raw"))
 		if err2 != nil || len(rows) == 0 {
 			return err2
 		}
 		first := rows[0]
-		_, err3 := orm.Delete(ctx, "k=? and m=?", s.Meta.KeyHash[:], first.MemberHash[:])
+		_, err3 := orm.Delete(ctx, xor.Where("k=? and m=?", s.Meta.KeyHash[:], first.MemberHash[:]))
 		if err3 != nil {
 			return err3
 		}
@@ -243,21 +233,20 @@ func (s *Set) SPopN(ctx context.Context, count int) (result []string, err error)
 	if count <= 0 {
 		return nil, nil
 	}
-	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error {
 		if !hasMeta {
 			return nil
 		}
-		orm := xdb.NewMode[SetModel](tx)
+		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
-		total, err1 := orm.Count(ctx, "*", "k=?", s.Meta.KeyHash[:])
+		total, err1 := orm.Count(ctx, "*", xor.Where("k=?", s.Meta.KeyHash[:]))
 		if err1 != nil {
 			return err1
 		}
 		if total < 1 {
 			return nil
 		}
-		orm.Limit(count).SetSelectFields("m", "m_raw")
-		rows, err2 := orm.List(ctx, "k=? ORDER BY X:RAND()", s.Meta.KeyHash[:])
+		rows, err2 := orm.List(ctx, xor.Where("k=?", s.Meta.KeyHash[:]), xor.Limit(count), xor.OrderByRand(), xor.Columns("m", "m_raw"))
 		if err2 != nil || len(rows) == 0 {
 			return err2
 		}
@@ -267,14 +256,11 @@ func (s *Set) SPopN(ctx context.Context, count int) (result []string, err error)
 			members = append(members, row.MemberRaw)
 			hashs = append(hashs, row.MemberHash[:])
 		}
-		cond := xdb.Condition{}
+		cond := &xdb.Condition{}
 		cond.And("k=?", s.Meta.KeyHash[:])
 		cond.AndInFmt("m in (%s)", hashs)
-		where, args, err3 := cond.Build()
-		if err3 != nil {
-			return err3
-		}
-		_, err4 := orm.Delete(ctx, where, args...)
+
+		_, err4 := orm.Delete(ctx, xor.WhereByCond(cond))
 		if err4 == nil {
 			result = members
 		}
@@ -284,21 +270,20 @@ func (s *Set) SPopN(ctx context.Context, count int) (result []string, err error)
 }
 
 func (s *Set) SRandMember(ctx context.Context) (v string, found bool, err error) {
-	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error {
 		if !hasMeta {
 			return nil
 		}
-		orm := xdb.NewMode[SetModel](tx)
+		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
-		total, err1 := orm.Count(ctx, "*", "k=?", s.Meta.KeyHash[:])
+		total, err1 := orm.Count(ctx, "*", xor.Where("k=?", s.Meta.KeyHash[:]))
 		if err1 != nil {
 			return err1
 		}
 		if total < 1 {
 			return nil
 		}
-		orm.Limit(1).Offset(rand.IntN(int(total))).SetSelectFields("m_raw")
-		rows, err2 := orm.List(ctx, "k=?", s.Meta.KeyHash[:])
+		rows, err2 := orm.List(ctx, xor.Where("k=?", s.Meta.KeyHash[:]), xor.LimitOffset(1, rand.IntN(int(total))), xor.Columns("m_raw"))
 		if err2 != nil || len(rows) == 0 {
 			return err2
 		}
@@ -313,21 +298,20 @@ func (s *Set) SRandMemberN(ctx context.Context, count int) (result []string, err
 	if count <= 0 {
 		return nil, nil
 	}
-	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+	err = s.Meta.WithReadTx(ctx, func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error {
 		if !hasMeta {
 			return nil
 		}
-		orm := xdb.NewMode[SetModel](tx)
+		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
-		total, err1 := orm.Count(ctx, "*", "k=?", s.Meta.KeyHash[:])
+		total, err1 := orm.Count(ctx, "*", xor.Where("k=?", s.Meta.KeyHash[:]))
 		if err1 != nil {
 			return err1
 		}
 		if total < 1 {
 			return nil
 		}
-		orm.Limit(count).SetSelectFields("m_raw")
-		rows, err2 := orm.List(ctx, "k=? ORDER BY X:RAND()", s.Meta.KeyHash[:])
+		rows, err2 := orm.List(ctx, xor.Where("k=?", s.Meta.KeyHash[:]), xor.OrderByRand(), xor.Limit(count), xor.Columns("m_raw"))
 		if err2 != nil || len(rows) == 0 {
 			return err2
 		}

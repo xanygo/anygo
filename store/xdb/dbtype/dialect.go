@@ -53,6 +53,21 @@ type Dialect interface {
 
 	// EncodeValue 将 Go 值转换为当前数据库驱动可接受的参数值。
 	EncodeValue(value any) (any, error)
+
+	// SavepointSQL 返回创建指定保存点的 SQL 语句。
+	//
+	// 保存点用于在当前事务中创建一个可回滚的位置，后续可以通过 RollbackToSavepointSQL 回滚到该位置，而不会影响保存点之前的事务操作。
+	SavepointSQL(name string) string
+
+	// RollbackToSavepointSQL 返回回滚到指定保存点的 SQL 语句。
+	//
+	// 回滚后，保存点之后执行的数据库操作将被撤销，但当前事务不会结束，仍可以继续执行后续操作。
+	RollbackToSavepointSQL(name string) string
+
+	// ReleaseSavepointSQL 返回释放指定保存点的 SQL 语句。
+	//
+	// 释放保存点后，将无法再回滚到该保存点，但不会提交或回滚当前事务，保存点之后已经执行的数据库操作仍然保留。
+	ReleaseSavepointSQL(name string) string
 }
 
 // ReturningDialect 提供 RETURNING 子句生成（仅对支持的方言实现）

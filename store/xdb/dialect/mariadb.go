@@ -175,3 +175,15 @@ func (d MariaDB) TableColumns(ctx context.Context, q dbtype.Queryer, table strin
 func (d MariaDB) EncodeValue(value any) (any, error) {
 	return MySQL{}.EncodeValue(value)
 }
+
+func (d MariaDB) SavepointSQL(name string) string {
+	return MySQL{}.SavepointSQL(name)
+}
+
+func (d MariaDB) RollbackToSavepointSQL(name string) string {
+	return MySQL{}.RollbackToSavepointSQL(name)
+}
+
+func (d MariaDB) ReleaseSavepointSQL(name string) string {
+	return MySQL{}.ReleaseSavepointSQL(name)
+}

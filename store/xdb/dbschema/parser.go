@@ -83,6 +83,7 @@ func (sp schemaParser) getSchema(rt reflect.Type) (*dbtype.TableSchema, error) {
 	sc := &dbtype.TableSchema{
 		TagName:     sp.tagName,
 		Name2Column: make(map[string]dbtype.ColumnSchema),
+		ValueType:   rt,
 	}
 
 	raw := rt

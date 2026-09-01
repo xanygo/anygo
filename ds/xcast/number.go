@@ -8,24 +8,16 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+
+	"github.com/xanygo/anygo/ds/xcmp"
 )
 
-type (
-	IntegerTypes interface {
-		~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64
-	}
-
-	FloatTypes interface {
-		~float32 | ~float64
-	}
-)
-
-func ToInteger[T IntegerTypes](v any) T {
+func ToInteger[T xcmp.IntegerTypes](v any) T {
 	z, _ := Integer[T](v)
 	return z
 }
 
-func IntegerE[T IntegerTypes](v any) (zero T, err error) {
+func IntegerE[T xcmp.IntegerTypes](v any) (zero T, err error) {
 	nv, ok := Integer[T](v)
 	if ok {
 		return nv, nil
@@ -33,7 +25,7 @@ func IntegerE[T IntegerTypes](v any) (zero T, err error) {
 	return zero, fmt.Errorf("cannot convert %v to integer", v)
 }
 
-func IntegerDefault[T IntegerTypes](v any, def T) T {
+func IntegerDefault[T xcmp.IntegerTypes](v any, def T) T {
 	num, ok := Integer[T](v)
 	if ok {
 		return num
@@ -43,7 +35,7 @@ func IntegerDefault[T IntegerTypes](v any, def T) T {
 
 // Integer 将任意类型 v 转换为目标整数类型 T。
 // 转换失败或溢出返回 (0, false)。
-func Integer[T IntegerTypes](v any) (T, bool) {
+func Integer[T xcmp.IntegerTypes](v any) (T, bool) {
 	var zero T
 
 	switch x := v.(type) {
@@ -115,7 +107,7 @@ func Integer[T IntegerTypes](v any) (T, bool) {
 }
 
 // fromInt64 将 int64 安全转换为目标类型 T
-func fromInt64[T IntegerTypes](v int64) (T, bool) {
+func fromInt64[T xcmp.IntegerTypes](v int64) (T, bool) {
 	var zero T
 	switch any(zero).(type) {
 	case int:
@@ -151,7 +143,7 @@ func fromInt64[T IntegerTypes](v int64) (T, bool) {
 }
 
 // fromUint64 将 uint64 安全转换为目标类型 T
-func fromUint64[T IntegerTypes](v uint64) (T, bool) {
+func fromUint64[T xcmp.IntegerTypes](v uint64) (T, bool) {
 	var zero T
 	switch any(zero).(type) {
 	case int:
@@ -216,12 +208,12 @@ func floatToInt64(f float64) (int64, bool) {
 	return int64(f), true
 }
 
-func ToFloat[T FloatTypes](v any) T {
+func ToFloat[T xcmp.FloatTypes](v any) T {
 	z, _ := Float[T](v)
 	return z
 }
 
-func FloatE[T FloatTypes](v any) (zero T, err error) {
+func FloatE[T xcmp.FloatTypes](v any) (zero T, err error) {
 	nv, ok := Float[T](v)
 	if ok {
 		return nv, nil
@@ -231,7 +223,7 @@ func FloatE[T FloatTypes](v any) (zero T, err error) {
 
 // Float 将任意类型 v 转换为浮点类型 T（float32/float64）
 // 转换失败返回 (0, false)
-func Float[T FloatTypes](v any) (T, bool) {
+func Float[T xcmp.FloatTypes](v any) (T, bool) {
 	switch x := v.(type) {
 	case float32:
 		return T(x), true

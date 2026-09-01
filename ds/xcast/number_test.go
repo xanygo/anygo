@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/xanygo/anygo/ds/xcmp"
 	"github.com/xanygo/anygo/xt"
 )
 
@@ -96,7 +97,7 @@ func TestInteger(t *testing.T) {
 	xt.Equal(t, ToInteger[int]("123"), 123)
 }
 
-func testInteger[T IntegerTypes](t *testing.T, v any, val T, ok bool) {
+func testInteger[T xcmp.IntegerTypes](t *testing.T, v any, val T, ok bool) {
 	t.Helper()
 	num, status := Integer[T](v)
 	xt.Equal[T](t, val, num)
@@ -147,7 +148,7 @@ func TestFloat(t *testing.T) {
 	xt.Equal(t, ToFloat[float64]("123"), 123.0)
 }
 
-func testFloat[T FloatTypes](t *testing.T, v any, val T, ok bool) {
+func testFloat[T xcmp.FloatTypes](t *testing.T, v any, val T, ok bool) {
 	t.Helper()
 	num, status := Float[T](v)
 	xt.Equal[T](t, val, num)

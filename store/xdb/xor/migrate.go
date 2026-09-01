@@ -2,20 +2,22 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2025-11-13
 
-package xdb
+package xor
 
 import (
 	"context"
 	"errors"
 	"fmt"
 
+	"github.com/xanygo/anygo/internal/zreflect"
+	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xdb/dbschema"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 	"github.com/xanygo/anygo/store/xdb/dialect"
 )
 
 // Migrate 自动创建、添加字段（非生产环境使用）
-func Migrate(ctx context.Context, db DBCore, obj any) error {
+func Migrate(ctx context.Context, db xdb.DBCore, obj any) error {
 	return MigrateWithTable(ctx, db, obj, "")
 }
 
@@ -23,7 +25,7 @@ func Migrate(ctx context.Context, db DBCore, obj any) error {
 //
 // obj:模型对象
 // table: 表名，可选，若传入为空，则自动尝试从 obj.TableName() 读取
-func MigrateWithTable(ctx context.Context, db DBCore, obj any, table string) error {
+func MigrateWithTable(ctx context.Context, db xdb.DBCore, obj any, table string) error {
 	if err := doMigrate(ctx, db, obj, table); err != nil {
 		return fmt.Errorf("%T: %w", obj, err)
 	}
@@ -32,13 +34,12 @@ func MigrateWithTable(ctx context.Context, db DBCore, obj any, table string) err
 
 func doMigrate(ctx context.Context, db dbtype.DBCore, obj any, table string) error {
 	if table == "" {
-		if ht, ok := obj.(HasTable); ok {
-			table = ht.TableName()
-		} else {
+		table = zreflect.CallStringMethod(obj, "TableName")
+		if table == "" {
 			return errors.New("should implement HasTable interface")
 		}
 	}
-	hd, ok := db.(HasDriver)
+	hd, ok := db.(xdb.HasDriver)
 	if !ok {
 		return errors.New("db does not implement HasDriver")
 	}

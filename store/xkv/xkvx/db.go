@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/store/xdb/xor"
 	"github.com/xanygo/anygo/store/xkv"
 	"github.com/xanygo/anygo/store/xkv/internal"
 	"github.com/xanygo/anygo/store/xkv/internal/db"
@@ -30,10 +31,10 @@ func (tr *TableProvider) getTable(key string) string {
 
 func (tr *TableProvider) migrate(ctx context.Context, db xdb.DBCore, obj any, defaultTable string) error {
 	if tr == nil || len(tr.Names) == 0 {
-		return xdb.MigrateWithTable(ctx, db, obj, defaultTable)
+		return xor.MigrateWithTable(ctx, db, obj, defaultTable)
 	}
 	for _, name := range tr.Names {
-		if err := xdb.MigrateWithTable(ctx, db, obj, name); err != nil {
+		if err := xor.MigrateWithTable(ctx, db, obj, name); err != nil {
 			return fmt.Errorf("migrate %T (%s):%w", obj, name, err)
 		}
 	}
@@ -209,7 +210,7 @@ func (d *DatabaseStore) getZSet(key string) *db.ZSet {
 func (d *DatabaseStore) Has(ctx context.Context, key string) (bool, error) {
 	m := d.getMeta(key, internal.DataTypeAny) // 可以是任意类型
 	var has bool
-	err := m.WithReadTx(ctx, func(ctx context.Context, tx xdb.TxCore, hasMeta bool) error {
+	err := m.WithReadTx(ctx, func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error {
 		has = hasMeta
 		return nil
 	})

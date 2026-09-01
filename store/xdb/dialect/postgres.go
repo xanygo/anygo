@@ -353,6 +353,18 @@ WHERE table_schema = current_schema() AND table_name = $1 ORDER BY ordinal_posit
 	return querySliceString(ctx, q, str, table)
 }
 
+func (d Postgres) SavepointSQL(name string) string {
+	return "SAVEPOINT " + d.QuoteIdentifier(name)
+}
+
+func (d Postgres) RollbackToSavepointSQL(name string) string {
+	return "ROLLBACK TO SAVEPOINT " + d.QuoteIdentifier(name)
+}
+
+func (d Postgres) ReleaseSavepointSQL(name string) string {
+	return "RELEASE SAVEPOINT " + d.QuoteIdentifier(name)
+}
+
 var _ dbtype.Codec = pgAnyArrayCodec{}
 
 // pgAnyArrayCodec 数组类型的编解码功能

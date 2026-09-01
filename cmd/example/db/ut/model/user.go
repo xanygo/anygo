@@ -10,11 +10,12 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/store/xdb/xor"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xt"
 )
 
-var _ xdb.HasTable = User{}
+var _ xor.HasTable = User{}
 
 type User struct {
 	ID           uint64    `db:"id,pk,auto_inc"`
@@ -54,10 +55,10 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 	err := sc.DropTableIfExists(ctx, User{}.TableName())
 	xt.NoError(t, err)
 
-	err = xdb.Migrate(ctx, client, User{})
+	err = xor.Migrate(ctx, client, User{})
 	xt.NoError(t, err)
 
-	orm := xdb.NewMode[User](client)
+	orm := xor.New[User](client)
 	num := int64(1)
 	u := User{
 		Password:     "demo",
@@ -74,12 +75,12 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 		id = 1
 	}
 
-	items, err := orm.List(ctx, "")
+	items, err := orm.List(ctx, xor.WhereTrue())
 	xt.NoError(t, err)
 	xt.NotEmpty(t, items)
 
 	u.Status = 2
-	ret, err := orm.Update(ctx, u, "id=?", id)
+	ret, err := orm.Update(ctx, u, xor.Where("id=?", id))
 	xt.NoError(t, err)
 	xt.Equal(t, ret, 1)
 
@@ -91,7 +92,7 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 	xt.NoError(t, err)
 	xt.Equal(t, ret, 1)
 
-	cnt, err := orm.Count(ctx, "id", "")
+	cnt, err := orm.Count(ctx, "id", xor.WhereTrue())
 	xt.NoError(t, err)
 	xt.Equal(t, cnt, 1)
 
@@ -126,7 +127,7 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 		}
 		err1 := orm.Insert(ctx, u1)
 		xt.NoError(t, err1)
-		list, err1 := orm.List(ctx, "enable=?", true)
+		list, err1 := orm.List(ctx, xor.Where("enable=?", true))
 		xt.NoError(t, err1)
 		xt.NotEmpty(t, list)
 	})

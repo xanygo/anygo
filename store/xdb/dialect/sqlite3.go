@@ -322,3 +322,15 @@ func (d SQLite3) EncodeValue(value any) (any, error) {
 		return rv.Interface(), nil
 	}
 }
+
+func (d SQLite3) SavepointSQL(name string) string {
+	return "SAVEPOINT " + d.QuoteIdentifier(name)
+}
+
+func (d SQLite3) RollbackToSavepointSQL(name string) string {
+	return "ROLLBACK TO SAVEPOINT " + d.QuoteIdentifier(name)
+}
+
+func (d SQLite3) ReleaseSavepointSQL(name string) string {
+	return "RELEASE SAVEPOINT " + d.QuoteIdentifier(name)
+}

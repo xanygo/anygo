@@ -12,6 +12,7 @@ import (
 	"iter"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/xanygo/anygo/safely"
 )
@@ -141,7 +142,28 @@ func RowsAffected(ret sql.Result, err error) (int64, error) {
 	return ret.RowsAffected()
 }
 
-func WithTx(ctx context.Context, tx TxExecutor, do func(ctx context.Context, tx TxCore) error) error {
+// BeginTx 支持嵌套的开启事务(已对 do 添加 panic recover 处理)
+//
+// 可以在 do 方法里调用 BeginTx 开启子事务(采用的 SavePoint 方式)
+func BeginTx(ctx context.Context, core DBCore, opts *sql.TxOptions, do func(ctx context.Context, tx DBCore) error) error {
+	switch client := core.(type) {
+	case canBeginTx:
+		te, err := client.BeginTx(ctx, opts)
+		if err != nil {
+			return err
+		}
+		return WithTx(ctx, te, do)
+	case canSavePoint:
+		return startTxSavePoint(ctx, client, do)
+	}
+	return fmt.Errorf("not supporttype %T with StartTx", core)
+}
+
+// WithTx 在事务中安全的处理逻辑(已对 do 添加 panic recover 处理)
+//
+//	若 do 方法 返回 nil，会自动执行 Commit
+//	若 do 方法 返回 error 或者 panic，会自动的执行 Rollback。
+func WithTx(ctx context.Context, tx TxExecutor, do func(ctx context.Context, tx DBCore) error) error {
 	err := safely.RunCtx(ctx, func(ctx context.Context) error {
 		return do(ctx, tx)
 	})
@@ -150,6 +172,23 @@ func WithTx(ctx context.Context, tx TxExecutor, do func(ctx context.Context, tx 
 	}
 	err1 := tx.Rollback()
 	return errors.Join(err, err1)
+}
+
+var savePointID atomic.Int64
+
+func startTxSavePoint(ctx context.Context, tx canSavePoint, do func(ctx context.Context, tx DBCore) error) error {
+	name := fmt.Sprintf("sp_%d", savePointID.Add(1))
+	if err := tx.SavePoint(ctx, name); err != nil {
+		return err
+	}
+	err := safely.RunCtx(ctx, func(ctx context.Context) error {
+		return do(ctx, tx)
+	})
+	if err != nil {
+		err1 := tx.RollbackTo(ctx, name)
+		return errors.Join(err, err1)
+	}
+	return tx.ReleaseSavepoint(ctx, name)
 }
 
 func StmtQueryMany[T any](ctx context.Context, q Statement, args ...any) ([]T, error) {

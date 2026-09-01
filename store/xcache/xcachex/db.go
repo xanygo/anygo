@@ -10,6 +10,7 @@ import (
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/store/xdb/xor"
 	"github.com/xanygo/anygo/xerror"
 )
 
@@ -51,8 +52,7 @@ func (d *Database) getTable() string {
 func (d *Database) keysCount() int64 {
 	ctx, cancel := context.WithTimeout(context.Background(), d.getBGTimeout())
 	defer cancel()
-	orm := d.orm()
-	num, err := orm.Count(ctx, "*", "")
+	num, err := d.orm().Count(ctx, "*", xor.WhereTrue())
 	if err != nil {
 		return -1
 	}
@@ -66,8 +66,8 @@ func (d *Database) getBGTimeout() time.Duration {
 	return time.Second
 }
 
-func (d *Database) orm() *xdb.Model[*dbModel] {
-	orm := xdb.NewMode[*dbModel](d.DB)
+func (d *Database) orm() *xor.Model[*dbModel] {
+	orm := xor.New[*dbModel](d.DB)
 	orm.Table(d.getTable())
 	return orm
 }
@@ -97,24 +97,22 @@ func (d *Database) TTL(ctx context.Context, key string) (time.Duration, error) {
 
 func (d *Database) Expire(ctx context.Context, key string, life time.Duration) error {
 	now := time.Now()
-	cond := xdb.Condition{}
+	cond := &xdb.Condition{}
 	cond.And("k=?", key)
 	cond.And("e>?", now.UnixMicro())
 
-	where, args := cond.MustBuild()
 	orm := d.orm()
 	ne := now.Add(life)
 	_, err := orm.ModifyFirst(ctx, func(value *dbModel) (*dbModel, error) {
 		value.Expires = ne.UnixMicro()
 		return value, nil
-	}, where, args...)
+	}, xor.WhereByCond(cond))
 	return err
 }
 
 func (d *Database) get(ctx context.Context, key string) (*dbModel, error) {
 	orm := d.orm()
-	orm.SetSelectFields("e", "v")
-	value, found, err := orm.First(ctx, "k=?", key)
+	value, found, err := orm.First(ctx, xor.Where("k=?", key), xor.Columns("e", "v"))
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +125,7 @@ func (d *Database) get(ctx context.Context, key string) (*dbModel, error) {
 			ctx = context.WithoutCancel(ctx)
 			ctx, cancel := context.WithTimeout(ctx, d.getBGTimeout())
 			defer cancel()
-			_, _ = orm.Delete(ctx, "k=? and e <= ?", key, now)
+			_, _ = orm.Delete(ctx, xor.Where("k=? and e <= ?", key, now))
 		})
 		return nil, xerror.NotFound
 	}
@@ -165,14 +163,10 @@ func (d *Database) Delete(ctx context.Context, keys ...string) error {
 		return nil
 	}
 	d.cntDelete.Add(uint64(len(keys)))
-	cond := xdb.Condition{}
+	cond := &xdb.Condition{}
 	cond.AndInFmt("k in (%s)", xslice.ToAnys(keys))
-	where, args, err := cond.Build()
-	if err != nil {
-		return err
-	}
 	orm := d.orm()
-	_, err = orm.Delete(ctx, where, args...)
+	_, err := orm.Delete(ctx, xor.WhereByCond(cond))
 	return err
 }
 
@@ -206,15 +200,11 @@ func (d *Database) MGet(ctx context.Context, keys ...string) (result map[string]
 	}
 	d.cntRead.Add(uint64(len(keys)))
 
-	cond := xdb.Condition{}
+	cond := &xdb.Condition{}
 	cond.AndInFmt("k in (%s)", xslice.ToAnys(keys))
-	where, args, err := cond.Build()
-	if err != nil {
-		return nil, err
-	}
+
 	orm := d.orm()
-	orm.SetSelectFields("k", "v", "e").Limit(len(keys))
-	items, err := orm.List(ctx, where, args...)
+	items, err := orm.List(ctx, xor.WhereByCond(cond), xor.Limit(len(keys)), xor.Columns("k", "v", "e"))
 	if err != nil {
 		return nil, err
 	}
@@ -241,15 +231,12 @@ func (d *Database) deleteExpired(ctx context.Context, keys ...string) (int64, er
 	ctx = context.WithoutCancel(ctx)
 	ctx, cancel := context.WithTimeout(ctx, d.getBGTimeout())
 	defer cancel()
-	cond := xdb.Condition{}
+
+	cond := &xdb.Condition{}
 	cond.AndInFmt("k in (%s)", xslice.ToAnys(keys))
 	cond.And("e <= ?", time.Now().UnixMicro())
-	where, args, err := cond.Build()
-	if err != nil {
-		return 0, err
-	}
-	orm := d.orm()
-	return orm.Delete(ctx, where, args...)
+
+	return d.orm().Delete(ctx, xor.WhereByCond(cond))
 }
 
 // ClearExpired 清理过期数据的方法，需要主动调用
@@ -259,7 +246,6 @@ func (d *Database) deleteExpired(ctx context.Context, keys ...string) (int64, er
 func (d *Database) ClearExpired(ctx context.Context, limit int, batchNum int) (int64, error) {
 	var deleted int64
 	orm := d.orm()
-	orm.SetSelectFields("k", "e")
 	needDelete := limit
 	for needDelete > 0 {
 		select {
@@ -269,10 +255,9 @@ func (d *Database) ClearExpired(ctx context.Context, limit int, batchNum int) (i
 			//  继续
 		}
 		now := time.Now().UnixMicro()
-		orm.Limit(max(needDelete, batchNum)) // 一次最多查询并且删除 batchNum 条
 
 		ctx1, cancel1 := context.WithTimeout(ctx, d.getBGTimeout())
-		items, err := orm.List(ctx1, "e <= ?", now)
+		items, err := orm.List(ctx1, xor.Where("e <= ?", now), xor.Limit(max(needDelete, batchNum)), xor.Columns("k", "e"))
 		cancel1()
 
 		if err != nil || len(items) == 0 {
@@ -296,7 +281,7 @@ func (d *Database) ClearExpired(ctx context.Context, limit int, batchNum int) (i
 // Migrate 在测试环境下使用，创建表结构
 func (d *Database) Migrate(ctx context.Context) error {
 	obj := dbModel{}
-	return xdb.MigrateWithTable(ctx, d.DB, obj, d.getTable())
+	return xor.MigrateWithTable(ctx, d.DB, obj, d.getTable())
 }
 
 func (d *Database) Stats() xcache.Stats {

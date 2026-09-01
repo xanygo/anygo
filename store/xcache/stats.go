@@ -48,6 +48,17 @@ func (s Stats) HitRate() float64 {
 	return hit
 }
 
+func (s Stats) Merge(b Stats) Stats {
+	return Stats{
+		Capacity: max(s.Capacity, b.Capacity),
+		Keys:     s.Keys + b.Keys,
+		Read:     s.Read + b.Read,
+		Write:    s.Write + b.Write,
+		Delete:   s.Delete + b.Delete,
+		Hit:      s.Hit + b.Hit,
+	}
+}
+
 // GetStats 读取缓存对象的 统计信息
 func GetStats(cache any) Stats {
 	if hs, ok := cache.(HasStats); ok {
