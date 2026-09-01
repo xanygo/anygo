@@ -75,7 +75,7 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 		id = 1
 	}
 
-	items, err := orm.List(ctx, xor.WhereTrue())
+	items, err := orm.List(ctx, xor.WhereAll())
 	xt.NoError(t, err)
 	xt.NotEmpty(t, items)
 
@@ -92,7 +92,7 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 	xt.NoError(t, err)
 	xt.Equal(t, ret, 1)
 
-	cnt, err := orm.Count(ctx, "id", xor.WhereTrue())
+	cnt, err := orm.Count(ctx, "id", xor.WhereAll())
 	xt.NoError(t, err)
 	xt.Equal(t, cnt, 1)
 

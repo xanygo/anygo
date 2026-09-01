@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/xanygo/anygo"
 	"github.com/xanygo/anygo/store/xdb/dbschema"
 	"github.com/xanygo/anygo/store/xdb/dialect"
 	"github.com/xanygo/anygo/xt"
@@ -49,20 +50,48 @@ func TestOrderByColumn(t *testing.T) {
 	})
 }
 
-func TestOrderByPkAsc(t *testing.T) {
+func testNewConfig() *config {
 	fy := &dialect.SQLite3{}
 	schema, err := dbschema.Schema(fy, testUser{})
-	xt.NoError(t, err)
-	xt.NotEmpty(t, schema)
-	cfg := &config{
+	anygo.Must(err)
+	return &config{
 		schema:  schema,
 		dialect: fy,
 	}
+}
+
+func TestOrderByPkAsc(t *testing.T) {
+	cfg := testNewConfig()
 
 	OrderByPkAsc().withOption(cfg)
 	xt.NoError(t, cfg.getError())
 	xt.Equal(t, cfg.orderBy, `"id" ASC`)
+}
 
+func TestOrderByPkDesc(t *testing.T) {
+	cfg := testNewConfig()
+
+	OrderByPkDesc().withOption(cfg)
+	xt.NoError(t, cfg.getError())
+	xt.Equal(t, cfg.orderBy, `"id" DESC`)
+}
+
+func TestWhereByPK(t *testing.T) {
+	cfg := testNewConfig()
+
+	WhereByPK(testUser{ID: 2}).withOption(cfg)
+	xt.NoError(t, cfg.getError())
+	xt.Equal(t, cfg.where, `"id"=?`)
+	xt.Equal(t, cfg.whereArgs, []any{int64(2)})
+}
+
+func TestWhereByMap(t *testing.T) {
+	cfg := testNewConfig()
+
+	WhereByMap(map[string]any{"id": 5}).withOption(cfg)
+	xt.NoError(t, cfg.getError())
+	xt.Equal(t, cfg.where, `"id"=?`)
+	xt.Equal(t, cfg.whereArgs, []any{5})
 }
 
 type testUser struct {

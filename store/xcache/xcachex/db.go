@@ -52,7 +52,7 @@ func (d *Database) getTable() string {
 func (d *Database) keysCount() int64 {
 	ctx, cancel := context.WithTimeout(context.Background(), d.getBGTimeout())
 	defer cancel()
-	num, err := d.orm().Count(ctx, "*", xor.WhereTrue())
+	num, err := d.orm().Count(ctx, "*", xor.WhereAll())
 	if err != nil {
 		return -1
 	}

@@ -22,6 +22,7 @@ type config struct {
 	where     string
 	whereArgs []any
 	orderBy   string
+	groupBy   string
 	limit     int
 	offset    int
 	columns   []string
@@ -159,19 +160,15 @@ var reOrderBy = regexp.MustCompile(`(?i)\border\s+by\b`)
 var reWherePlaceholder = regexp.MustCompile(`\{([^{}]*)\}`)
 
 func (c *config) getSQLTail(paramIndesStart int) string {
-	if c.where == "" && c.orderBy == "" && c.limit == 0 && c.offset == 0 {
-		return ""
-	}
-
 	var b strings.Builder
 
 	if c.where != "" {
-		b.WriteString(" where ")
+		b.WriteString(" WHERE ")
 		b.WriteString(c.replacePlaceholder(paramIndesStart, c.where))
 	}
 
 	if c.orderBy != "" {
-		b.WriteString(" order by ")
+		b.WriteString(" ORDER BY ")
 		b.WriteString(c.orderBy)
 	}
 
@@ -183,6 +180,11 @@ func (c *config) getSQLTail(paramIndesStart int) string {
 		}
 		b.WriteString(" ")
 		b.WriteString(str)
+	}
+
+	if c.groupBy != "" {
+		b.WriteString(" GROUP BY ")
+		b.WriteString(c.groupBy)
 	}
 
 	where := b.String()

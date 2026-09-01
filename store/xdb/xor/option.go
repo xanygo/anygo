@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/xanygo/anygo/ds/xcmp"
+	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 	"github.com/xanygo/anygo/store/xdb/internal/encoder"
@@ -26,6 +27,7 @@ var optionNop = optionFunc(func(o *config) {})
 
 func Where(where string, args ...any) Option {
 	return optionFunc(func(o *config) {
+		o.noWhere = false
 		o.where = strings.TrimSpace(where)
 		o.whereArgs = args
 	})
@@ -34,6 +36,7 @@ func Where(where string, args ...any) Option {
 func WhereByPK(v any) Option {
 	rt := reflect.TypeOf(v)
 	return optionFunc(func(o *config) {
+		o.noWhere = false
 		if rt != o.schema.ValueType {
 			o.addError(fmt.Errorf("invalid value type WhereByPK(%#v), expect %s", v, o.schema.ValueType.String()))
 			return
@@ -53,6 +56,7 @@ func WhereByPK(v any) Option {
 
 func WhereByMap(kv map[string]any) Option {
 	return optionFunc(func(o *config) {
+		o.noWhere = false
 		if len(kv) == 0 {
 			o.addError(fmt.Errorf("is zero WhereMap %#v", kv))
 			return
@@ -71,6 +75,7 @@ func WhereByMap(kv map[string]any) Option {
 
 func WhereByCond(cond *xdb.Condition) Option {
 	return optionFunc(func(o *config) {
+		o.noWhere = false
 		var err error
 		o.where, o.whereArgs, err = cond.Build()
 		if err != nil {
@@ -85,7 +90,10 @@ func WhereWithCond(fn func(nc *xdb.Condition)) Option {
 	return WhereByCond(cond)
 }
 
-func WhereTrue() Option {
+// WhereAll 不限制 where，即 select/update/delete 等语句没有 where 条件
+//
+// 注: Model 所有方法默认是不允许 where 条件为空的。使用此配置可跳过限制
+func WhereAll() Option {
 	return optionFunc(func(o *config) {
 		o.noWhere = true
 	})
@@ -202,6 +210,15 @@ func Columns(cols ...string) Option {
 func Ignores(cols ...string) Option {
 	return optionFunc(func(o *config) {
 		o.ignores = cols
+	})
+}
+
+func GroupBy(columns ...string) Option {
+	if len(columns) == 0 {
+		return optionNop
+	}
+	return optionFunc(func(o *config) {
+		o.groupBy = strings.Join(xslice.MapFunc(columns, o.dialect.QuoteIdentifier), ",")
 	})
 }
 
