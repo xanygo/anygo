@@ -25,6 +25,11 @@ func (f optionFunc) withOption(o *config) {
 
 var optionNop = optionFunc(func(o *config) {})
 
+// Where 查询条件，可统一使用 ? 作为占位符
+//
+//	如 Where("id > ? and score >?", 1000, 75)
+//	或者
+//	Where("{id} > ? and {score} >?", 1000, 75)，其中的 {id} 和 {score} 会依据使用的方言自动转义(Quote) 以避免和数据库关键字冲突
 func Where(where string, args ...any) Option {
 	return optionFunc(func(o *config) {
 		o.noWhere = false
@@ -33,6 +38,7 @@ func Where(where string, args ...any) Option {
 	})
 }
 
+// WhereByPK 使用主键作为查询条件，若对象没有主键(PK) 或者类型和 Model 不匹配，在使用时会将错误传给调用者
 func WhereByPK(v any) Option {
 	rt := reflect.TypeOf(v)
 	return optionFunc(func(o *config) {
@@ -54,6 +60,9 @@ func WhereByPK(v any) Option {
 	})
 }
 
+// WhereByMap 使用 K-V map 作为查询条件。如：
+//
+//	map[string]any{"name":"a","score":60} --> Where(`"name"=? and "score"=?`, "a", 60)
 func WhereByMap(kv map[string]any) Option {
 	return optionFunc(func(o *config) {
 		o.noWhere = false
@@ -73,6 +82,7 @@ func WhereByMap(kv map[string]any) Option {
 	})
 }
 
+// WhereByCond 将 Condition 转换为 Where
 func WhereByCond(cond *xdb.Condition) Option {
 	return optionFunc(func(o *config) {
 		o.noWhere = false
@@ -84,7 +94,8 @@ func WhereByCond(cond *xdb.Condition) Option {
 	})
 }
 
-func WhereWithCond(fn func(nc *xdb.Condition)) Option {
+// WhereWithCond 在回调函数中设置条件信息
+func WhereWithCond(fn func(cond *xdb.Condition)) Option {
 	cond := &xdb.Condition{}
 	fn(cond)
 	return WhereByCond(cond)
@@ -200,8 +211,18 @@ func orderByPk(asc bool) Option {
 }
 
 // Columns 设置 查询、写入、更新的字段列表
-func Columns(cols ...string) Option {
+//
+// 可以允许 string 或者 xdb.Expression 类型
+func Columns(cols ...any) Option {
 	return optionFunc(func(o *config) {
+		for idx, col := range cols {
+			switch col.(type) {
+			case string, dbtype.Expr:
+				// pass
+			default:
+				o.addError(fmt.Errorf("invalid value type Columns[%d]=%#v", idx, cols))
+			}
+		}
 		o.columns = cols
 	})
 }

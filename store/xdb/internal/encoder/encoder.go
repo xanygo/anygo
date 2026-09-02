@@ -307,20 +307,21 @@ func (e Encoder[T]) EncodeArgs(args ...any) ([]any, error) {
 	}
 	result := make([]any, len(args))
 	for i, arg := range args {
-		if na, ok := arg.(sql.NamedArg); ok {
-			v, err := e.Dialect.EncodeValue(na.Value)
+		switch item := arg.(type) {
+		case sql.NamedArg:
+			v, err := e.Dialect.EncodeValue(item.Value)
 			if err != nil {
 				return nil, fmt.Errorf("encode args %#v: %w", arg, err)
 			}
-			na.Value = v
-			result[i] = na
-			continue
+			item.Value = v
+			result[i] = item
+		default:
+			val, err := e.Dialect.EncodeValue(arg)
+			if err != nil {
+				return nil, fmt.Errorf("encode args %#v: %w", arg, err)
+			}
+			result[i] = val
 		}
-		val, err := e.Dialect.EncodeValue(arg)
-		if err != nil {
-			return nil, fmt.Errorf("encode args %#v: %w", arg, err)
-		}
-		result[i] = val
 	}
 	return result, nil
 }

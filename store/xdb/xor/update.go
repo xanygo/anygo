@@ -10,6 +10,7 @@ import (
 	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 	"github.com/xanygo/anygo/store/xdb/internal/encoder"
 	"github.com/xanygo/anygo/xerror"
 )
@@ -32,20 +33,29 @@ func (m *Model[T]) doUpdate(ctx context.Context, v T, cfg *config) (int64, error
 }
 
 func (m *Model[T]) doUpdateMap(ctx context.Context, kv map[string]any, cfg *config) (int64, error) {
+	if len(kv) == 0 {
+		return 0, errors.New("no update values")
+	}
+
 	cols := xmap.Keys(kv)
 
 	assigns := make([]string, 0, len(cols))
 	values := make([]any, 0, len(cfg.whereArgs)+len(cols))
 	for _, col := range cols {
-		str := fmt.Sprintf(`%s=%s`, m.dialect.QuoteIdentifier(col), m.dialect.BindVar(len(assigns)+1))
+		var valuePlaceHolder string
+		switch v := kv[col].(type) {
+		case dbtype.Expr:
+			valuePlaceHolder = m.cfg.replacePlaceholder(len(values), m.cfg.quotePlaceholder(v.SQL))
+			values = append(values, v.Args...)
+		default:
+			valuePlaceHolder = m.dialect.BindVar(len(values) + 1)
+			values = append(values, kv[col])
+		}
+		str := fmt.Sprintf(`%s=%s`, m.dialect.QuoteIdentifier(col), valuePlaceHolder)
 		assigns = append(assigns, str)
-		values = append(values, kv[col])
 	}
 
-	if len(assigns) == 0 {
-		return 0, errors.New("no update values")
-	}
-	where, args, err := cfg.getWhereArgs(len(assigns))
+	where, args, err := cfg.getWhereArgs(len(values))
 	if err != nil {
 		return 0, err
 	}
@@ -128,19 +138,16 @@ func (m *Model[T]) UpdateDiff(ctx context.Context, old T, newValue T, opts ...Op
 }
 
 // ModifyFirstByPK 使用主键查找，然后更新数据。若查找不到会返回错误
-// q: 查询条件，主键字段必须有值。若主键字段有多个，但是只给部分字段赋值，可能会导致多条数据被更新
+//
+//	q: 查询条件，主键字段必须有值。若主键字段有多个，但是只给部分字段赋值，可能会导致多条数据被更新
 func (m *Model[T]) ModifyFirstByPK(ctx context.Context, q T, update func(nv T) (T, error)) (int64, error) {
-	if m.err != nil {
-		return 0, m.err
-	}
 	return m.ModifyFirst(ctx, update, WhereByPK(q))
 }
 
 // ModifyFirst 查找数据然后更新，若查找不到会返回错误
 //
-// 注意：若 where 条件返回多条，会查询第一条数据，并以此位基础更新所有数据
-//
-// update: 数据更新方法。若返回 error 是 xerror.SkipOne 或 xerror.SkipAll 则跳过。其他 error 则直接返回
+//	注意：若 where 条件返回多条，会查询第一条数据，并以此位基础更新所有数据
+//	update: 数据更新方法。若返回 error 是 xerror.SkipOne 或 xerror.SkipAll 则跳过。其他 error 则直接返回
 func (m *Model[T]) ModifyFirst(ctx context.Context, update func(nv T) (T, error), opts ...Option) (int64, error) {
 	if m.err != nil {
 		return 0, m.err
@@ -196,4 +203,20 @@ func (m *Model[T]) ModifyEach(ctx context.Context, update func(nv T) (T, error),
 	}
 
 	return num, nil
+}
+
+// UpdateMap 更新 map 中的数据
+//
+//	data: 若为空会直接返回 (0,nil)。有效数据如:
+//	{
+//		"name":"hello",                    // -> update xxx set name="hello"
+//		"version":xdb.Expr("verison+1"),   // -> update xxx set version=version+1
+//	}
+//	注意：map 的 key 是表字段名字。value，必须是数据库驱动能支持的类型（一般是 string、int 等基础类型）
+func (m *Model[T]) UpdateMap(ctx context.Context, data xdb.Map, opts ...Option) (int64, error) {
+	if len(data) == 0 {
+		return 0, nil
+	}
+	cfg := m.cfg.mergeOnClone(opts...)
+	return m.doUpdateMap(ctx, data, cfg)
 }

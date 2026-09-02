@@ -10,6 +10,26 @@ import (
 	"github.com/xanygo/anygo/xerror"
 )
 
+// Select 查询数据并返回
+func (m *Model[T]) Select[V any](ctx context.Context, opts ...Option) ([]V, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	cfg := m.cfg.mergeOnClone(opts...)
+	where, args, err := cfg.getWhereArgs(0)
+	if err != nil {
+		return nil, err
+	}
+
+	sqlStr := fmt.Sprintf(
+		"SELECT %s FROM %s %s",
+		cfg.getSelectFields(),
+		m.dialect.QuoteIdentifier(m.table),
+		where,
+	)
+	return xdb.QueryMany[V](ctx, m.client, sqlStr, args...)
+}
+
 // First 使用 select xx from table where xxx limit 1 查询满足条件的第一条数据
 //
 // 可通过 SetSelectFields、SetSelectIgnore 限制查询返回的字段

@@ -6,6 +6,8 @@ package model
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -59,60 +61,66 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 	xt.NoError(t, err)
 
 	orm := xor.New[User](client)
-	num := int64(1)
-	u := User{
-		Password:     "demo",
-		Username:     "user1",
-		Idx:          &num,
-		RegisterTime: time.Now(),
-		Scores:       []int{1, 2, 3},
-		a:            123,
-	}
-	id, err := orm.InsertReturningID(ctx, u)
-	xt.NoError(t, err)
-	xt.True(t, id == 1 || id == 0) // 目前 mssql 不能返回id
-	if id == 0 {
-		id = 1
-	}
 
-	items, err := orm.List(ctx, xor.WhereAll())
-	xt.NoError(t, err)
-	xt.NotEmpty(t, items)
+	t.Run("InsertReturningID", func(t *testing.T) {
+		u := User{
+			Password:     "demo",
+			Username:     "user1",
+			Idx:          new(int64(1)),
+			RegisterTime: time.Now(),
+			Scores:       []int{1, 2, 3},
+			a:            123,
+		}
+		id, err := orm.InsertReturningID(ctx, u)
+		xt.NoError(t, err)
+		xt.True(t, id == 1 || id == 0) // 目前 mssql 不能返回id
+	})
 
-	u.Status = 2
-	ret, err := orm.Update(ctx, u, xor.Where("id=?", id))
-	xt.NoError(t, err)
-	xt.Equal(t, ret, 1)
+	t.Run("list", func(t *testing.T) {
+		items, err := orm.List(ctx, xor.WhereAll())
+		xt.NoError(t, err)
+		xt.NotEmpty(t, items)
 
-	u2 := User{
-		ID:       uint64(id),
-		Password: "hello",
-	}
-	ret, err = orm.UpdateByPK(ctx, u2)
-	xt.NoError(t, err)
-	xt.Equal(t, ret, 1)
+		u := items[0]
+		u.Status = 2
+		ret, err := orm.Update(ctx, u, xor.Where("id=?", u.ID))
+		xt.NoError(t, err)
+		xt.Equal(t, ret, 1)
 
-	cnt, err := orm.Count(ctx, "id", xor.WhereAll())
-	xt.NoError(t, err)
-	xt.Equal(t, cnt, 1)
+		u.Password = "hello"
+		ret, err = orm.UpdateByPK(ctx, u)
+		xt.NoError(t, err)
+		xt.Equal(t, ret, 1)
+	})
 
-	u3 := User{
-		Username:     "user2",
-		Password:     "hello",
-		RegisterTime: time.Now(),
-	}
-	cnt, err = orm.Upsert(ctx, []string{"username"}, []string{"register_time"}, u3)
-	xt.NoError(t, err)
-	xt.Equal(t, cnt, 1)
+	t.Run("count", func(t *testing.T) {
+		cnt, err := orm.Count(ctx, "id", xor.WhereAll())
+		xt.NoError(t, err)
+		xt.Equal(t, cnt, 1)
+	})
+
+	t.Run("Upsert", func(t *testing.T) {
+		u3 := User{
+			Username:     "user2",
+			Password:     "hello",
+			RegisterTime: time.Now(),
+		}
+		cnt, err := orm.Upsert(ctx, []string{"username"}, []string{"register_time"}, u3)
+		xt.NoError(t, err)
+		xt.Equal(t, cnt, 1)
+	})
 
 	t.Run("ModifyFirstByPK", func(t *testing.T) {
-		num, err := orm.ModifyFirstByPK(ctx, u2, func(nv User) (User, error) {
+		first, err := orm.GetFirst(ctx, xor.WhereByPK(User{ID: 1}))
+		xt.NoError(t, err)
+
+		num, err := orm.ModifyFirstByPK(ctx, first, func(nv User) (User, error) {
 			return nv, xerror.SkipOne
 		})
 		xt.NoError(t, err)
 		xt.Equal(t, num, 0)
 
-		num, err = orm.ModifyFirstByPK(ctx, u2, func(nv User) (User, error) {
+		num, err = orm.ModifyFirstByPK(ctx, first, func(nv User) (User, error) {
 			nv.Username = "user-3000"
 			return nv, nil
 		})
@@ -130,5 +138,47 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 		list, err1 := orm.List(ctx, xor.Where("enable=?", true))
 		xt.NoError(t, err1)
 		xt.NotEmpty(t, list)
+	})
+
+	t.Run("UpdateMap", func(t *testing.T) {
+		u1 := User{
+			Username: "UpdateMap-2026",
+			Enable:   true,
+		}
+		err1 := orm.Insert(ctx, u1)
+		xt.NoError(t, err1)
+
+		data := map[string]any{"idx": xdb.Expr("{idx}+1")}
+		num, err := orm.UpdateMap(ctx, data, xor.Where("username=?", u1.Username))
+		xt.NoError(t, err)
+		xt.Equal(t, num, 1)
+
+		data = map[string]any{"idx": xdb.Expr("{idx}+?", 2)}
+		num, err = orm.UpdateMap(ctx, data, xor.Where("username=?", u1.Username))
+		xt.NoError(t, err)
+		xt.Equal(t, num, 1)
+	})
+
+	t.Run("Select", func(t *testing.T) {
+		for i := 0; i < 3; i++ {
+			u1 := User{
+				Username: fmt.Sprintf("Select-%d", i),
+				Enable:   true,
+			}
+			err1 := orm.Insert(ctx, u1)
+			xt.NoError(t, err1)
+		}
+		list, err := orm.New().Select[xdb.Map](ctx, xor.WhereAll())
+		xt.NoError(t, err)
+		xt.NotEmpty(t, list)
+		var found bool
+		for _, item := range list {
+			if name, ok := item["username"]; ok {
+				if str, ok2 := name.(string); ok2 && strings.HasPrefix(str, "Select-") {
+					found = true
+				}
+			}
+		}
+		xt.True(t, found)
 	})
 }

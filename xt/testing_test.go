@@ -1,5 +1,5 @@
 // Copyright(C) 2024 github.com/fsgo  All Rights Reserved.
-// Author: hidu <duv123@gmail.com>
+// Author: hidu <duv123+git@gmail.com>
 // Date: 2024/4/25
 
 package xt

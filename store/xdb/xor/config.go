@@ -25,7 +25,7 @@ type config struct {
 	groupBy   string
 	limit     int
 	offset    int
-	columns   []string
+	columns   []any
 	ignores   []string
 
 	// 传入的配置错误
@@ -74,10 +74,16 @@ func (c *config) getEncoder(action encoder.Action) encoder.Encoder[any] {
 }
 
 func (c *config) getColumns() []string {
-	if c != nil {
-		return c.columns
+	if c == nil || len(c.columns) == 0 {
+		return nil
 	}
-	return nil
+	result := make([]string, 0, len(c.columns))
+	for _, item := range c.columns {
+		if str, ok := item.(string); ok {
+			result = append(result, str)
+		}
+	}
+	return result
 }
 
 func (c *config) getIgnores() []string {
@@ -107,7 +113,16 @@ func (c *config) mergeOnClone(opts ...Option) *config {
 
 func (c *config) getSelectFields() string {
 	if len(c.columns) > 0 {
-		return strings.Join(xslice.MapFunc(c.columns, c.dialect.QuoteIdentifier), ",")
+		names := make([]string, 0, len(c.columns))
+		for _, col := range c.columns {
+			switch vs := col.(type) {
+			case string:
+				names = append(names, c.dialect.QuoteIdentifier(vs))
+			case dbtype.Expr:
+				names = append(names, vs.SQL)
+			}
+		}
+		return strings.Join(names, ",")
 	}
 
 	fields := slices.Clone(c.schema.ColumnNames)
@@ -197,19 +212,23 @@ func (c *config) getSQLTail(paramIndesStart int) string {
 	}
 
 	// 将 where 条件中的 {name} 转义
-	if strings.ContainsRune(where, '{') {
-		where = reWherePlaceholder.ReplaceAllStringFunc(where, func(m string) string {
+	where = c.quotePlaceholder(where)
+	return where
+}
+
+func (c *config) quotePlaceholder(str string) string {
+	if strings.ContainsRune(str, '{') {
+		return reWherePlaceholder.ReplaceAllStringFunc(str, func(m string) string {
 			name := m[1 : len(m)-1] // 去掉 {}
 			return c.dialect.QuoteIdentifier(name)
 		})
 	}
-
-	return where
+	return str
 }
 
 func (c *config) replacePlaceholder(indexStart int, where string) string {
 	// 将 ? 替换为方言的占位符，如 $1, $2 ...
-	if c.dialect.BindVar(0) != "?" {
+	if c.dialect.BindVar(0) != "?" && strings.Contains(where, "?") {
 		var sb strings.Builder
 		idx := 1
 		for i := 0; i < len(where); i++ {

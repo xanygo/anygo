@@ -7,6 +7,7 @@ package xdb
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -23,6 +24,9 @@ type Builder interface {
 	Build() (string, []any, error)
 }
 
+// Condition 用于构建 where 条件
+//
+// 注：在使用 xor.Model 中时，字段名可以使用 {uid} 这种方式，在运行前，会被方言转义( Quote )
 type Condition struct {
 	builder strings.Builder
 	args    []any
@@ -39,11 +43,11 @@ func (c *Condition) Append(op string, str string, args ...any) {
 	c.args = append(c.args, args...)
 }
 
-// AppendInFmt 添加 IN 查询
+// AppendInFmt 添加 And/Or column IN (xxx) 查询
 //
-// op：AND 或者 OR
-// format: 条件，格式如 field in (%s)
-// values: 查询的数据数组
+//	op：AND 或者 OR
+//	format: 条件，格式如 `uid in (%s)`
+//	values: 查询的数据数组，len(values) >= 0 (长度为 0 会跳过)
 func (c *Condition) AppendInFmt(op string, format string, values []any) {
 	if len(values) == 0 {
 		return
@@ -52,22 +56,23 @@ func (c *Condition) AppendInFmt(op string, format string, values []any) {
 	c.Append(op, where, values...)
 }
 
-// AndInFmt 添加 IN 查询
+// AndInFmt 添加 And column IN (xxx) 或者 And column not IN (xxx) 查询
 //
-// format: 条件，格式如 field in (%s)
-// values: 查询的数据数组
+//	format: 条件，格式如 `uid in (%s)`
+//	values: 查询的数据数组, len(values) >= 0 (长度为 0 会跳过)
 func (c *Condition) AndInFmt(format string, values []any) {
 	c.AppendInFmt("AND", format, values)
 }
 
-// OrInFmt 添加 IN 查询
+// OrInFmt 添加 Or column IN (xxx) 或者 Or column not IN (xxx) 查询
 //
-// format: 条件，格式如 field in (%s)
-// values: 查询的数据数组
+//	format: 条件，格式如 `uid in (%s)`
+//	values: 查询的数据数组，len(values) >= 0 (长度为 0 会跳过)
 func (c *Condition) OrInFmt(format string, values []any) {
 	c.AppendInFmt("OR", format, values)
 }
 
+// AppendBuilder 将另外一个 Builder 作为子查询
 func (c *Condition) AppendBuilder(op string, str string, b Builder) {
 	where, args, err := b.Build()
 	if err != nil {
@@ -77,12 +82,22 @@ func (c *Condition) AppendBuilder(op string, str string, b Builder) {
 	c.Append(op, str+" ("+where+")", args...)
 }
 
+var reAndOr = regexp.MustCompile(`(?i)\b(and|or)\s\b`)
+
+func (c *Condition) formatSub(str string) string {
+	str = strings.TrimSpace(str)
+	if reAndOr.MatchString(str) {
+		return "(" + str + ")"
+	}
+	return str
+}
+
 func (c *Condition) And(str string, args ...any) {
-	c.Append("AND", str, args...)
+	c.Append("AND", c.formatSub(str), args...)
 }
 
 func (c *Condition) Or(str string, args ...any) {
-	c.Append("OR", str, args...)
+	c.Append("OR", c.formatSub(str), args...)
 }
 
 func (c *Condition) Build() (string, []any, error) {

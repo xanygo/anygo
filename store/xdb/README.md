@@ -12,10 +12,6 @@ DBName ="demo"
 DSN="{{.Username}}:{{.Password}}@{{.Network}}({{.HOST_PORT}})/{{.DBName}}?charset=utf8mb4,utf8" 
 ```
 
-
-
-
-
 ## 驱动
 在使用 `xdb` 时，需要自行在自己应用的代码中注册对应的驱动。
 

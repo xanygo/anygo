@@ -1,5 +1,5 @@
 // Copyright(C) 2022 github.com/fsgo  All Rights Reserved.
-// Author: hidu <duv123@gmail.com>
+// Author: hidu <duv123+git@gmail.com>
 // Date: 2022/6/25
 
 package xrps

@@ -1,5 +1,5 @@
-// Copyright(C) 2023 github.com/fsgo  All Rights Reserved.
-// Author: hidu <duv123@gmail.com>
+// Copyright(C) 2023 github.com/xanygo  All Rights Reserved.
+// Author: hidu <duv123+git@gmail.com>
 // Date: 2023/9/8
 
 package xt

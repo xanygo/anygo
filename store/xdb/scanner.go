@@ -18,6 +18,9 @@ import (
 	"github.com/xanygo/anygo/store/xdb/dialect"
 )
 
+// Map 别名，在更新、查询等场景使用
+type Map = map[string]any
+
 // ScanRows 读取并解析数据为指定的类型，T 类型可以是 struct、*struct、map[string]any 这三种类型
 //
 // 如：
@@ -82,12 +85,17 @@ func ScanRowsIter[T any](db HasDriver, rows *sql.Rows) iter.Seq2[T, error] {
 		rv := reflect.ValueOf(&zero).Elem()
 		rt := rv.Type()
 
-		dz, err := dialect.Find(db.Driver())
-		if err != nil {
-			yield(zero, err)
-			return
+		var schema *dbtype.TableSchema
+		if rt.Kind() != reflect.Map {
+			dz, err := dialect.Find(db.Driver())
+			if err == nil {
+				schema, err = dbschema.Schema(dz, zero)
+			}
+			if err != nil {
+				yield(zero, err)
+				return
+			}
 		}
-		schema, scErr := dbschema.Schema(dz, zero)
 
 		for rows.Next() {
 			var item T
@@ -95,7 +103,7 @@ func ScanRowsIter[T any](db HasDriver, rows *sql.Rows) iter.Seq2[T, error] {
 			case reflect.Map:
 				item, err = scanRowsAsMap[T](rows, cols)
 			default:
-				item, err = scanRowsAsStruct[T](rows, cols, schema, scErr)
+				item, err = scanRowsAsStruct[T](rows, cols, schema)
 			}
 			if err != nil {
 				yield(zero, err)
@@ -143,11 +151,8 @@ func scanRowsAsMap[T any](rows *sql.Rows, cols []string) (T, error) {
 	return m.Interface().(T), nil
 }
 
-func scanRowsAsStruct[T any](rows *sql.Rows, cols []string, schema *dbtype.TableSchema, scErr error) (T, error) {
+func scanRowsAsStruct[T any](rows *sql.Rows, cols []string, schema *dbtype.TableSchema) (T, error) {
 	var v T
-	if scErr != nil {
-		return v, scErr
-	}
 	rv := reflect.ValueOf(&v).Elem()
 	rt := rv.Type()
 

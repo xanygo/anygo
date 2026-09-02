@@ -23,3 +23,28 @@ func TestInsertBuilder_Build(t *testing.T) {
 	xt.Equal(t, str, "INSERT INTO user (id,name) VALUES (?,?)")
 	xt.Equal(t, arg, []any{1, "hello"})
 }
+
+func TestCondition_Build(t *testing.T) {
+	t.Run("case 1", func(t *testing.T) {
+		cond := xdb.Condition{}
+		cond.And("a=?", 1)
+		cond.And("b=?", 2)
+		where, args := cond.MustBuild()
+		xt.Equal(t, where, "a=? AND b=?")
+		xt.Equal(t, args, []any{1, 2})
+
+		cond.And("c=? or d=?", 3, 4)
+		where, args = cond.MustBuild()
+		xt.Equal(t, where, "a=? AND b=? AND (c=? or d=?)")
+		xt.Equal(t, args, []any{1, 2, 3, 4})
+	})
+	t.Run("case 2", func(t *testing.T) {
+		cond := xdb.Condition{}
+		cond.And("a=?", 1)
+		cond.And("b=?", 2)
+		cond.Or("c=? and d=?", 3, 4)
+		where, args := cond.MustBuild()
+		xt.Equal(t, where, "a=? AND b=? OR (c=? and d=?)")
+		xt.Equal(t, args, []any{1, 2, 3, 4})
+	})
+}

@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 
 	"github.com/xanygo/anygo/safely"
+	"github.com/xanygo/anygo/store/xdb/dbtype"
 )
 
 type DBCore interface {
@@ -276,4 +277,14 @@ func (q *QueryError) Error() string {
 
 func (q *QueryError) Unwrap() error {
 	return q.Raw
+}
+
+// Expr 生成一个新的表达式
+//
+//	如：Expr("version+1") 或者 Expr("version+?",1)
+func Expr(str string, args ...any) dbtype.Expr {
+	return dbtype.Expr{
+		SQL:  str,
+		Args: args,
+	}
 }
