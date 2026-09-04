@@ -43,7 +43,7 @@ func (c *commandFactory) New(ctx context.Context) (*command, error) {
 	err := cmd.Start()
 	if err != nil {
 		if xattr.IsDebugMode() {
-			xlog.Warn(ctx, "command start failed", xlog.String("cmd", cmd.String()), xlog.ErrorAttr("error", err))
+			xlog.Warn(ctx, "command start failed", xlog.String("cmd", cmd.String()), xlog.Err("error", err))
 		}
 		return nil, err
 	}

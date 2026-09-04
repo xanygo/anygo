@@ -41,7 +41,7 @@ func (l *Logger) after(ctx context.Context, e Event) {
 		xlog.DurationMS("cost", e.End.Sub(e.Start)),
 		xlog.String("query", e.Query),
 		xlog.Int("args.len", len(e.Args)),
-		xlog.ErrorAttr("error", e.Error),
+		xlog.Err("error", e.Error),
 	}
 	if !l.NoArgs {
 		attrs = append(attrs, xlog.Any("args", e.Args))

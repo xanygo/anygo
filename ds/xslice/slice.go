@@ -344,29 +344,41 @@ func CountFunc[S ~[]E, E any](arr S, fn func(item E) bool) int64 {
 //   - 使用 rv,ok := value.(Type) 方式断言
 //   - 不确定的类型，可以使用 any 代替
 //   - 传入的数据可以是任意类型；使用了反射
-func Range[T any](obj any, fn func(item T) bool) int {
-	if obj == nil {
-		return 0
+func Range[T any](obj any, fn func(item T) bool) bool {
+	rv := reflect.ValueOf(obj)
+	if !rv.IsValid() {
+		return false
 	}
-	v := reflect.ValueOf(obj)
-	switch v.Kind() {
+	switch rv.Kind() {
 	case reflect.Array, reflect.Slice:
 	default:
-		return 0
+		return false
 	}
-	var cnt int
-	for i := 0; i < v.Len(); i++ {
-		elem := v.Index(i).Interface()
+	for i := 0; i < rv.Len(); i++ {
+		elem := rv.Index(i).Interface()
 		val, ok := elem.(T)
 		if !ok {
 			continue
 		}
-		cnt++
 		if !fn(val) {
 			break
 		}
 	}
-	return cnt
+	return true
+}
+
+// Len 返回 Array 或者 Slice 类型的长度，其他类型总是返回 0
+func Len(obj any) int {
+	rv := reflect.ValueOf(obj)
+	if !rv.IsValid() {
+		return 0
+	}
+	switch rv.Kind() {
+	case reflect.Array, reflect.Slice:
+		return rv.Len()
+	default:
+		return 0
+	}
 }
 
 // Chunk 将 slice 拆分为同等大小 size 的多个子 slice

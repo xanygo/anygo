@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/xerror"
 )
 
@@ -74,6 +75,20 @@ type LRU[K comparable, V any] struct {
 	writeCnt  atomic.Uint64
 	deleteCnt atomic.Uint64
 	hitCnt    atomic.Uint64
+}
+
+// Init 用于在创建后，使用前，使用参数重新初始化
+//
+//	param={"Capacity":10000}
+func (lru *LRU[K, V]) Init(param map[string]any) error {
+	if lru.capacity == 1 {
+		num, ok := xmap.GetInt(param, "Capacity")
+		if !ok || num < 1 {
+			return fmt.Errorf("miss valid Capacity in %v", param)
+		}
+		lru.capacity = num
+	}
+	return nil
 }
 
 func (lru *LRU[K, V]) IsMemory() bool {
@@ -370,6 +385,20 @@ type MemoryXIFO[K comparable, V any] struct {
 	writeCnt  atomic.Uint64
 	deleteCnt atomic.Uint64
 	hitCnt    atomic.Uint64
+}
+
+// Init 用于在创建后，使用前，使用参数重新初始化
+//
+//	param={"Capacity":10000}
+func (m *MemoryXIFO[K, V]) Init(param map[string]any) error {
+	if m.capacity == 1 {
+		num, ok := xmap.GetInt(param, "Capacity")
+		if !ok || num < 1 {
+			return fmt.Errorf("miss valid Capacity in %v", param)
+		}
+		m.capacity = num
+	}
+	return nil
 }
 
 func (m *MemoryXIFO[K, V]) IsMemory() bool {

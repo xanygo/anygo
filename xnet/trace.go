@@ -31,7 +31,7 @@ var PrintResolverLogIT = &ResolverInterceptor{
 			xlog.String("host", host),
 			xlog.String("cost", cost.String()),
 			xlog.Any("result", result),
-			xlog.ErrorAttr("error", err),
+			xlog.Err("error", err),
 		}
 		if err == nil {
 			xlog.Info(ctx, "LookupIP", attrs...)
@@ -52,9 +52,9 @@ var PrintDialLogIT = &DialerInterceptor{
 			xlog.String("network", network),
 			xlog.String("address", address),
 			xlog.Any("result", result),
-			xlog.ErrorAttr("error", err),
+			xlog.Err("error", err),
 			xlog.String("cost", cost.String()),
-			xlog.ErrorAttr("error", err),
+			xlog.Err("error", err),
 		}
 		if err == nil {
 			xlog.Info(ctx, "DialContext", attrs...)

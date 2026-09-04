@@ -155,7 +155,7 @@ func (c *Client) FunctionStats(ctx context.Context) (*FunctionStats, error) {
 	if eg, ok := mp["engines"]; ok {
 		xmap.Range[string, any](eg, func(k string, v any) bool {
 			fse := &FunctionStatsEngine{}
-			num := xmap.Range[string, any](v, func(k string, v any) bool {
+			ok := xmap.Range[string, any](v, func(k string, v any) bool {
 				switch k {
 				case "language":
 					fse.Language, _ = v.(string)
@@ -166,7 +166,7 @@ func (c *Client) FunctionStats(ctx context.Context) (*FunctionStats, error) {
 				}
 				return true
 			})
-			if num > 0 {
+			if ok {
 				if fs.Engines == nil {
 					fs.Engines = make(map[string]*FunctionStatsEngine, 1)
 				}
@@ -178,7 +178,7 @@ func (c *Client) FunctionStats(ctx context.Context) (*FunctionStats, error) {
 
 	if rs, ok := mp["running_script"]; ok {
 		rn := &FunctionStatsRunning{}
-		num := xmap.Range[string, any](rs, func(key string, val any) bool {
+		ok := xmap.Range[string, any](rs, func(key string, val any) bool {
 			switch key {
 			case "name":
 				rn.Name, _ = val.(string)
@@ -190,7 +190,7 @@ func (c *Client) FunctionStats(ctx context.Context) (*FunctionStats, error) {
 			}
 			return true
 		})
-		if num > 0 {
+		if ok {
 			fs.RunningScript = rn
 		}
 	}

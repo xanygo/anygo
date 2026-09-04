@@ -106,12 +106,12 @@ func TestIsMemory(t *testing.T) {
 		c2 := xcache.NewLatencyObserver[string, string](c1, time.Hour, time.Minute)
 		xt.True(t, xcache.IsMemory(c2))
 
-		c3 := &xcache.Transformer[net.IP]{
+		c3 := &xcache.Transformer[string, net.IP]{
 			Cache: c1,
 		}
 		xt.True(t, xcache.IsMemory(c3))
 
-		c4 := &xcache.Transformer[net.IP]{
+		c4 := &xcache.Transformer[string, net.IP]{
 			Cache: c2,
 		}
 		xt.True(t, xcache.IsMemory(c4))
@@ -127,17 +127,17 @@ func TestIsMemory(t *testing.T) {
 		c2 := xcache.NewLatencyObserver[string, string](c1, time.Hour, time.Minute)
 		xt.False(t, xcache.IsMemory(c2))
 
-		c3 := &xcache.Transformer[net.IP]{
+		c3 := &xcache.Transformer[string, net.IP]{
 			Cache: c1,
 		}
 		xt.False(t, xcache.IsMemory(c3))
 
-		c4 := &xcache.Transformer[net.IP]{
+		c4 := &xcache.Transformer[string, net.IP]{
 			Cache: c2,
 		}
 		xt.False(t, xcache.IsMemory(c4))
 
-		c5 := &xcache.Transformer[net.IP]{}
+		c5 := &xcache.Transformer[string, net.IP]{}
 		xt.False(t, xcache.IsMemory(c5))
 	})
 
@@ -148,12 +148,12 @@ func TestIsMemory(t *testing.T) {
 		c2 := xcache.NewLatencyObserver[string, string](c1, time.Hour, time.Minute)
 		xt.False(t, xcache.IsMemory(c2))
 
-		c3 := &xcache.Transformer[net.IP]{
+		c3 := &xcache.Transformer[string, net.IP]{
 			Cache: c1,
 		}
 		xt.False(t, xcache.IsMemory(c3))
 
-		c4 := &xcache.Transformer[net.IP]{
+		c4 := &xcache.Transformer[string, net.IP]{
 			Cache: c2,
 		}
 		xt.False(t, xcache.IsMemory(c4))

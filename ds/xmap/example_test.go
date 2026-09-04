@@ -139,15 +139,15 @@ func ExampleRange() {
 	var count1 int
 
 	// 遍历出所有类型为 int 类型的 k-v 项
-	matched := xmap.Range[string, int](mp, func(key string, val int) bool {
+	ok := xmap.Range[string, int](mp, func(key string, val int) bool {
 		count1 += val
 		return true
 	})
-	fmt.Println("matched=", matched, ",count:", count1) // matched= 1 ,count: 1
+	fmt.Println("ok=", ok, ",count:", count1) // matched= 1 ,count: 1
 
 	count1 = 0
 	// value 使用 any，可以匹配所有类型
-	matched = xmap.Range[string, any](mp, func(key string, val any) bool {
+	ok = xmap.Range[string, any](mp, func(key string, val any) bool {
 		switch rv := val.(type) {
 		case int:
 			count1 += rv
@@ -156,9 +156,9 @@ func ExampleRange() {
 		}
 		return true
 	})
-	fmt.Println("matched=", matched, ",count:", count1) // matched= 2 ,count: 3
+	fmt.Println("ok=", ok, ",count:", count1) // matched= 2 ,count: 3
 
 	// Output:
-	// matched= 1 ,count: 1
-	// matched= 2 ,count: 3
+	// ok= true ,count: 1
+	// ok= true ,count: 3
 }

@@ -21,12 +21,12 @@ func TestIsNop(t *testing.T) {
 		c2 := xcache.NewLatencyObserver[string, string](c1, time.Hour, time.Minute)
 		xt.True(t, xcache.IsNop(c2))
 
-		c3 := &xcache.Transformer[net.IP]{
+		c3 := &xcache.Transformer[string, net.IP]{
 			Cache: c1,
 		}
 		xt.True(t, xcache.IsNop(c3))
 
-		c4 := &xcache.Transformer[net.IP]{
+		c4 := &xcache.Transformer[string, net.IP]{
 			Cache: c2,
 		}
 		xt.True(t, xcache.IsNop(c4))
@@ -39,12 +39,12 @@ func TestIsNop(t *testing.T) {
 		c2 := xcache.NewLatencyObserver[string, string](c1, time.Hour, time.Minute)
 		xt.False(t, xcache.IsNop(c2))
 
-		c3 := &xcache.Transformer[net.IP]{
+		c3 := &xcache.Transformer[string, net.IP]{
 			Cache: c1,
 		}
 		xt.False(t, xcache.IsNop(c3))
 
-		c4 := &xcache.Transformer[net.IP]{
+		c4 := &xcache.Transformer[string, net.IP]{
 			Cache: c2,
 		}
 		xt.False(t, xcache.IsNop(c4))
@@ -52,7 +52,7 @@ func TestIsNop(t *testing.T) {
 		c5 := xcache.NewMemoryLIFO[string, string](1)
 		xt.False(t, xcache.IsNop(c5))
 
-		c6 := &xcache.Transformer[net.IP]{}
+		c6 := &xcache.Transformer[string, net.IP]{}
 		xt.False(t, xcache.IsNop(c6))
 	})
 

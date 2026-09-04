@@ -49,9 +49,9 @@ func (c *Cache) checkCan(r *http.Request) bool {
 }
 
 func (c *Cache) Next(handler http.Handler) http.Handler {
-	cache := &xcache.Transformer[*cachedResponse]{
-		Cache: c.Store,
-		Codec: xcodec.JSON,
+	cache := &xcache.Transformer[string, *cachedResponse]{
+		Cache:      c.Store,
+		ValueCodec: xcodec.JSON,
 	}
 	lfCacheNo := xlog.String("xch", "n")
 	lfCachedRead := xlog.String("xch", "r")

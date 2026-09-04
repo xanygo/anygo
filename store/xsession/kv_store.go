@@ -139,7 +139,7 @@ func (ks *KVStore) doGC() {
 			logger.Info(ctx1, "clean_expired_session",
 				xlog.String("member", member),
 				xlog.Time("created", tm),
-				xlog.ErrorAttr("resultErr", err),
+				xlog.Err("resultErr", err),
 			)
 			deleted++
 		}

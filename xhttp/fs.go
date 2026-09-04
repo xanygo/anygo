@@ -417,7 +417,7 @@ func (fm *FSMerge) tryMini(name string, code []byte) []byte {
 	}
 	xlog.Warn(context.Background(), "FSMerge Minify[js] error",
 		xlog.String("filename", name),
-		xlog.ErrorAttr("error", err),
+		xlog.Err("error", err),
 	)
 	return code
 }

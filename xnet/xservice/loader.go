@@ -88,7 +88,7 @@ func (l *Loader) checkReload(ctx context.Context) error {
 	l.watchFiles.Range(func(name string, value fs.FileInfo) bool {
 		info, err := os.Stat(name)
 		if err != nil {
-			lg.Warn(ctx, err.Error(), xlog.String("fileName", name), xlog.ErrorAttr("error", err))
+			lg.Warn(ctx, err.Error(), xlog.String("fileName", name), xlog.Err("error", err))
 			return true
 		}
 		if info.ModTime().After(value.ModTime()) {
@@ -141,7 +141,7 @@ func (l *Loader) LoadFile(ctx context.Context, filenames ...string) error {
 		old := reg.Upsert(ser)
 		if old != nil {
 			err = old.Stop(ctx)
-			xlog.AddAttr(ctx, xlog.Bool("Upsert", true), xlog.ErrorAttr("stop", err))
+			xlog.AddAttr(ctx, xlog.Bool("Upsert", true), xlog.Err("stop", err))
 		}
 		lg.Info(ctx, "loaded", xlog.String("serviceName", ser.Name()))
 		return nil

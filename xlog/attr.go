@@ -98,7 +98,7 @@ func Bytes(key string, value []byte) Attr {
 	return slog.Any(key, value)
 }
 
-func ErrorAttr(key string, err error) Attr {
+func Err(key string, err error) Attr {
 	if err == nil {
 		return String(key, "")
 	}
@@ -107,4 +107,8 @@ func ErrorAttr(key string, err error) Attr {
 		return Any(key, pt.TraceData())
 	}
 	return String(key, err.Error())
+}
+
+func Cost(from time.Time) Attr {
+	return Duration("Cost", time.Since(from))
 }

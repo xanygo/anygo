@@ -84,7 +84,7 @@ func (al *AccessLog) safelyRecover(w http.ResponseWriter, r *http.Request) {
 	} else {
 		xhttp.WriteTextStatus(w, http.StatusInternalServerError, []byte("Internal Server Error"))
 	}
-	al.Logger.Error(r.Context(), "panic", xlog.ErrorAttr("panic", err))
+	al.Logger.Error(r.Context(), "panic", xlog.Err("panic", err))
 	if al.RePanic {
 		panic(err)
 	}
@@ -197,7 +197,7 @@ func (al *AccessLog) after(ctx context.Context, start time.Time, w *captureWrite
 		fields = append(fields, vs...)
 	}
 	if err := ctx.Err(); err != nil {
-		fields = append(fields, xlog.ErrorAttr("after.ctx.err", ctx.Err()))
+		fields = append(fields, xlog.Err("after.ctx.err", ctx.Err()))
 	}
 	al.Logger.Info(ctx, "", fields...)
 }

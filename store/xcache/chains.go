@@ -32,8 +32,8 @@ type Chain[K comparable, V any] struct {
 	// Cache  必填
 	Cache Cache[K, V]
 
-	// DynamicTTLFn 必填，动态获取数据的缓存有效期,若是 Chains 里的最后一个则不需要
-	DynamicTTLFn func(ctx context.Context, key K, value V) time.Duration
+	// LifeFn 必填，动态获取数据的缓存有效期,若是 Chains 里的最后一个则不需要
+	LifeFn func(ctx context.Context, key K, value V) time.Duration
 
 	// WriteTimeout 可选，读取后给未命中缓存的对象，填充缓存的写超时,默认 10秒
 	WriteTimeout time.Duration
@@ -42,7 +42,7 @@ type Chain[K comparable, V any] struct {
 func (c *Chain[K, V]) set(ctx context.Context, key K, value V) {
 	ctx, cancel := context.WithTimeout(ctx, c.getTimeout())
 	defer cancel()
-	ttl := c.DynamicTTL(ctx, key, value)
+	ttl := c.LifeFn(ctx, key, value)
 	_ = c.Cache.Set(ctx, key, value, ttl)
 }
 
@@ -51,10 +51,6 @@ func (c *Chain[K, V]) getTimeout() time.Duration {
 		return c.WriteTimeout
 	}
 	return 10 * time.Second
-}
-
-func (c *Chain[K, V]) DynamicTTL(ctx context.Context, key K, value V) time.Duration {
-	return c.DynamicTTLFn(ctx, key, value)
 }
 
 func (c *Chain[K, V]) Unwrap() any {

@@ -247,20 +247,20 @@ func TestRevDeleteFuncN(t *testing.T) {
 func TestRange(t *testing.T) {
 	s1 := []any{"1", 2, 3, int8(3)}
 	var list1 []int
-	num := Range[int](s1, func(item int) bool {
+	ok := Range[int](s1, func(item int) bool {
 		list1 = append(list1, item)
 		return true
 	})
-	xt.Equal(t, num, 2)
+	xt.True(t, ok)
 	xt.Equal(t, list1, []int{2, 3})
 
 	var list2 []int64
-	num2 := Range[int64](s1, func(item int64) bool {
+	ok = Range[int64](s1, func(item int64) bool {
 		list2 = append(list2, item)
 		return true
 	})
+	xt.True(t, ok)
 	xt.Empty(t, list2)
-	xt.Equal(t, num2, 0)
 }
 
 func TestChunk(t *testing.T) {

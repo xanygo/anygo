@@ -6,8 +6,11 @@ package xcache
 
 import (
 	"context"
+	"errors"
+	"sync"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xerror"
 )
 
@@ -56,10 +59,6 @@ type (
 	Deleter[K comparable] interface {
 		Delete(ctx context.Context, keys ...K) error
 	}
-
-	DynamicTTLCache[K comparable, V any] interface {
-		DynamicTTL(ctx context.Context, key K, value V) time.Duration
-	}
 )
 
 type (
@@ -95,3 +94,77 @@ type ValueError[V any] struct {
 }
 
 const cacheFileExt = ".cache"
+
+// AsMCache 转换为支持匹配的Cache
+//
+// concurrency : 并发度，当值 >1 是为并行获取，否则串行处理
+func AsMCache[K comparable, V any](c Cache[K, V], concurrency int) MCache[K, V] {
+	if mc, ok := c.(MCache[K, V]); ok {
+		return mc
+	}
+	return &toMCache[K, V]{
+		Cache:       c,
+		concurrency: concurrency,
+	}
+}
+
+var _ MCache[string, string] = (*toMCache[string, string])(nil)
+
+type toMCache[K comparable, V any] struct {
+	Cache[K, V]
+	concurrency int // MGet 和 MSet 的并发度，若值 >1 为并发，否则未串行
+}
+
+// MGet implements [MCache].
+func (t *toMCache[K, V]) MGet(ctx context.Context, keys ...K) (result map[K]V, err error) {
+	return mget(ctx, t.Cache, t.concurrency, keys...)
+}
+
+// MSet implements [MCache].
+func (t *toMCache[K, V]) MSet(ctx context.Context, values map[K]V, ttl time.Duration) error {
+	return mset(ctx, t.Cache, t.concurrency, values, ttl)
+}
+
+func (t *toMCache[K, V]) Unwrap() any {
+	return t.Cache
+}
+
+func mget[K comparable, V any](ctx context.Context, c Cache[K, V], worker int, keys ...K) (result map[K]V, err error) {
+	if len(keys) == 0 {
+		return nil, nil
+	}
+	result = make(map[K]V, len(keys))
+	var mux sync.Mutex
+	var wg xsync.WaitGroup
+	wg.SetLimit(worker)
+	for _, key := range keys {
+		wg.GoCtxErr(ctx, func(ctx context.Context) error {
+			value, err := c.Get(ctx, key)
+			if err == nil {
+				mux.Lock()
+				result[key] = value
+				mux.Unlock()
+				return nil
+			}
+			if errors.Is(err, xerror.NotFound) {
+				return nil
+			}
+			return err
+		})
+	}
+	return result, wg.Wait()
+}
+
+func mset[K comparable, V any](ctx context.Context, c Cache[K, V], worker int, values map[K]V, ttl time.Duration) (err error) {
+	if len(values) == 0 {
+		return nil
+	}
+	var wg xsync.WaitGroup
+	wg.SetLimit(worker)
+	for key, value := range values {
+		wg.GoCtxErr(ctx, func(ctx context.Context) error {
+			return c.Set(ctx, key, value, ttl)
+		})
+	}
+	return wg.Wait()
+}

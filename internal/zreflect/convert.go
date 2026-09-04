@@ -5,6 +5,7 @@
 package zreflect
 
 import (
+	"encoding"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -34,6 +35,21 @@ func BaseTypeToString(va any) (string, bool) {
 }
 
 func ToString(va any) string {
+	if va == "" {
+		return ""
+	}
+
+	if ks, ok := va.(fmt.Stringer); ok {
+		return ks.String()
+	}
+
+	if v, ok := va.(encoding.TextMarshaler); ok {
+		b, err := v.MarshalText()
+		if err == nil {
+			return string(b)
+		}
+	}
+
 	vs, ok := BaseTypeToString(va)
 	if ok {
 		return vs

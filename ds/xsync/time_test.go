@@ -50,9 +50,9 @@ func TestTimeStamp(t *testing.T) {
 func BenchmarkTimeStamp_Load(b *testing.B) {
 	var a TimeStamp
 	a.Store(time.Now())
-	b.ResetTimer()
+
 	var tm time.Time
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		tm = a.Load()
 	}
 	_ = tm

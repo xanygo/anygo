@@ -17,13 +17,13 @@ import (
 func TestNewChains(t *testing.T) {
 	l1 := &xcache.Chain[string, string]{
 		Cache: xcache.NewLRU[string, string](10),
-		DynamicTTLFn: func(ctx context.Context, key string, value string) time.Duration {
+		LifeFn: func(ctx context.Context, key string, value string) time.Duration {
 			return time.Minute
 		},
 	}
 	l2 := &xcache.Chain[string, string]{
 		Cache: xcache.NewLRU[string, string](10),
-		DynamicTTLFn: func(ctx context.Context, key string, value string) time.Duration {
+		LifeFn: func(ctx context.Context, key string, value string) time.Duration {
 			return 2 * time.Minute
 		},
 	}

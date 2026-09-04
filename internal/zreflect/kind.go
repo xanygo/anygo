@@ -1,6 +1,9 @@
 package zreflect
 
-import "reflect"
+import (
+	"hash/fnv"
+	"reflect"
+)
 
 func IsIntKind(k reflect.Kind) bool {
 	switch k {
@@ -78,4 +81,17 @@ func NumberEqual(a, b reflect.Value) bool {
 
 func IsBytesArray(rt reflect.Type) bool {
 	return rt.Kind() == reflect.Array && rt.Elem().Kind() == reflect.Uint8
+}
+
+// TypeID 依据类型计算出的签名
+func TypeID[K, V any]() uint32 {
+	rtk := reflect.TypeFor[K]()
+	rtv := reflect.TypeFor[V]()
+
+	h := fnv.New32a()
+	h.Write([]byte(rtk.String()))
+	h.Write([]byte{0})
+	h.Write([]byte(rtv.String()))
+
+	return h.Sum32()
 }

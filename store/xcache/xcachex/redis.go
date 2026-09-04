@@ -7,12 +7,14 @@ package xcachex
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/store/xredis"
 	"github.com/xanygo/anygo/xerror"
@@ -32,6 +34,20 @@ type Redis struct {
 
 	mux     sync.Mutex
 	mSetSha string
+}
+
+func (r *Redis) Init(param map[string]any) error {
+	if r.KeyPrefix == "" {
+		r.KeyPrefix, _ = xmap.GetString(param, "KeyPrefix")
+	}
+	if r.Client == nil {
+		service, ok := xmap.GetString(param, "Service")
+		if !ok || service == "" {
+			return fmt.Errorf("invalid Service in %v", param)
+		}
+		r.Client = xredis.NewClient(service)
+	}
+	return nil
 }
 
 func (r *Redis) Has(ctx context.Context, key string) (bool, error) {

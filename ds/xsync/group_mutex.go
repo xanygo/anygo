@@ -32,9 +32,10 @@ func (g *GroupMutex[T]) DoRead(key T, fn func()) {
 	fn()
 }
 
-// Locker 获取资源的锁对象。
-// 获取后必须使用，在调用 Unlock 和 RUnlock 时会检查引用次数，
-// 当应用次数为 0 后，会从 GroupMutex 删除引用
+// Locker 获取资源的锁对象
+//
+//	获取后必须使用，在调用 Unlock 和 RUnlock 时会检查引用次数，
+//	当引用次数为 0 后，会从 GroupMutex 删除引用
 func (g *GroupMutex[T]) Locker(key T) RWLocker {
 	g.mux.Lock()
 	if g.items == nil {

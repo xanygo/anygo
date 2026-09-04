@@ -178,7 +178,7 @@ func (r *Router) register(pattern string, handler http.Handler, mds ...Middlewar
 		r.AutoLogger().Warn(context.Background(),
 			"register with invalid pattern",
 			xlog.String("Pattern", pattern),
-			xlog.ErrorAttr("Error", err))
+			xlog.Err("Error", err))
 		return nil, err
 	}
 

@@ -26,6 +26,14 @@ var (
 	Text = TextCodec{}
 )
 
+func init() {
+	Register("json", JSON)
+	Register("raw", Raw)
+	Register("form", Form)
+	Register("csv", CSV)
+	Register("text", Text)
+}
+
 // Namer 名字
 type Namer interface {
 	Name() string

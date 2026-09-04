@@ -16,6 +16,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -23,9 +24,11 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/ds/xbus"
+	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/internal/fctime"
 	"github.com/xanygo/anygo/internal/zos"
+	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xerror"
@@ -63,6 +66,46 @@ type File[K comparable, V any] struct {
 	writeCnt  atomic.Uint64
 	deleteCnt atomic.Uint64
 	hitCnt    atomic.Uint64
+}
+
+// Init 用于在创建后，使用前，使用参数重新初始化
+//
+//	param = {
+//		"Dir":"存储数据的目录",     // 必填，数据目录
+//		"Codec":"json",            // 编码器名称，可选，默认为 json
+//		"Capacity":10000           // 容量，可选
+//	}
+func (fc *File[K, V]) Init(param map[string]any) error {
+	var ok bool
+
+	if fc.Dir == "" {
+		fc.Dir, ok = xmap.GetString(param, "Dir")
+		if !ok {
+			return errors.New("miss Dir")
+		}
+		rtk := reflect.TypeFor[K]()
+		rtv := reflect.TypeFor[V]()
+		hash := md5.Sum([]byte(rtk.String() + "/" + rtv.String()))
+		sign := hex.EncodeToString(hash[:])
+		fc.Dir = filepath.Join(fc.Dir, sign)
+	}
+
+	if fc.Codec == nil {
+		name, ok := xmap.GetString(param, "Codec")
+		if !ok || name == "" {
+			fc.Codec = xcodec.JSON
+		} else {
+			codec, err := xcodec.Find(name)
+			if err != nil {
+				return err
+			}
+			fc.Codec = codec
+		}
+	}
+	if fc.Capacity == 0 {
+		fc.Capacity, _ = xmap.GetInt(param, "Capacity")
+	}
+	return nil
 }
 
 func (fc *File[K, V]) Has(ctx context.Context, key K) (bool, error) {
@@ -279,7 +322,7 @@ func (fc *File[K, V]) Delete(ctx context.Context, keys ...K) error {
 }
 
 func (fc *File[K, V]) cacheFilePath(key K) string {
-	sg := md5.Sum(fmt.Append(nil, key))
+	sg := md5.Sum([]byte(zreflect.ToString(key)))
 	s := hex.EncodeToString(sg[:])
 	fp := filepath.Join(fc.Dir, s[:2], s[2:4], s[4:6], s[6:])
 	return strings.Join([]string{fp, cacheFileExt}, "")

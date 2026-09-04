@@ -7,6 +7,7 @@ package xsync
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -18,10 +19,53 @@ type WaitGroup struct {
 	wg   sync.WaitGroup
 	mu   sync.Mutex
 	errs []error
+	sem  chan struct{}
+}
+
+// SetLimit 设置并发度
+func (w *WaitGroup) SetLimit(n int) {
+	if n <= 0 {
+		w.sem = nil
+		return
+	}
+	if active := len(w.sem); active != 0 {
+		panic(fmt.Errorf("modify limit while %v goroutines in the group are still active", active))
+	}
+	w.sem = make(chan struct{}, n)
+}
+
+func (w *WaitGroup) start() {
+	if w.sem != nil {
+		w.sem <- struct{}{}
+	}
+}
+
+func (w *WaitGroup) done() {
+	if w.sem != nil {
+		<-w.sem
+	}
 }
 
 func (w *WaitGroup) Go(f func()) {
+	w.start()
+	w.doGo(f)
+}
+
+func (w *WaitGroup) TryGo(f func()) bool {
+	if w.sem != nil {
+		select {
+		case w.sem <- struct{}{}:
+		default:
+			return false
+		}
+	}
+	w.doGo(f)
+	return true
+}
+
+func (w *WaitGroup) doGo(f func()) {
 	w.wg.Go(func() {
+		defer w.done()
 		err := safely.Run(f)
 		if err == nil {
 			return
@@ -33,7 +77,25 @@ func (w *WaitGroup) Go(f func()) {
 }
 
 func (w *WaitGroup) GoCtx(ctx context.Context, f func(ctx context.Context)) {
+	w.start()
+	w.doGoCtx(ctx, f)
+}
+
+func (w *WaitGroup) TryGoCtx(ctx context.Context, f func(ctx context.Context)) bool {
+	if w.sem != nil {
+		select {
+		case w.sem <- struct{}{}:
+		default:
+			return false
+		}
+	}
+	w.doGoCtx(ctx, f)
+	return true
+}
+
+func (w *WaitGroup) doGoCtx(ctx context.Context, f func(ctx context.Context)) {
 	w.wg.Go(func() {
+		defer w.done()
 		err := safely.RunCtx(ctx, f)
 		if err == nil {
 			return
@@ -45,7 +107,25 @@ func (w *WaitGroup) GoCtx(ctx context.Context, f func(ctx context.Context)) {
 }
 
 func (w *WaitGroup) GoErr(f func() error) {
+	w.start()
+	w.doGoErr(f)
+}
+
+func (w *WaitGroup) TryGoErr(f func() error) bool {
+	if w.sem != nil {
+		select {
+		case w.sem <- struct{}{}:
+		default:
+			return false
+		}
+	}
+	w.doGoErr(f)
+	return true
+}
+
+func (w *WaitGroup) doGoErr(f func() error) {
 	w.wg.Go(func() {
+		defer w.done()
 		err := safely.Run(f)
 		if err == nil {
 			return
@@ -57,7 +137,26 @@ func (w *WaitGroup) GoErr(f func() error) {
 }
 
 func (w *WaitGroup) GoCtxErr(ctx context.Context, f func(ctx context.Context) error) {
+	w.start()
+	w.doGoCtxErr(ctx, f)
+}
+
+func (w *WaitGroup) TryGoCtxErr(ctx context.Context, f func(ctx context.Context) error) bool {
+	if w.sem != nil {
+		select {
+		case w.sem <- struct{}{}:
+		default:
+			return false
+		}
+	}
+	w.doGoCtxErr(ctx, f)
+	return true
+}
+
+func (w *WaitGroup) doGoCtxErr(ctx context.Context, f func(ctx context.Context) error) {
+	w.start()
 	w.wg.Go(func() {
+		defer w.done()
 		err := safely.RunCtx(ctx, f)
 		if err == nil {
 			return
@@ -68,7 +167,7 @@ func (w *WaitGroup) GoCtxErr(ctx context.Context, f func(ctx context.Context) er
 	})
 }
 
-// Wait 等待所有方法执行完成并返回所有的错误
+// Wait 等待所有方法执行完成并返回然后清空所有的错误
 func (w *WaitGroup) Wait() error {
 	w.wg.Wait()
 	w.mu.Lock()
@@ -76,7 +175,9 @@ func (w *WaitGroup) Wait() error {
 	if len(w.errs) == 0 {
 		return nil
 	}
-	return errors.Join(w.errs...)
+	err := errors.Join(w.errs...)
+	w.errs = nil
+	return err
 }
 
 // WaitFirst 异步执行方法，并使用 Wait 方法获取第一个执行的错误状态

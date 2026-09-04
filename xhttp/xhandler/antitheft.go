@@ -60,7 +60,7 @@ func (a *AntiTheft) check(r *http.Request) bool {
 	if err != nil {
 		a.AutoLogger().Warn(r.Context(), "AntiTheft, parser refer failed",
 			xlog.String("refer", refer),
-			xlog.ErrorAttr("error", err),
+			xlog.Err("error", err),
 		)
 		return false
 	}

@@ -42,35 +42,88 @@ func TestRange(t *testing.T) {
 			"k4": map[string]string{"1": "2"},
 		}
 		var keys []string
-		num := Range[string, any](mp, func(key string, val any) bool {
+		ok := Range[string, any](mp, func(key string, val any) bool {
 			keys = append(keys, key)
 			return true
 		})
+		xt.True(t, ok)
 		wantKeys := Keys(mp)
 		xt.SliceSortEqual(t, wantKeys, keys)
-		xt.Equal(t, num, 4)
 
 		keys = nil
-		num = Range[string, int](mp, func(key string, val int) bool {
+		ok = Range[string, int](mp, func(key string, val int) bool {
 			keys = append(keys, key)
 			return true
 		})
 		xt.SliceSortEqual(t, []string{"k1", "k2"}, keys)
-		xt.Equal(t, num, 2)
+		xt.True(t, ok)
 	})
 
 	t.Run("nil map", func(t *testing.T) {
-		num := Range[string, any](nil, func(key string, val any) bool {
+		ok := Range[string, any](nil, func(key string, val any) bool {
 			return true
 		})
-		xt.Equal(t, num, 0)
+		xt.False(t, ok)
 	})
 
 	t.Run("empty map", func(t *testing.T) {
 		var m map[string]any
-		num := Range[string, any](m, func(key string, val any) bool {
+		ok := Range[string, any](m, func(key string, val any) bool {
 			return true
 		})
-		xt.Equal(t, num, 0)
+		xt.True(t, ok)
+	})
+}
+
+func TestGetString(t *testing.T) {
+	t.Run("case 1", func(t *testing.T) {
+		var data map[string]any
+		got, ok := GetString(data, "k")
+		xt.False(t, ok)
+		xt.Empty(t, got)
+	})
+	t.Run("case 2", func(t *testing.T) {
+		data := map[string]any{"k1": "123", "k2": 234}
+		got, ok := GetString(data, "k1")
+		xt.True(t, ok)
+		xt.Equal(t, got, "123")
+
+		got, ok = GetString(data, "k2")
+		xt.True(t, ok)
+		xt.Equal(t, got, "234")
+	})
+}
+
+func TestGetMap(t *testing.T) {
+	t.Run("case 1", func(t *testing.T) {
+		var data map[string]any
+		got, ok := GetMap(data, "k")
+		xt.False(t, ok)
+		xt.Empty(t, got)
+	})
+
+	t.Run("case 2", func(t *testing.T) {
+		data := map[string]any{
+			"k1": "123",
+			"k2": 234,
+			"k3": map[string]any{"t1": "v2"},
+			"k4": map[any]any{"t1": "v2"},
+			"k5": any(map[string]any{"t1": "v2"}),
+		}
+		got, ok := GetMap(data, "k1")
+		xt.False(t, ok)
+		xt.Empty(t, got)
+
+		got, ok = GetMap(data, "k3")
+		xt.True(t, ok)
+		xt.Equal(t, got, map[string]any{"t1": "v2"})
+
+		got, ok = GetMap(data, "k4")
+		xt.True(t, ok)
+		xt.Equal(t, got, map[string]any{"t1": "v2"})
+
+		got, ok = GetMap(data, "k5")
+		xt.True(t, ok)
+		xt.Equal(t, got, map[string]any{"t1": "v2"})
 	})
 }

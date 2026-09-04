@@ -34,6 +34,29 @@ func GetDf[K comparable, V any](m map[K]V, key K, def V) V {
 	return def
 }
 
+func GetMap[K comparable, V any](m map[K]V, key K) (map[K]V, bool) {
+	if len(m) == 0 {
+		return nil, false
+	}
+	v, found := m[key]
+	if !found {
+		return nil, false
+	}
+	mc, ok := any(v).(map[K]V)
+	if ok {
+		return mc, true
+	}
+	result := make(map[K]V)
+	ok = Range[K, V](v, func(key K, val V) bool {
+		result[key] = val
+		return true
+	})
+	if !ok {
+		return nil, false
+	}
+	return result, true
+}
+
 func GetString[K comparable, V any](m map[K]V, key K) (string, bool) {
 	if len(m) == 0 {
 		return "", false
@@ -310,28 +333,32 @@ func KeysMiss[K comparable, V any](mp map[K]V, keys []K) []K {
 //   - 使用 rv,ok := value.(Type) 方式断言 key 和 value
 //   - 不确定的类型，可以使用 any 代替，如只关注 key 的类型是 string，可以使用:Range[string,any](m,func(key string,value any)bool)
 //   - 传入的数据可以是任意类型；使用了反射
-func Range[K comparable, V any](m any, fn func(key K, val V) bool) int {
-	if m == nil {
-		return 0
+func Range[K comparable, V any](m any, fn func(key K, val V) bool) bool {
+	rv := reflect.ValueOf(m)
+	if !rv.IsValid() || rv.Kind() != reflect.Map {
+		return false
 	}
-	v := reflect.ValueOf(m)
-	if v.Kind() != reflect.Map {
-		return 0
-	}
-	var cnt int
-	for _, key := range v.MapKeys() {
+	for _, key := range rv.MapKeys() {
 		k, ok := key.Interface().(K)
 		if !ok {
 			continue
 		}
-		val, ok := v.MapIndex(key).Interface().(V)
+		val, ok := rv.MapIndex(key).Interface().(V)
 		if !ok {
 			continue
 		}
-		cnt++
 		if !fn(k, val) {
 			break
 		}
 	}
-	return cnt
+	return true
+}
+
+// Len 返回 Map 类型的长度，其他类型总是返回 0
+func Len(obj any) int {
+	rv := reflect.ValueOf(obj)
+	if !rv.IsValid() || rv.Kind() != reflect.Map {
+		return 0
+	}
+	return rv.Len()
 }

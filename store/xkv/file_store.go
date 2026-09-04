@@ -65,7 +65,7 @@ func (f *FileStore) doCompact() {
 	expire := time.Now().Add(-5 * time.Minute)
 	deleted, err := xfs.RemoveEmptyDir(f.DataDir, expire)
 	if err != nil {
-		xlog.Warn(context.Background(), "anygo_xkv_FileStorage_gc", xlog.ErrorAttr("error", err))
+		xlog.Warn(context.Background(), "anygo_xkv_FileStorage_gc", xlog.Err("error", err))
 	} else {
 		xlog.Info(context.Background(), "anygo_xkv_FileStorage_gc", xlog.Int("deleted", deleted))
 	}
