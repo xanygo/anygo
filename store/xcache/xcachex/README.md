@@ -2,7 +2,7 @@
 
 ## Loader (缓存对象加载器)
 
-全局的 `Load` 方法，从配置文件 `{ConfDir}/xcache.[yml|json]` 可以加载一个支持泛型类型的缓存对象。
+全局的 `Load` 方法，从配置文件 `{ConfDir}/store/xcache.[yml|json]` 可以加载一个支持泛型类型的缓存对象。
 
 ```json
 {

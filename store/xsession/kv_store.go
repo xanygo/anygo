@@ -21,8 +21,8 @@ var _ Storage = (*KVStore)(nil)
 
 // KVStore 用 kv 存储 session 数据
 type KVStore struct {
-	DB  xkv.StringStorage // 必填，存储对象
-	TTL time.Duration     // Session 有效期,可选，默认 30 天，若超过此时间没有读写，则清除掉
+	DB   xkv.StringStorage // 必填，存储对象
+	Life time.Duration     // Session 有效期,可选，默认 30 天，若超过此时间没有读写，则清除掉
 
 	DataKeyPrefix string // 存储 session 实际数据的 key 前缀，可选，默认为 "ss|"
 	MetaKeyPrefix string // 存储元信息数据的 key 的前缀，可选，默认为 "ss_meta"
@@ -34,8 +34,8 @@ type KVStore struct {
 }
 
 func (ks *KVStore) getTTL() time.Duration {
-	if ks.TTL > 0 {
-		return ks.TTL
+	if ks.Life > 0 {
+		return ks.Life
 	}
 	return 30 * 24 * time.Hour
 }

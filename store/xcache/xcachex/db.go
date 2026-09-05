@@ -39,7 +39,7 @@ type Database struct {
 	DB        xdb.DBCore // 必填
 	TypeID    uint32     // 必填，key 和 value 实际类型签名,可以使用 GenTypeID 获取
 	Table     string     // 可选，默认 xcache
-	KeyPrefix string     // 可选
+	KeyPrefix string     // 可选, key 的前缀
 
 	// Capacity Dir 近似的最大缓存个数，>0 时有效
 	// 每次 GC 时，若数量超限，会按照缓存的创建时间排序，删除创建时间更靠前的

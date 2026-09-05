@@ -31,8 +31,14 @@ type CookieStore struct {
 	// CookieName 存储数据的 cookie 的 Name,可选，为空时使用 "session"
 	CookieName string
 
+	// CookiePath 可选，cookie 的 Path，若为空则使用 /
+	CookiePath string
+
 	// Cipher cookie value 的压缩，解压缩方法，可选
 	Cipher xcodec.Cipher
+
+	// Life Cookie 的有效期
+	Life time.Duration
 
 	// BeforeSave 可选，用于设置 cookie 的 属性
 	BeforeSave func(c *http.Cookie)
@@ -85,6 +91,20 @@ func (cs *CookieStore) Get(ctx context.Context, id string) Session {
 	return session
 }
 
+func (cs *CookieStore) getExpires() time.Time {
+	if cs.Life > 0 {
+		return time.Now().Add(cs.Life)
+	}
+	return defaultExpire
+}
+
+func (cs *CookieStore) getCookiePath() string {
+	if cs.CookiePath != "" {
+		return cs.CookiePath
+	}
+	return "/"
+}
+
 func (cs *CookieStore) Save(ctx context.Context, session Session) error {
 	cv, ok := session.(*cookieSession)
 	if !ok {
@@ -99,8 +119,8 @@ func (cs *CookieStore) Save(ctx context.Context, session Session) error {
 		Name:     cs.getCookieName(),
 		Value:    string(bf),
 		HttpOnly: true,
-		Path:     "/",
-		Expires:  defaultExpire,
+		Path:     cs.getCookiePath(),
+		Expires:  cs.getExpires(),
 		SameSite: http.SameSiteLaxMode,
 	}
 	if cs.BeforeSave != nil {
@@ -115,7 +135,7 @@ func (cs *CookieStore) Delete() {
 		Name:     cs.getCookieName(),
 		Value:    "",
 		HttpOnly: true,
-		Path:     "/",
+		Path:     cs.getCookiePath(),
 		MaxAge:   -1,
 	}
 	http.SetCookie(cs.Writer, cookie)

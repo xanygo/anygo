@@ -3,6 +3,7 @@ package xkvx
 import (
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"sync"
 
@@ -20,9 +21,10 @@ var configOnce sync.Once
 
 func loadConfig() {
 	globalConfigFile = &ConfigFile{}
-	configErr = xcfg.Parse("xkv", &globalConfigFile)
+	configErr = xcfg.Parse("store/xkv", &globalConfigFile)
 }
 
+// Load 依据名字初始化并加载 xkv 对象。使用配置文件 {confDir}/store/xkv.{json|yml|toml}
 func Load[V any](name string) (xkv.Storage[V], error) {
 	configOnce.Do(loadConfig)
 	if configErr != nil {
@@ -31,19 +33,35 @@ func Load[V any](name string) (xkv.Storage[V], error) {
 	return globalConfigFile.Load[V](name)
 }
 
+func MustLoad[V any](name string) xkv.Storage[V] {
+	c, err := Load[V](name)
+	if err != nil {
+		panic(fmt.Errorf("load %q: %w", name, err))
+	}
+	return c
+}
+
 type instanceKey[V any] struct {
 	V V
 	N string
 }
 
 type instanceValue struct {
-	C any
-	E error
+	Value any
+	E     error
 }
 
 type ConfigFile struct {
 	Items    []map[string]any `json:"Items" yaml:"Items"`
 	instance sync.Map
+}
+
+func (cf *ConfigFile) MustLoad[V any](name string) xkv.Storage[V] {
+	kv, err := cf.Load[V](name)
+	if err != nil {
+		panic(err)
+	}
+	return kv
 }
 
 func (cf *ConfigFile) Load[V any](name string) (xkv.Storage[V], error) {
@@ -55,10 +73,10 @@ func (cf *ConfigFile) Load[V any](name string) (xkv.Storage[V], error) {
 		if v.E != nil {
 			return nil, v.E
 		}
-		return v.C.(xkv.Storage[V]), nil
+		return v.Value.(xkv.Storage[V]), nil
 	}
 	c, err := cf.createKV[V](name)
-	old, loaded := cf.instance.LoadOrStore(key, &instanceValue{C: c, E: err})
+	old, loaded := cf.instance.LoadOrStore(key, &instanceValue{Value: c, E: err})
 	if !loaded {
 		return c, err
 	}
@@ -66,7 +84,7 @@ func (cf *ConfigFile) Load[V any](name string) (xkv.Storage[V], error) {
 	if v.E != nil {
 		return nil, v.E
 	}
-	return v.C.(xkv.Storage[V]), nil
+	return v.Value.(xkv.Storage[V]), nil
 }
 
 func (cf *ConfigFile) createKV[V any](name string) (xkv.Storage[V], error) {
@@ -77,11 +95,11 @@ func (cf *ConfigFile) createKV[V any](name string) (xkv.Storage[V], error) {
 		}
 		c, err := cf.newKV[V](name, item)
 		if err != nil {
-			err = fmt.Errorf("xkv Name=%q: %w", name, err)
+			err = fmt.Errorf("load xkv %q: %w", name, err)
 		}
 		return c, err
 	}
-	return nil, fmt.Errorf("%w for xkv %q", xerror.NotFound, name)
+	return nil, fmt.Errorf("load xkv %q: %w, Items.len=%d", name, xerror.NotFound, len(cf.Items))
 }
 
 func (cf *ConfigFile) newKV[V any](name string, item map[string]any) (xkv.Storage[V], error) {
@@ -112,6 +130,11 @@ func (cf *ConfigFile) newFile[V any](name string, item map[string]any) (xkv.Stor
 	}
 	typeID := zreflect.TypeID1[V]()
 	fc.Dir = filepath.Join(fc.Dir, strconv.FormatUint(uint64(typeID), 10))
+
+	if reflect.TypeFor[V]() == stringType {
+		return any(fc).(xkv.Storage[V]), nil
+	}
+
 	tr := &xkv.Transformer[V]{
 		Storage: fc,
 	}
@@ -122,11 +145,18 @@ func (cf *ConfigFile) newFile[V any](name string, item map[string]any) (xkv.Stor
 	return tr, nil
 }
 
+var stringType = reflect.TypeFor[string]()
+
 func (cf *ConfigFile) newRedis[V any](name string, item map[string]any) (xkv.Storage[V], error) {
 	rs := &Redis{}
 	if err := rs.Init(item); err != nil {
 		return nil, err
 	}
+
+	if reflect.TypeFor[V]() == stringType {
+		return any(rs).(xkv.Storage[V]), nil
+	}
+
 	tr := &xkv.Transformer[V]{
 		Storage: rs,
 	}
@@ -144,12 +174,16 @@ func (cf *ConfigFile) newDB[V any](name string, item map[string]any) (xkv.Storag
 	if err := ds.Init(item); err != nil {
 		return nil, err
 	}
+
+	if reflect.TypeFor[V]() == stringType {
+		return any(ds).(xkv.Storage[V]), nil
+	}
+
 	tr := &xkv.Transformer[V]{
 		Storage: ds,
 	}
 	if err := tr.Init(item); err != nil {
 		return nil, err
 	}
-
 	return tr, nil
 }

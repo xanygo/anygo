@@ -165,6 +165,8 @@ type Database struct {
 
 	ValueTypeID uint32 // 可选，存储数据的实际类型签名,可以使用 GenTypeID 获取
 
+	KeyPrefix string // 可选, key 的前缀
+
 	// MetaTable 可选，自定义元信息的表名
 	MetaTable *TableProvider
 
@@ -198,6 +200,9 @@ func (d *Database) GenTypeID[V any]() uint32 {
 }
 
 func (d *Database) Init(param map[string]any) error {
+	if d.KeyPrefix == "" {
+		d.KeyPrefix, _ = xmap.GetString(param, "KeyPrefix")
+	}
 	if d.DB == nil {
 		service, ok := xmap.GetString(param, "Service")
 		if !ok || service == "" {
@@ -245,7 +250,7 @@ func (d *Database) initTableProvider(param map[string]any, name string) (*TableP
 }
 
 func (d *Database) String(key string) xkv.String[string] {
-	return d.getString(key)
+	return d.getString(d.KeyPrefix + key)
 }
 
 func (d *Database) getString(key string) *db.String {
@@ -267,7 +272,7 @@ func (d *Database) getMeta(key string, dt internal.DataType) *db.Meta {
 }
 
 func (d *Database) List(key string) xkv.List[string] {
-	return d.getList(key)
+	return d.getList(d.KeyPrefix + key)
 }
 
 func (d *Database) getList(key string) *db.List {
@@ -278,7 +283,7 @@ func (d *Database) getList(key string) *db.List {
 }
 
 func (d *Database) Hash(key string) xkv.Hash[string] {
-	return d.getHash(key)
+	return d.getHash(d.KeyPrefix + key)
 }
 
 func (d *Database) getHash(key string) *db.Hash {
@@ -289,7 +294,7 @@ func (d *Database) getHash(key string) *db.Hash {
 }
 
 func (d *Database) Set(key string) xkv.Set[string] {
-	return d.getSet(key)
+	return d.getSet(d.KeyPrefix + key)
 }
 
 func (d *Database) getSet(key string) *db.Set {
@@ -300,7 +305,7 @@ func (d *Database) getSet(key string) *db.Set {
 }
 
 func (d *Database) ZSet(key string) xkv.ZSet[string] {
-	return d.getZSet(key)
+	return d.getZSet(d.KeyPrefix + key)
 }
 
 func (d *Database) getZSet(key string) *db.ZSet {
@@ -311,7 +316,7 @@ func (d *Database) getZSet(key string) *db.ZSet {
 }
 
 func (d *Database) Has(ctx context.Context, key string) (bool, error) {
-	m := d.getMeta(key, internal.DataTypeAny) // 可以是任意类型
+	m := d.getMeta(d.KeyPrefix+key, internal.DataTypeAny) // 可以是任意类型
 	var has bool
 	err := m.WithReadTx(ctx, func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error {
 		has = hasMeta
@@ -326,6 +331,7 @@ func (d *Database) Delete(ctx context.Context, keys ...string) error {
 	}
 	var ms []db.DeleteItem
 	for _, key := range keys {
+		key = d.KeyPrefix + key
 		di := db.DeleteItem{
 			Meta:        d.getMeta(key, internal.DataTypeAny),
 			StringTable: d.StringTable.getTable(key),

@@ -36,6 +36,10 @@ func (tr *Transformer[V]) Init(item map[string]any) error {
 	return nil
 }
 
+func (tr *Transformer[V]) Unwrap() any {
+	return tr.Storage
+}
+
 func (tr *Transformer[V]) String(key string) String[V] {
 	return AsString[V](tr.Storage, tr.Codec, key)
 }

@@ -17,12 +17,14 @@ import (
 // 若期望接口不添加 Session，可以在注册的时候同时注册 meta 信息予以标记，具体如下:
 // router.Get("/myProxy/{url:*}  meta|session=no", &myProxy{})
 type HTTPHandler struct {
-	NewID       func(req *http.Request) string                   // 可选，生成 session ID的算法
-	CookieName  string                                           // 在 cookie 中存储 sessionID 的名字，可选，默认为 sid
-	OnSet       func(ck *http.Cookie)                            // 在 cookie 中存储 sessionID 的时候回调，可选
-	NewStorage  func(http.ResponseWriter, *http.Request) Storage // 必填，session 数据存储引擎
-	NeedSession func(req *http.Request) bool                     // 可选，判断本次请求是否需要Session
+	NewID       func(req *http.Request) string // 可选，生成 session ID的算法
+	CookieName  string                         // 在 cookie 中存储 sessionID 的名字，可选，默认为 sid
+	OnSet       func(ck *http.Cookie)          // 在 cookie 中存储 sessionID 的时候回调，可选
+	NewStorage  NewStorageFunc                 // 必填，session 数据存储引擎
+	NeedSession func(req *http.Request) bool   // 可选，判断本次请求是否需要Session
 }
+
+type NewStorageFunc func(writer http.ResponseWriter, request *http.Request) Storage
 
 func (s *HTTPHandler) getCookieName() string {
 	if s.CookieName != "" {

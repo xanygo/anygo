@@ -26,15 +26,24 @@ var configOnce sync.Once
 
 func loadConfig() {
 	globalConfigFile = &ConfigFile{}
-	configErr = xcfg.Parse("xcache", &globalConfigFile)
+	configErr = xcfg.Parse("store/xcache", &globalConfigFile)
 }
 
+// Load 依据名字初始化并加载 Cache 对象。使用配置文件 {confDir}/store/xcache.{json|yml|toml}
 func Load[K comparable, V any](name string) (xcache.MCache[K, V], error) {
 	configOnce.Do(loadConfig)
 	if configErr != nil {
 		return nil, configErr
 	}
 	return globalConfigFile.Load[K, V](name)
+}
+
+func MustLoad[K comparable, V any](name string) xcache.MCache[K, V] {
+	c, err := Load[K, V](name)
+	if err != nil {
+		panic(err)
+	}
+	return c
 }
 
 type instanceKey[K comparable, V any] struct {
@@ -53,6 +62,14 @@ type ConfigFile struct {
 	instance sync.Map
 
 	refs xcontainer.DepGraph[string]
+}
+
+func (cf *ConfigFile) MustLoad[K comparable, V any](name string) xcache.MCache[K, V] {
+	kv, err := cf.Load[K, V](name)
+	if err != nil {
+		panic(err)
+	}
+	return kv
 }
 
 func (cf *ConfigFile) Load[K comparable, V any](name string) (xcache.MCache[K, V], error) {
@@ -86,11 +103,11 @@ func (cf *ConfigFile) createCache[K comparable, V any](name string) (xcache.MCac
 		}
 		c, err := cf.newCache[K, V](name, item)
 		if err != nil {
-			err = fmt.Errorf("cache Name=%q: %w", name, err)
+			err = fmt.Errorf("load xcache %q: %w", name, err)
 		}
 		return c, err
 	}
-	return nil, fmt.Errorf("%w for cache %q", xerror.NotFound, name)
+	return nil, fmt.Errorf("load xcache %q: %w, Items.len=%d", name, xerror.NotFound, len(cf.Items))
 }
 
 func (cf *ConfigFile) newCache[K comparable, V any](name string, item map[string]any) (xcache.MCache[K, V], error) {
