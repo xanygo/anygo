@@ -109,7 +109,7 @@ func (d *Database) Init(param map[string]any) error {
 	return nil
 }
 
-var stringTypeID = zreflect.TypeID[string, string]()
+var stringTypeID = zreflect.TypeID2[string, string]()
 
 func (d *Database) getTypeID() uint32 {
 	if d.TypeID > 0 {
@@ -119,7 +119,7 @@ func (d *Database) getTypeID() uint32 {
 }
 
 func (d *Database) GenTypeID[K comparable, V any]() uint32 {
-	return zreflect.TypeID[K, V]()
+	return zreflect.TypeID2[K, V]()
 }
 
 func (d *Database) fullKey(key string) string {

@@ -6,6 +6,7 @@ package xt
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -83,7 +84,10 @@ func sprintfDiff[T any](actual T, expected T) string {
 }
 
 func prettyGoValue(v any) string {
-	return fmt.Sprintf("%#v", v)
+	if v == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("%s(%v)", reflect.TypeOf(v), v)
 }
 
 func getDiffIndex(str1, str2 string) int {

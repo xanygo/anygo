@@ -12,9 +12,11 @@ import (
 )
 
 type SetModel struct {
-	ID         int64    `db:"id,auto_inc,pk"`
-	KeyHash    [32]byte `db:"k,unique_index=k_m[1]"`
-	MemberHash [32]byte `db:"m,unique_index=k_m[2]"`
+	ID int64 `db:"id,auto_inc,pk"`
+
+	TypeID     uint32   `db:"t,unique_index=t_k_m[1]"` // value 实际类型签名
+	KeyHash    [32]byte `db:"k,unique_index=t_k_m[2]"`
+	MemberHash [32]byte `db:"m,unique_index=t_k_m[3]"`
 
 	KeyRaw    string `db:"k_raw"`
 	MemberRaw string `db:"m_raw"`
@@ -38,7 +40,7 @@ func (s *Set) GetTable() string {
 func (s *Set) deleteWithKey(ctx context.Context, tx xdb.DBCore) error {
 	orm := xor.New[SetModel](tx)
 	orm.Table(s.GetTable())
-	_, err := orm.Delete(ctx, xor.Where("k=?", s.Meta.KeyHash[:]))
+	_, err := orm.Delete(ctx, xor.Where("t=? and k=?", s.Meta.TypeID, s.Meta.KeyHash[:]))
 	return err
 }
 
@@ -50,6 +52,7 @@ func (s *Set) SAdd(ctx context.Context, members ...string) (num int64, err error
 	items := make([]SetModel, 0, len(members))
 	for _, member := range members {
 		item := SetModel{
+			TypeID:     s.Meta.TypeID,
 			KeyHash:    s.Meta.KeyHash,
 			KeyRaw:     s.Meta.KeyRaw,
 			MemberHash: KeyHash(member),
@@ -61,7 +64,7 @@ func (s *Set) SAdd(ctx context.Context, members ...string) (num int64, err error
 	err = s.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
-		num, err = orm.Upsert(ctx, []string{"k", "m"}, nil, items...)
+		num, err = orm.Upsert(ctx, []string{"t", "k", "m"}, nil, items...)
 		return err
 	})
 	return num, err
@@ -81,6 +84,7 @@ func (s *Set) SRem(ctx context.Context, members ...string) error {
 			return err
 		}
 		cond := &xdb.Condition{}
+		cond.And("t=?", s.Meta.TypeID)
 		cond.And("k=?", s.Meta.KeyHash[:])
 		cond.AndInFmt("m in(%s)", hashMembers)
 
@@ -98,7 +102,7 @@ func (s *Set) SRem(ctx context.Context, members ...string) error {
 func (s *Set) checkExists(ctx context.Context, orm *xor.Model[SetModel]) error {
 	orm = orm.New()
 	orm.Table(s.GetTable())
-	_, found, err := orm.First(ctx, xor.Where("k=?", s.Meta.KeyHash[:]), xor.Columns("c"))
+	_, found, err := orm.First(ctx, xor.Where("t=? and k=?", s.Meta.TypeID, s.Meta.KeyHash[:]), xor.Columns("c"))
 	if err != nil {
 		return err
 	}
@@ -112,7 +116,7 @@ func (s *Set) SRange(ctx context.Context, fn func(member string) bool) error {
 	return s.Meta.WithReadTx(ctx, func(as context.Context, tx xdb.DBCore, hasMeta bool) error {
 		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
-		for item, err1 := range orm.ListIter(ctx, xor.Where("k=?", s.Meta.KeyHash[:]), xor.OrderBy("id asc"), xor.Columns("m_raw")) {
+		for item, err1 := range orm.ListIter(ctx, xor.Where("t=? and k=?", s.Meta.TypeID, s.Meta.KeyHash[:]), xor.OrderBy("id asc"), xor.Columns("m_raw")) {
 			if err1 != nil {
 				return err1
 			}
@@ -141,7 +145,7 @@ func (s *Set) SCard(ctx context.Context) (num int64, err error) {
 		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
 		var err1 error
-		num, err1 = orm.Count(ctx, "*", xor.Where("k=?", s.Meta.KeyHash[:]))
+		num, err1 = orm.Count(ctx, "*", xor.Where("t=? and k=?", s.Meta.TypeID, s.Meta.KeyHash[:]))
 		return err1
 	})
 	return num, err
@@ -155,7 +159,7 @@ func (s *Set) SIsMember(ctx context.Context, member string) (ok bool, err error)
 		}
 		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
-		_, found, err1 := orm.First(ctx, xor.Where("k=? and m=?", s.Meta.KeyHash[:], memberHash[:]), xor.Columns("c"))
+		_, found, err1 := orm.First(ctx, xor.Where("t=? and k=? and m=?", s.Meta.TypeID, s.Meta.KeyHash[:], memberHash[:]), xor.Columns("c"))
 		if err1 == nil {
 			ok = found
 		}
@@ -181,6 +185,7 @@ func (s *Set) SMIsMember(ctx context.Context, members []string) (oks []bool, err
 		orm.Table(s.GetTable())
 
 		cond := &xdb.Condition{}
+		cond.And("t=?", s.Meta.TypeID)
 		cond.And("k=?", s.Meta.KeyHash[:])
 		cond.AndInFmt("m in (%s)", hashMembers)
 
@@ -206,19 +211,19 @@ func (s *Set) SPop(ctx context.Context) (v string, found bool, err error) {
 		}
 		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
-		total, err1 := orm.Count(ctx, "*", xor.Where("k=?", s.Meta.KeyHash[:]))
+		total, err1 := orm.Count(ctx, "*", xor.Where("t=? and k=?", s.Meta.TypeID, s.Meta.KeyHash[:]))
 		if err1 != nil {
 			return err1
 		}
 		if total < 1 {
 			return nil
 		}
-		rows, err2 := orm.List(ctx, xor.Where("k=?", s.Meta.KeyHash[:]), xor.LimitOffset(1, rand.IntN(int(total))), xor.Columns("m", "m_raw"))
+		rows, err2 := orm.List(ctx, xor.Where("t=? and k=?", s.Meta.TypeID, s.Meta.KeyHash[:]), xor.LimitOffset(1, rand.IntN(int(total))), xor.Columns("m", "m_raw"))
 		if err2 != nil || len(rows) == 0 {
 			return err2
 		}
 		first := rows[0]
-		_, err3 := orm.Delete(ctx, xor.Where("k=? and m=?", s.Meta.KeyHash[:], first.MemberHash[:]))
+		_, err3 := orm.Delete(ctx, xor.Where("t=? and k=? and m=?", s.Meta.TypeID, s.Meta.KeyHash[:], first.MemberHash[:]))
 		if err3 != nil {
 			return err3
 		}
@@ -239,14 +244,14 @@ func (s *Set) SPopN(ctx context.Context, count int) (result []string, err error)
 		}
 		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
-		total, err1 := orm.Count(ctx, "*", xor.Where("k=?", s.Meta.KeyHash[:]))
+		total, err1 := orm.Count(ctx, "*", xor.Where("t=? and k=?", s.Meta.TypeID, s.Meta.KeyHash[:]))
 		if err1 != nil {
 			return err1
 		}
 		if total < 1 {
 			return nil
 		}
-		rows, err2 := orm.List(ctx, xor.Where("k=?", s.Meta.KeyHash[:]), xor.Limit(count), xor.OrderByRand(), xor.Columns("m", "m_raw"))
+		rows, err2 := orm.List(ctx, xor.Where("t=? and k=?", s.Meta.TypeID, s.Meta.KeyHash[:]), xor.Limit(count), xor.OrderByRand(), xor.Columns("m", "m_raw"))
 		if err2 != nil || len(rows) == 0 {
 			return err2
 		}
@@ -257,6 +262,7 @@ func (s *Set) SPopN(ctx context.Context, count int) (result []string, err error)
 			hashs = append(hashs, row.MemberHash[:])
 		}
 		cond := &xdb.Condition{}
+		cond.And("t=?", s.Meta.TypeID)
 		cond.And("k=?", s.Meta.KeyHash[:])
 		cond.AndInFmt("m in (%s)", hashs)
 
@@ -276,14 +282,14 @@ func (s *Set) SRandMember(ctx context.Context) (v string, found bool, err error)
 		}
 		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
-		total, err1 := orm.Count(ctx, "*", xor.Where("k=?", s.Meta.KeyHash[:]))
+		total, err1 := orm.Count(ctx, "*", xor.Where("t=? and k=?", s.Meta.TypeID, s.Meta.KeyHash[:]))
 		if err1 != nil {
 			return err1
 		}
 		if total < 1 {
 			return nil
 		}
-		rows, err2 := orm.List(ctx, xor.Where("k=?", s.Meta.KeyHash[:]), xor.LimitOffset(1, rand.IntN(int(total))), xor.Columns("m_raw"))
+		rows, err2 := orm.List(ctx, xor.Where("t=? and k=?", s.Meta.TypeID, s.Meta.KeyHash[:]), xor.LimitOffset(1, rand.IntN(int(total))), xor.Columns("m_raw"))
 		if err2 != nil || len(rows) == 0 {
 			return err2
 		}
@@ -304,14 +310,14 @@ func (s *Set) SRandMemberN(ctx context.Context, count int) (result []string, err
 		}
 		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
-		total, err1 := orm.Count(ctx, "*", xor.Where("k=?", s.Meta.KeyHash[:]))
+		total, err1 := orm.Count(ctx, "*", xor.Where("t=? and k=?", s.Meta.TypeID, s.Meta.KeyHash[:]))
 		if err1 != nil {
 			return err1
 		}
 		if total < 1 {
 			return nil
 		}
-		rows, err2 := orm.List(ctx, xor.Where("k=?", s.Meta.KeyHash[:]), xor.OrderByRand(), xor.Limit(count), xor.Columns("m_raw"))
+		rows, err2 := orm.List(ctx, xor.Where("t=? and k=?", s.Meta.TypeID, s.Meta.KeyHash[:]), xor.OrderByRand(), xor.Limit(count), xor.Columns("m_raw"))
 		if err2 != nil || len(rows) == 0 {
 			return err2
 		}

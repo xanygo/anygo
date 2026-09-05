@@ -13,8 +13,9 @@ import (
 
 type ListModel struct {
 	ID      int64    `db:"id,auto_inc,pk"`
-	KeyHash [32]byte `db:"k,unique_index=k_i[1]"`
-	Index   int64    `db:"idx,unique_index=k_i[2]"`
+	TypeID  uint32   `db:"t,unique_index=t_k_i[1]"` // value 实际类型签名
+	KeyHash [32]byte `db:"k,unique_index=t_k_i[2]"`
+	Index   int64    `db:"idx,unique_index=t_k_i[3]"`
 	KeyRaw  string   `db:"k_raw"`
 	Value   string   `db:"v"`
 	Created int64    `db:"c"`
@@ -37,7 +38,7 @@ func (l *List) GetTable() string {
 func (l *List) deleteWithKey(ctx context.Context, tx xdb.DBCore) error {
 	orm := xor.New[ListModel](tx)
 	orm.Table(l.GetTable())
-	_, err := orm.Delete(ctx, xor.Where("k=?", l.Meta.KeyHash[:]))
+	_, err := orm.Delete(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]))
 	return err
 }
 
@@ -56,6 +57,7 @@ func (l *List) xxPush(ctx context.Context, field string, dealt int64, values ...
 			var idx int64
 			meta, idx = meta.incr(field, dealt)
 			item := ListModel{
+				TypeID:  l.Meta.TypeID,
 				KeyHash: l.Meta.KeyHash,
 				KeyRaw:  l.Meta.KeyRaw,
 				Value:   value,
@@ -74,7 +76,7 @@ func (l *List) xxPush(ctx context.Context, field string, dealt int64, values ...
 		if err1 != nil {
 			return err1
 		}
-		num, err1 = orm.Count(ctx, "*", xor.Where("k=?", l.Meta.KeyHash[:]))
+		num, err1 = orm.Count(ctx, "*", xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]))
 		return err1
 	})
 	return num, err
@@ -97,13 +99,13 @@ func (l *List) lPopXX(ctx context.Context, orderBy string) (value string, found 
 		orm := xor.New[ListModel](tx)
 		orm.Table(l.GetTable())
 
-		v, ok, err2 := orm.First(ctx, xor.Where("k=?", l.Meta.KeyHash[:]), xor.OrderBy("idx "+orderBy), xor.Columns("v", "idx"))
+		v, ok, err2 := orm.First(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]), xor.OrderBy("idx "+orderBy), xor.Columns("v", "idx"))
 		if err2 != nil || !ok {
 			return err2
 		}
 		value = v.Value
 		found = true
-		_, err2 = orm.Delete(ctx, xor.Where("k=? and idx=?", l.Meta.KeyHash[:], v.Index))
+		_, err2 = orm.Delete(ctx, xor.Where("t=? and k=? and idx=?", l.Meta.TypeID, l.Meta.KeyHash[:], v.Index))
 		if err2 != nil {
 			return err2
 		}
@@ -128,7 +130,7 @@ func (l *List) lPopNXX(ctx context.Context, count int, orderBy string) (result [
 		}
 		orm := xor.New[ListModel](tx)
 		orm.Table(l.GetTable())
-		items, err2 := orm.List(ctx, xor.Where("k=?", l.Meta.KeyHash[:]), xor.OrderBy("idx "+orderBy), xor.Limit(count), xor.Columns("v", "idx"))
+		items, err2 := orm.List(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]), xor.OrderBy("idx "+orderBy), xor.Limit(count), xor.Columns("v", "idx"))
 		if err2 != nil || len(items) == 0 {
 			return err2
 		}
@@ -139,6 +141,7 @@ func (l *List) lPopNXX(ctx context.Context, count int, orderBy string) (result [
 		}
 
 		cond := &xdb.Condition{}
+		cond.And("t=?", l.Meta.TypeID)
 		cond.And("k=?", l.Meta.KeyHash[:])
 		cond.AndInFmt("idx in (%s)", xslice.ToAnys(idxList))
 		_, err4 := orm.Delete(ctx, xor.WhereByCond(cond))
@@ -163,7 +166,7 @@ func (l *List) checkExists(ctx context.Context, orm *xor.Model[ListModel]) error
 	orm = orm.New()
 	orm.Table(l.GetTable())
 
-	_, found, err := orm.First(ctx, xor.Where("k=?", l.Meta.KeyHash[:]), xor.Columns("c"))
+	_, found, err := orm.First(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]), xor.Columns("c"))
 	if err != nil {
 		return err
 	}
@@ -183,7 +186,7 @@ func (l *List) LRem(ctx context.Context, count int64, element string) (num int64
 			orm := xor.New[ListModel](tx)
 			orm.Table(l.GetTable())
 			var err2 error
-			num, err2 = orm.Delete(ctx, xor.Where("k=? and v=?", l.Meta.KeyHash[:], element))
+			num, err2 = orm.Delete(ctx, xor.Where("t=? and k=? and v=?", l.Meta.TypeID, l.Meta.KeyHash[:], element))
 			if err2 != nil {
 				return err2
 			}
@@ -201,7 +204,7 @@ func (l *List) LRem(ctx context.Context, count int64, element string) (num int64
 			orm := xor.New[ListModel](tx)
 			orm.Table(l.GetTable())
 			var err2 error
-			num, err2 = orm.Delete(ctx, xor.Where("k=? and v=?", l.Meta.KeyHash[:], element), xor.OrderBy("idx asc"), xor.Limit(int(count)))
+			num, err2 = orm.Delete(ctx, xor.Where("t=? and k=? and v=?", l.Meta.TypeID, l.Meta.KeyHash[:], element), xor.OrderBy("idx asc"), xor.Limit(int(count)))
 			if err2 != nil {
 				return err2
 			}
@@ -221,7 +224,7 @@ func (l *List) LRem(ctx context.Context, count int64, element string) (num int64
 		orm := xor.New[ListModel](tx)
 		orm.Table(l.GetTable())
 		var err2 error
-		num, err2 = orm.Delete(ctx, xor.Where("k=? and v=?", l.Meta.KeyHash[:], element), xor.OrderBy("idx desc"), xor.Limit(int(count)))
+		num, err2 = orm.Delete(ctx, xor.Where("t=? and k=? and v=?", l.Meta.TypeID, l.Meta.KeyHash[:], element), xor.OrderBy("idx desc"), xor.Limit(int(count)))
 		if err2 != nil {
 			return err2
 		}
@@ -235,7 +238,7 @@ func (l *List) Range(ctx context.Context, fn func(val string) bool) error {
 		orm := xor.New[ListModel](tx)
 		orm.Table(l.GetTable())
 
-		for item, err1 := range orm.ListIter(ctx, xor.Where("k=?", l.Meta.KeyHash[:]), xor.Columns("v")) {
+		for item, err1 := range orm.ListIter(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]), xor.Columns("v")) {
 			if err1 != nil {
 				return err1
 			}
@@ -253,7 +256,7 @@ func (l *List) LRange(ctx context.Context, fn func(val string) bool) error {
 		orm := xor.New[ListModel](tx)
 		orm.Table(l.GetTable())
 
-		for item, err1 := range orm.ListIter(ctx, xor.Where("k=?", l.Meta.KeyHash[:]), xor.OrderBy("idx asc"), xor.Columns("v")) {
+		for item, err1 := range orm.ListIter(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]), xor.OrderBy("idx asc"), xor.Columns("v")) {
 			if err1 != nil {
 				return err1
 			}
@@ -271,7 +274,7 @@ func (l *List) RRange(ctx context.Context, fn func(val string) bool) error {
 		orm := xor.New[ListModel](tx)
 		orm.Table(l.GetTable())
 
-		for item, err1 := range orm.ListIter(ctx, xor.Where("k=?", l.Meta.KeyHash[:]), xor.OrderBy("idx desc"), xor.Columns("v")) {
+		for item, err1 := range orm.ListIter(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]), xor.OrderBy("idx desc"), xor.Columns("v")) {
 			if err1 != nil {
 				return err1
 			}
@@ -292,7 +295,7 @@ func (l *List) LLen(ctx context.Context) (num int64, err error) {
 		orm := xor.New[ListModel](tx)
 		orm.Table(l.GetTable())
 		var err1 error
-		num, err1 = orm.Count(ctx, "*", xor.Where("k=?", l.Meta.KeyHash[:]))
+		num, err1 = orm.Count(ctx, "*", xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]))
 		return err1
 	})
 	return num, err

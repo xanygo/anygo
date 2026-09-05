@@ -68,7 +68,7 @@ func checkDB(t *testing.T, db *xdb.Client) {
 	}
 	xt.NoError(t, err)
 
-	kvs := &xkvx.DatabaseStore{
+	kvs := &xkvx.Database{
 		DB: db,
 	}
 
@@ -195,7 +195,7 @@ func TestRedis(t *testing.T) {
 	xt.NoError(t, client.Select(ctx, 10))
 	xt.NoError(t, client.FlushB(ctx, true))
 
-	xs := &xkvx.RedisStore{
+	xs := &xkvx.Redis{
 		Client: client,
 	}
 	checkAll(t, xs)

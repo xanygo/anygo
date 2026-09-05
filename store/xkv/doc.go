@@ -6,11 +6,11 @@
 //
 // 内置存储实现：
 //
-//   - FileStore 文件系统存储，key-Value 是 string 类型
-//   - NopStore 黑洞，key 是 string，Value 是 任意类型
-//   - MemoryStore 内存存储，key-Value 是 string 类型
-//   - RedisStore  使用 redis 存储 ，key-Value 是 string 类型
-//   - DatabaseStore 使用数据库存储(支持 sqlite、pg、mysql 等)，key-Value 是 string 类型
+//   - File 文件系统存储，key-Value 是 string 类型
+//   - Nop 黑洞，key 是 string，Value 是 任意类型
+//   - Memory 内存存储，key-Value 是 string 类型
+//   - Redis  使用 redis 存储 ，key-Value 是 string 类型
+//   - Database 使用数据库存储(支持 sqlite、pg、mysql 等)，key-Value 是 string 类型
 //
 // 特殊的：
 //   - Transformer: 可以将上面 key-Value 是 string 类型（ StringStorage ）的 Storage实现，转换为支持泛型的类型。

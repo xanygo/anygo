@@ -2,15 +2,15 @@
 
 ## Loader (缓存对象加载器)
 
-全局的 `Load` 方法，从配置文件 `{ConfDir}/cache.[yml|json]` 可以加载一个支持泛型类型的缓存对象。
+全局的 `Load` 方法，从配置文件 `{ConfDir}/xcache.[yml|json]` 可以加载一个支持泛型类型的缓存对象。
 
 ```json
 {
-    "Caches":[
+    "Items":[
         {
             "Name":"cache1",   // 必填，名称，Load 方法里使用的 name 参数值
             "Type":"File",     // 必填，缓存类型，使用本地文件存储数据
-            "Dir":"{xattr.DataDir}/filecache/",  // 必填参数, 缓存数据目录
+            "Dir":"{xattr.DataDir}/filecache/cache1",  // 必填参数, 缓存数据目录
             "Codec":"json",    // 可选。数据编码方式，默认为 json
             "Capacity":12345   // 可选，最大缓存个数(非严格限定)，在清理时，会按照创建时间删除多余的
         },
@@ -73,15 +73,18 @@
             "Ref":"cache1",           // 必填，引用的数据库名称，在此配置中已经定义好的
             "Life":"1800s",           // 可选，强制设置的缓存有效期
             "KeyTransform":{          // 可选，对缓存的 key 做变换处理
-                "string":{            // 可选，对于 key 的类型时 string 的调用，可以添加前缀和后缀
+                "string":{            // 可选，对于 key 的类型是 string 的调用，可以添加前缀和后缀
                     "Prefix":"prefix_",  // 可选，给 key 添加前缀
                     "Suffix":"_suffix"   // 可选，给 key 添加后缀 
                 },
-                "Default":{           // 可选，对于没有找到的情况
-                    "Refuse":true     // 可选，拒绝。让 Cache 调用报错
+                "Default":{           // 可选，对于没有找到的情况。
+                    "Refuse":true,     // 可选，拒绝。让 Cache 调用报错
+                    "Panic":true      // 可选，拒绝。让 Cache 调用 panic，在 Refuse 前判断
                 }
             }
         }
     ]
 }
 ```
+
+目前的 `Type` 以支持 `File`,`MemoryLRU`,`MemoryFIFO`,`MemoryLIFO`,`Redis`,`DB`,`Nop`,`Chains`,`Wrap` 这些。

@@ -25,7 +25,7 @@ func main() {
 	defer db.Close()
 	client := xdb.NewClient("sqlite3", "demo", db)
 
-	kv := &xkvx.DatabaseStore{
+	kv := &xkvx.Database{
 		DB: client,
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)

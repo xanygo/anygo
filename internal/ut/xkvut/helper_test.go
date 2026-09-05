@@ -19,11 +19,11 @@ func (t testT) Run(name string, fn func(tb xt.TB)) {
 }
 
 func TestMemStringStorage1(t *testing.T) {
-	kv := xkv.NewMemoryStore()
+	kv := xkv.NewMemory()
 	xkvut.TestStringStorage1(testT{T: t}, kv)
 }
 
 func TestMemStringStorage2(t *testing.T) {
-	kv := xkv.NewMemoryStore()
+	kv := xkv.NewMemory()
 	xkvut.TestStringStorage2(testT{T: t}, kv)
 }

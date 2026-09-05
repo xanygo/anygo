@@ -10,12 +10,12 @@ import (
 	"github.com/xanygo/anygo/store/xkv"
 )
 
-func TestMemoryStorage(t *testing.T) {
-	ff := &xkv.MemoryStore{}
+func TestMemory(t *testing.T) {
+	ff := &xkv.Memory{}
 	testStringStorage(t, ff)
 }
 
 func BenchmarkMemory(b *testing.B) {
-	ff := &xkv.MemoryStore{}
+	ff := &xkv.Memory{}
 	benchStorage(b, ff)
 }

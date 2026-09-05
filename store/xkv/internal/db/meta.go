@@ -26,8 +26,9 @@ func keyHashBytes(str string) []byte {
 
 type MetaModel struct {
 	ID       int64             `db:"id,pk,auto_inc"`
-	KeyHash  [32]byte          `db:"k,unique"` // key 的 hash
-	KeyRaw   string            `db:"k_raw"`    // 原始的 key
+	TypeID   uint32            `db:"t,unique_index=t_k[1]"` // value 实际类型签名
+	KeyHash  [32]byte          `db:"k,unique_index=t_k[2]"` // key 的 hash
+	KeyRaw   string            `db:"k_raw"`                 // 原始的 key
 	DataType internal.DataType `db:"dt"`
 	Created  int64             `db:"c"`
 	Updated  int64             `db:"u"`
@@ -52,6 +53,7 @@ func (m MetaModel) incr(field string, dealt int64) (nm MetaModel, num int64) {
 type Meta struct {
 	Table    string
 	DB       *xdb.Client
+	TypeID   uint32   // 数据类型的签名
 	KeyRaw   string   // 原始的 KeyRaw
 	KeyHash  [32]byte // key 的 hash 值
 	DataType internal.DataType
@@ -71,7 +73,7 @@ func (m *Meta) orm(tx xdb.DBCore) *xor.Model[MetaModel] {
 }
 
 func (m *Meta) delete(ctx context.Context, tx xdb.DBCore) error {
-	_, err := m.orm(tx).Delete(ctx, xor.Where("k=?", m.KeyHash[:]))
+	_, err := m.orm(tx).Delete(ctx, xor.Where("t=? and k=?", m.TypeID, m.KeyHash[:]))
 	return err
 }
 
@@ -84,7 +86,7 @@ func (m *Meta) save(ctx context.Context, tx xdb.DBCore, data MetaModel) error {
 		data.Updated = now
 	}
 	data.ID = 0 // k 是唯一主键，若upsert 时 id!=0, mssql 会报错
-	_, err := m.orm(tx).Upsert(ctx, []string{"k"}, []string{"meta", "u"}, data)
+	_, err := m.orm(tx).Upsert(ctx, []string{"t", "k"}, []string{"meta", "u"}, data)
 	return err
 }
 
@@ -120,7 +122,7 @@ func (m *Meta) WithTx(ctx context.Context, do func(ctx context.Context, tx xdb.D
 func (m *Meta) checkWriteType(ctx context.Context, tx xdb.DBCore) error {
 	orm := m.orm(tx)
 
-	old, found, err := orm.First(ctx, xor.Where("k=?", m.KeyHash[:]), xor.Columns("dt"))
+	old, found, err := orm.First(ctx, xor.Where("t=? and k=?", m.TypeID, m.KeyHash[:]), xor.Columns("dt"))
 	if err != nil {
 		return err
 	}
@@ -132,6 +134,7 @@ func (m *Meta) checkWriteType(ctx context.Context, tx xdb.DBCore) error {
 	}
 	now := time.Now().UnixNano()
 	data := MetaModel{
+		TypeID:   m.TypeID,
 		KeyHash:  m.KeyHash,
 		KeyRaw:   m.KeyRaw,
 		DataType: m.DataType,
@@ -148,7 +151,7 @@ func (m *Meta) load(ctx context.Context, tx xdb.DBCore) (MetaModel, error) {
 
 func (m *Meta) loadExists(ctx context.Context, tx xdb.DBCore) (MetaModel, bool, error) {
 	orm := m.orm(tx)
-	value, found, err := orm.First(ctx, xor.Where("k=?", m.KeyHash[:]))
+	value, found, err := orm.First(ctx, xor.Where("t=? and k=?", m.TypeID, m.KeyHash[:]))
 	if err != nil {
 		return MetaModel{}, false, err
 	}
@@ -159,6 +162,7 @@ func (m *Meta) loadExists(ctx context.Context, tx xdb.DBCore) (MetaModel, bool, 
 		return MetaModel{}, false, fmt.Errorf("canot load %s on type %s", m.DataType.String(), value.DataType.String())
 	}
 	return MetaModel{
+		TypeID:   m.TypeID,
 		KeyRaw:   m.KeyRaw,
 		KeyHash:  m.KeyHash,
 		DataType: m.DataType,
@@ -167,7 +171,7 @@ func (m *Meta) loadExists(ctx context.Context, tx xdb.DBCore) (MetaModel, bool, 
 
 func (m *Meta) checkReadType(ctx context.Context, tx xdb.DBCore) (bool, error) {
 	orm := m.orm(tx)
-	value, found, err := orm.First(ctx, xor.Where("k=?", m.KeyHash[:]), xor.Columns("dt"))
+	value, found, err := orm.First(ctx, xor.Where("t=? and k=?", m.TypeID, m.KeyHash[:]), xor.Columns("dt"))
 	if err != nil {
 		return false, err
 	}

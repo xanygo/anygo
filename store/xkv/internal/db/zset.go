@@ -13,14 +13,16 @@ import (
 )
 
 type ZSetModel struct {
-	ID         int64    `db:"id,pk,auto_inc"`
-	KeyHash    [32]byte `db:"k,unique_index=k_m[1],index=k_s[1]"`
-	MemberHash [32]byte `db:"m,unique_index=k_m[2]"`
+	ID int64 `db:"id,pk,auto_inc"`
+
+	TypeID     uint32   `db:"t,unique_index=t_k_m[1],index=t_k_s[1]"` // value 实际类型签名
+	KeyHash    [32]byte `db:"k,unique_index=t_k_m[2],index=t_k_s[2]"`
+	MemberHash [32]byte `db:"m,unique_index=t_k_m[3]"`
 
 	KeyRaw    string `db:"k_raw"`
 	MemberRaw string `db:"m_raw"`
 
-	Score   float64 `db:"s,index=k_s[2]"`
+	Score   float64 `db:"s,index=t_k_s[3]"`
 	Created int64   `db:"c"`
 	Updated int64   `db:"u"`
 }
@@ -46,7 +48,7 @@ func (z *ZSet) orm(tx xdb.DBCore) *xor.Model[ZSetModel] {
 
 func (z *ZSet) deleteWithKey(ctx context.Context, tx xdb.DBCore) error {
 	orm := z.orm(tx)
-	_, err := orm.Delete(ctx, xor.Where("k=?", z.Meta.KeyHash[:]))
+	_, err := orm.Delete(ctx, xor.Where("t=? and k=?", z.Meta.TypeID, z.Meta.KeyHash[:]))
 	return err
 }
 
@@ -56,6 +58,7 @@ func (z *ZSet) ZAdd(ctx context.Context, score float64, member string) error {
 	return z.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := z.orm(tx)
 		data := ZSetModel{
+			TypeID:     z.Meta.TypeID,
 			KeyHash:    z.Meta.KeyHash,
 			KeyRaw:     z.Meta.KeyRaw,
 			MemberHash: memberHash,
@@ -64,7 +67,7 @@ func (z *ZSet) ZAdd(ctx context.Context, score float64, member string) error {
 			Created:    now,
 			Updated:    now,
 		}
-		_, err := orm.Upsert(ctx, []string{"k", "m"}, []string{"s", "u"}, data)
+		_, err := orm.Upsert(ctx, []string{"t", "k", "m"}, []string{"s", "u"}, data)
 		return err
 	})
 }
@@ -75,7 +78,7 @@ func (z *ZSet) ZIncrBy(ctx context.Context, inc float64, member string) (num flo
 	err = z.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := z.orm(tx)
 
-		item, ok, err1 := orm.First(ctx, xor.Where("k=? and m=?", z.Meta.KeyHash[:], memberHash[:]), xor.Columns("s"))
+		item, ok, err1 := orm.First(ctx, xor.Where("t=? and k=? and m=?", z.Meta.TypeID, z.Meta.KeyHash[:], memberHash[:]), xor.Columns("s"))
 		if err1 != nil {
 			return err1
 		}
@@ -85,6 +88,7 @@ func (z *ZSet) ZIncrBy(ctx context.Context, inc float64, member string) (num flo
 		}
 		num = old + inc
 		data := ZSetModel{
+			TypeID:     z.Meta.TypeID,
 			KeyHash:    z.Meta.KeyHash,
 			KeyRaw:     z.Meta.KeyRaw,
 			MemberHash: memberHash,
@@ -93,7 +97,7 @@ func (z *ZSet) ZIncrBy(ctx context.Context, inc float64, member string) (num flo
 			Created:    now,
 			Updated:    now,
 		}
-		_, err = orm.Upsert(ctx, []string{"k", "m"}, []string{"s", "u"}, data)
+		_, err = orm.Upsert(ctx, []string{"t", "k", "m"}, []string{"s", "u"}, data)
 		return err
 	})
 
@@ -112,6 +116,7 @@ func (z *ZSet) minMaxCond(min, max string) (where string, args []any, err error)
 	}
 
 	cond := &xdb.Condition{}
+	cond.And("t=?", z.Meta.TypeID)
 	cond.And("k=?", z.Meta.KeyHash[:])
 	if !minBound.Inf {
 		op := anygo.Ternary(minBound.Exclude, ">", ">=")
@@ -152,7 +157,7 @@ func (z *ZSet) ZScore(ctx context.Context, member string) (score float64, found 
 		}
 		orm := z.orm(tx)
 
-		item, ok, err1 := orm.First(ctx, xor.Where("k=? and m=?", z.Meta.KeyHash[:], memberHash), xor.Columns("s"))
+		item, ok, err1 := orm.First(ctx, xor.Where("t=? and k=? and m=?", z.Meta.TypeID, z.Meta.KeyHash[:], memberHash), xor.Columns("s"))
 		if err1 != nil || !ok {
 			return err1
 		}
@@ -170,7 +175,7 @@ func (z *ZSet) ZRange(ctx context.Context, fn func(member string, score float64)
 		}
 		orm := z.orm(tx)
 
-		for item, err := range orm.ListIter(ctx, xor.Where("k=?", z.Meta.KeyHash[:]), xor.OrderBy("s asc"), xor.Columns("m_raw", "s")) {
+		for item, err := range orm.ListIter(ctx, xor.Where("t=? and k=?", z.Meta.TypeID, z.Meta.KeyHash[:]), xor.OrderBy("s asc"), xor.Columns("m_raw", "s")) {
 			if err != nil {
 				return err
 			}
@@ -220,6 +225,7 @@ func (z *ZSet) ZRem(ctx context.Context, members ...string) error {
 			return err
 		}
 		cond := &xdb.Condition{}
+		cond.And("t=?", z.Meta.TypeID)
 		cond.And("k=?", z.Meta.KeyHash[:])
 		cond.AndInFmt("m in(%s)", hashMembers)
 
@@ -254,7 +260,7 @@ func (z *ZSet) ZRemRangeByScore(ctx context.Context, min, max string) (num int64
 
 // checkExists 检查 key 是否还存在，若不存在，则删除 meta
 func (z *ZSet) checkExists(ctx context.Context, orm *xor.Model[ZSetModel]) error {
-	_, found, err := orm.First(ctx, xor.Where("k=?", z.Meta.KeyHash[:]), xor.Columns("c"))
+	_, found, err := orm.First(ctx, xor.Where("t=? and k=?", z.Meta.TypeID, z.Meta.KeyHash[:]), xor.Columns("c"))
 	if err != nil || found {
 		return err
 	}
@@ -267,13 +273,14 @@ func (z *ZSet) ZRank(ctx context.Context, member string) (index int64, score flo
 	err = z.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := z.orm(tx)
 
-		one, found, err1 := orm.First(ctx, xor.Where("k=? and m=?", z.Meta.KeyHash[:], memberHash), xor.Columns("s"))
+		one, found, err1 := orm.First(ctx, xor.Where("t=? and k=? and m=?", z.Meta.TypeID, z.Meta.KeyHash[:], memberHash), xor.Columns("s"))
 		if err1 != nil || !found {
 			return err1
 		}
 		score = one.Score
 
 		cond := &xdb.Condition{}
+		cond.And("t=?", z.Meta.TypeID)
 		cond.And("k=?", z.Meta.KeyHash[:])
 		cond.And("( s<? or ( s=? and m<? ) )", score, score, memberHash)
 
@@ -290,7 +297,7 @@ func (z *ZSet) popXX(ctx context.Context, count int, orderBy string) (members []
 	}
 	err = z.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := z.orm(tx)
-		values, err1 := orm.List(ctx, xor.Where("k=?", z.Meta.KeyHash[:]), xor.OrderBy("s "+orderBy), xor.Limit(count), xor.Columns("s", "m", "m_raw"))
+		values, err1 := orm.List(ctx, xor.Where("t=? and k=?", z.Meta.TypeID, z.Meta.KeyHash[:]), xor.OrderBy("s "+orderBy), xor.Limit(count), xor.Columns("s", "m", "m_raw"))
 		if err1 != nil {
 			return err1
 		}
@@ -301,6 +308,7 @@ func (z *ZSet) popXX(ctx context.Context, count int, orderBy string) (members []
 			hashMembers = append(hashMembers, item.MemberHash[:])
 		}
 		cond := &xdb.Condition{}
+		cond.And("t=?", z.Meta.TypeID)
 		cond.And("k=?", z.Meta.KeyHash[:])
 		cond.AndInFmt("m in (%s)", hashMembers)
 

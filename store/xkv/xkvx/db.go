@@ -3,7 +3,10 @@ package xkvx
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
 
+	"github.com/xanygo/anygo/ds/xmap"
+	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xdb/xor"
 	"github.com/xanygo/anygo/store/xkv"
@@ -11,7 +14,7 @@ import (
 	"github.com/xanygo/anygo/store/xkv/internal/db"
 )
 
-var _ xkv.StringStorage = (*DatabaseStore)(nil)
+var _ xkv.StringStorage = (*Database)(nil)
 
 type TableProvider struct {
 	// 可选，自定义依据 key 获取数据表名
@@ -41,7 +44,34 @@ func (tr *TableProvider) migrate(ctx context.Context, db xdb.DBCore, obj any, de
 	return nil
 }
 
-// DatabaseStore 使用数据库存储 KV 类型的数据
+// Init 用于从配置中初始化
+func (tr *TableProvider) Init(param map[string]any) error {
+	name, _ := xmap.GetString(param, "Name")
+	total, _ := xmap.GetInt(param, "Total")
+	if name == "" {
+		return nil
+	}
+	if total <= 1 {
+		tr.Names = []string{name}
+		tr.Resolve = func(key string) string {
+			return name
+		}
+		return nil
+	}
+
+	for i := 0; i < total; i++ {
+		tr.Names = append(tr.Names, fmt.Sprintf("%s_%d", name, i))
+	}
+	tr.Resolve = func(key string) string {
+		h := fnv.New32a()
+		h.Write([]byte(key))
+		index := int(h.Sum32()) % len(tr.Names)
+		return tr.Names[index]
+	}
+	return nil
+}
+
+// Database 使用数据库存储 KV 类型的数据
 //
 //	以下是 SQLite 的表结构：
 //
@@ -50,6 +80,7 @@ func (tr *TableProvider) migrate(ctx context.Context, db xdb.DBCore, obj any, de
 //
 //	CREATE TABLE "xkv_meta" (
 //	"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+//	"t" INTEGER NOT NULL DEFAULT 0,
 //	"k" BLOB NOT NULL UNIQUE DEFAULT ”,
 //	"k_raw" TEXT NOT NULL DEFAULT ”,
 //	"dt" INTEGER NOT NULL DEFAULT 0,
@@ -57,32 +88,39 @@ func (tr *TableProvider) migrate(ctx context.Context, db xdb.DBCore, obj any, de
 //	"u" INTEGER NOT NULL DEFAULT 0,
 //	"meta" TEXT NOT NULL DEFAULT ”);
 //
+//	CREATE UNIQUE INDEX IF NOT EXISTS idx_xkv_meta_t_k on xkv_meta(t,k);
+//
 //	--- xkv_string：存储 String 类型的数据
 //
 //	CREATE TABLE "xkv_string" (
 //	"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-//	"k" BLOB NOT NULL UNIQUE DEFAULT ”,
+//	"t" INTEGER NOT NULL DEFAULT 0,
+//	"k" BLOB NOT NULL DEFAULT '',
 //	"k_raw" TEXT NOT NULL DEFAULT ”,
 //	"v" TEXT NOT NULL DEFAULT ”,
 //	"c" INTEGER NOT NULL DEFAULT 0,
 //	"u" INTEGER NOT NULL DEFAULT 0);
 //
+//	CREATE UNIQUE INDEX IF NOT EXISTS idx_xkv_string_t_k on xkv_string(t,k);
+//
 //	--- xkv_list： 存储 List 类型的数据
 //
 //	CREATE TABLE "xkv_list" (
 //	"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+//	"t" INTEGER NOT NULL DEFAULT 0,
 //	"k" BLOB NOT NULL DEFAULT ”,
 //	"idx" INTEGER NOT NULL DEFAULT 0,
 //	"k_raw" TEXT NOT NULL DEFAULT ”,
 //	"v" TEXT NOT NULL DEFAULT ”,
 //	"c" INTEGER NOT NULL DEFAULT 0);
 //
-//	CREATE UNIQUE INDEX IF NOT EXISTS idx_xkv_list_k_i on xkv_list(k,idx);
+//	CREATE UNIQUE INDEX IF NOT EXISTS idx_xkv_list_t_k_i on xkv_list(t,k,idx);
 //
 //	---  xkv_hash： 存储 Hash 类型数据
 //
 //	CREATE TABLE "xkv_hash" (
 //	"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+//	"t" INTEGER NOT NULL DEFAULT 0,
 //	"k" BLOB NOT NULL DEFAULT ”,
 //	"f" BLOB NOT NULL DEFAULT ”,
 //	"k_raw" TEXT NOT NULL DEFAULT ”,
@@ -91,24 +129,26 @@ func (tr *TableProvider) migrate(ctx context.Context, db xdb.DBCore, obj any, de
 //	"c" INTEGER NOT NULL DEFAULT 0,
 //	"u" INTEGER NOT NULL DEFAULT 0);
 //
-//	CREATE UNIQUE INDEX IF NOT EXISTS idx_xkv_hash_k_f on xkv_hash(k,f);
+//	CREATE UNIQUE INDEX IF NOT EXISTS idx_xkv_hash_t_k_f on xkv_hash(t,k,f);
 //
 //	--- xkv_set：存储 Set 类型数据
 //
 //	CREATE TABLE "xkv_set" (
 //	"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+//	"t" INTEGER NOT NULL DEFAULT 0,
 //	"k" BLOB NOT NULL DEFAULT ”,
 //	"m" BLOB NOT NULL DEFAULT ”,
 //	"k_raw" TEXT NOT NULL DEFAULT ”,
 //	"m_raw" TEXT NOT NULL DEFAULT ”,
 //	"c" INTEGER NOT NULL DEFAULT 0);
 //
-//	CREATE UNIQUE INDEX IF NOT EXISTS idx_xkv_set_k_m on xkv_set(k,m);
+//	CREATE UNIQUE INDEX IF NOT EXISTS idx_xkv_set_t_k_m on xkv_set(t,k,m);
 //
 //	---  xkv_zset：存储 ZSet 类型数据
 //
 //	CREATE TABLE "xkv_zset" (
 //	"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+//	"t" INTEGER NOT NULL DEFAULT 0,
 //	"k" BLOB NOT NULL DEFAULT ”,
 //	"m" BLOB NOT NULL DEFAULT ”,
 //	"k_raw" TEXT NOT NULL DEFAULT ”,
@@ -117,11 +157,13 @@ func (tr *TableProvider) migrate(ctx context.Context, db xdb.DBCore, obj any, de
 //	"c" INTEGER NOT NULL DEFAULT 0,
 //	"u" INTEGER NOT NULL DEFAULT 0);
 //
-//	CREATE UNIQUE INDEX IF NOT EXISTS idx_xkv_zset_k_m on xkv_zset(k,m);
-//	CREATE INDEX IF NOT EXISTS idx_xkv_zset_k_s on xkv_zset(k,s);
-type DatabaseStore struct {
+//	CREATE UNIQUE INDEX IF NOT EXISTS idx_xkv_zset_t_k_m on xkv_zset(t,k,m);
+//	CREATE INDEX IF NOT EXISTS idx_xkv_zset_t_k_s on xkv_zset(t,k,s);
+type Database struct {
 	// DB 必填字段
 	DB *xdb.Client
+
+	ValueTypeID uint32 // 可选，存储数据的实际类型签名,可以使用 GenTypeID 获取
 
 	// MetaTable 可选，自定义元信息的表名
 	MetaTable *TableProvider
@@ -142,19 +184,80 @@ type DatabaseStore struct {
 	ZSetTable *TableProvider
 }
 
-func (d *DatabaseStore) String(key string) xkv.String[string] {
+var stringTypeID = zreflect.TypeID1[string]()
+
+func (d *Database) getTypeID() uint32 {
+	if d.ValueTypeID > 0 {
+		return d.ValueTypeID
+	}
+	return stringTypeID
+}
+
+func (d *Database) GenTypeID[V any]() uint32 {
+	return zreflect.TypeID1[V]()
+}
+
+func (d *Database) Init(param map[string]any) error {
+	if d.DB == nil {
+		service, ok := xmap.GetString(param, "Service")
+		if !ok || service == "" {
+			return fmt.Errorf("no Service in %v", param)
+		}
+		db, err := xdb.NewClientWithService(service)
+		if err != nil {
+			return err
+		}
+		d.DB = db
+	}
+	var err error
+	if d.MetaTable == nil {
+		d.MetaTable, err = d.initTableProvider(param, "MetaTable")
+	}
+
+	if err == nil && d.StringTable == nil {
+		d.StringTable, err = d.initTableProvider(param, "StringTable")
+	}
+	if err == nil && d.ListTable == nil {
+		d.ListTable, err = d.initTableProvider(param, "ListTable")
+	}
+	if err == nil && d.HashTable == nil {
+		d.HashTable, err = d.initTableProvider(param, "HashTable")
+	}
+	if err == nil && d.SetTable == nil {
+		d.SetTable, err = d.initTableProvider(param, "SetTable")
+	}
+	if err == nil && d.ZSetTable == nil {
+		d.ZSetTable, err = d.initTableProvider(param, "ZSetTable")
+	}
+	return err
+}
+
+func (d *Database) initTableProvider(param map[string]any, name string) (*TableProvider, error) {
+	cfg, ok := xmap.GetMap(param, name)
+	if !ok || len(cfg) == 0 {
+		return nil, nil
+	}
+	tp := &TableProvider{}
+	if err := tp.Init(cfg); err != nil {
+		return nil, err
+	}
+	return tp, nil
+}
+
+func (d *Database) String(key string) xkv.String[string] {
 	return d.getString(key)
 }
 
-func (d *DatabaseStore) getString(key string) *db.String {
+func (d *Database) getString(key string) *db.String {
 	return &db.String{
 		Meta:  d.getMeta(key, internal.DataTypeString),
 		Table: d.StringTable.getTable(key),
 	}
 }
 
-func (d *DatabaseStore) getMeta(key string, dt internal.DataType) *db.Meta {
+func (d *Database) getMeta(key string, dt internal.DataType) *db.Meta {
 	return &db.Meta{
+		TypeID:   d.getTypeID(),
 		Table:    d.MetaTable.getTable(key),
 		KeyRaw:   key,
 		KeyHash:  db.KeyHash(key),
@@ -163,51 +266,51 @@ func (d *DatabaseStore) getMeta(key string, dt internal.DataType) *db.Meta {
 	}
 }
 
-func (d *DatabaseStore) List(key string) xkv.List[string] {
+func (d *Database) List(key string) xkv.List[string] {
 	return d.getList(key)
 }
 
-func (d *DatabaseStore) getList(key string) *db.List {
+func (d *Database) getList(key string) *db.List {
 	return &db.List{
 		Meta:  d.getMeta(key, internal.DataTypeList),
 		Table: d.ListTable.getTable(key),
 	}
 }
 
-func (d *DatabaseStore) Hash(key string) xkv.Hash[string] {
+func (d *Database) Hash(key string) xkv.Hash[string] {
 	return d.getHash(key)
 }
 
-func (d *DatabaseStore) getHash(key string) *db.Hash {
+func (d *Database) getHash(key string) *db.Hash {
 	return &db.Hash{
 		Meta:  d.getMeta(key, internal.DataTypeHash),
 		Table: d.HashTable.getTable(key),
 	}
 }
 
-func (d *DatabaseStore) Set(key string) xkv.Set[string] {
+func (d *Database) Set(key string) xkv.Set[string] {
 	return d.getSet(key)
 }
 
-func (d *DatabaseStore) getSet(key string) *db.Set {
+func (d *Database) getSet(key string) *db.Set {
 	return &db.Set{
 		Meta:  d.getMeta(key, internal.DataTypeSet),
 		Table: d.SetTable.getTable(key),
 	}
 }
 
-func (d *DatabaseStore) ZSet(key string) xkv.ZSet[string] {
+func (d *Database) ZSet(key string) xkv.ZSet[string] {
 	return d.getZSet(key)
 }
 
-func (d *DatabaseStore) getZSet(key string) *db.ZSet {
+func (d *Database) getZSet(key string) *db.ZSet {
 	return &db.ZSet{
 		Meta:  d.getMeta(key, internal.DataTypeZSet),
 		Table: d.ZSetTable.getTable(key),
 	}
 }
 
-func (d *DatabaseStore) Has(ctx context.Context, key string) (bool, error) {
+func (d *Database) Has(ctx context.Context, key string) (bool, error) {
 	m := d.getMeta(key, internal.DataTypeAny) // 可以是任意类型
 	var has bool
 	err := m.WithReadTx(ctx, func(ctx context.Context, tx xdb.DBCore, hasMeta bool) error {
@@ -217,7 +320,7 @@ func (d *DatabaseStore) Has(ctx context.Context, key string) (bool, error) {
 	return has, err
 }
 
-func (d *DatabaseStore) Delete(ctx context.Context, keys ...string) error {
+func (d *Database) Delete(ctx context.Context, keys ...string) error {
 	if len(keys) == 0 {
 		return nil
 	}
@@ -241,7 +344,7 @@ func (d *DatabaseStore) Delete(ctx context.Context, keys ...string) error {
 	return dm.Delete(ctx)
 }
 
-func (d *DatabaseStore) Migrate(ctx context.Context) error {
+func (d *Database) Migrate(ctx context.Context) error {
 	metaModel := db.MetaModel{}
 	meta := d.getMeta("", internal.DataTypeAny)
 	if err := d.MetaTable.migrate(ctx, d.DB, metaModel, meta.GetTable()); err != nil {

@@ -12,12 +12,15 @@ import (
 )
 
 type StringModel struct {
-	ID      int64    `db:"id,pk,auto_inc"`
-	KeyHash [32]byte `db:"k,unique"`
-	KeyRaw  string   `db:"k_raw"`
-	Value   string   `db:"v"`
-	Created int64    `db:"c"`
-	Updated int64    `db:"u"`
+	ID int64 `db:"id,pk,auto_inc"`
+
+	TypeID  uint32   `db:"t,unique_index=t_k[1]"` // value 实际类型签名
+	KeyHash [32]byte `db:"k,unique_index=t_k[2]"`
+
+	KeyRaw  string `db:"k_raw"`
+	Value   string `db:"v"`
+	Created int64  `db:"c"`
+	Updated int64  `db:"u"`
 }
 
 var _ xkv.String[string] = (*String)(nil)
@@ -37,7 +40,7 @@ func (d *String) GetTable() string {
 func (d *String) deleteWithKey(ctx context.Context, tx xdb.DBCore) error {
 	orm := xor.New[StringModel](tx)
 	orm.Table(d.GetTable())
-	_, err := orm.Delete(ctx, xor.Where("k=?", d.Meta.KeyHash[:]))
+	_, err := orm.Delete(ctx, xor.Where("t=? and k=?", d.Meta.TypeID, d.Meta.KeyHash[:]))
 	return err
 }
 
@@ -45,6 +48,7 @@ func (d *String) Set(ctx context.Context, value string) error {
 	now := time.Now().UnixNano()
 	return d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		data := StringModel{
+			TypeID:  d.Meta.TypeID,
 			KeyHash: d.Meta.KeyHash,
 			KeyRaw:  d.Meta.KeyRaw,
 			Value:   value,
@@ -53,7 +57,7 @@ func (d *String) Set(ctx context.Context, value string) error {
 		}
 		orm := xor.New[StringModel](tx)
 		orm.Table(d.GetTable())
-		_, err := orm.Upsert(ctx, []string{"k"}, []string{"v", "u"}, data)
+		_, err := orm.Upsert(ctx, []string{"t", "k"}, []string{"v", "u"}, data)
 		return err
 	})
 }
@@ -66,6 +70,7 @@ func (d *String) SetNX(ctx context.Context, value string) (ok bool, err error) {
 			return err1
 		}
 		meta := MetaModel{
+			TypeID:   d.Meta.TypeID,
 			KeyHash:  d.Meta.KeyHash,
 			KeyRaw:   d.Meta.KeyRaw,
 			DataType: internal.DataTypeString,
@@ -76,6 +81,7 @@ func (d *String) SetNX(ctx context.Context, value string) (ok bool, err error) {
 			return err1
 		}
 		data := StringModel{
+			TypeID:  d.Meta.TypeID,
 			KeyHash: d.Meta.KeyHash,
 			KeyRaw:  d.Meta.KeyRaw,
 			Value:   value,
@@ -84,7 +90,7 @@ func (d *String) SetNX(ctx context.Context, value string) (ok bool, err error) {
 		}
 		orm := xor.New[StringModel](tx)
 		orm.Table(d.GetTable())
-		_, err2 := orm.Upsert(ctx, []string{"k"}, []string{"v", "u"}, data)
+		_, err2 := orm.Upsert(ctx, []string{"t", "k"}, []string{"v", "u"}, data)
 		ok = err2 == nil
 		return err2
 	})
@@ -98,7 +104,7 @@ func (d *String) Get(ctx context.Context) (val string, ok bool, err error) {
 		}
 		orm := xor.New[StringModel](tx)
 		orm.Table(d.GetTable())
-		value, found, err1 := orm.First(ctx, xor.Where("k=?", d.Meta.KeyHash[:]), xor.Columns("v"))
+		value, found, err1 := orm.First(ctx, xor.Where("t=? and k=?", d.Meta.TypeID, d.Meta.KeyHash[:]), xor.Columns("v"))
 		if err1 != nil {
 			return err1
 		}
@@ -119,13 +125,13 @@ func (d *String) GetDel(ctx context.Context) (val string, ok bool, err error) {
 		}
 		orm := xor.New[StringModel](tx)
 		orm.Table(d.GetTable())
-		value, found, err2 := orm.First(ctx, xor.Where("k=?", d.Meta.KeyHash[:]), xor.Columns("v"))
+		value, found, err2 := orm.First(ctx, xor.Where("t=? and k=?", d.Meta.TypeID, d.Meta.KeyHash[:]), xor.Columns("v"))
 		if err2 != nil || !found {
 			return err2
 		}
 		val = value.Value
 		ok = true
-		_, err = orm.Delete(ctx, xor.Where("k=?", d.Meta.KeyHash[:]))
+		_, err = orm.Delete(ctx, xor.Where("t=? and k=?", d.Meta.TypeID, d.Meta.KeyHash[:]))
 		return err
 	})
 	return val, ok, err
@@ -136,19 +142,20 @@ func (d *String) GetSet(ctx context.Context, value string) (old string, ok bool,
 	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := xor.New[StringModel](tx)
 		orm.Table(d.GetTable())
-		item, found, err2 := orm.First(ctx, xor.Where("k=?", d.Meta.KeyHash[:]), xor.Columns("v"))
+		item, found, err2 := orm.First(ctx, xor.Where("t=? and k=?", d.Meta.TypeID, d.Meta.KeyHash[:]), xor.Columns("v"))
 		if err2 != nil {
 			return err2
 		}
 
 		nv := StringModel{
+			TypeID:  d.Meta.TypeID,
 			KeyHash: d.Meta.KeyHash,
 			KeyRaw:  d.Meta.KeyRaw,
 			Value:   value,
 			Created: now,
 			Updated: now,
 		}
-		_, err3 := orm.Upsert(ctx, []string{"k"}, []string{"v", "u"}, nv)
+		_, err3 := orm.Upsert(ctx, []string{"t", "k"}, []string{"v", "u"}, nv)
 		if err3 != nil {
 			return err3
 		}
@@ -170,7 +177,7 @@ func (d *String) IncrBy(ctx context.Context, incr int64) (num int64, err error) 
 	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := xor.New[StringModel](tx)
 		orm.Table(d.GetTable())
-		val, found, err1 := orm.First(ctx, xor.Where("k=?", d.Meta.KeyHash[:]), xor.Columns("v"))
+		val, found, err1 := orm.First(ctx, xor.Where("t=? and k=?", d.Meta.TypeID, d.Meta.KeyHash[:]), xor.Columns("v"))
 		if err1 != nil {
 			return err1
 		}
@@ -189,13 +196,14 @@ func (d *String) IncrBy(ctx context.Context, incr int64) (num int64, err error) 
 		strVal = strconv.FormatInt(num, 10)
 
 		data := StringModel{
+			TypeID:  d.Meta.TypeID,
 			KeyHash: d.Meta.KeyHash,
 			KeyRaw:  d.Meta.KeyRaw,
 			Value:   strVal,
 			Created: now,
 			Updated: now,
 		}
-		_, err1 = orm.Upsert(ctx, []string{"k"}, []string{"v", "u"}, data)
+		_, err1 = orm.Upsert(ctx, []string{"t", "k"}, []string{"v", "u"}, data)
 		return err1
 	})
 	return num, err
@@ -206,7 +214,7 @@ func (d *String) IncrByFloat(ctx context.Context, incr float64) (num float64, er
 	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := xor.New[StringModel](tx)
 		orm.Table(d.GetTable())
-		val, found, err1 := orm.First(ctx, xor.Where("k=?", d.Meta.KeyHash[:]), xor.Columns("v"))
+		val, found, err1 := orm.First(ctx, xor.Where("t=? and k=?", d.Meta.TypeID, d.Meta.KeyHash[:]), xor.Columns("v"))
 		if err1 != nil {
 			return err1
 		}
@@ -225,13 +233,14 @@ func (d *String) IncrByFloat(ctx context.Context, incr float64) (num float64, er
 		strVal = strconv.FormatFloat(num, 'g', -1, 64)
 
 		data := StringModel{
+			TypeID:  d.Meta.TypeID,
 			KeyHash: d.Meta.KeyHash,
 			KeyRaw:  d.Meta.KeyRaw,
 			Value:   strVal,
 			Created: now,
 			Updated: now,
 		}
-		_, err1 = orm.Upsert(ctx, []string{"k"}, []string{"v", "u"}, data)
+		_, err1 = orm.Upsert(ctx, []string{"t", "k"}, []string{"v", "u"}, data)
 		return err1
 	})
 	return num, err

@@ -15,14 +15,14 @@ import (
 	"github.com/xanygo/anygo/xt"
 )
 
-func TestFileStorage(t *testing.T) {
+func TestFile(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "xkv_file")
 	// dir := filepath.Join(os.TempDir(), "xkv_file")
 	t.Logf("xkv_file dir: %s", dir)
 	_ = os.RemoveAll(dir)
 
-	ff := &xkv.FileStore{
-		DataDir: dir,
+	ff := &xkv.File{
+		Dir: dir,
 	}
 
 	xkvut.SetFlag("SRange-NotSorted")
@@ -35,8 +35,8 @@ func TestFileStorageCipher(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "xkv_file")
 	t.Logf("xkv_file dir: %s", dir)
 
-	ff := &xkv.FileStore{
-		DataDir: dir,
+	ff := &xkv.File{
+		Dir: dir,
 	}
 	aes := &xcodec.AesOFB{
 		Key: "hello",

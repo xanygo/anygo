@@ -26,7 +26,7 @@ var configOnce sync.Once
 
 func loadConfig() {
 	globalConfigFile = &ConfigFile{}
-	configErr = xcfg.Parse("cache", &globalConfigFile)
+	configErr = xcfg.Parse("xcache", &globalConfigFile)
 }
 
 func Load[K comparable, V any](name string) (xcache.MCache[K, V], error) {
@@ -49,7 +49,7 @@ type instanceValue struct {
 }
 
 type ConfigFile struct {
-	Caches   []map[string]any `json:"Caches" yaml:"Caches"`
+	Items    []map[string]any `json:"Items" yaml:"Items"`
 	instance sync.Map
 
 	refs xcontainer.DepGraph[string]
@@ -79,7 +79,7 @@ func (cf *ConfigFile) Load[K comparable, V any](name string) (xcache.MCache[K, V
 }
 
 func (cf *ConfigFile) createCache[K comparable, V any](name string) (xcache.MCache[K, V], error) {
-	for _, item := range cf.Caches {
+	for _, item := range cf.Items {
 		str, _ := xmap.GetString(item, "Name")
 		if name != str {
 			continue
@@ -144,7 +144,7 @@ func (cf *ConfigFile) newRedis[K comparable, V any](name string, item map[string
 
 func (cf *ConfigFile) newDB[K comparable, V any](name string, item map[string]any) (xcache.MCache[K, V], error) {
 	dc := &Database{
-		TypeID: zreflect.TypeID[K, V](),
+		TypeID: zreflect.TypeID2[K, V](),
 	}
 	if err := dc.Init(item); err != nil {
 		return nil, err
@@ -207,7 +207,7 @@ func (cf *ConfigFile) newChains[K comparable, V any](name string, item map[strin
 
 func (cf *ConfigFile) newWrap[K comparable, V any](name string, item map[string]any) (xcache.MCache[K, V], error) {
 	ref, ok := xmap.GetString(item, "Ref")
-	if ok {
+	if !ok || ref == "" {
 		return nil, errors.New("missing 'Ref'")
 	}
 	c, err := cf.Load[K, V](ref)
@@ -238,27 +238,8 @@ func (cf *ConfigFile) newWrap[K comparable, V any](name string, item map[string]
 		Cache: c,
 	}
 	if len(keyTransform) > 0 {
-		rule := reflect.TypeFor[K]().String()
-		param, ok := xmap.GetMap(keyTransform, rule)
-		if ok {
-			rp, ok := keyTransformFns[rule]
-			if !ok {
-				return nil, fmt.Errorf("%w: KeyTransform %q", xerror.NotFound, rule)
-			}
-			rpFn, ok := rp.(func(p map[string]any) (func(K) K, error))
-			if !ok {
-				return nil, fmt.Errorf("KeyTransform %q type not match, got %T, expect %T", rule, rp, rpFn)
-			}
-			fn, err := rpFn(param)
-			if err != nil {
-				return nil, err
-			}
-			wp.NewKeyFn = fn
-		} else {
-			child, ok := xmap.GetMap(keyTransform, "Default")
-			if ok && len(child) > 0 && child["Refuse"] == true {
-				return nil, fmt.Errorf("%w KeyTransform %s, refused, pls use xcache.RegisterKeyTransform first", xerror.NotFound, rule)
-			}
+		if err = cf.parserWrapKeyTransform(wp, keyTransform); err != nil {
+			return nil, err
 		}
 	}
 
@@ -268,6 +249,57 @@ func (cf *ConfigFile) newWrap[K comparable, V any](name string, item map[string]
 		}
 	}
 	return wp, nil
+}
+
+func (cf *ConfigFile) parserWrapKeyTransform[K comparable, V any](wp *xcache.Wrapper[K, V], cfg map[string]any) error {
+	kt := reflect.TypeFor[K]()
+	rule := kt.String()
+	param, ok := xmap.GetMap(cfg, rule)
+	if ok {
+		rp, ok := keyTransformFns[rule]
+		if !ok {
+			return fmt.Errorf("%w: KeyTransform %q", xerror.NotFound, rule)
+		}
+		rpFn, ok := rp.(func(p map[string]any) (func(K) K, error))
+		if !ok {
+			return fmt.Errorf("KeyTransform %q type not match, got %T, expect %T", rule, rp, rpFn)
+		}
+		fn, err := rpFn(param)
+		if err != nil {
+			return err
+		}
+		wp.NewKeyFn = fn
+		return nil
+	}
+
+	if kt.Kind() == reflect.String {
+		// 用于支持 type MyString string 这种自定义 string 类型的 key
+		param, ok := xmap.GetMap(cfg, "string")
+		if ok {
+			fn := stringKindTransform(param)
+			if fn == nil {
+				return nil
+			}
+			wp.NewKeyFn = func(k K) K {
+				krv := reflect.ValueOf(k)
+				newKrv := fn(krv)
+				if krv.Equal(newKrv) {
+					return k
+				}
+				return newKrv.Interface().(K)
+			}
+		}
+	}
+	child, ok := xmap.GetMap(cfg, "Default")
+	if ok && len(child) > 0 {
+		if child["Panic"] == true {
+			err := fmt.Errorf("%w KeyTransform func for type %q, pls use xcache.RegisterKeyTransform first", xerror.NotFound, rule)
+			panic(err)
+		} else if child["Refuse"] == true {
+			return fmt.Errorf("%w KeyTransform func for type %q, refused, pls use xcache.RegisterKeyTransform first", xerror.NotFound, rule)
+		}
+	}
+	return nil
 }
 
 type chainConfigItem struct {
@@ -312,4 +344,23 @@ func stringKeyTransform(p map[string]any) (func(string) string, error) {
 	return func(k string) string {
 		return prefix + k + suffix
 	}, nil
+}
+
+func stringKindTransform(p map[string]any) func(reflect.Value) reflect.Value {
+	if len(p) == 0 {
+		return nil
+	}
+	prefix, _ := xmap.GetString(p, "Prefix")
+	prefix = strings.TrimSpace(prefix)
+	suffix, _ := xmap.GetString(p, "Suffix")
+	suffix = strings.TrimSpace(suffix)
+	if prefix == "" && suffix == "" {
+		return nil
+	}
+	return func(k reflect.Value) reflect.Value {
+		s := prefix + k.String() + suffix
+		v := reflect.New(k.Type()).Elem()
+		v.SetString(s)
+		return v
+	}
 }

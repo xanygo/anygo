@@ -14,8 +14,9 @@ import (
 type HashModel struct {
 	ID int64 `db:"id,pk,auto_inc"`
 
-	KeyHash   [32]byte `db:"k,unique_index=k_f[1]"`
-	FieldHash [32]byte `db:"f,unique_index=k_f[2]"`
+	TypeID    uint32   `db:"t,unique_index=t_k_f[1]"` // value 实际类型签名
+	KeyHash   [32]byte `db:"k,unique_index=t_k_f[2]"`
+	FieldHash [32]byte `db:"f,unique_index=t_k_f[3]"`
 
 	KeyRaw   string `db:"k_raw"`
 	FieldRaw string `db:"f_raw"`
@@ -43,7 +44,7 @@ func (h *Hash) GetTable() string {
 func (h *Hash) deleteWithKey(ctx context.Context, tx xdb.DBCore) error {
 	orm := xor.New[HashModel](tx)
 	orm.Table(h.GetTable())
-	_, err := orm.Delete(ctx, xor.Where("k=?", h.Meta.KeyHash[:]))
+	_, err := orm.Delete(ctx, xor.Where("t=? and k=?", h.Meta.TypeID, h.Meta.KeyHash[:]))
 	return err
 }
 
@@ -55,6 +56,7 @@ func (h *Hash) HSet(ctx context.Context, field string, value string) error {
 		orm.Table(h.GetTable())
 
 		data := HashModel{
+			TypeID:    h.Meta.TypeID,
 			KeyHash:   h.Meta.KeyHash,
 			KeyRaw:    h.Meta.KeyRaw,
 			FieldHash: fieldHash,
@@ -63,7 +65,7 @@ func (h *Hash) HSet(ctx context.Context, field string, value string) error {
 			Updated:   now,
 			Created:   now,
 		}
-		_, err := orm.Upsert(ctx, []string{"k", "f"}, []string{"v", "u"}, data)
+		_, err := orm.Upsert(ctx, []string{"t", "k", "f"}, []string{"v", "u"}, data)
 		return err
 	})
 }
@@ -79,6 +81,7 @@ func (h *Hash) HMSet(ctx context.Context, data map[string]string) error {
 		var items []HashModel
 		for field, value := range data {
 			item := HashModel{
+				TypeID:    h.Meta.TypeID,
 				KeyHash:   h.Meta.KeyHash,
 				KeyRaw:    h.Meta.KeyRaw,
 				FieldHash: KeyHash(field),
@@ -89,7 +92,7 @@ func (h *Hash) HMSet(ctx context.Context, data map[string]string) error {
 			}
 			items = append(items, item)
 		}
-		_, err := orm.Upsert(ctx, []string{"k", "f"}, []string{"v", "u"}, items...)
+		_, err := orm.Upsert(ctx, []string{"t", "k", "f"}, []string{"v", "u"}, items...)
 		return err
 	})
 }
@@ -103,7 +106,7 @@ func (h *Hash) HGet(ctx context.Context, field string) (value string, found bool
 		orm := xor.New[HashModel](tx)
 		orm.Table(h.GetTable())
 
-		v, ok, err1 := orm.First(ctx, xor.Where("k=? and f=?", h.Meta.KeyHash[:], fieldHash[:]), xor.Columns("v"))
+		v, ok, err1 := orm.First(ctx, xor.Where("t=? and k=? and f=?", h.Meta.TypeID, h.Meta.KeyHash[:], fieldHash[:]), xor.Columns("v"))
 		if err1 != nil || !ok {
 			return err1
 		}
@@ -124,6 +127,7 @@ func (h *Hash) HMGet(ctx context.Context, fields ...string) (result map[string]s
 	}
 
 	cond := xdb.Condition{}
+	cond.And("t=?", h.Meta.TypeID)
 	cond.And("k=?", h.Meta.KeyHash[:])
 	cond.AndInFmt("f in (%s)", fs)
 	where, args, err := cond.Build()
@@ -154,7 +158,7 @@ func (h *Hash) HMGet(ctx context.Context, fields ...string) (result map[string]s
 func (h *Hash) checkExists(ctx context.Context, orm *xor.Model[HashModel]) error {
 	orm = orm.New()
 	orm.Table(h.GetTable())
-	_, found, err := orm.First(ctx, xor.Where("k=?", h.Meta.KeyHash[:]), xor.Columns("c"))
+	_, found, err := orm.First(ctx, xor.Where("t=? and k=?", h.Meta.TypeID, h.Meta.KeyHash[:]), xor.Columns("c"))
 	if err != nil {
 		return err
 	}
@@ -183,6 +187,7 @@ func (h *Hash) HDel(ctx context.Context, fields ...string) error {
 		orm.Table(h.GetTable())
 
 		b := &xdb.Condition{}
+		b.And("t=?", h.Meta.TypeID)
 		b.And("k=?", h.Meta.KeyHash[:])
 		b.AndInFmt("f in (%s)", fs)
 
@@ -198,7 +203,7 @@ func (h *Hash) HRange(ctx context.Context, fn func(field string, value string) b
 	return h.Meta.WithReadTx(ctx, func(as context.Context, tx xdb.DBCore, hasMeta bool) error {
 		orm := xor.New[HashModel](tx)
 		orm.Table(h.GetTable())
-		for item, err1 := range orm.ListIter(ctx, xor.Where("k=?", h.Meta.KeyHash[:]), xor.Columns("f_raw", "v")) {
+		for item, err1 := range orm.ListIter(ctx, xor.Where("t=? and k=?", h.Meta.TypeID, h.Meta.KeyHash[:]), xor.Columns("f_raw", "v")) {
 			if err1 != nil {
 				return err1
 			}
@@ -227,7 +232,7 @@ func (h *Hash) HExists(ctx context.Context, field string) (found bool, err error
 		}
 		orm := xor.New[HashModel](tx)
 		orm.Table(h.GetTable())
-		_, ok, err1 := orm.First(ctx, xor.Where("k=? and f=?", h.Meta.KeyHash[:], fieldHash), xor.Columns("c"))
+		_, ok, err1 := orm.First(ctx, xor.Where("t=? and k=? and f=?", h.Meta.TypeID, h.Meta.KeyHash[:], fieldHash), xor.Columns("c"))
 		if ok {
 			found = true
 		}
@@ -243,7 +248,7 @@ func (h *Hash) HIncrBy(ctx context.Context, field string, increment int64) (num 
 		orm := xor.New[HashModel](tx)
 		orm.Table(h.GetTable())
 
-		old, found, err1 := orm.First(ctx, xor.Where("k=? and f=?", h.Meta.KeyHash[:], fieldHash[:]), xor.Columns("v"))
+		old, found, err1 := orm.First(ctx, xor.Where("t=? and k=? and f=?", h.Meta.TypeID, h.Meta.KeyHash[:], fieldHash[:]), xor.Columns("v"))
 		if err1 != nil {
 			return err1
 		}
@@ -256,6 +261,7 @@ func (h *Hash) HIncrBy(ctx context.Context, field string, increment int64) (num 
 			num += oldNum
 		}
 		data := HashModel{
+			TypeID:    h.Meta.TypeID,
 			KeyHash:   h.Meta.KeyHash,
 			KeyRaw:    h.Meta.KeyRaw,
 			FieldHash: fieldHash,
@@ -264,7 +270,7 @@ func (h *Hash) HIncrBy(ctx context.Context, field string, increment int64) (num 
 			Created:   now,
 			Updated:   now,
 		}
-		_, err3 := orm.Upsert(ctx, []string{"k", "f"}, []string{"v", "u"}, data)
+		_, err3 := orm.Upsert(ctx, []string{"t", "k", "f"}, []string{"v", "u"}, data)
 		return err3
 	})
 	return num, err
@@ -277,7 +283,7 @@ func (h *Hash) HLen(ctx context.Context) (num int64, err error) {
 		}
 		orm := xor.New[HashModel](tx)
 		orm.Table(h.GetTable())
-		count, err1 := orm.Count(ctx, "*", xor.Where("k=?", h.Meta.KeyHash[:]))
+		count, err1 := orm.Count(ctx, "*", xor.Where("t=? and k=?", h.Meta.TypeID, h.Meta.KeyHash[:]))
 		if err1 == nil {
 			num = count
 		}

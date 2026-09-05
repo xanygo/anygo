@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/store/xkv/internal"
 	"github.com/xanygo/anygo/xcodec"
 )
@@ -20,7 +21,22 @@ type Transformer[V any] struct {
 	Codec   xcodec.Codec
 }
 
-func (tr Transformer[V]) String(key string) String[V] {
+func (tr *Transformer[V]) Init(item map[string]any) error {
+	if tr.Codec == nil {
+		if name, ok := xmap.GetString(item, "Codec"); ok {
+			codec, err := xcodec.Find(name)
+			if err != nil {
+				return err
+			}
+			tr.Codec = codec
+		} else {
+			tr.Codec = xcodec.JSON
+		}
+	}
+	return nil
+}
+
+func (tr *Transformer[V]) String(key string) String[V] {
 	return AsString[V](tr.Storage, tr.Codec, key)
 }
 
@@ -110,7 +126,7 @@ func (ts transString[V]) Decr(ctx context.Context) (int64, error) {
 	return ts.ss.Decr(ctx)
 }
 
-func (tr Transformer[V]) List(key string) List[V] {
+func (tr *Transformer[V]) List(key string) List[V] {
 	return AsList[V](tr.Storage, tr.Codec, key)
 }
 
@@ -256,7 +272,7 @@ func (t transList[V]) LLen(ctx context.Context) (int64, error) {
 	return t.ss.LLen(ctx)
 }
 
-func (tr Transformer[V]) Hash(key string) Hash[V] {
+func (tr *Transformer[V]) Hash(key string) Hash[V] {
 	return AsHash[V](tr.Storage, tr.Codec, key)
 }
 
@@ -368,7 +384,7 @@ func (t transHash[V]) HLen(ctx context.Context) (int64, error) {
 	return t.ss.HLen(ctx)
 }
 
-func (tr Transformer[V]) Set(key string) Set[V] {
+func (tr *Transformer[V]) Set(key string) Set[V] {
 	return AsSet[V](tr.Storage, tr.Codec, key)
 }
 
@@ -506,7 +522,7 @@ func (t transSet[V]) SRandMemberN(ctx context.Context, count int) ([]V, error) {
 	return result, nil
 }
 
-func (tr Transformer[V]) ZSet(key string) ZSet[V] {
+func (tr *Transformer[V]) ZSet(key string) ZSet[V] {
 	return AsZSet[V](tr.Storage, tr.Codec, key)
 }
 
@@ -640,10 +656,10 @@ func (t transZSet[V]) ZPopMin(ctx context.Context, count int) ([]V, []float64, e
 	return result, scores, nil
 }
 
-func (tr Transformer[V]) Delete(ctx context.Context, keys ...string) error {
+func (tr *Transformer[V]) Delete(ctx context.Context, keys ...string) error {
 	return tr.Storage.Delete(ctx, keys...)
 }
 
-func (tr Transformer[V]) Has(ctx context.Context, key string) (bool, error) {
+func (tr *Transformer[V]) Has(ctx context.Context, key string) (bool, error) {
 	return tr.Storage.Has(ctx, key)
 }
