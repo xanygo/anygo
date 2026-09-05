@@ -14,6 +14,7 @@ import (
 
 	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xsync"
+	"github.com/xanygo/anygo/ds/xtime"
 	"github.com/xanygo/anygo/internal/zslice"
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xattr"
@@ -191,7 +192,8 @@ func (r *CachedResolver) createCacheReader() *xcache.Reader[string, []net.IP] {
 	cc := r.Cache
 	if cc == nil {
 		cc = xcache.NewLRU[string, xcache.ValueError[[]net.IP]](10000)
-		xcache.Registry().TryRegister("sys:ResolverLRU", cc)
+		name := xcache.NewName[string, xcache.ValueError[[]net.IP]]("sys:ResolverLRU")
+		xcache.Registry().TryRegister(name, cc)
 	}
 	cache := &xcache.Reader[string, []net.IP]{
 		Cache:    cc,
@@ -218,8 +220,8 @@ func (r *CachedResolver) getTTLFromEnv() time.Duration {
 
 var envResolverCacheTTL = &xsync.OnceInit[time.Duration]{
 	New: func() time.Duration {
-		val := os.Getenv("AnyGo_CachedResolver_TTL")
-		ts, _ := time.ParseDuration(val)
+		val := os.Getenv("AnyGo_CachedResolver_Life")
+		ts, _ := xtime.ParseDuration(val)
 		if ts >= time.Millisecond {
 			return ts
 		}

@@ -17,8 +17,8 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xctx"
 	"github.com/xanygo/anygo/ds/xsync"
+	"github.com/xanygo/anygo/ds/xtime"
 	"github.com/xanygo/anygo/ds/xurl"
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xcodec"
@@ -132,7 +132,7 @@ func TestClientRetry(t *testing.T) {
 		query := r.URL.Query()
 		if rid == 1 {
 			if query.Has("sleep") {
-				xctx.Sleep(r.Context(), time.Second)
+				xtime.Sleep(r.Context(), time.Second)
 				return
 			}
 			status := xurl.IntDef(query, "code", 200)

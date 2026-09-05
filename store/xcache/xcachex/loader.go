@@ -12,7 +12,7 @@ import (
 	"github.com/xanygo/anygo/ds/xcontainer"
 	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/ds/xslice"
-	"github.com/xanygo/anygo/ds/xtype"
+	"github.com/xanygo/anygo/ds/xtime"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xcfg"
@@ -86,6 +86,8 @@ func (cf *ConfigFile) Load[K comparable, V any](name string) (xcache.MCache[K, V
 	c, err := cf.createCache[K, V](name)
 	old, loaded := cf.instance.LoadOrStore(key, &instanceValue{C: c, E: err})
 	if !loaded {
+		rn := xcache.NewName[K, V](name)
+		xcache.Registry().TryRegister(rn, c)
 		return c, err
 	}
 	v := old.(*instanceValue)
@@ -239,7 +241,7 @@ func (cf *ConfigFile) newWrap[K comparable, V any](name string, item map[string]
 	ttlStr, _ := xmap.GetString(item, "Life")
 	var ttl time.Duration
 	if ttlStr != "" {
-		ts, err := time.ParseDuration(ttlStr)
+		ts, err := xtime.ParseDuration(ttlStr)
 		if err != nil {
 			return nil, err
 		}
@@ -321,8 +323,8 @@ func (cf *ConfigFile) parserWrapKeyTransform[K comparable, V any](wp *xcache.Wra
 
 type chainConfigItem struct {
 	Ref          string
-	Life         xtype.Duration
-	WriteTimeout xtype.Duration
+	Life         xtime.Duration
+	WriteTimeout xtime.Duration
 }
 
 var keyTransformFns = map[string]any{}

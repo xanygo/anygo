@@ -16,7 +16,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -83,10 +82,7 @@ func (fc *File[K, V]) Init(param map[string]any) error {
 		if !ok {
 			return errors.New("miss Dir")
 		}
-		rtk := reflect.TypeFor[K]()
-		rtv := reflect.TypeFor[V]()
-		hash := md5.Sum([]byte(rtk.String() + "/" + rtv.String()))
-		sign := hex.EncodeToString(hash[:])
+		sign := strconv.FormatUint(uint64(zreflect.TypeID2[K, V]()), 10)
 		fc.Dir = filepath.Join(fc.Dir, sign)
 	}
 

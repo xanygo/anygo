@@ -67,9 +67,15 @@ func GetStats(cache any) Stats {
 	return Stats{}
 }
 
-type StatsRegistry ztypes.Registry[string, HasStats]
+type Named = ztypes.Named
 
-var statsRegistry StatsRegistry = ztypes.NewRegistry[string, HasStats]()
+func NewName[K comparable, V any](name string) Named {
+	return ztypes.Named2[K, V](name)
+}
+
+type StatsRegistry ztypes.Registry[Named, HasStats]
+
+var statsRegistry StatsRegistry = ztypes.NewRegistry[Named, HasStats]()
 
 func Registry() StatsRegistry {
 	return statsRegistry

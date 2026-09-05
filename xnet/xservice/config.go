@@ -15,6 +15,7 @@ import (
 	"github.com/xanygo/anygo/ds/xbus"
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xpool"
+	"github.com/xanygo/anygo/ds/xtime"
 	"github.com/xanygo/anygo/ds/xtype"
 	"github.com/xanygo/anygo/xcfg"
 	"github.com/xanygo/anygo/xcodec"
@@ -27,17 +28,17 @@ import (
 type Config struct {
 	Name string `json:"Name" yaml:"Name" validator:"required"`
 
-	Timeout          xtype.Duration  `json:"Timeout"   yaml:"Timeout"`                 // 整体超时时间,可选，单位毫秒
-	ConnectTimeout   xtype.Duration  `json:"ConnectTimeout"   yaml:"ConnectTimeout"`   // 连接超时,可选，单位毫秒
+	Timeout          xtime.Duration  `json:"Timeout"   yaml:"Timeout"`                 // 整体超时时间,可选，单位毫秒
+	ConnectTimeout   xtime.Duration  `json:"ConnectTimeout"   yaml:"ConnectTimeout"`   // 连接超时,可选，单位毫秒
 	ConnectRetry     int             `json:"ConnectRetry"     yaml:"ConnectRetry"`     // 连接重试次数，默认为 1
-	WriteTimeout     xtype.Duration  `json:"WriteTimeout"     yaml:"WriteTimeout"`     // 写超时时间，单位毫秒
-	ReadTimeout      xtype.Duration  `json:"ReadTimeout"      yaml:"ReadTimeout"`      // 读超时时间，单位毫秒
-	HandshakeTimeout xtype.Duration  `json:"HandshakeTimeout" yaml:"HandshakeTimeout"` // 握手超时时间，单位毫秒
+	WriteTimeout     xtime.Duration  `json:"WriteTimeout"     yaml:"WriteTimeout"`     // 写超时时间，单位毫秒
+	ReadTimeout      xtime.Duration  `json:"ReadTimeout"      yaml:"ReadTimeout"`      // 读超时时间，单位毫秒
+	HandshakeTimeout xtime.Duration  `json:"HandshakeTimeout" yaml:"HandshakeTimeout"` // 握手超时时间，单位毫秒
 	Retry            int             `json:"Retry"             yaml:"Retry"`           // 重试次数，可选，默认 0
 	Protocol         string          `json:"Protocol"         yaml:"Protocol"`         // 交互协议
 	MaxResponseSize  xtype.ByteCount `json:"MaxResponseSize"   yaml:"MaxResponseSize"` // 响应最大限制，可选
 	UseProxy         string          `json:"UseProxy" yaml:"UseProxy"`                 // 将另外一个service 当做代理
-	WorkerCycle      xtype.Duration  `json:"WorkerCycle"         yaml:"WorkerCycle"`   // 后台任务运行周期，可选，如 "3s"
+	WorkerCycle      xtime.Duration  `json:"WorkerCycle"         yaml:"WorkerCycle"`   // 后台任务运行周期，可选，如 "3s"
 
 	Proxy      *xproxy.Config     `json:"Proxy"             yaml:"Proxy"`                                         // 当子服务是代理时使用，可选
 	HTTP       *HTTPPart          `json:"HTTP"              yaml:"HTTP"`                                          // HTTP 下游特有配置，可选
@@ -61,9 +62,9 @@ type ConnPoolPart struct {
 	Name            string         `json:"Name" yaml:"Name"`                       // 连接池名称，可选，默认为 Short,可选 Long
 	MaxOpen         int            `json:"MaxOpen" yaml:"MaxOpen"`                 // 最大打开数量,<= 0 为不限制
 	MaxIdle         int            `json:"MaxIdle" yaml:"MaxIdle"`                 // 最大空闲数，应 <= MaxOpen,<=0 为不允许存在 Idle 元素
-	MaxLifeTime     xtype.Duration `json:"MaxLifeTime" yaml:"MaxLifeTime"`         // 最大使用时长,单位毫秒，超过后将被销毁, <=0 为不限制
-	MaxIdleTime     xtype.Duration `json:"MaxIdleTime" yaml:"MaxIdleTime"`         // 最大空闲等待时间,单位毫秒，超过后将被销毁, <=0 为不限制
-	MaxPoolIdleTime xtype.Duration `json:"MaxPoolIdleTime" yaml:"MaxPoolIdleTime"` // 单位毫秒，当超过此时长未被使用后,关闭并清理对应的 Pool,<=0 时使用默认值 10 minute
+	MaxLifeTime     xtime.Duration `json:"MaxLifeTime" yaml:"MaxLifeTime"`         // 最大使用时长,单位毫秒，超过后将被销毁, <=0 为不限制
+	MaxIdleTime     xtime.Duration `json:"MaxIdleTime" yaml:"MaxIdleTime"`         // 最大空闲等待时间,单位毫秒，超过后将被销毁, <=0 为不限制
+	MaxPoolIdleTime xtime.Duration `json:"MaxPoolIdleTime" yaml:"MaxPoolIdleTime"` // 单位毫秒，当超过此时长未被使用后,关闭并清理对应的 Pool,<=0 时使用默认值 10 minute
 }
 
 func (cp *ConnPoolPart) GetName() string {

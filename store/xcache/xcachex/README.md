@@ -4,7 +4,7 @@
 
 全局的 `Load` 方法，从配置文件 `{ConfDir}/store/xcache.[yml|json]` 可以加载一个支持泛型类型的缓存对象。
 
-```json
+```json5
 {
     "Items":[
         {

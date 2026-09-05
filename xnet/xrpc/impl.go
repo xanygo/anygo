@@ -11,11 +11,11 @@ import (
 	"slices"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xctx"
 	"github.com/xanygo/anygo/ds/xmeta"
 	"github.com/xanygo/anygo/ds/xmetric"
 	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/ds/xsync"
+	"github.com/xanygo/anygo/ds/xtime"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/dsession"
 	"github.com/xanygo/anygo/xnet/xbalance"
@@ -154,7 +154,7 @@ func (c *Feilian) Invoke(ctx context.Context, srv any, req Request, resp Respons
 			return result
 		}
 		if backoff := retryPolicy.GetBackoff(attempt); backoff > 0 {
-			xctx.Sleep(ctxTry, backoff)
+			xtime.Sleep(ctxTry, backoff)
 		}
 	}
 	return result

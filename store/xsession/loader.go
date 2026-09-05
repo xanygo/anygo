@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/ds/xmap"
+	"github.com/xanygo/anygo/ds/xtime"
 	"github.com/xanygo/anygo/store/xcache/xcachex"
 	"github.com/xanygo/anygo/store/xkv/xkvx"
 	"github.com/xanygo/anygo/xcfg"
@@ -117,7 +118,7 @@ func (cf *ConfigFile) getSessionLife(item map[string]any) (time.Duration, error)
 	if !ok || life == "" {
 		return 365 * 24 * time.Hour, nil
 	}
-	return time.ParseDuration(life)
+	return xtime.ParseDuration(life)
 }
 
 func (cf *ConfigFile) newXKV(name string, item map[string]any) (NewStorageFunc, error) {
