@@ -87,4 +87,4 @@
 }
 ```
 
-目前的 `Type` 以支持 `File`,`MemoryLRU`,`MemoryFIFO`,`MemoryLIFO`,`Redis`,`DB`,`Nop`,`Chains`,`Wrap` 这些。
+目前的 `Type` 已支持 `File`,`MemoryLRU`,`MemoryFIFO`,`MemoryLIFO`,`Redis`,`DB`,`Nop`,`Chains`,`Wrap` 这些。

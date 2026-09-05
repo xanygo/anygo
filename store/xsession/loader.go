@@ -34,7 +34,7 @@ func LoadStorageFunc(name string) (NewStorageFunc, error) {
 	if configErr != nil {
 		return nil, configErr
 	}
-	return globalConfigFile.Load(name)
+	return globalConfigFile.LoadStorageFunc(name)
 }
 
 func MustLoadStorageFunc(name string) NewStorageFunc {
@@ -55,7 +55,7 @@ type instanceValue struct {
 	E error
 }
 
-func (cf *ConfigFile) Load(name string) (NewStorageFunc, error) {
+func (cf *ConfigFile) LoadStorageFunc(name string) (NewStorageFunc, error) {
 	if val, ok := cf.instance.Load(name); ok {
 		v := val.(*instanceValue)
 		if v.E != nil {
@@ -72,8 +72,8 @@ func (cf *ConfigFile) Load(name string) (NewStorageFunc, error) {
 	return v.V, v.E
 }
 
-func (cf *ConfigFile) MustLoad(name string) NewStorageFunc {
-	fn, err := cf.Load(name)
+func (cf *ConfigFile) MustLoadStorageFunc(name string) NewStorageFunc {
+	fn, err := cf.LoadStorageFunc(name)
 	if err != nil {
 		panic(err)
 	}

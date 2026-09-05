@@ -68,10 +68,12 @@ func TestNewMux(t *testing.T) {
 	})
 
 	// client side: open two streams
-	clientStream1, _ := muxClient.Open()
+	clientStream1, err1 := muxClient.Open()
+	xt.NoError(t, err1)
 	xt.Equal(t, clientStream1.ID(), 2)
 
-	clientStream2, _ := muxClient.Open()
+	clientStream2, err2 := muxClient.Open()
+	xt.NoError(t, err2)
 	xt.Equal(t, clientStream2.ID(), 4)
 
 	var wg2 sync.WaitGroup

@@ -399,14 +399,14 @@ func (s *MuxStream[T]) Read(p []byte) (int, error) {
 
 	// 如果已关闭且没有数据
 	if s.closed.Load() {
-		return 0, io.EOF
+		return 0, fmt.Errorf("%w: read on closed muxStream", io.EOF)
 	}
 
 	// 阻塞等待新的数据块或 MuxStream 被关闭
 	select {
 	case data, ok := <-s.ch:
 		if !ok {
-			return 0, io.EOF
+			return 0, fmt.Errorf("%w: when data channel closed", io.EOF)
 		}
 		// 尽可能复制请求长度的数据，如果 data 更长，将剩余部分放入 pending
 		n := copy(p, data)
@@ -417,9 +417,9 @@ func (s *MuxStream[T]) Read(p []byte) (int, error) {
 		}
 		return n, nil
 	case <-s.closedCh:
-		return 0, io.EOF
+		return 0, fmt.Errorf("%w: stream closing", io.EOF)
 	case <-s.mux.closedCh:
-		return 0, io.EOF
+		return 0, fmt.Errorf("%w: mux closing", io.EOF)
 		// case <-time.After(10 * time.Second):
 		//	return 0, fmt.Errorf("timeout")
 	}
@@ -429,7 +429,7 @@ func (s *MuxStream[T]) Read(p []byte) (int, error) {
 // 如果数据过大，会自动分片通过 Mux 发送。
 func (s *MuxStream[T]) Write(p []byte) (int, error) {
 	if s.closed.Load() {
-		return 0, io.EOF
+		return 0, fmt.Errorf("%w: write on closed muxStream", io.EOF)
 	}
 
 	// 通过 Mux 写入分片数据
