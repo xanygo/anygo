@@ -136,3 +136,21 @@ func TestDuration_UnmarshalText(t *testing.T) {
 		})
 	}
 }
+
+func TestParseDuration(t *testing.T) {
+	got, err := xtime.ParseDuration("1d")
+	xt.NoError(t, err)
+	xt.Equal(t, xtime.Day, got)
+
+	got, err = xtime.ParseDuration("2d1h")
+	xt.NoError(t, err)
+	xt.Equal(t, 2*xtime.Day+time.Hour, got)
+
+	got, err = xtime.ParseDuration("1h")
+	xt.NoError(t, err)
+	xt.Equal(t, time.Hour, got)
+
+	got, err = xtime.ParseDuration("-2d1h")
+	xt.NoError(t, err)
+	xt.Equal(t, -2*xtime.Day-time.Hour, got)
+}

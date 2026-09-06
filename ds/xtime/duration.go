@@ -117,7 +117,21 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 	return d.UnmarshalText(b)
 }
 
+// ParseDuration 解析时长字符串
+//
+// 除支持 time.ParseDuration 支持的时间单位外，还额外支持 "d"（天）单位，
+// 其中 1d 等于 24 小时。天数支持小数，并可与其他时间单位组合。
+//
+//	示例：
+//
+//	"1d"      // 24h
+//	"1.5d"    // 36h
+//	"1d2h"    // 26h
+//	"1d2h30m" // 26h30m
+//	"-1d"     // -24h
+//	"2h30m"   // 2h30m
 func ParseDuration(s string) (time.Duration, error) {
+	s = strings.TrimSpace(s)
 	before, after, found := strings.Cut(s, "d")
 	if !found {
 		return time.ParseDuration(s)
@@ -125,10 +139,15 @@ func ParseDuration(s string) (time.Duration, error) {
 	if strings.HasPrefix(before, "-") {
 		after = "-" + after
 	}
-	a, err := time.ParseDuration(after)
-	if err != nil {
-		return 0, err
+	var a time.Duration
+	if after != "" {
+		var err error
+		a, err = time.ParseDuration(after)
+		if err != nil {
+			return 0, err
+		}
 	}
+
 	f, err := strconv.ParseFloat(before, 64)
 	if err != nil {
 		return 0, fmt.Errorf("time: invalid duration %q", s)
