@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xerror"
 )
@@ -32,18 +33,18 @@ type Chain[K comparable, V any] struct {
 	// Cache  必填
 	Cache Cache[K, V]
 
-	// LifeFn 必填，动态获取数据的缓存有效期,若是 Chains 里的最后一个则不需要
-	LifeFn func(ctx context.Context, key K, value V) time.Duration
+	// LifeFn 必填，动态获取数据的缓存有效期
+	NewLifeFn func(key K, ttl time.Duration) time.Duration
 
 	// WriteTimeout 可选，读取后给未命中缓存的对象，填充缓存的写超时,默认 10秒
 	WriteTimeout time.Duration
 }
 
-func (c *Chain[K, V]) set(ctx context.Context, key K, value V) {
-	ctx, cancel := context.WithTimeout(ctx, c.getTimeout())
-	defer cancel()
-	ttl := c.LifeFn(ctx, key, value)
-	_ = c.Cache.Set(ctx, key, value, ttl)
+func (c *Chain[K, V]) getLife(key K, ttl time.Duration) time.Duration {
+	if c.NewLifeFn == nil {
+		return ttl
+	}
+	return c.NewLifeFn(key, ttl)
 }
 
 func (c *Chain[K, V]) getTimeout() time.Duration {
@@ -78,25 +79,24 @@ func (c *chains[K, V]) Has(ctx context.Context, key K) (has bool, err error) {
 	return false, err
 }
 
-func (c *chains[K, V]) TTL(ctx context.Context, key K) (ttl time.Duration, err error) {
+func (c *chains[K, V]) TTL(ctx context.Context, key K) (life time.Duration, err error) {
 	for _, item := range c.caches {
-		ttl, err = item.Cache.TTL(ctx, key)
-		if ttl > 0 {
-			return ttl, nil
+		life, err = item.Cache.TTL(ctx, key)
+		if life > 0 {
+			return life, nil
 		}
 	}
 	return 0, err
 }
 
 func (c *chains[K, V]) Expire(ctx context.Context, key K, life time.Duration) error {
-	var err error
+	var wg xsync.WaitGroup
 	for _, item := range c.caches {
-		if err = item.Cache.Expire(ctx, key, life); err == nil {
-			// 只需要设置成功一个即可
-			break
-		}
+		wg.GoCtxErr(ctx, func(ctx context.Context) error {
+			return item.Cache.Expire(ctx, key, item.getLife(key, life))
+		})
 	}
-	return err
+	return wg.Wait()
 }
 
 func (c *chains[K, V]) Get(ctx context.Context, key K) (v V, err error) {
@@ -105,6 +105,7 @@ func (c *chains[K, V]) Get(ctx context.Context, key K) (v V, err error) {
 		value, err := item.Cache.Get(ctx, key)
 		if err == nil {
 			if idx > 0 {
+				// 从后面的 cache 中取到了值，然后设置到前面的 cache 中去
 				go c.setBefore(ctx, idx, key, value)
 			}
 			return value, nil
@@ -120,11 +121,16 @@ func (c *chains[K, V]) Get(ctx context.Context, key K) (v V, err error) {
 
 func (c *chains[K, V]) setBefore(ctx context.Context, idx int, k K, v V) {
 	ctx = context.WithoutCancel(ctx)
-	ctx, cancel := context.WithTimeout(ctx, time.Minute)
-	defer cancel()
+	var wg xsync.WaitGroup
 	for i := range idx {
-		c.caches[i].set(ctx, k, v)
+		wg.GoCtxErr(ctx, func(ctx context.Context) error {
+			item := c.caches[i]
+			ctx1, cancel1 := context.WithTimeout(ctx, item.getTimeout())
+			defer cancel1()
+			return item.Cache.Set(ctx1, k, v, item.getLife(k, 0))
+		})
 	}
+	wg.Wait()
 }
 
 func (c *chains[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration) error {
@@ -132,26 +138,27 @@ func (c *chains[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duratio
 	// 底层的 cache 一般速度可能会更慢，所以采用异步，并且提前写
 	for _, item := range c.caches[1:] {
 		go safely.RunCtxVoid(ctx1, func(ctx2 context.Context) {
-			ctx3, cancel := context.WithTimeout(ctx2, time.Minute)
+			ctx3, cancel := context.WithTimeout(ctx2, item.getTimeout())
 			defer cancel()
-			_ = item.Cache.Set(ctx3, key, value, ttl)
+			_ = item.Cache.Set(ctx3, key, value, item.getLife(key, ttl))
 		})
 	}
-	err := c.caches[0].Cache.Set(ctx, key, value, ttl)
+	first := c.caches[0]
+	err := first.Cache.Set(ctx, key, value, first.getLife(key, ttl))
 	return err
 }
 
 func (c *chains[K, V]) Delete(ctx context.Context, keys ...K) error {
-	var errs []error
-	for _, item := range c.caches {
-		if err := item.Cache.Delete(ctx, keys...); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	if len(errs) == 0 {
+	if len(keys) == 0 {
 		return nil
 	}
-	return errors.Join(errs...)
+	var wg xsync.WaitGroup
+	for _, item := range c.caches {
+		wg.GoCtxErr(ctx, func(ctx context.Context) error {
+			return item.Cache.Delete(ctx, keys...)
+		})
+	}
+	return wg.Wait()
 }
 
 var _ HasStats = (*chains[string, string])(nil)

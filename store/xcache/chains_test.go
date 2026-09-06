@@ -5,7 +5,6 @@
 package xcache_test
 
 import (
-	"context"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -17,13 +16,13 @@ import (
 func TestNewChains(t *testing.T) {
 	l1 := &xcache.Chain[string, string]{
 		Cache: xcache.NewLRU[string, string](10),
-		LifeFn: func(ctx context.Context, key string, value string) time.Duration {
+		NewLifeFn: func(key string, ttl time.Duration) time.Duration {
 			return time.Minute
 		},
 	}
 	l2 := &xcache.Chain[string, string]{
 		Cache: xcache.NewLRU[string, string](10),
-		LifeFn: func(ctx context.Context, key string, value string) time.Duration {
+		NewLifeFn: func(key string, ttl time.Duration) time.Duration {
 			return 2 * time.Minute
 		},
 	}

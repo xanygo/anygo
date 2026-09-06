@@ -8,11 +8,16 @@
 {
     "Items":[
         {
-            "Name":"cache1",   // 必填，名称，Load 方法里使用的 name 参数值
-            "Type":"File",     // 必填，缓存类型，使用本地文件存储数据
+            "Name":"cache1",     // 必填，名称，Load 方法里使用的 name 参数值
+            "Type":"File",       // 必填，缓存类型，使用本地文件存储数据
             "Dir":"{xattr.DataDir}/filecache/cache1",  // 必填参数, 缓存数据目录
-            "Codec":"json",    // 可选。数据编码方式，默认为 json
-            "Capacity":12345   // 可选，最大缓存个数(非严格限定)，在清理时，会按照创建时间删除多余的
+            "Codec":"json",      // 可选。数据编码方式，默认为 json
+            "Capacity":12345,    // 可选，最大缓存个数(非严格限定)，在清理时，会按照创建时间删除多余的
+            "Life":{             // 可选，缓存有效期，所有类型的缓存都可以设置，详见下文
+                "Min":"1h",
+                "Max":"2d",
+                "Force":"1h"
+            },
         },
         {
             "Name":"cache2",    // 必填，名称
@@ -33,15 +38,15 @@
             "Name":"cache5",      // 必填，名称
             "Type":"Redis",       // 必填，缓存类型，数据存储在 Redis 数据库中
             "Service":"rds",      // 必填，Redis 数据库的服务名称，对应服务配置一般在 {app}/conf/service/rds.yml 
-            "KeyPrefix":"user_"， // 可选，缓存前缀
+            "KeyPrefix":"user_", // 可选，缓存前缀
             "Codec":"json"        // 可选。数据编码方式，默认为 json
         },
         {
             "Name":"cache6",
             "Type":"DB",          // 必填，缓存类型，数据存储在数据库(如 sqlite、mysql、pgx 等)中
             "Service":"mysql1",   // 必填，数据库的服务名称，对应服务配置一般在 {app}/conf/service/mysql1.yml 
-            "KeyPrefix":"user_"， // 可选，缓存前缀
-            "Table":"xcache"，    // 可选，缓存数据的表名，默认为 xcache
+            "KeyPrefix":"user_", // 可选，缓存前缀
+            "Table":"xcache",    // 可选，缓存数据的表名，默认为 xcache
             "Capacity":12345,     // 可选, 缓存容量大小(非严格限定)
             "GC":"30s",           // 可选，自动清理任务的运行周期，默认 60s
             "BGTimeout":"30s",    // 可选，后台任务的超时时间
@@ -57,12 +62,22 @@
             "Chains":[                // 必填。应包含 >=1 个有效值
                 {
                     "Ref":"cache2",      // 必填，引用的数据库名称，在此配置中已经定义好的
-                    "Life":"1800s",      // 必填，缓存有效期
+                    "Life":{             // 必填，缓存有效期
+                        "Default":"1h",
+                        "Min":"1h",
+                        "Max":"2d",
+                        "Force":"1h"
+                    },
                     "WriteTimeout":"3s"  // 可选，异步写超时时间
                 },
                 {
                     "Ref":"cache6",      // 必填，引用的数据库名称，在此配置中已经定义好的
-                    "Life":"3600s",      // 必填，但是最后一个对象，此值不用
+                    "Life":{             // 必填，缓存有效期
+                        "Default":"1h",
+                        "Min":"1h",
+                        "Max":"1d",
+                        "Force":"2d"
+                    },
                     "WriteTimeout":"3s"  // 可选
                 }
             ]
@@ -71,7 +86,11 @@
             "Name":"cache9",
             "Type":"Wrap",            // 必填，缓存类型。链式多级缓存
             "Ref":"cache1",           // 必填，引用的数据库名称，在此配置中已经定义好的
-            "Life":"1800s",           // 可选，强制设置的缓存有效期
+            "Life":{                  // 可选，缓存有效期，所有类型的缓存都可以设置，详见下文
+                "Min":"1h",
+                "Max":"2d",
+                "Force":"1h"
+            },
             "KeyTransform":{          // 可选，对缓存的 key 做变换处理
                 "string":{            // 可选，对于 key 的类型是 string 的调用，可以添加前缀和后缀
                     "Prefix":"prefix_",  // 可选，给 key 添加前缀
@@ -88,3 +107,25 @@
 ```
 
 目前的 `Type` 已支持 `File`,`MemoryLRU`,`MemoryFIFO`,`MemoryLIFO`,`Redis`,`DB`,`Nop`,`Chains`,`Wrap` 这些。
+
+所有的 类型(`Type`)都支持配置 `Life` 来强制干预缓存的有效期：
+```json5
+ {
+    "Type":"XXX",
+    "Life":{
+        "Default":"1h",      // 当调用 API 时，传入的 life=0 时生效，第一个判断使用
+        "Min":"1h",          // 值 >0 时，若调用 API 时传入的值小于此值，则使用此值
+        "Max":"2d",          // 值 >0 时，若调用 API 时传入的值大于此值，则使用此值
+        "Force":"1h"         // 值 >0 时，覆盖掉调用 API 时传入的的值
+    }
+}
+```
+有效期采用 StringDuration 类型来表示，如：
+
+    1. 30d    -> 30 天 ( 30*24 小时)
+    2. 1h     -> 1 小时
+    3. 1d1h   -> 25 小时
+    4. 2h5m   -> 2 小时 5 分钟
+    5. 1800s  -> 1800 秒
+
+当配置的时间长度值 >0 时生效，优先级: `Default`  > `Force` > `Min` 和 `Max` 。

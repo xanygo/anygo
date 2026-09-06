@@ -44,14 +44,25 @@ func TestConfigFileLoad(t *testing.T) {
 				"Type": "Chains", // 必填，缓存类型。链式多级缓存
 				"Chains": []map[string]any{ // 必填。应包含 >=1 个有效值
 					{
-						"Ref":          "cache2", // 必填，引用的数据库名称，在此配置中已经定义好的
-						"Life":         "1800s",  // 必填，缓存有效期
-						"WriteTimeout": "3s",     // 可选，异步写超时时间
+						"Ref": "cache2", // 必填，引用的数据库名称，在此配置中已经定义好的
+						"Life": map[string]any{ // 必填，缓存有效期
+							"Force": "1h",
+						},
+						"WriteTimeout": "3s", // 可选，异步写超时时间
 					},
 					{
-						"Ref":          "cache4", // 必填，引用的数据库名称，在此配置中已经定义好的
-						"Life":         "3600s",  // 必填，但是最后一个对象，此值不用
-						"WriteTimeout": "3s",     // 可选
+						"Ref": "cache4", // 必填，引用的数据库名称，在此配置中已经定义好的
+						"Life": map[string]any{ // 必填，缓存有效期
+							"Min": "2h",
+						},
+						"WriteTimeout": "3s", // 可选
+					},
+					{
+						"Ref": "cache5", // 必填，引用的数据库名称，在此配置中已经定义好的
+						"Life": map[string]any{ // 必填，缓存有效期
+							"Default": "1h",
+						},
+						"WriteTimeout": "3s", // 可选
 					},
 				},
 			},
@@ -59,7 +70,9 @@ func TestConfigFileLoad(t *testing.T) {
 				"Name": "cache7",
 				"Type": "Wrap",   // 必填，缓存类型。链式多级缓存
 				"Ref":  "cache1", // 必填，引用的数据库名称，在此配置中已经定义好的
-				"Life": "1800s",  // 可选，强制设置的缓存有效期
+				"Life": map[string]any{ // 可选，强制设置的缓存有效期
+					"Default": "1h",
+				},
 				"KeyTransform": map[string]any{ // 可选，对缓存的 key 做变换处理
 					"string": map[string]any{ // 可选，对于 key 的类型是 string 的调用，可以添加前缀和后缀
 						"Prefix": "prefix_", // 可选，给 key 添加前缀
@@ -69,6 +82,15 @@ func TestConfigFileLoad(t *testing.T) {
 						"Refuse": true, // 可选，拒绝。让 Cache 调用报错
 						"Panic":  true, // 可选，拒绝。让 Cache 调用 panic，在 Refuse 前判断
 					},
+				},
+			},
+			{
+				"Name":     "cache8",
+				"Type":     "MemoryLIFO",
+				"Capacity": 12345,
+				"Life": map[string]any{
+					"Min": "1h",
+					"Max": "2d",
 				},
 			},
 		},

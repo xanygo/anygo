@@ -26,10 +26,10 @@ type Wrapper[K comparable, V any] struct {
 	// Cache 必填，缓存对象
 	Cache Cache[K, V]
 
-	// NewLifeFn 可选，依据 key 和 value 动态的 TTL 时间。传入的key是原始的
+	// NewLifeFn 可选，依据 key 动态的调整 TTL 时间。传入的 key 是原始的。
 	//
 	// NewLifeFn 和 NewKeyFn 二者至少一个不为空，否则就没有必要使用了
-	NewLifeFn func(k K, v V, ttl time.Duration) time.Duration
+	NewLifeFn func(k K, ttl time.Duration) time.Duration
 
 	// NewKeyFn 可选，用于变换 Key
 	NewKeyFn func(k K) K
@@ -39,9 +39,9 @@ func (w *Wrapper[K, V]) Unwrap() any {
 	return w.Cache
 }
 
-func (w *Wrapper[K, V]) getDyTTL(key K, value V, ttl time.Duration) time.Duration {
+func (w *Wrapper[K, V]) getDyTTL(key K, ttl time.Duration) time.Duration {
 	if w.NewLifeFn != nil {
-		return w.NewLifeFn(key, value, ttl)
+		return w.NewLifeFn(key, ttl)
 	}
 	return ttl
 }
@@ -62,7 +62,7 @@ func (w *Wrapper[K, V]) TTL(ctx context.Context, key K) (time.Duration, error) {
 }
 
 func (w *Wrapper[K, V]) Expire(ctx context.Context, key K, ttl time.Duration) error {
-	return w.Cache.Expire(ctx, w.getNewKey(key), ttl)
+	return w.Cache.Expire(ctx, w.getNewKey(key), w.getDyTTL(key, ttl))
 }
 
 func (w *Wrapper[K, V]) Get(ctx context.Context, key K) (value V, err error) {
@@ -70,7 +70,7 @@ func (w *Wrapper[K, V]) Get(ctx context.Context, key K) (value V, err error) {
 }
 
 func (w *Wrapper[K, V]) Set(ctx context.Context, key K, value V, ttl time.Duration) error {
-	return w.Cache.Set(ctx, w.getNewKey(key), value, w.getDyTTL(key, value, ttl))
+	return w.Cache.Set(ctx, w.getNewKey(key), value, w.getDyTTL(key, ttl))
 }
 
 func (w *Wrapper[K, V]) Delete(ctx context.Context, keys ...K) error {
@@ -101,7 +101,7 @@ func (w *Wrapper[K, V]) MSet(ctx context.Context, values map[K]V, ttl time.Durat
 	chunks := make(map[time.Duration]map[K]V, 0)
 	var num int
 	for k, v := range values {
-		nt := w.NewLifeFn(k, v, ttl)
+		nt := w.NewLifeFn(k, ttl)
 		if _, has := chunks[nt]; !has {
 			chunks[nt] = make(map[K]V, len(values)-num)
 		}

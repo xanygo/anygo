@@ -152,7 +152,8 @@ func mget[K comparable, V any](ctx context.Context, c Cache[K, V], worker int, k
 			return err
 		})
 	}
-	return result, wg.Wait()
+	err = wg.Wait()
+	return result, err
 }
 
 func mset[K comparable, V any](ctx context.Context, c Cache[K, V], worker int, values map[K]V, ttl time.Duration) (err error) {

@@ -1,7 +1,6 @@
 package xcachex
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -103,7 +102,7 @@ func (cf *ConfigFile) createCache[K comparable, V any](name string) (xcache.MCac
 		if name != str {
 			continue
 		}
-		c, err := cf.newCache[K, V](name, item)
+		c, err := cf.newCache1[K, V](name, item)
 		if err != nil {
 			err = fmt.Errorf("load xcache %q: %w", name, err)
 		}
@@ -112,11 +111,32 @@ func (cf *ConfigFile) createCache[K comparable, V any](name string) (xcache.MCac
 	return nil, fmt.Errorf("load xcache %q: %w, Items.len=%d", name, xerror.NotFound, len(cf.Items))
 }
 
-func (cf *ConfigFile) newCache[K comparable, V any](name string, item map[string]any) (xcache.MCache[K, V], error) {
+func (cf *ConfigFile) newCache1[K comparable, V any](name string, item map[string]any) (xcache.MCache[K, V], error) {
 	tp, _ := xmap.GetString(item, "Type")
 	if tp == "" {
 		return nil, fmt.Errorf("invalid cache type: %v", item)
 	}
+	switch tp {
+	case "Nop":
+		return &xcache.Nop[K, V]{}, nil
+	case "Chains":
+		return cf.newChains[K, V](name, item)
+	case "Wrap":
+		return cf.newWrap[K, V](name, item)
+	default:
+		life, err := cf.parserLife(item)
+		if err != nil {
+			return nil, err
+		}
+		cc, err := cf.newCache2[K, V](tp, name, item)
+		if err != nil || life.empty() {
+			return cc, err
+		}
+		return life.wrap(cc), nil
+	}
+}
+
+func (cf *ConfigFile) newCache2[K comparable, V any](tp string, name string, item map[string]any) (xcache.MCache[K, V], error) {
 	switch tp {
 	case "File":
 		fc := &xcache.File[K, V]{}
@@ -134,12 +154,6 @@ func (cf *ConfigFile) newCache[K comparable, V any](name string, item map[string
 		return cf.newRedis[K, V](name, item)
 	case "DB":
 		return cf.newDB[K, V](name, item)
-	case "Nop":
-		return &xcache.Nop[K, V]{}, nil
-	case "Chains":
-		return cf.newChains[K, V](name, item)
-	case "Wrap":
-		return cf.newWrap[K, V](name, item)
 	default:
 		return nil, fmt.Errorf("newCache wth unsupport Type=%q", tp)
 	}
@@ -186,13 +200,22 @@ func (cf *ConfigFile) newChains[K comparable, V any](name string, item map[strin
 	var chains []*xcache.Chain[K, V]
 	var errs []error
 	xslice.Range[any](val, func(val any) bool {
-		zc := chainConfigItem{}
-		if err := xcodec.Convert(val, &zc); err != nil {
+		zc, err := xcodec.ConvertAs[*chainItemConfig](val)
+		if err != nil {
 			errs = append(errs, err)
 			return false
 		}
-		if zc.Ref == "" || zc.Life == 0 {
-			errs = append(errs, fmt.Errorf("invalid config: Ref=%q Life=%s", zc.Ref, zc.Life.String()))
+		if zc.Ref == "" {
+			errs = append(errs, fmt.Errorf("required Ref in %v", val))
+			return false
+		}
+		if zc.Life.empty() {
+			errs = append(errs, fmt.Errorf("required Life in %v", val))
+			return false
+		}
+
+		if zc.Life.Default <= 0 && zc.Life.Min <= 0 && zc.Life.Force <= 0 {
+			errs = append(errs, fmt.Errorf("required Life.[Default|Min|Force] in %v", val))
 			return false
 		}
 
@@ -207,10 +230,8 @@ func (cf *ConfigFile) newChains[K comparable, V any](name string, item map[strin
 			return false
 		}
 		ci := &xcache.Chain[K, V]{
-			Cache: c,
-			LifeFn: func(ctx context.Context, key K, value V) time.Duration {
-				return zc.Life.Duration()
-			},
+			Cache:        c,
+			NewLifeFn:    zc.Life.newLifeFn[K],
 			WriteTimeout: zc.WriteTimeout.Duration(),
 		}
 
@@ -238,18 +259,13 @@ func (cf *ConfigFile) newWrap[K comparable, V any](name string, item map[string]
 		return nil, err
 	}
 
-	ttlStr, _ := xmap.GetString(item, "Life")
-	var ttl time.Duration
-	if ttlStr != "" {
-		ts, err := xtime.ParseDuration(ttlStr)
-		if err != nil {
-			return nil, err
-		}
-		ttl = ts
+	life, err := cf.parserLife(item)
+	if err != nil {
+		return nil, err
 	}
 
 	keyTransform, _ := xmap.GetMap(item, "KeyTransform")
-	if len(keyTransform) == 0 && ttl == 0 {
+	if len(keyTransform) == 0 && life.empty() {
 		// 两者同时为空，返回原始的
 		return c, nil
 	}
@@ -262,10 +278,8 @@ func (cf *ConfigFile) newWrap[K comparable, V any](name string, item map[string]
 		}
 	}
 
-	if ttl > 0 {
-		wp.NewLifeFn = func(k K, v V, t time.Duration) time.Duration {
-			return ttl
-		}
+	if life != nil {
+		wp.NewLifeFn = life.newLifeFn[K]
 	}
 	return wp, nil
 }
@@ -321,9 +335,53 @@ func (cf *ConfigFile) parserWrapKeyTransform[K comparable, V any](wp *xcache.Wra
 	return nil
 }
 
-type chainConfigItem struct {
+func (cf *ConfigFile) parserLife(cfg map[string]any) (*lifeConfig, error) {
+	param, ok := xmap.GetMap(cfg, "Life")
+	if !ok || len(param) == 0 {
+		return nil, nil
+	}
+	return xcodec.ConvertAs[*lifeConfig](param)
+}
+
+type lifeConfig struct {
+	Default xtime.Duration // 默认值，当 ttl 为 0 时生效
+	Force   xtime.Duration // 优先级最高
+	Min     xtime.Duration
+	Max     xtime.Duration
+}
+
+func (lc *lifeConfig) empty() bool {
+	return lc == nil || (lc.Default <= 0 && lc.Force <= 0 && lc.Min <= 0 && lc.Max <= 0)
+}
+
+func (lc *lifeConfig) newLifeFn[K comparable](k K, t time.Duration) time.Duration {
+	if t == 0 && lc.Default > 0 {
+		return lc.Default.Duration()
+	}
+	if lc.Force > 0 {
+		return lc.Force.Duration()
+	}
+	if lc.Min > 0 && t < lc.Min.Duration() {
+		return lc.Min.Duration()
+	}
+
+	if lc.Max > 0 && t > lc.Max.Duration() {
+		return lc.Max.Duration()
+	}
+
+	return t
+}
+
+func (lc *lifeConfig) wrap[K comparable, V any](c xcache.MCache[K, V]) xcache.MCache[K, V] {
+	return &xcache.Wrapper[K, V]{
+		Cache:     c,
+		NewLifeFn: lc.newLifeFn[K],
+	}
+}
+
+type chainItemConfig struct {
 	Ref          string
-	Life         xtime.Duration
+	Life         *lifeConfig
 	WriteTimeout xtime.Duration
 }
 
