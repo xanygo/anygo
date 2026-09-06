@@ -1,9 +1,11 @@
 package xsession
 
 import (
+	"errors"
 	"fmt"
-	"log"
+	"io/fs"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -22,9 +24,10 @@ var configOnce sync.Once
 
 func loadConfig() {
 	globalConfigFile = &ConfigFile{}
-	configErr = xcfg.Parse("store/xsession", &globalConfigFile)
-
-	log.Println("configErr=", configErr)
+	err := xcfg.Parse("store/xsession", &globalConfigFile)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		configErr = err
+	}
 }
 
 // LoadStorageFunc 依据名字初始化并加载 HTTPHandler 所需要的 NewStorageFunc。
@@ -44,6 +47,23 @@ func MustLoadStorageFunc(name string) NewStorageFunc {
 		panic(err)
 	}
 	return c
+}
+
+// CheckConfig 检查 store/xsession 配置文件是否正确
+func CheckConfig() error {
+	configOnce.Do(loadConfig)
+	if configErr != nil {
+		return configErr
+	}
+	return globalConfigFile.Check()
+}
+
+// MustCheckConfig 检查 store/xsession 配置文件是否正确，若不正确则panic
+func MustCheckConfig() {
+	err := CheckConfig()
+	if err != nil {
+		panic(fmt.Errorf("check store/xkv: %w", err))
+	}
 }
 
 type ConfigFile struct {
@@ -79,6 +99,27 @@ func (cf *ConfigFile) MustLoadStorageFunc(name string) NewStorageFunc {
 		panic(err)
 	}
 	return fn
+}
+
+func (cf *ConfigFile) Check() error {
+	clone := &ConfigFile{
+		Items: slices.Clone(cf.Items),
+	}
+	var errs []error
+	for idx, item := range clone.Items {
+		name, _ := xmap.GetString(item, "Name")
+		if name == "" {
+			err := fmt.Errorf("[%d].Name is empty: %v", idx, item)
+			errs = append(errs, err)
+			continue
+		}
+		_, err := clone.newFn(name, item)
+		if err != nil {
+			err = fmt.Errorf("[%d]=%q: %w", idx, name, err)
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 func (cf *ConfigFile) createFn(name string) (NewStorageFunc, error) {

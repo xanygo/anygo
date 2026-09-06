@@ -1,9 +1,12 @@
 package xkvx
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strconv"
 	"sync"
 
@@ -21,7 +24,10 @@ var configOnce sync.Once
 
 func loadConfig() {
 	globalConfigFile = &ConfigFile{}
-	configErr = xcfg.Parse("store/xkv", &globalConfigFile)
+	err := xcfg.Parse("store/xkv", &globalConfigFile)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		configErr = err
+	}
 }
 
 // Load 依据名字初始化并加载 xkv 对象。使用配置文件 {confDir}/store/xkv.{json|yml|toml}
@@ -39,6 +45,23 @@ func MustLoad[V any](name string) xkv.Storage[V] {
 		panic(fmt.Errorf("load %q: %w", name, err))
 	}
 	return c
+}
+
+// CheckConfig 检查 store/xkv 配置文件是否正确
+func CheckConfig() error {
+	configOnce.Do(loadConfig)
+	if configErr != nil {
+		return configErr
+	}
+	return globalConfigFile.Check()
+}
+
+// MustCheckConfig 检查 store/xkv 配置文件是否正确，若不正确则panic
+func MustCheckConfig() {
+	err := CheckConfig()
+	if err != nil {
+		panic(fmt.Errorf("check store/xkv: %w", err))
+	}
 }
 
 type instanceKey[V any] struct {
@@ -85,6 +108,27 @@ func (cf *ConfigFile) Load[V any](name string) (xkv.Storage[V], error) {
 		return nil, v.E
 	}
 	return v.Value.(xkv.Storage[V]), nil
+}
+
+func (cf *ConfigFile) Check() error {
+	clone := &ConfigFile{
+		Items: slices.Clone(cf.Items),
+	}
+	var errs []error
+	for idx, item := range clone.Items {
+		name, _ := xmap.GetString(item, "Name")
+		if name == "" {
+			err := fmt.Errorf("[%d].Name is empty: %v", idx, item)
+			errs = append(errs, err)
+			continue
+		}
+		_, err := clone.newKV[string](name, item)
+		if err != nil {
+			err = fmt.Errorf("[%d]=%q: %w", idx, name, err)
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 func (cf *ConfigFile) createKV[V any](name string) (xkv.Storage[V], error) {

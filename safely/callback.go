@@ -89,6 +89,7 @@ func (p *PanicErr) TraceData() map[string]any {
 	return map[string]any{
 		"ID":    p.ID,
 		"Panic": p.Panic,
+		"Re":    fmt.Sprint(p.Panic),
 		"File":  p.File,
 		"Line":  p.Line,
 		"Fn":    p.Fn,

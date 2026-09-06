@@ -1,23 +1,25 @@
 package ztypes
 
+import "reflect"
+
 type Named interface {
 	Name() string
 }
 
 func Named2[K any, V any](name string) Named {
-	return named2[K, V]{
+	return named2{
 		name: name,
+		a:    reflect.TypeFor[K](),
+		b:    reflect.TypeFor[V](),
 	}
 }
 
-var _ Named = named2[string, string]{name: "a", a: "a", b: "b"}
-
-type named2[A any, B any] struct {
+type named2 struct {
 	name string
-	a    A
-	b    B
+	a    reflect.Type
+	b    reflect.Type
 }
 
-func (n named2[A, B]) Name() string {
+func (n named2) Name() string {
 	return n.name
 }

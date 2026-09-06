@@ -3,7 +3,9 @@ package xcachex
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -25,7 +27,10 @@ var configOnce sync.Once
 
 func loadConfig() {
 	globalConfigFile = &ConfigFile{}
-	configErr = xcfg.Parse("store/xcache", &globalConfigFile)
+	err := xcfg.Parse("store/xcache", &globalConfigFile)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		configErr = err
+	}
 }
 
 // Load 依据名字初始化并加载 Cache 对象。使用配置文件 {confDir}/store/xcache.{json|yml|toml}
@@ -45,6 +50,23 @@ func MustLoad[K comparable, V any](name string) xcache.MCache[K, V] {
 	return c
 }
 
+// CheckConfig 检查 store/xcache 配置文件是否正确
+func CheckConfig() error {
+	configOnce.Do(loadConfig)
+	if configErr != nil {
+		return configErr
+	}
+	return globalConfigFile.Check()
+}
+
+// MustCheckConfig 检查 store/xcache 配置文件是否正确，若不正确则panic
+func MustCheckConfig() {
+	err := CheckConfig()
+	if err != nil {
+		panic(fmt.Errorf("check store/xcache: %w", err))
+	}
+}
+
 type instanceKey[K comparable, V any] struct {
 	K K
 	V V
@@ -59,8 +81,7 @@ type instanceValue struct {
 type ConfigFile struct {
 	Items    []map[string]any `json:"Items" yaml:"Items"`
 	instance sync.Map
-
-	refs xcontainer.DepGraph[string]
+	refs     xcontainer.DepGraph[string]
 }
 
 func (cf *ConfigFile) MustLoad[K comparable, V any](name string) xcache.MCache[K, V] {
@@ -94,6 +115,27 @@ func (cf *ConfigFile) Load[K comparable, V any](name string) (xcache.MCache[K, V
 		return nil, v.E
 	}
 	return v.C.(xcache.MCache[K, V]), nil
+}
+
+func (cf *ConfigFile) Check() error {
+	clone := &ConfigFile{
+		Items: slices.Clone(cf.Items),
+	}
+	var errs []error
+	for idx, item := range clone.Items {
+		name, _ := xmap.GetString(item, "Name")
+		if name == "" {
+			err := fmt.Errorf("[%d].Name is empty: %v", idx, item)
+			errs = append(errs, err)
+			continue
+		}
+		_, err := clone.newCache1[string, string](name, item)
+		if err != nil {
+			err = fmt.Errorf("[%d]=%q: %w", idx, name, err)
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 func (cf *ConfigFile) createCache[K comparable, V any](name string) (xcache.MCache[K, V], error) {
