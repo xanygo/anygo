@@ -11,11 +11,11 @@ import (
 	"iter"
 	"reflect"
 
-	"github.com/xanygo/anygo/ds/xstruct"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb/dbschema"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 	"github.com/xanygo/anygo/store/xdb/dialect"
+	"github.com/xanygo/anygo/xstruct"
 )
 
 // Map 别名，在更新、查询等场景使用

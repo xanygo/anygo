@@ -13,9 +13,10 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xmap"
-	"github.com/xanygo/anygo/ds/xsync"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xcipher"
+	"github.com/xanygo/anygo/xcompress"
+	"github.com/xanygo/anygo/xmap"
+	"github.com/xanygo/anygo/xsync"
 )
 
 var _ Storage = (*CookieStore)(nil)
@@ -35,7 +36,7 @@ type CookieStore struct {
 	CookiePath string
 
 	// Cipher cookie value 的压缩，解压缩方法，可选
-	Cipher xcodec.Cipher
+	Cipher xcipher.Cipher
 
 	// Life Cookie 的有效期
 	Life time.Duration
@@ -43,14 +44,14 @@ type CookieStore struct {
 	// BeforeSave 可选，用于设置 cookie 的 属性
 	BeforeSave func(c *http.Cookie)
 
-	cipherGetter xsync.OnceDoValue[xcodec.Cipher]
+	cipherGetter xsync.OnceDoValue[xcipher.Cipher]
 }
 
-func (cs *CookieStore) getCipher() xcodec.Cipher {
+func (cs *CookieStore) getCipher() xcipher.Cipher {
 	return cs.cipherGetter.Do(cs.initCipher)
 }
 
-func (cs *CookieStore) initCipher() xcodec.Cipher {
+func (cs *CookieStore) initCipher() xcipher.Cipher {
 	cp := cs.Cipher
 	if cp == nil {
 		var key string
@@ -59,13 +60,13 @@ func (cs *CookieStore) initCipher() xcodec.Cipher {
 		} else {
 			key = "7332d" + "af432078" + "b33dca1d26b" + "431ade36"
 		}
-		cp = &xcodec.AesOFB{
+		cp = &xcipher.AesOFB{
 			Key: key,
 		}
 	}
-	return xcodec.Ciphers{
-		xcodec.NewCipher(xcodec.GZipCompress, xcodec.GZipDecompress),
-		&xcodec.Base64{
+	return xcipher.Ciphers{
+		xcipher.NewCipher(xcompress.GZipCompress, xcompress.GZipDecompress),
+		&xcipher.Base64{
 			Encoder: base64.RawURLEncoding,
 		},
 	}

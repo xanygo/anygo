@@ -8,10 +8,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/store/xkv"
 	"github.com/xanygo/anygo/store/xkv/internal/rds"
 	"github.com/xanygo/anygo/store/xredis"
+	"github.com/xanygo/anygo/xmap"
 )
 
 var _ xkv.StringStorage = (*Redis)(nil)

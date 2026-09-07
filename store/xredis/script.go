@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/store/xredis/resp3"
+	"github.com/xanygo/anygo/xmap"
 )
 
 // Eval 调用服务器端 Lua 脚本的执行。

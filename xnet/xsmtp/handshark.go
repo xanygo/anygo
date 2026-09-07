@@ -15,11 +15,11 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/xanygo/anygo/ds/xcast"
-	"github.com/xanygo/anygo/ds/xmap"
-	"github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/xcast"
+	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/dsession"
+	"github.com/xanygo/anygo/xoption"
 )
 
 func init() {

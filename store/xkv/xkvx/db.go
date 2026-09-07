@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"hash/fnv"
 
-	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xdb/xor"
 	"github.com/xanygo/anygo/store/xkv"
 	"github.com/xanygo/anygo/store/xkv/internal"
 	"github.com/xanygo/anygo/store/xkv/internal/db"
+	"github.com/xanygo/anygo/xmap"
 )
 
 var _ xkv.StringStorage = (*Database)(nil)

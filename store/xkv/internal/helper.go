@@ -1,6 +1,6 @@
 package internal
 
-import "github.com/xanygo/anygo/ds/xcmp"
+import "github.com/xanygo/anygo/xcmp"
 
 func ParserMinMax(min, max string) (func(num float64) bool, error) {
 	minBound := &xcmp.Bound[float64]{}

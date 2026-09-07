@@ -1,0 +1,55 @@
+//  Copyright(C) 2024 github.com/hidu  All Rights Reserved.
+//  Author: hidu <duv123+git@gmail.com>
+//  Date: 2024-11-01
+
+package xencoding
+
+import (
+	"math"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/xanygo/anygo/xt"
+)
+
+func TestEncodeInt64(t *testing.T) {
+	numbers := []int64{-1, 0, -999, 999, 9999, 100000, math.MaxInt64}
+	check := func(t *testing.T, name string, ec *Encoding) {
+		t.Run(name, func(t *testing.T) {
+			for _, num := range numbers {
+				t.Run(strconv.FormatInt(num, 10), func(t *testing.T) {
+					str := ec.EncodeInt64(num)
+					t.Logf("num=%d b62=%q", num, str)
+					got, err := ec.DecodeInt64String(str)
+					xt.NoError(t, err)
+					xt.Equal(t, got, num)
+				})
+			}
+		})
+	}
+	check(t, "Base62", Base62)
+	check(t, "Base36", Base36)
+
+	xt.Equal(t, Base62.EncodeInt64(math.MaxInt64), "7m85Y0n8LzA")
+}
+
+func TestEncodeToString(t *testing.T) {
+	checkEncodeDecode := func(t *testing.T, str string) {
+		got1 := Base62.EncodeToString([]byte(str))
+		got2, err2 := Base62.DecodeString(got1)
+		xt.NoError(t, err2)
+		xt.Equal(t, string(got2), str)
+
+		got2, err2 = Base62.Decode([]byte(got1))
+		xt.NoError(t, err2)
+		xt.Equal(t, string(got2), str)
+	}
+	checkEncodeDecode(t, "hello 你好")
+	checkEncodeDecode(t, "")
+
+	for i := range 100 {
+		str := strings.Repeat("i", i)
+		checkEncodeDecode(t, str)
+	}
+}

@@ -9,13 +9,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xmap"
-	"github.com/xanygo/anygo/ds/xtime"
 	"github.com/xanygo/anygo/store/xcache/xcachex"
 	"github.com/xanygo/anygo/store/xkv/xkvx"
 	"github.com/xanygo/anygo/xcfg"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xcipher"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xmap"
+	"github.com/xanygo/anygo/xtime"
 )
 
 var globalConfigFile *ConfigFile
@@ -205,19 +205,19 @@ func (cf *ConfigFile) newCookie(name string, item map[string]any) (NewStorageFun
 	}
 	cipherIV, _ := xmap.GetString(item, "CipherIV")
 
-	var cipher xcodec.Cipher
+	var cipher xcipher.Cipher
 	switch cipherType {
 	case "AesOFB":
-		cipher = &xcodec.AesOFB{
+		cipher = &xcipher.AesOFB{
 			Key: cipherKey,
 			IV:  cipherIV,
 		}
 	case "AesGCM":
-		cipher = &xcodec.AesGCM{
+		cipher = &xcipher.AesGCM{
 			Key: cipherKey,
 		}
 	case "AesBlock":
-		cipher = &xcodec.AesBlock{
+		cipher = &xcipher.AesBlock{
 			Key: cipherKey,
 			IV:  cipherIV,
 		}

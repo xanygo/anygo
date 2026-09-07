@@ -14,8 +14,8 @@ import (
 	"net/textproto"
 	"strings"
 
-	"github.com/xanygo/anygo/ds/xstr"
 	"github.com/xanygo/anygo/xio"
+	"github.com/xanygo/anygo/xstr"
 )
 
 type writer struct {

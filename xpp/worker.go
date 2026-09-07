@@ -12,8 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/safely"
+	"github.com/xanygo/anygo/xsync"
 )
 
 type Worker interface {

@@ -10,9 +10,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
+	"github.com/xanygo/anygo/xslice"
 )
 
 var _ dbtype.Dialect = (*MySQL)(nil)

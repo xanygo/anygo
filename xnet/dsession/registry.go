@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/xanygo/anygo/ds/xmap"
-	"github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/xmap"
+	"github.com/xanygo/anygo/xoption"
 )
 
 var protocols = &xmap.Sync[string, Starter]{}

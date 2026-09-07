@@ -14,10 +14,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xmeta"
-	"github.com/xanygo/anygo/ds/xpool"
-	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/internal/zslice"
+	"github.com/xanygo/anygo/xmeta"
+	"github.com/xanygo/anygo/xpool"
+	"github.com/xanygo/anygo/xsync"
 )
 
 // NewConn  对 net.Conn 封装，以支持 ConnInterceptor

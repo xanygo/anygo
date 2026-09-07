@@ -7,7 +7,7 @@ package xlog
 import (
 	"context"
 
-	"github.com/xanygo/anygo/ds/xmap"
+	"github.com/xanygo/anygo/xmap"
 )
 
 type ctxKey uint8

@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xredis/resp3"
+	"github.com/xanygo/anygo/xslice"
 )
 
 // https://redis.io/docs/latest/commands/time/

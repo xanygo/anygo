@@ -13,9 +13,9 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/xanygo/anygo/ds/xmap"
-	"github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xnet"
+	"github.com/xanygo/anygo/xoption"
 )
 
 // HTTPUpgrade 构建一个能执行 HTTP Upgrade 逻辑的会话创建逻辑

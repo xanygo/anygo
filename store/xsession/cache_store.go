@@ -10,9 +10,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xslice"
 )
 
 var _ Storage = (*CacheStore)(nil)

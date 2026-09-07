@@ -8,8 +8,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xctx"
 	"github.com/xanygo/anygo/internal/zslice"
+	"github.com/xanygo/anygo/xctx"
 )
 
 type Event struct {

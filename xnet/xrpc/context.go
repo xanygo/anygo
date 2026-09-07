@@ -7,7 +7,7 @@ package xrpc
 import (
 	"context"
 
-	"github.com/xanygo/anygo/ds/xctx"
+	"github.com/xanygo/anygo/xctx"
 )
 
 var ctxITKey = xctx.NewKey()

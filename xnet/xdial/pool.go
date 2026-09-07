@@ -11,12 +11,12 @@ import (
 	"net"
 	"strings"
 
-	"github.com/xanygo/anygo/ds/xmeta"
-	"github.com/xanygo/anygo/ds/xmetric"
-	"github.com/xanygo/anygo/ds/xpool"
 	"github.com/xanygo/anygo/internal/znet"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xmeta"
+	"github.com/xanygo/anygo/xmetric"
 	"github.com/xanygo/anygo/xnet"
+	"github.com/xanygo/anygo/xpool"
 )
 
 // GroupPool service 对象所需要的类型

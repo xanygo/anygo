@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/xslice"
 )
 
 // WatchFile 监听单个文件

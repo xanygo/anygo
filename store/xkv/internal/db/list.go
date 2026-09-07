@@ -5,10 +5,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xdb/xor"
 	"github.com/xanygo/anygo/store/xkv"
+	"github.com/xanygo/anygo/xslice"
 )
 
 type ListModel struct {

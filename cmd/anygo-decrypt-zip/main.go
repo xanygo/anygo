@@ -12,7 +12,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xcipher"
 )
 
 var token = flag.String("token", "anygo-3000", "token for encryption")
@@ -23,7 +23,7 @@ func main() {
 	if len(files) == 0 {
 		log.Fatal("no files to decrypt")
 	}
-	dz := &xcodec.AesOFB{
+	dz := &xcipher.AesOFB{
 		Key: *token,
 	}
 	for _, file := range files {
@@ -31,7 +31,7 @@ func main() {
 	}
 }
 
-func decodeFile(dz *xcodec.AesOFB, file string) {
+func decodeFile(dz *xcipher.AesOFB, file string) {
 	content, err := os.ReadFile(file)
 	assert(err, "ReadFile "+file)
 	if len(content) < 32 {

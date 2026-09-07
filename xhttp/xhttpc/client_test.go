@@ -17,16 +17,16 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xsync"
-	"github.com/xanygo/anygo/ds/xtime"
-	"github.com/xanygo/anygo/ds/xurl"
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xhttp/xhttpc"
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
+	"github.com/xanygo/anygo/xsync"
 	"github.com/xanygo/anygo/xt"
+	"github.com/xanygo/anygo/xtime"
+	"github.com/xanygo/anygo/xurl"
 )
 
 func TestCacheClient(t *testing.T) {

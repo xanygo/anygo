@@ -11,11 +11,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xctx"
-	"github.com/xanygo/anygo/ds/xmetric"
-	"github.com/xanygo/anygo/ds/xoption"
-	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/xctx"
+	"github.com/xanygo/anygo/xmetric"
 	"github.com/xanygo/anygo/xnet"
+	"github.com/xanygo/anygo/xoption"
+	"github.com/xanygo/anygo/xslice"
 )
 
 // Connector 网络连接器

@@ -11,8 +11,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xredis/resp3"
+	"github.com/xanygo/anygo/xslice"
 )
 
 func (c *Client) GEOAdd(ctx context.Context, key string, items ...GeoMember) (int, error) {

@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xredis"
+	"github.com/xanygo/anygo/xslice"
 )
 
 var uri = flag.String("uri", "redis://127.0.0.1:6379", "redis URI")

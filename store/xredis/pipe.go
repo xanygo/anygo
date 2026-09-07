@@ -12,11 +12,11 @@ import (
 	"io"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/store/xredis/resp3"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xio"
 	"github.com/xanygo/anygo/xnet/xrpc"
+	"github.com/xanygo/anygo/xoption"
 )
 
 // TxPipelined 使用 MULTI + EXEC 批量执行

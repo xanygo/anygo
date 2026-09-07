@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"unsafe"
 
-	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xattr"
+	"github.com/xanygo/anygo/xsync"
 )
 
 var defaultPanicLogger xsync.Value[Logger]

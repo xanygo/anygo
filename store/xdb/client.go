@@ -11,12 +11,12 @@ import (
 	"io"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xmap"
-	"github.com/xanygo/anygo/ds/xoption"
-	"github.com/xanygo/anygo/ds/xstr"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 	"github.com/xanygo/anygo/store/xdb/dialect"
+	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xnet/xservice"
+	"github.com/xanygo/anygo/xoption"
+	"github.com/xanygo/anygo/xstr"
 )
 
 type FactoryFunc func(ctx context.Context) (*sql.DB, error)

@@ -9,9 +9,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/internal/zslice"
 	"github.com/xanygo/anygo/xpp"
+	"github.com/xanygo/anygo/xsync"
 )
 
 type Dialer interface {

@@ -11,9 +11,9 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/xanygo/anygo/ds/xstr"
 	"github.com/xanygo/anygo/ximage"
 	"github.com/xanygo/anygo/ximage/pixelfont"
+	"github.com/xanygo/anygo/xstr"
 )
 
 func NewAlphaNumber(code string) *AlphaNumber {

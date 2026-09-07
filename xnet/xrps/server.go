@@ -14,7 +14,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/xanygo/anygo/ds/xctx"
+	"github.com/xanygo/anygo/xctx"
 )
 
 type (

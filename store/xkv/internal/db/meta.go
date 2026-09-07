@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xcast"
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xdb/xor"
 	"github.com/xanygo/anygo/store/xkv/internal"
+	"github.com/xanygo/anygo/xcast"
 )
 
 // KeyHash 计算字符串的 hash 值

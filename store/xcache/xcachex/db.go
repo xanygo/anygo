@@ -9,9 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xmap"
-	"github.com/xanygo/anygo/ds/xslice"
-	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/store/xcache"
@@ -19,6 +16,9 @@ import (
 	"github.com/xanygo/anygo/store/xdb/xor"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xlog"
+	"github.com/xanygo/anygo/xmap"
+	"github.com/xanygo/anygo/xslice"
+	"github.com/xanygo/anygo/xsync"
 )
 
 var _ xcache.StringCache = (*Database)(nil)

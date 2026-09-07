@@ -10,7 +10,7 @@ import (
 	"go/format"
 
 	"github.com/xanygo/anygo"
-	"github.com/xanygo/anygo/ds/xstr"
+	"github.com/xanygo/anygo/xstr"
 )
 
 func main() {

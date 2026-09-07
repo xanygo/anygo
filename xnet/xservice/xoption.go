@@ -5,7 +5,7 @@
 package xservice
 
 import (
-	"github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/xoption"
 )
 
 var (

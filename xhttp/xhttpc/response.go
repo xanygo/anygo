@@ -15,11 +15,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xoption"
-	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xio"
 	"github.com/xanygo/anygo/xnet/xrpc"
+	"github.com/xanygo/anygo/xoption"
+	"github.com/xanygo/anygo/xsync"
 )
 
 var _ xrpc.Response = (*Response)(nil)

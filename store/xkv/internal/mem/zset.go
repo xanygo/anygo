@@ -5,9 +5,9 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/xanygo/anygo/ds/xcmp"
-	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xkv/internal"
+	"github.com/xanygo/anygo/xcmp"
+	"github.com/xanygo/anygo/xslice"
 )
 
 type zsetValue struct {

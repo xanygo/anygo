@@ -26,11 +26,11 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/cli/xcolor"
-	"github.com/xanygo/anygo/ds/xhash"
-	"github.com/xanygo/anygo/ds/xstr"
-	"github.com/xanygo/anygo/ds/xsync"
-	"github.com/xanygo/anygo/ds/xzip"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xcipher"
+	"github.com/xanygo/anygo/xcompress"
+	"github.com/xanygo/anygo/xhash"
+	"github.com/xanygo/anygo/xstr"
+	"github.com/xanygo/anygo/xsync"
 )
 
 var outfile = flag.String("o", "asset.ez", "output file name")
@@ -68,9 +68,9 @@ func generateEzFile() {
 	content := createZip()
 	rd, err := zip.NewReader(bytes.NewReader(content), int64(len(content)))
 	assert(err, "zip.NewReader")
-	names := xzip.FileNames(rd, 0)
+	names := xcompress.ZipFileNames(rd, 0)
 
-	ez := &xcodec.AesOFB{
+	ez := &xcipher.AesOFB{
 		Key: *token,
 	}
 	ct, err := ez.Encrypt(content)
@@ -294,9 +294,9 @@ import (
 	"io/fs"
 	_ "embed"
 
-	"github.com/xanygo/anygo/ds/xzip"
+	"github.com/xanygo/anygo/xzip"
 	"github.com/xanygo/anygo/xcodec"
-    "github.com/xanygo/anygo/ds/xsync"
+    "github.com/xanygo/anygo/xsync"
 )
 
 //go:embed {{.EZFile}}

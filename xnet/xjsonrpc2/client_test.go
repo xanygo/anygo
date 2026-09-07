@@ -15,14 +15,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xctx"
-	"github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/xctx"
 	"github.com/xanygo/anygo/xnet/dsession"
 	"github.com/xanygo/anygo/xnet/internal"
 	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xjsonrpc2"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
+	"github.com/xanygo/anygo/xoption"
 	"github.com/xanygo/anygo/xt"
 )
 

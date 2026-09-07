@@ -6,8 +6,8 @@ import (
 	"os"
 	"slices"
 
-	"github.com/xanygo/anygo/ds/xcmp"
 	"github.com/xanygo/anygo/safely"
+	"github.com/xanygo/anygo/xcmp"
 )
 
 type Set struct {

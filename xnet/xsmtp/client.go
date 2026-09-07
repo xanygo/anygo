@@ -12,10 +12,10 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/xanygo/anygo/ds/xoption"
-	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
+	"github.com/xanygo/anygo/xoption"
+	"github.com/xanygo/anygo/xsync"
 )
 
 type Config struct {

@@ -15,15 +15,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xmap"
-	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/internal/zos"
 	"github.com/xanygo/anygo/store/xkv/internal"
 	"github.com/xanygo/anygo/store/xkv/internal/file"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xio/xfs"
 	"github.com/xanygo/anygo/xlog"
+	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xpp"
+	"github.com/xanygo/anygo/xsync"
 )
 
 var _ StringStorage = (*File)(nil)

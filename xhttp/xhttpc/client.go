@@ -15,11 +15,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xctx"
-	"github.com/xanygo/anygo/ds/xhash"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xctx"
+	"github.com/xanygo/anygo/xhash"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
 )

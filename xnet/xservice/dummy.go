@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo"
-	"github.com/xanygo/anygo/ds/xsync"
-	"github.com/xanygo/anygo/ds/xtime"
 	"github.com/xanygo/anygo/xnet"
+	"github.com/xanygo/anygo/xsync"
+	"github.com/xanygo/anygo/xtime"
 )
 
 const Dummy = xnet.Dummy

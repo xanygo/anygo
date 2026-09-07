@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/xio/xfs"
+	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xnet"
 )
 

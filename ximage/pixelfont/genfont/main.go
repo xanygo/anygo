@@ -12,7 +12,7 @@ import (
 	"image"
 	"log"
 
-	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/xslice"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/gofont/gomono"
 	"golang.org/x/image/font/opentype"

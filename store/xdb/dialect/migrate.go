@@ -10,8 +10,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
+	"github.com/xanygo/anygo/xslice"
 )
 
 func doMigrate(ctx context.Context, d dbtype.Dialect, db dbtype.DBCore, schema dbtype.TableSchema) error {

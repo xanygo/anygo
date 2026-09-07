@@ -12,15 +12,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xmap"
-	"github.com/xanygo/anygo/ds/xmeta"
-	"github.com/xanygo/anygo/ds/xpool"
-	"github.com/xanygo/anygo/ds/xpool/xcmdpool"
-	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/internal/ztypes"
 	"github.com/xanygo/anygo/xattr"
 	"github.com/xanygo/anygo/xlog"
+	"github.com/xanygo/anygo/xmap"
+	"github.com/xanygo/anygo/xmeta"
 	"github.com/xanygo/anygo/xnet/internal"
+	"github.com/xanygo/anygo/xpool"
+	"github.com/xanygo/anygo/xpool/xcmdpool"
+	"github.com/xanygo/anygo/xsync"
 )
 
 var registry = xmap.Sync[string, *xcmdpool.Command]{}

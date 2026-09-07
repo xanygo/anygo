@@ -5,8 +5,8 @@
 package dbschema
 
 import (
-	"github.com/xanygo/anygo/ds/xstruct"
-	"github.com/xanygo/anygo/ds/xsync"
+	"github.com/xanygo/anygo/xstruct"
+	"github.com/xanygo/anygo/xsync"
 )
 
 var tagName = xsync.OnceInit[string]{

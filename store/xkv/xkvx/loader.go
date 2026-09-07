@@ -10,12 +10,12 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xkv"
 	"github.com/xanygo/anygo/xcfg"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xmap"
 )
 
 var globalConfigFile *ConfigFile

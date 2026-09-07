@@ -14,7 +14,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/xslice"
 )
 
 const Protocol = "SMTP"

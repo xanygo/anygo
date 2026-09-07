@@ -10,8 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/safely"
+	"github.com/xanygo/anygo/xslice"
 )
 
 // Interval 定时器

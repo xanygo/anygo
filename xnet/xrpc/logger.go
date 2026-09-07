@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xmetric"
 	"github.com/xanygo/anygo/xlog"
+	"github.com/xanygo/anygo/xmetric"
 	"github.com/xanygo/anygo/xnet"
 )
 

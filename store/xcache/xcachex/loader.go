@@ -10,15 +10,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xcontainer"
-	"github.com/xanygo/anygo/ds/xmap"
-	"github.com/xanygo/anygo/ds/xslice"
-	"github.com/xanygo/anygo/ds/xtime"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xcfg"
 	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xcontainer"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xmap"
+	"github.com/xanygo/anygo/xslice"
+	"github.com/xanygo/anygo/xtime"
 )
 
 var globalConfigFile *ConfigFile

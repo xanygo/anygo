@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/xanygo/anygo/ds/xsync"
+	"github.com/xanygo/anygo/xsync"
 )
 
 // Message 一条本地化化消息

@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/xanygo/anygo/ds/xmap"
-	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 	"github.com/xanygo/anygo/store/xdb/internal/encoder"
+	"github.com/xanygo/anygo/xmap"
+	"github.com/xanygo/anygo/xslice"
 )
 
 // Insert 基本的 Insert 功能

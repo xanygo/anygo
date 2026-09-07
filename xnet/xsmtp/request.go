@@ -13,11 +13,11 @@ import (
 	"net/smtp"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xmeta"
-	"github.com/xanygo/anygo/ds/xmetric"
-	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xio"
+	"github.com/xanygo/anygo/xmeta"
+	"github.com/xanygo/anygo/xmetric"
 	"github.com/xanygo/anygo/xnet/xrpc"
+	"github.com/xanygo/anygo/xoption"
 )
 
 var _ xrpc.Request = (*request)(nil)

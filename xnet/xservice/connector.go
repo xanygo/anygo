@@ -11,15 +11,15 @@ import (
 	"net"
 	"strings"
 
-	"github.com/xanygo/anygo/ds/xmeta"
-	"github.com/xanygo/anygo/ds/xmetric"
-	"github.com/xanygo/anygo/ds/xoption"
-	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/xmeta"
+	"github.com/xanygo/anygo/xmetric"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/dsession"
 	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xproxy"
+	"github.com/xanygo/anygo/xoption"
+	"github.com/xanygo/anygo/xslice"
 )
 
 var _ xdial.Connector = (*connector)(nil)

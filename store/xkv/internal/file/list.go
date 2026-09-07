@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xcmp"
-	"github.com/xanygo/anygo/ds/xcontainer"
 	"github.com/xanygo/anygo/safely"
+	"github.com/xanygo/anygo/xcmp"
+	"github.com/xanygo/anygo/xcontainer"
 )
 
 type List struct {

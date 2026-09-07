@@ -10,8 +10,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/xanygo/anygo/ds/xctx"
-	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/xctx"
+	"github.com/xanygo/anygo/xslice"
 )
 
 // HTTPHandler  读取 HTTP 的 Accept-Language 和 cookie 中存储的首选项信息的中间件

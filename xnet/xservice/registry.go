@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xnet"
 )
 

@@ -11,11 +11,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xctx"
-	"github.com/xanygo/anygo/ds/xslice"
-	"github.com/xanygo/anygo/ds/xsync"
-	"github.com/xanygo/anygo/ds/xtype"
+	"github.com/xanygo/anygo/xctx"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xslice"
+	"github.com/xanygo/anygo/xsync"
+	"github.com/xanygo/anygo/xtype"
 )
 
 // Idempotent 请求多次发送，是否幂等，具体 RPC 协议的 Request 可选实现

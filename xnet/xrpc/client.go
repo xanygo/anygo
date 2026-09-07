@@ -13,13 +13,13 @@ import (
 	"net"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/dsession"
 	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xpolicy"
 	"github.com/xanygo/anygo/xnet/xservice"
+	"github.com/xanygo/anygo/xoption"
 )
 
 type Client interface {

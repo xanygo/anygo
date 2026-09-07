@@ -17,9 +17,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xoption"
-	"github.com/xanygo/anygo/ds/xsync"
-	"github.com/xanygo/anygo/ds/xtype"
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xbalance"
@@ -27,6 +24,9 @@ import (
 	"github.com/xanygo/anygo/xnet/xproxy"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
+	"github.com/xanygo/anygo/xoption"
+	"github.com/xanygo/anygo/xsync"
+	"github.com/xanygo/anygo/xtype"
 )
 
 var defaultUa = &xsync.OnceInit[string]{

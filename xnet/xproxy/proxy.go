@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/xnet"
+	"github.com/xanygo/anygo/xoption"
 	"github.com/xanygo/anygo/xvalidator"
 )
 

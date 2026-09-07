@@ -8,9 +8,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/xanygo/anygo/ds/xmap"
-	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xredis/resp3"
+	"github.com/xanygo/anygo/xmap"
+	"github.com/xanygo/anygo/xslice"
 )
 
 // https://redis.io/docs/latest/commands/cf.add/

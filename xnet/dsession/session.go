@@ -9,13 +9,13 @@ import (
 	"io"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xctx"
-	"github.com/xanygo/anygo/ds/xmeta"
-	"github.com/xanygo/anygo/ds/xmetric"
-	"github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/xctx"
 	"github.com/xanygo/anygo/xio"
+	"github.com/xanygo/anygo/xmeta"
+	"github.com/xanygo/anygo/xmetric"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xdial"
+	"github.com/xanygo/anygo/xoption"
 )
 
 // Reply 表示 Starter 执行后的结果

@@ -14,10 +14,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/store/xredis"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xmap"
 )
 
 var _ xcache.StringCache = (*Redis)(nil)

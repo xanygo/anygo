@@ -8,7 +8,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/xoption"
 )
 
 // NoRequest 返回一个不会发送请求信息的 Request 对象

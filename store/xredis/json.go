@@ -10,8 +10,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xredis/resp3"
+	"github.com/xanygo/anygo/xslice"
 )
 
 // JSONArrAppend 用于向指定 key 的 JSON 文档中，目标路径指向的数组末尾追加一个或多个元素。

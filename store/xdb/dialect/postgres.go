@@ -11,10 +11,10 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb/dbcodec"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
+	"github.com/xanygo/anygo/xslice"
 )
 
 // Postgres 实现 Dialect 接口

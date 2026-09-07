@@ -4,8 +4,8 @@ import (
 	"context"
 	"slices"
 
-	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xkv/internal"
+	"github.com/xanygo/anygo/xslice"
 )
 
 type List struct {

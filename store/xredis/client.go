@@ -13,18 +13,18 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/xanygo/anygo/ds/xcast"
-	"github.com/xanygo/anygo/ds/xmap"
-	"github.com/xanygo/anygo/ds/xoption"
-	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/store/xredis/resp3"
 	"github.com/xanygo/anygo/xattr"
+	"github.com/xanygo/anygo/xcast"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xnet/dsession"
 	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
+	"github.com/xanygo/anygo/xoption"
 	"github.com/xanygo/anygo/xpp"
+	"github.com/xanygo/anygo/xsync"
 )
 
 const Protocol = "RESP3"

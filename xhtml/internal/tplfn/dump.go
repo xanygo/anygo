@@ -16,7 +16,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/xanygo/anygo/ds/xsync"
+	"github.com/xanygo/anygo/xsync"
 )
 
 func Dump(value any) template.HTML {

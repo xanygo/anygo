@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xsync"
 )
 
 var _ Cache[string, string] = (*Reader[string, string])(nil)

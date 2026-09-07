@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xslice"
-	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xslice"
+	"github.com/xanygo/anygo/xsync"
 )
 
 func NewChains[K comparable, V any](caches ...*Chain[K, V]) Cache[K, V] {

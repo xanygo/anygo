@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/xanygo/anygo/ds/xmap"
+	"github.com/xanygo/anygo/xmap"
 )
 
 // TemplateRender 渲染模版的辅助类

@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xstr"
+	"github.com/xanygo/anygo/xstr"
 )
 
 // ExpectQuery 提前预埋查询请求( db.Query )的 sql 对应的结果集

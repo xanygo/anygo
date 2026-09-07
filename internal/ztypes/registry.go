@@ -7,8 +7,8 @@ package ztypes
 import (
 	"fmt"
 
-	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xmap"
 )
 
 type Registry[K comparable, V any] interface {

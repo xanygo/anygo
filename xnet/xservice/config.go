@@ -12,17 +12,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xbus"
-	"github.com/xanygo/anygo/ds/xoption"
-	"github.com/xanygo/anygo/ds/xpool"
-	"github.com/xanygo/anygo/ds/xtime"
-	"github.com/xanygo/anygo/ds/xtype"
+	"github.com/xanygo/anygo/xbus"
 	"github.com/xanygo/anygo/xcfg"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xnaming"
 	"github.com/xanygo/anygo/xnet/xproxy"
+	"github.com/xanygo/anygo/xoption"
+	"github.com/xanygo/anygo/xpool"
+	"github.com/xanygo/anygo/xtime"
+	"github.com/xanygo/anygo/xtype"
 )
 
 type Config struct {

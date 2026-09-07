@@ -11,8 +11,8 @@ import (
 	"encoding/json"
 	"net"
 
-	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/internal/zdefine"
+	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xnet/internal"
 )
 

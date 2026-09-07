@@ -9,7 +9,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xsync"
+	"github.com/xanygo/anygo/xsync"
 )
 
 var _ Cache[string, string] = (*Wrapper[string, string])(nil)

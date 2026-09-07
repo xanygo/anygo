@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"unsafe"
 
-	"github.com/xanygo/anygo/ds/xsync"
+	"github.com/xanygo/anygo/xsync"
 )
 
 var CRLF = []byte{'\r', '\n'}

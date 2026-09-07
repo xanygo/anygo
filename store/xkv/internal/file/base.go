@@ -19,10 +19,10 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/xanygo/anygo/ds/xslice"
-	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/store/xkv/internal"
 	"github.com/xanygo/anygo/xio/xfs"
+	"github.com/xanygo/anygo/xslice"
+	"github.com/xanygo/anygo/xsync"
 )
 
 const memberFileExt = ".kvd"

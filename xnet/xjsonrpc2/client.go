@@ -15,11 +15,11 @@ import (
 	"slices"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xoption"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xio"
 	"github.com/xanygo/anygo/xnet/xrpc"
+	"github.com/xanygo/anygo/xoption"
 )
 
 // 使用 xrpc.Client 发送请求和信息的实现

@@ -11,6 +11,7 @@ import (
 
 	"github.com/xanygo/anygo/internal/ut/xkvut"
 	"github.com/xanygo/anygo/store/xkv"
+	"github.com/xanygo/anygo/xcipher"
 	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xt"
 )
@@ -38,11 +39,11 @@ func TestFileStorageCipher(t *testing.T) {
 	ff := &xkv.File{
 		Dir: dir,
 	}
-	aes := &xcodec.AesOFB{
+	aes := &xcipher.AesOFB{
 		Key: "hello",
 	}
 	// 检查加密后，存储二进制内容不会报错
-	coder := xcodec.CodecWithCipher(xcodec.JSON, aes)
+	coder := xcodec.WithCipher(xcodec.JSON, aes)
 
 	type user struct {
 		Name string

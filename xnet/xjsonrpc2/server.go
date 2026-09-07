@@ -15,10 +15,10 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/xanygo/anygo/ds/xctx"
-	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xctx"
 	"github.com/xanygo/anygo/xio"
+	"github.com/xanygo/anygo/xsync"
 )
 
 type ResponseWriter interface {

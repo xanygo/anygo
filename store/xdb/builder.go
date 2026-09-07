@@ -11,8 +11,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/xanygo/anygo/ds/xmap"
-	"github.com/xanygo/anygo/ds/xslice"
+	"github.com/xanygo/anygo/xmap"
+	"github.com/xanygo/anygo/xslice"
 )
 
 var (

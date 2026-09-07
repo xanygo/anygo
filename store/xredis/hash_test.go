@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/internal/redistest"
+	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xt"
 )
 

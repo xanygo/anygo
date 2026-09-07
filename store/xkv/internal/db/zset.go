@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo"
-	"github.com/xanygo/anygo/ds/xcmp"
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xdb/xor"
 	"github.com/xanygo/anygo/store/xkv"
+	"github.com/xanygo/anygo/xcmp"
 )
 
 type ZSetModel struct {

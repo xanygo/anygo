@@ -15,8 +15,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xsync"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xsync"
 )
 
 // -------------------- 帧（Frame）格式 --------------------------------

@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/xanygo/anygo/ds/xbus"
+	"github.com/xanygo/anygo/xbus"
 	"github.com/xanygo/anygo/xnet"
 )
 

@@ -10,8 +10,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xredis/resp3"
+	"github.com/xanygo/anygo/xslice"
 )
 
 func (c *Client) HSet(ctx context.Context, key string, field, value string) (int, error) {

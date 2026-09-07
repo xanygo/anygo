@@ -9,9 +9,9 @@ import (
 	"crypto/tls"
 	"fmt"
 
-	"github.com/xanygo/anygo/ds/xmetric"
-	"github.com/xanygo/anygo/ds/xoption"
+	"github.com/xanygo/anygo/xmetric"
 	"github.com/xanygo/anygo/xnet"
+	"github.com/xanygo/anygo/xoption"
 )
 
 func tlsUpgrade(ctx context.Context, conn *xnet.ConnNode, opt xoption.Reader, target xnet.AddrNode) (nc *xnet.ConnNode, err error) {

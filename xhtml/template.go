@@ -25,14 +25,14 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/xanygo/anygo/ds/xcast"
-	"github.com/xanygo/anygo/ds/xmap"
-	"github.com/xanygo/anygo/ds/xstr"
-	"github.com/xanygo/anygo/ds/xsync"
-	"github.com/xanygo/anygo/ds/xurl"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/xattr"
+	"github.com/xanygo/anygo/xcast"
 	"github.com/xanygo/anygo/xhtml/internal/tplfn"
+	"github.com/xanygo/anygo/xmap"
+	"github.com/xanygo/anygo/xstr"
+	"github.com/xanygo/anygo/xsync"
+	"github.com/xanygo/anygo/xurl"
 )
 
 func NewTPLRequest(req *http.Request) *TPLRequest {

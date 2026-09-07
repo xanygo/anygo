@@ -10,8 +10,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/xanygo/anygo/ds/xslice"
 	"github.com/xanygo/anygo/store/xredis/resp3"
+	"github.com/xanygo/anygo/xslice"
 )
 
 func (c *Client) CMSIncrBy(ctx context.Context, key string, item string, increment int64) (int64, error) {

@@ -7,7 +7,7 @@ package xnet
 import (
 	"context"
 
-	"github.com/xanygo/anygo/ds/xctx"
+	"github.com/xanygo/anygo/xctx"
 )
 
 // Interceptor 拦截器接口定义，具体的实现包括 ConnInterceptor、DialerInterceptor、ResolverInterceptor

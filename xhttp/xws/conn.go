@@ -12,9 +12,9 @@ import (
 	"net/http"
 	"sync/atomic"
 
-	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xerror"
+	"github.com/xanygo/anygo/xmap"
 )
 
 type ConnID int64

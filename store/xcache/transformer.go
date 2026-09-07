@@ -10,9 +10,9 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/xanygo/anygo/ds/xmap"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xmap"
 )
 
 var _ Cache[string, any] = (*Transformer[string, any])(nil)
