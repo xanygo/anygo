@@ -294,8 +294,8 @@ import (
 	"io/fs"
 	_ "embed"
 
-	"github.com/xanygo/anygo/xzip"
-	"github.com/xanygo/anygo/xenc/xcodec"
+	"github.com/xanygo/anygo/xenc/xcompress"
+	"github.com/xanygo/anygo/xenc/xcipher"
     "github.com/xanygo/anygo/xsync"
 )
 
@@ -304,10 +304,10 @@ var {{.VarTmp}} []byte
 
 var {{.VarTmp}}Once = &xsync.OnceInit[fs.FS]{
 	New: func() fs.FS {
-		dz := &xcodec.AesOFB{
+		dz := &xcipher.AesOFB{
 			Key: {{.Token}},
 		}
-		rd:= xzip.MustDecrypt({{.VarTmp}}, dz)
+		rd:= xcompress.MustDecryptZip({{.VarTmp}}, dz)
 		clear({{.VarTmp}})
 		{{.VarTmp}} = nil
 		return rd
