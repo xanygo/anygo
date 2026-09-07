@@ -9,9 +9,9 @@ import (
 	"io"
 	"time"
 
+	"github.com/xanygo/anygo/internal/xmeta"
 	"github.com/xanygo/anygo/xctx"
 	"github.com/xanygo/anygo/xio"
-	"github.com/xanygo/anygo/xmeta"
 	"github.com/xanygo/anygo/xmetric"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/xdial"

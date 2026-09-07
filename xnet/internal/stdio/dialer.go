@@ -12,11 +12,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/xanygo/anygo/internal/xmeta"
 	"github.com/xanygo/anygo/internal/ztypes"
 	"github.com/xanygo/anygo/xattr"
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xmap"
-	"github.com/xanygo/anygo/xmeta"
 	"github.com/xanygo/anygo/xnet/internal"
 	"github.com/xanygo/anygo/xpool"
 	"github.com/xanygo/anygo/xpool/xcmdpool"

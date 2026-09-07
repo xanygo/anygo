@@ -5,7 +5,7 @@
 package dbschema
 
 import (
-	"github.com/xanygo/anygo/xstruct"
+	"github.com/xanygo/anygo/internal/xstruct"
 	"github.com/xanygo/anygo/xsync"
 )
 

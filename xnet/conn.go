@@ -14,8 +14,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/xanygo/anygo/internal/xmeta"
 	"github.com/xanygo/anygo/internal/zslice"
-	"github.com/xanygo/anygo/xmeta"
 	"github.com/xanygo/anygo/xpool"
 	"github.com/xanygo/anygo/xsync"
 )

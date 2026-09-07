@@ -11,7 +11,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/xanygo/anygo/xmeta"
+	"github.com/xanygo/anygo/internal/xmeta"
 	"github.com/xanygo/anygo/xmetric"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/dsession"

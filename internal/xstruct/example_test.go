@@ -7,7 +7,7 @@ package xstruct_test
 import (
 	"fmt"
 
-	"github.com/xanygo/anygo/xstruct"
+	"github.com/xanygo/anygo/internal/xstruct"
 )
 
 func ExampleParserTag() {

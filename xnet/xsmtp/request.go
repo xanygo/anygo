@@ -13,8 +13,8 @@ import (
 	"net/smtp"
 	"time"
 
+	"github.com/xanygo/anygo/internal/xmeta"
 	"github.com/xanygo/anygo/xio"
-	"github.com/xanygo/anygo/xmeta"
 	"github.com/xanygo/anygo/xmetric"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xoption"

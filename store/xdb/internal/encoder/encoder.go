@@ -10,11 +10,11 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/xanygo/anygo/internal/xstruct"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xslice"
-	"github.com/xanygo/anygo/xstruct"
 )
 
 // Encoder 将数据 T 编码为 可以直接用于 sql 语句的值

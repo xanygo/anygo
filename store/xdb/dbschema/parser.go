@@ -11,12 +11,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/xanygo/anygo/internal/xstruct"
 	"github.com/xanygo/anygo/internal/zcache"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb/dbcodec"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
 	"github.com/xanygo/anygo/xstr"
-	"github.com/xanygo/anygo/xstruct"
 )
 
 // Schema 传入一个 struct，获取其 db schema 定义.

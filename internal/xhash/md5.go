@@ -7,16 +7,9 @@ package xhash
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"unsafe"
 )
 
-func Md5(s string) string {
-	bf := unsafe.Slice(unsafe.StringData(s), len(s))
-	h := md5.Sum(bf)
-	return hex.EncodeToString(h[:])
-}
-
-func ByteMd5(b []byte) string {
-	h := md5.Sum(b)
+func Md5[T ~string | ~[]byte](s T) string {
+	h := md5.Sum([]byte(s))
 	return hex.EncodeToString(h[:])
 }

@@ -26,9 +26,9 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/cli/xcolor"
+	"github.com/xanygo/anygo/internal/xhash"
 	"github.com/xanygo/anygo/xenc/xcipher"
 	"github.com/xanygo/anygo/xenc/xcompress"
-	"github.com/xanygo/anygo/xhash"
 	"github.com/xanygo/anygo/xstr"
 	"github.com/xanygo/anygo/xsync"
 )
