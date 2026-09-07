@@ -8,7 +8,7 @@ import (
 	"context"
 	"sync/atomic"
 
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc"
 )
 
 var defaultCfg atomic.Pointer[Configure]
@@ -64,12 +64,12 @@ func Exists(path string) bool {
 // WithDecoder 注册一个解析器
 //
 // ext: 文件后缀，如 .json
-func WithDecoder(ext string, fn xcodec.Decoder) error {
+func WithDecoder(ext string, fn xenc.Unmarshaler) error {
 	return Default().WithDecoder(ext, fn)
 }
 
 // MustWithDecoder 注册一个解析器，若返回的 err!=nil 则 panic
-func MustWithDecoder(ext string, fn xcodec.Decoder) {
+func MustWithDecoder(ext string, fn xenc.Unmarshaler) {
 	Default().MustWithDecoder(ext, fn)
 }
 

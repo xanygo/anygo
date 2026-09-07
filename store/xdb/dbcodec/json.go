@@ -6,7 +6,7 @@ package dbcodec
 
 import (
 	"github.com/xanygo/anygo/store/xdb/dbtype"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 )
 
 var _ dbtype.Codec = (*JSON)(nil)
@@ -24,12 +24,12 @@ func (j JSON) Name() string {
 }
 
 func (j JSON) Encode(obj any) (any, error) {
-	return xcodec.EncodeToString(xcodec.JSON, obj)
+	return xcodec.MarshalToString(xcodec.JSON, obj)
 }
 
 func (j JSON) Decode(str string, obj any) error {
 	if len(str) == 0 {
 		return nil
 	}
-	return xcodec.DecodeFromString(xcodec.JSON, str, obj)
+	return xcodec.UnmarshalFromString(xcodec.JSON, str, obj)
 }

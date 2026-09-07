@@ -2,18 +2,19 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-10-30
 
-package xcipher
+package xcipher_test
 
 import (
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/xanygo/anygo/xenc/xcipher"
 	"github.com/xanygo/anygo/xt"
 )
 
 func TestAesCBC_Encrypt(t *testing.T) {
-	ac := &AesBlock{
+	ac := &xcipher.AesBlock{
 		Key: "hello",
 	}
 	for i := range 32 {
@@ -33,7 +34,7 @@ func TestAesCBC_Encrypt(t *testing.T) {
 }
 
 func TestAesOFB_Encrypt(t *testing.T) {
-	ac := &AesOFB{
+	ac := &xcipher.AesOFB{
 		Key: "hello",
 	}
 	for i := range 32 {
@@ -55,7 +56,7 @@ func TestAesOFB_Encrypt(t *testing.T) {
 func BenchmarkAES(b *testing.B) {
 	b.Run("Encrypt", func(b *testing.B) {
 		b.Run("AesBlock", func(b *testing.B) {
-			ac := &AesBlock{
+			ac := &xcipher.AesBlock{
 				Key: "hello",
 			}
 			for i := 0; i < b.N; i++ {
@@ -64,7 +65,7 @@ func BenchmarkAES(b *testing.B) {
 		})
 
 		b.Run("AesOFB", func(b *testing.B) {
-			ac := &AesOFB{
+			ac := &xcipher.AesOFB{
 				Key: "hello",
 			}
 			for i := 0; i < b.N; i++ {
@@ -74,7 +75,7 @@ func BenchmarkAES(b *testing.B) {
 	})
 
 	b.Run("Decrypt", func(b *testing.B) {
-		ac0 := &AesBlock{
+		ac0 := &xcipher.AesBlock{
 			Key: "hello",
 		}
 		data0, err0 := ac0.Encrypt([]byte("hello"))
@@ -85,7 +86,7 @@ func BenchmarkAES(b *testing.B) {
 			}
 		})
 
-		ac1 := &AesOFB{
+		ac1 := &xcipher.AesOFB{
 			Key: "hello",
 		}
 		data1, err1 := ac0.Encrypt([]byte("hello"))
@@ -99,12 +100,12 @@ func BenchmarkAES(b *testing.B) {
 }
 
 func TestCiphers(t *testing.T) {
-	cs := Ciphers{
-		&AesBlock{
+	cs := xcipher.Ciphers{
+		&xcipher.AesBlock{
 			Key: "demo",
 		},
-		&Base64{},
-		&AesOFB{
+		&xcipher.Base64{},
+		&xcipher.AesOFB{
 			Key: "hello",
 		},
 	}

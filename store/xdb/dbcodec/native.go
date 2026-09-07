@@ -5,7 +5,7 @@ import (
 
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 )
 
 var _ dbtype.Codec = (*Native)(nil)
@@ -36,5 +36,5 @@ func (r Native) Encode(a any) (any, error) {
 }
 
 func (r Native) Decode(str string, obj any) error {
-	return xcodec.DecodeFromString(xcodec.Text, str, obj)
+	return xcodec.UnmarshalFromString(xcodec.Text, str, obj)
 }

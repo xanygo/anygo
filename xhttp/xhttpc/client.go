@@ -17,8 +17,9 @@ import (
 
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/store/xcache"
-	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xctx"
+	"github.com/xanygo/anygo/xenc"
+	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xhash"
 	"github.com/xanygo/anygo/xnet/xrpc"
 	"github.com/xanygo/anygo/xnet/xservice"
@@ -70,13 +71,13 @@ func GetAsJSON[T any](ctx context.Context, service any, url string, opts ...xrpc
 	return obj, err
 }
 
-func InvokeWithCodec(ctx context.Context, service any, method string, url string, body any, ec xcodec.Encoder, handler HandlerFunc, opts ...xrpc.Option) error {
-	contentType, err := xcodec.ContentType(ec)
+func InvokeWithCodec(ctx context.Context, service any, method string, url string, body any, ec xenc.Marshaler, handler HandlerFunc, opts ...xrpc.Option) error {
+	contentType, err := xenc.ContentType(ec)
 	if err != nil {
 		return err
 	}
 
-	bf, err := ec.Encode(body)
+	bf, err := ec.Marshal(body)
 	if err != nil {
 		return err
 	}
@@ -222,7 +223,7 @@ type CachedClient struct {
 	PreFlush time.Duration
 
 	// 可选，默认为 JSON，用于将 []byte 转换为传给 Invoke 的 result any 类型
-	Decoder xcodec.Decoder
+	Decoder xcodec.Unmarshaler
 
 	// 可选，若不配置则默认为验证 statusCode==200
 	HandlerFunc HandlerFunc
@@ -252,7 +253,7 @@ func (ci CachedClient) getService() string {
 	return ci.Service
 }
 
-func (ci CachedClient) getDecoder() xcodec.Decoder {
+func (ci CachedClient) getDecoder() xcodec.Unmarshaler {
 	if ci.Decoder == nil {
 		return xcodec.JSON
 	}
@@ -304,7 +305,7 @@ func (ci CachedClient) Invoke(ctx context.Context, result any) error {
 			}
 			return nil
 		}
-		err = xcodec.Decode(decoder, cachedResponse.Body, result)
+		err = xcodec.Unmarshal(decoder, cachedResponse.Body, result)
 		if err == nil {
 			if npr {
 				ci.doPreFlush(ctx, decoder, result, key)
@@ -318,7 +319,7 @@ func (ci CachedClient) Invoke(ctx context.Context, result any) error {
 
 var preFlushDB sync.Map
 
-func (ci CachedClient) doPreFlush(ctx context.Context, decoder xcodec.Decoder, result any, cacheKey string) {
+func (ci CachedClient) doPreFlush(ctx context.Context, decoder xcodec.Unmarshaler, result any, cacheKey string) {
 	t := reflect.TypeOf(result)
 	if t.Kind() != reflect.Pointer {
 		return
@@ -338,7 +339,7 @@ func (ci CachedClient) doPreFlush(ctx context.Context, decoder xcodec.Decoder, r
 	})
 }
 
-func (ci CachedClient) direct(ctx context.Context, decoder xcodec.Decoder, result any, cacheKey string) error {
+func (ci CachedClient) direct(ctx context.Context, decoder xcodec.Unmarshaler, result any, cacheKey string) error {
 	var hs handlerCombine
 	rd := &StoredResponse{
 		CreateAt: time.Now().Unix(),

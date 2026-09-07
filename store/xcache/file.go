@@ -27,7 +27,7 @@ import (
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xbus"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xio"
 	"github.com/xanygo/anygo/xlog"
@@ -164,7 +164,7 @@ func (fc *File[K, V]) doGet(key K) (value V, err error) {
 	if expire {
 		return value, xerror.NotFound
 	}
-	err = fc.Codec.Decode(data, &value)
+	err = fc.Codec.Unmarshal(data, &value)
 	if err == nil {
 		fc.hitCnt.Add(1)
 	}
@@ -225,7 +225,7 @@ func (fc *File[K, V]) doSet(key K, value V, ttl time.Duration) error {
 		}
 	}
 
-	msg, err := fc.Codec.Encode(value)
+	msg, err := fc.Codec.Marshal(value)
 	if err != nil {
 		return err
 	}

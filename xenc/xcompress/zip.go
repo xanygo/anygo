@@ -13,7 +13,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/xanygo/anygo/xcipher"
+	"github.com/xanygo/anygo/xenc"
 )
 
 // ZipFileNames 获取文件名列表
@@ -42,7 +42,7 @@ func stripComponents(p string, n uint) string {
 
 // Decrypt 从加密的 zip 字节流中解析出 zip.Reader 信息
 // 该内容，可以使用 cmd/anygo-encrypt-zip 创建
-func Decrypt(b []byte, dc xcipher.IDDecrypter) (*zip.Reader, error) {
+func Decrypt(b []byte, dc xenc.IDDecrypter) (*zip.Reader, error) {
 	if len(b) < 16 {
 		return nil, fmt.Errorf("file too short %d bytes", len(b))
 	}
@@ -62,7 +62,7 @@ func Decrypt(b []byte, dc xcipher.IDDecrypter) (*zip.Reader, error) {
 	return zip.NewReader(bytes.NewReader(zipContent), int64(len(zipContent)))
 }
 
-func MustDecrypt(b []byte, dc xcipher.IDDecrypter) *zip.Reader {
+func MustDecrypt(b []byte, dc xenc.IDDecrypter) *zip.Reader {
 	r, err := Decrypt(b, dc)
 	if err != nil {
 		panic(err)

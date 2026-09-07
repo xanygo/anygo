@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/xanygo/anygo/store/xkv/internal/mem"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 )
 
 func NewMemory() *Memory {

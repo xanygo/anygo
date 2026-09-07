@@ -11,7 +11,7 @@ import (
 
 	"github.com/xanygo/anygo/xcfg/internal/hook"
 	"github.com/xanygo/anygo/xcfg/internal/parser"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc"
 	"github.com/xanygo/anygo/xt"
 )
 
@@ -191,7 +191,7 @@ func TestWithHook(t *testing.T) {
 func TestWithDecoder(t *testing.T) {
 	type args struct {
 		fileExt string
-		fn      xcodec.Decoder
+		fn      xenc.Unmarshaler
 	}
 	tests := []struct {
 		name    string
@@ -202,7 +202,7 @@ func TestWithDecoder(t *testing.T) {
 			name: "case 1",
 			args: args{
 				fileExt: ".json",
-				fn:      xcodec.DecodeFunc(parser.JSON),
+				fn:      xenc.UnmarshalFunc(parser.JSON),
 			},
 			wantErr: true,
 		},
@@ -210,7 +210,7 @@ func TestWithDecoder(t *testing.T) {
 			name: "case 2",
 			args: args{
 				fileExt: ".myjson",
-				fn:      xcodec.DecodeFunc(parser.JSON),
+				fn:      xenc.UnmarshalFunc(parser.JSON),
 			},
 			wantErr: false,
 		},

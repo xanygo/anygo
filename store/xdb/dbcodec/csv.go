@@ -6,7 +6,7 @@ package dbcodec
 
 import (
 	"github.com/xanygo/anygo/store/xdb/dbtype"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 )
 
 var _ dbtype.Codec = (*CSV)(nil)
@@ -28,12 +28,12 @@ func (j CSV) Encode(obj any) (any, error) {
 	if obj == nil {
 		return "", nil
 	}
-	return xcodec.EncodeToString(xcodec.CSV, obj)
+	return xcodec.MarshalToString(xcodec.CSV, obj)
 }
 
 func (j CSV) Decode(str string, obj any) error {
 	if len(str) == 0 {
 		return nil
 	}
-	return xcodec.DecodeFromString(xcodec.CSV, str, obj)
+	return xcodec.UnmarshalFromString(xcodec.CSV, str, obj)
 }

@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xi18n"
 	"github.com/xanygo/anygo/xt"
 )

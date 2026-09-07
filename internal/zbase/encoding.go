@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-11-01
 
-package xencoding
+package zbase
 
 import (
 	"errors"
@@ -39,8 +39,6 @@ func New(table string) *Encoding {
 		biBase: big.NewInt(size),
 	}
 }
-
-var _ Int64Encoder = (*Encoding)(nil)
 
 type Encoding struct {
 	table  string

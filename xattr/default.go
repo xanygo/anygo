@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xerror"
 )
 

@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/xanygo/anygo/store/xcache"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 )
 
 func TestFile(t *testing.T) {

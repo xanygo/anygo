@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/internal/ztypes"
-	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xcounter"
+	"github.com/xanygo/anygo/xenc/xcodec"
 )
 
 type (
@@ -35,7 +35,7 @@ type Stats struct {
 }
 
 func (s Stats) String() string {
-	str, _ := xcodec.EncodeToString(xcodec.JSON, s)
+	str, _ := xcodec.MarshalToString(xcodec.JSON, s)
 	return str
 }
 

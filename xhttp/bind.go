@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xvalidator"
 )
 
@@ -56,7 +56,7 @@ func (b *Binder) BinJSON(obj any) error {
 	if err != nil {
 		return err
 	}
-	err = xcodec.Decode(xcodec.JSON, data, obj)
+	err = xcodec.Unmarshal(xcodec.JSON, data, obj)
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func Bind(r *http.Request, obj any) error {
 			return err
 		}
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
-		err = xcodec.Decode(xcodec.JSON, body, obj)
+		err = xcodec.Unmarshal(xcodec.JSON, body, obj)
 		if err != nil {
 			return err
 		}

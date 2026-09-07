@@ -11,7 +11,7 @@ import (
 
 	"github.com/xanygo/anygo/xcfg/internal/hook"
 	"github.com/xanygo/anygo/xcfg/internal/parser"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc"
 	"github.com/xanygo/anygo/xt"
 )
 
@@ -20,7 +20,7 @@ func Test_confImpl(t *testing.T) {
 	testReset()
 	var a any
 	xt.Error(t, conf.Parse("abc.json", &a))
-	xt.NoError(t, conf.WithDecoder(".json", xcodec.DecodeFunc(parser.JSON)))
+	xt.NoError(t, conf.WithDecoder(".json", xenc.UnmarshalFunc(parser.JSON)))
 	xt.Error(t, conf.Parse("abc.xyz", &a))
 	xt.NoError(t, conf.Parse("testdata/db10.json", &a))
 }
@@ -87,7 +87,7 @@ func Test_confImpl_ParseBytes(t *testing.T) {
 	}
 }
 
-var _ xcodec.DecodeExtra = (*testExtra)(nil)
+var _ xenc.UnmarshalExtra = (*testExtra)(nil)
 
 type testExtra struct {
 	Name  string
@@ -100,7 +100,7 @@ func (t testExtra) NeedDecodeExtra() string {
 
 func TestParseExtra(t *testing.T) {
 	conf := &Configure{}
-	xt.NoError(t, conf.WithDecoder(".json", xcodec.DecodeFunc(parser.JSON)))
+	xt.NoError(t, conf.WithDecoder(".json", xenc.UnmarshalFunc(parser.JSON)))
 
 	content := []byte(`{"id":1,"version":{"day":25},"Name":"Hello"}`)
 

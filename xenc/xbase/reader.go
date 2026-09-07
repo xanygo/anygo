@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2025-10-06
 
-package xencoding
+package xbase
 
 import (
 	"bytes"

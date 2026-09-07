@@ -6,18 +6,19 @@ package xcodec
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"reflect"
 	"strings"
 	"unsafe"
+
+	"github.com/xanygo/anygo/xenc"
 )
 
 var (
-	JSON = NewCodec("json", json.Marshal, json.Unmarshal, "application/json")
+	JSON = xenc.NewCodec("json", json.Marshal, json.Unmarshal, "application/json")
 
-	Raw = NewCodec("raw", rawEncode, rawDecode, "application/octet-stream")
+	Raw = xenc.NewCodec("raw", rawEncode, rawDecode, "application/octet-stream")
 
 	Form = &FormCodec{}
 
@@ -34,79 +35,13 @@ func init() {
 	Register("text", Text)
 }
 
-// Namer 名字
-type Namer interface {
-	Name() string
-}
+type Codec = xenc.Codec
 
-type (
-	Codec interface {
-		Namer
-		Encoder
-		Decoder
-	}
+type Marshaler = xenc.Marshaler
 
-	Encoder interface {
-		Encode(any) ([]byte, error)
-	}
+type Unmarshaler = xenc.Unmarshaler
 
-	Decoder interface {
-		Decode([]byte, any) error
-	}
-
-	HasContentType interface {
-		ContentType() string
-	}
-)
-
-func Name(obj any) string {
-	if hn, ok := obj.(Namer); ok {
-		return hn.Name()
-	}
-	return ""
-}
-
-type EncodeFunc func(any) ([]byte, error)
-
-func (e EncodeFunc) Encode(v any) ([]byte, error) {
-	return e(v)
-}
-
-type DecodeFunc func([]byte, any) error
-
-func (d DecodeFunc) Decode(v []byte, r any) error {
-	return d(v, r)
-}
-
-func NewCodec(name string, e EncodeFunc, d DecodeFunc, ct string) Codec {
-	return &codec{name: name, e: e, d: d, ct: ct}
-}
-
-var _ Codec = (*codec)(nil)
-var _ HasContentType = (*codec)(nil)
-
-type codec struct {
-	name string
-	e    EncodeFunc
-	d    DecodeFunc
-	ct   string
-}
-
-func (c *codec) Encode(a any) ([]byte, error) {
-	return c.e(a)
-}
-
-func (c *codec) Decode(bf []byte, a any) error {
-	return c.d(bf, a)
-}
-
-func (c *codec) Name() string {
-	return c.name
-}
-
-func (c *codec) ContentType() string {
-	return c.ct
-}
+type UnmarshalExtra = xenc.UnmarshalExtra
 
 func rawEncode(obj any) ([]byte, error) {
 	switch val := obj.(type) {
@@ -141,7 +76,7 @@ func JSONString(obj any) string {
 }
 
 var _ Codec = (*FormCodec)(nil)
-var _ HasContentType = (*FormCodec)(nil)
+var _ xenc.HasContentType = (*FormCodec)(nil)
 
 type FormCodec struct {
 }
@@ -154,7 +89,7 @@ func (f FormCodec) ContentType() string {
 	return "application/x-www-form-urlencoded"
 }
 
-func (f FormCodec) Encode(a any) ([]byte, error) {
+func (f FormCodec) Marshal(a any) ([]byte, error) {
 	switch vv := a.(type) {
 	case url.Values:
 		str := vv.Encode()
@@ -171,7 +106,7 @@ func (f FormCodec) Encode(a any) ([]byte, error) {
 	}
 }
 
-func (f FormCodec) Decode(bf []byte, a any) error {
+func (f FormCodec) Unmarshal(bf []byte, a any) error {
 	if len(bf) == 0 {
 		return nil
 	}
@@ -198,40 +133,32 @@ func (f FormCodec) Decode(bf []byte, a any) error {
 	}
 }
 
-// EncodeToString 使用 Encoder 将 obj 编码为 字符串
-func EncodeToString(enc Encoder, obj any) (string, error) {
-	bf, err := enc.Encode(obj)
+// MarshalToString 使用 Marshaler 将 obj 编码为 字符串
+func MarshalToString(enc Marshaler, obj any) (string, error) {
+	bf, err := enc.Marshal(obj)
 	if err != nil {
 		return "", fmt.Errorf("encode error %w, data=%#v", err, obj)
 	}
 	return unsafe.String(unsafe.SliceData(bf), len(bf)), nil
 }
 
-// DecodeFromString 使用 Decoder 将字符串 解码并赋值给 obj，若 obj 本身是字符串类型，则直接赋值
-func DecodeFromString(dec Decoder, str string, obj any) error {
+// UnmarshalFromString 使用 Decoder 将字符串 解码并赋值给 obj，若 obj 本身是字符串类型，则直接赋值
+func UnmarshalFromString(dec Unmarshaler, str string, obj any) error {
 	bf := unsafe.Slice(unsafe.StringData(str), len(str))
-	return Decode(dec, bf, obj)
+	return Unmarshal(dec, bf, obj)
 }
 
-// DecodeExtra 当被解析的对象，实现了此接口的时候，并且 NeedDecodeExtra 返回了有效的字段名，
-// 则会将未在 struct 中定义的字段，全部解析到指定的字段里。
-type DecodeExtra interface {
-	// NeedDecodeExtra 存储未定义字段的字段名，返回非空为有效。
-	// 并且返回的名字必须在 struct 中存在，而且必须是 map[string]any 类型
-	NeedDecodeExtra() string
-}
-
-func Decode(decoder Decoder, content []byte, obj any) error {
-	err := decoder.Decode(content, obj)
+func Unmarshal(decoder Unmarshaler, content []byte, obj any) error {
+	err := decoder.Unmarshal(content, obj)
 	if err != nil {
-		return fmt.Errorf("xcodec.Decoder %q, %d bytes, %w", Name(decoder), len(content), err)
+		return fmt.Errorf("xcodec.Decoder %q, %d bytes, %w", xenc.Name(decoder), len(content), err)
 	}
 	return doDecodeExtra(decoder, content, obj)
 }
 
 // doDecodeExtra 若obj 实现了 ParseExtra，则将其为定义字段解析到 Extra（具体字段名由 ParseExtra 接口返回） 里去
-func doDecodeExtra(decoder Decoder, content []byte, obj any) error {
-	et, ok := obj.(DecodeExtra)
+func doDecodeExtra(decoder Unmarshaler, content []byte, obj any) error {
+	et, ok := obj.(UnmarshalExtra)
 	if !ok {
 		return nil
 	}
@@ -255,7 +182,7 @@ func doDecodeExtra(decoder Decoder, content []byte, obj any) error {
 	}
 
 	data := map[string]any{}
-	if err := decoder.Decode(content, &data); err != nil {
+	if err := decoder.Unmarshal(content, &data); err != nil {
 		return err
 	}
 	names := make(map[string]bool, rt.NumField())
@@ -285,15 +212,6 @@ func isMapStringAny(t reflect.Type) bool {
 		t.Elem().Kind() == reflect.Interface
 }
 
-var errNoCt = errors.New("invalid codec: not xcodec.HasContentType")
-
-func ContentType(c Encoder) (string, error) {
-	if hct, ok := c.(HasContentType); ok {
-		return hct.ContentType(), nil
-	}
-	return "", errNoCt
-}
-
-func Encode(enc Encoder, obj any) ([]byte, error) {
-	return enc.Encode(obj)
+func Marshal(enc Marshaler, obj any) ([]byte, error) {
+	return enc.Marshal(obj)
 }

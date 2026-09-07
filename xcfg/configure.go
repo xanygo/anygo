@@ -16,7 +16,8 @@ import (
 	"strings"
 
 	"github.com/xanygo/anygo/xattr"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc"
+	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xvalidator"
 )
 
@@ -44,7 +45,7 @@ type Configure struct {
 
 	ctx       context.Context
 	validator xvalidator.Validator
-	decoders  map[string]xcodec.Decoder
+	decoders  map[string]xenc.Unmarshaler
 	exts      []string // 支持的文件后缀，如 []string{".json",".toml"}
 	hooks     hooks
 }
@@ -174,7 +175,7 @@ func (c *Configure) parseBytes(confPath string, fileExt string, content []byte, 
 		return errHook
 	}
 
-	if errParser := xcodec.Decode(parser, contentNew, obj); errParser != nil {
+	if errParser := xcodec.Unmarshal(parser, contentNew, obj); errParser != nil {
 		return fmt.Errorf("%w, config content=\n%s", errParser, string(contentNew))
 	}
 
@@ -203,9 +204,9 @@ func (c *Configure) Exists(path string) bool {
 	return false
 }
 
-func (c *Configure) WithDecoder(ext string, fn xcodec.Decoder) error {
+func (c *Configure) WithDecoder(ext string, fn xcodec.Unmarshaler) error {
 	if c.decoders == nil {
-		c.decoders = make(map[string]xcodec.Decoder, len(defaultDecoders))
+		c.decoders = make(map[string]xcodec.Unmarshaler, len(defaultDecoders))
 	}
 	if _, has := c.decoders[ext]; has {
 		return fmt.Errorf("parser=%q already exists", ext)
@@ -215,7 +216,7 @@ func (c *Configure) WithDecoder(ext string, fn xcodec.Decoder) error {
 	return nil
 }
 
-func (c *Configure) MustWithDecoder(ext string, fn xcodec.Decoder) {
+func (c *Configure) MustWithDecoder(ext string, fn xcodec.Unmarshaler) {
 	if err := c.WithDecoder(ext, fn); err != nil {
 		panic(err)
 	}

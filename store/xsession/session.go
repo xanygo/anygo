@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xctx"
+	"github.com/xanygo/anygo/xenc/xcodec"
 )
 
 type Session interface {
@@ -55,7 +55,7 @@ func FromContext(ctx context.Context) Session {
 // Set 将数据 val 使用 json 编码，并调用 Session.Set 保存
 // 注意：使用此方法写入的数据，必须使用 Load 或 Get 等来读取，不可以直接使用 Session 对象的 Load、Get 等方法
 func Set[T any](ctx context.Context, s Session, key string, val T) error {
-	str, err := xcodec.EncodeToString(xcodec.JSON, val)
+	str, err := xcodec.MarshalToString(xcodec.JSON, val)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func Get[T any](ctx context.Context, s Session, key string) (result T, err error
 	if err != nil {
 		return result, err
 	}
-	err = xcodec.DecodeFromString(xcodec.JSON, str, &result)
+	err = xcodec.UnmarshalFromString(xcodec.JSON, str, &result)
 	return result, err
 }
 

@@ -12,7 +12,7 @@ import (
 	"github.com/xanygo/anygo/store/xcache/xcachex"
 	"github.com/xanygo/anygo/store/xkv/xkvx"
 	"github.com/xanygo/anygo/xcfg"
-	"github.com/xanygo/anygo/xcipher"
+	"github.com/xanygo/anygo/xenc/xcipher"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xtime"

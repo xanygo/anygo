@@ -26,8 +26,8 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/cli/xcolor"
-	"github.com/xanygo/anygo/xcipher"
-	"github.com/xanygo/anygo/xcompress"
+	"github.com/xanygo/anygo/xenc/xcipher"
+	"github.com/xanygo/anygo/xenc/xcompress"
 	"github.com/xanygo/anygo/xhash"
 	"github.com/xanygo/anygo/xstr"
 	"github.com/xanygo/anygo/xsync"
@@ -295,7 +295,7 @@ import (
 	_ "embed"
 
 	"github.com/xanygo/anygo/xzip"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
     "github.com/xanygo/anygo/xsync"
 )
 

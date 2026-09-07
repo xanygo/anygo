@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xio"
 )
@@ -56,7 +56,7 @@ func (res *Response) envelope() envelope {
 }
 
 func (res *Response) DecodeResult(obj any) error {
-	err := xcodec.Decode(xcodec.JSON, res.Result, obj)
+	err := xcodec.Unmarshal(xcodec.JSON, res.Result, obj)
 	if err == nil {
 		return nil
 	}
@@ -64,7 +64,7 @@ func (res *Response) DecodeResult(obj any) error {
 }
 
 func (res *Response) WithResult(obj any) error {
-	bf, err := xcodec.JSON.Encode(obj)
+	bf, err := xcodec.JSON.Marshal(obj)
 	res.Result = bf
 	return err
 }
@@ -72,7 +72,7 @@ func (res *Response) WithResult(obj any) error {
 var _ io.WriterTo = (*Response)(nil)
 
 func (res *Response) WriteTo(w io.Writer) (int64, error) {
-	bf, err := xcodec.JSON.Encode(res.envelope())
+	bf, err := xcodec.JSON.Marshal(res.envelope())
 	if err != nil {
 		return 0, err
 	}
@@ -100,7 +100,7 @@ func readResponse(rd xio.BytesReader) (*Response, error) {
 
 func parserResponse(bf []byte) (*Response, error) {
 	el := &envelope{}
-	err := xcodec.Decode(xcodec.JSON, bf, &el)
+	err := xcodec.Unmarshal(xcodec.JSON, bf, &el)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func ReadResponses(rd *bufio.Reader) ([]*Response, bool, error) {
 		}
 	}
 	var batch []json.RawMessage
-	err = xcodec.Decode(xcodec.JSON, bf.Bytes(), &batch)
+	err = xcodec.Unmarshal(xcodec.JSON, bf.Bytes(), &batch)
 	if err != nil {
 		return nil, true, err
 	}

@@ -21,7 +21,11 @@ func (t TextCodec) Name() string {
 	return "text"
 }
 
-func (t TextCodec) Encode(obj any) ([]byte, error) {
+func (t TextCodec) ContentType() string {
+	return "text/plain"
+}
+
+func (t TextCodec) Marshal(obj any) ([]byte, error) {
 	if mt, ok := obj.(encoding.TextMarshaler); ok {
 		return mt.MarshalText()
 	}
@@ -34,13 +38,13 @@ func (t TextCodec) Encode(obj any) ([]byte, error) {
 	return nil, fmt.Errorf("type %T not implement TextMarshaler", obj)
 }
 
-// Decode 将bytes 解析到 obj，具体规则如下：
+// Unmarshal 将bytes 解析到 obj，具体规则如下：
 //
 //  1. obj 实现了 TextUnmarshaler ，则优先使用
 //  2. 若 obj 是  string 或者 []byte 类型，则直接赋值
 //  3. 若 obj 是基础类型，如 number、bool 类型，则尝试解析赋值
 //  4. 返回错误
-func (t TextCodec) Decode(bytes []byte, obj any) error {
+func (t TextCodec) Unmarshal(bytes []byte, obj any) error {
 	mt, ok := obj.(encoding.TextUnmarshaler)
 	if ok {
 		return mt.UnmarshalText(bytes)

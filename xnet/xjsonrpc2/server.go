@@ -15,8 +15,8 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/xanygo/anygo/xcodec"
 	"github.com/xanygo/anygo/xctx"
+	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xio"
 	"github.com/xanygo/anygo/xsync"
 )
@@ -257,7 +257,7 @@ func (r *Router) serveBatch(ctx context.Context, w *lockedBW, reqs []*Request) e
 	if len(resps) == 0 {
 		return nil
 	}
-	bf, _ := xcodec.JSON.Encode(resps)
+	bf, _ := xcodec.JSON.Marshal(resps)
 	bf = append(bf, '\n')
 	return w.WithLock(func(w *bufio.Writer) error {
 		w.Write(bf)

@@ -2,12 +2,12 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-11-26
 
-package xcipher_test
+package xbase_test
 
 import (
 	"fmt"
 
-	"github.com/xanygo/anygo/xcipher"
+	"github.com/xanygo/anygo/xenc/xcipher"
 )
 
 func ExampleAesBlock_Encrypt() {
@@ -38,36 +38,4 @@ func ExampleAesOFB_Encrypt() {
 	// Output:
 	// Encrypt= "2\xa0\x1c\x90\xb4"
 	// Decrypt= "hello"
-}
-
-func ExampleInt64Cipher_Encode() {
-	ac := &xcipher.Int64Cipher{
-		Cipher: &xcipher.AesOFB{
-			Key: "demo",
-		},
-	}
-	nums := []int64{0, 1, 1000, 10000, 99999999}
-	for _, num := range nums {
-		str1, _ := ac.Encode(num)
-		fmt.Printf("Encode(%d) = %q\n", num, str1)
-
-		num1, _ := ac.Decode(str1)
-		fmt.Printf("Decode(%q) = %d\n\n", str1, num1)
-	}
-
-	// Output:
-	// Encode(0) = "i1"
-	// Decode("i1") = 0
-	//
-	// Encode(1) = "j1"
-	// Decode("j1") = 1
-	//
-	// Encode(1000) = "kY6"
-	// Decode("kY6") = 1000
-	//
-	// Encode(10000) = "E4P5"
-	// Decode("E4P5") = 10000
-	//
-	// Encode(99999999) = "v24ZYJ2"
-	// Decode("v24ZYJ2") = 99999999
 }

@@ -12,90 +12,90 @@ import (
 )
 
 func TestFormCodec_Encode(t *testing.T) {
-	got1, err1 := Form.Encode(map[string]string{"a": "a", "b": "b"})
+	got1, err1 := Form.Marshal(map[string]string{"a": "a", "b": "b"})
 	xt.NoError(t, err1)
 	xt.Equal(t, string(got1), "a=a&b=b")
 
-	got2, err2 := Form.Encode(url.Values{"a": []string{"a"}, "b": []string{"b"}})
+	got2, err2 := Form.Marshal(url.Values{"a": []string{"a"}, "b": []string{"b"}})
 	xt.NoError(t, err2)
 	xt.Equal(t, string(got2), "a=a&b=b")
 
-	got3, err3 := Form.Encode("abc")
+	got3, err3 := Form.Marshal("abc")
 	xt.Error(t, err3)
 	xt.Empty(t, got3)
 }
 
 func TestFormCodec_Decode(t *testing.T) {
 	var got1 url.Values
-	err1 := Form.Decode([]byte("a=a"), &got1)
+	err1 := Form.Unmarshal([]byte("a=a"), &got1)
 	xt.NoError(t, err1)
 	xt.Equal(t, got1, url.Values{"a": []string{"a"}})
 
 	var got2 map[string]string
-	err2 := Form.Decode([]byte("a=a"), &got2)
+	err2 := Form.Unmarshal([]byte("a=a"), &got2)
 	xt.NoError(t, err2)
 	xt.Equal(t, got2, map[string]string{"a": "a"})
 
 	var got3 map[string]any
-	err3 := Form.Decode([]byte("a=a"), &got3)
+	err3 := Form.Unmarshal([]byte("a=a"), &got3)
 	xt.Error(t, err3)
 	xt.Empty(t, got3)
 }
 
 func Test_Raw(t *testing.T) {
 	str := "hello"
-	got1, err1 := Raw.Encode(str)
+	got1, err1 := Raw.Marshal(str)
 	xt.NoError(t, err1)
 	xt.Equal(t, string(got1), "hello")
 	var got2 []byte
-	err2 := Raw.Decode(got1, &got2)
+	err2 := Raw.Unmarshal(got1, &got2)
 	xt.NoError(t, err2)
 	xt.Equal(t, string(got2), "hello")
 }
 
 func TestEncodeToString(t *testing.T) {
 	t.Run("string", func(t *testing.T) {
-		got1, err1 := EncodeToString(JSON, "hello")
+		got1, err1 := MarshalToString(JSON, "hello")
 		xt.NoError(t, err1)
 		xt.Equal(t, got1, `"hello"`)
 
 		var got2 string
-		err2 := DecodeFromString(JSON, `"hello"`, &got2)
+		err2 := UnmarshalFromString(JSON, `"hello"`, &got2)
 		xt.NoError(t, err2)
 		xt.Equal(t, got2, "hello")
 	})
 
 	t.Run("bytes", func(t *testing.T) {
-		got3, err3 := EncodeToString(JSON, []byte("hello"))
+		got3, err3 := MarshalToString(JSON, []byte("hello"))
 		xt.NoError(t, err3)
 		xt.Equal(t, got3, `"aGVsbG8="`)
 
 		var db []byte
-		err4 := DecodeFromString(JSON, `"aGVsbG8="`, &db)
+		err4 := UnmarshalFromString(JSON, `"aGVsbG8="`, &db)
 		xt.NoError(t, err4)
 		xt.Equal(t, string(db), "hello")
 	})
 
 	t.Run("my-string", func(t *testing.T) {
 		type myString string
-		got5, err5 := EncodeToString(JSON, myString("hello"))
+		got5, err5 := MarshalToString(JSON, myString("hello"))
 		xt.NoError(t, err5)
 		xt.Equal(t, got5, `"hello"`)
 
 		var s1 myString
-		err6 := DecodeFromString(JSON, `"hello"`, &s1)
+		err6 := UnmarshalFromString(JSON, `"hello"`, &s1)
 		xt.NoError(t, err6)
 		xt.Equal(t, string(s1), "hello")
 	})
 	t.Run("my-string-ptr", func(t *testing.T) {
 		type myString string
 		str := myString("hello")
-		got5, err5 := EncodeToString(JSON, &str)
+		got5, err5 := MarshalToString(JSON, &str)
 		xt.NoError(t, err5)
 		xt.Equal(t, got5, `"hello"`)
 
 		var s1 myString
-		err6 := DecodeFromString(JSON, `"hello"`, &s1)
+		err6 := UnmarshalFromString(JSON, `"hello"`, &s1)
 		xt.NoError(t, err6)
 		xt.Equal(t, string(s1), "hello")
 	})

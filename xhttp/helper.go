@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xhttp/trustheader"
 )
 
@@ -76,7 +76,7 @@ func ClientScheme(r *http.Request) string {
 	// cloudflare: Cf-Visitor: '{"scheme":"https"}'
 	if str, ok := trustheader.Get(r.Header, "Cf-Visitor"); ok && strings.Contains(str, "scheme") {
 		var cf cfVisitor
-		if err := xcodec.Decode(xcodec.JSON, []byte(str), &cf); err == nil && cf.Scheme != "" {
+		if err := xcodec.Unmarshal(xcodec.JSON, []byte(str), &cf); err == nil && cf.Scheme != "" {
 			return cf.Scheme
 		}
 	}

@@ -13,46 +13,46 @@ import (
 func TestText(t *testing.T) {
 	tc := Text
 	t.Run("string-1", func(t *testing.T) {
-		out, err := tc.Encode("string")
+		out, err := tc.Marshal("string")
 		xt.NoError(t, err)
 		xt.Equal(t, string(out), "string")
 
 		var str string
-		err = tc.Decode([]byte("string"), &str)
+		err = tc.Unmarshal([]byte("string"), &str)
 		xt.NoError(t, err)
 		xt.Equal(t, str, "string")
 	})
 
 	t.Run("my-string", func(t *testing.T) {
 		type myString string
-		out, err := tc.Encode(myString("string"))
+		out, err := tc.Marshal(myString("string"))
 		xt.NoError(t, err)
 		xt.Equal(t, string(out), "string")
 
 		var str myString
-		err = tc.Decode([]byte("string"), &str)
+		err = tc.Unmarshal([]byte("string"), &str)
 		xt.NoError(t, err)
 		xt.Equal(t, str, "string")
 	})
 
 	t.Run("int-1", func(t *testing.T) {
-		out, err := tc.Encode(123)
+		out, err := tc.Marshal(123)
 		xt.NoError(t, err)
 		xt.Equal(t, string(out), "123")
 
 		var str int
-		err = tc.Decode([]byte("123"), &str)
+		err = tc.Unmarshal([]byte("123"), &str)
 		xt.NoError(t, err)
 		xt.Equal(t, str, 123)
 	})
 
 	t.Run("bytes", func(t *testing.T) {
-		out, err := tc.Encode([]byte("string"))
+		out, err := tc.Marshal([]byte("string"))
 		xt.NoError(t, err)
 		xt.Equal(t, string(out), "string")
 
 		var str []byte
-		err = tc.Decode([]byte("string"), &str)
+		err = tc.Unmarshal([]byte("string"), &str)
 		xt.NoError(t, err)
 		xt.Equal(t, string(str), "string")
 	})
@@ -62,12 +62,12 @@ func TestText(t *testing.T) {
 	}
 	t.Run("ptr-int-1", func(t *testing.T) {
 		itp1 := getIntPtr(123)
-		out, err := tc.Encode(itp1)
+		out, err := tc.Marshal(itp1)
 		xt.NoError(t, err)
 		xt.Equal(t, string(out), "123")
 
 		var num1 *int64
-		err = tc.Decode([]byte("123"), &num1)
+		err = tc.Unmarshal([]byte("123"), &num1)
 		xt.NoError(t, err)
 		xt.Equal(t, *num1, 123)
 	})

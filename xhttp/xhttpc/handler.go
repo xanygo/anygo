@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xio"
 )
@@ -67,14 +67,14 @@ func StatusRange(begin int, end int) HandlerFunc {
 	}
 }
 
-func DecodeBody(dc xcodec.Decoder, a any) HandlerFunc {
+func DecodeBody(dc xcodec.Unmarshaler, a any) HandlerFunc {
 	return func(ctx context.Context, resp *http.Response) error {
 		defer resp.Body.Close()
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return err
 		}
-		return xcodec.Decode(dc, body, a)
+		return xcodec.Unmarshal(dc, body, a)
 	}
 }
 

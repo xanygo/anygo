@@ -7,14 +7,14 @@ package xws
 import (
 	"fmt"
 
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 )
 
 func decode(mt MessageType, data []byte) (*Message, error) {
 	switch mt {
 	case TextMessage:
 		var tr Message
-		err := xcodec.Decode(xcodec.JSON, data, &tr)
+		err := xcodec.Unmarshal(xcodec.JSON, data, &tr)
 		if err != nil {
 			return nil, err
 		}
@@ -33,7 +33,7 @@ func encode(m *Message) ([]byte, error) {
 		if m.Method == "" {
 			return m.Payload, nil
 		}
-		return xcodec.Encode(xcodec.JSON, m)
+		return xcodec.Marshal(xcodec.JSON, m)
 	default:
 		return nil, fmt.Errorf("invalid message type: %v", m.Type)
 	}

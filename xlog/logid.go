@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/xanygo/anygo/xencoding"
+	"github.com/xanygo/anygo/xenc/xbase"
 	"github.com/xanygo/anygo/xstr"
 )
 
@@ -18,8 +18,8 @@ const fieldLogID = "logid"
 var logid atomic.Int64
 
 func NewLogID() string {
-	num1 := time.Now().Unix() - 1731686400
-	return xencoding.Base62.EncodeInt64(num1) + "-" + xstr.RandChar() + "-" + xencoding.Base62.EncodeInt64(logid.Add(1))
+	num1 := time.Now().Unix() - 1767196800 // 2026-1-1 00:00:00
+	return xbase.Base62.EncodeInt64(num1) + "-" + xstr.RandChar() + "-" + xbase.Base62.EncodeInt64(logid.Add(1))
 }
 
 func WithLogID(ctx context.Context, logID string) {

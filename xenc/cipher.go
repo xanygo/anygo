@@ -2,36 +2,32 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-10-30
 
-package xcipher
+package xenc
 
-type (
-	// Encryptor 加密
-	Encryptor interface {
-		Encrypt(src []byte) ([]byte, error)
-	}
+type Cipher interface {
+	Encryptor
+	Decrypter
+}
 
-	// Decrypter 解密
-	Decrypter interface {
-		Decrypt(src []byte) ([]byte, error)
-	}
+// Encryptor 加密
+type Encryptor interface {
+	Encrypt(src []byte) ([]byte, error)
+}
 
-	Cipher interface {
-		Encryptor
-		Decrypter
-	}
-)
+// Decrypter 解密
+type Decrypter interface {
+	Decrypt(src []byte) ([]byte, error)
+}
 
-type (
-	IDEncryptor interface {
-		Encryptor
-		ID() []byte
-	}
+type IDEncryptor interface {
+	Encryptor
+	ID() []byte
+}
 
-	IDDecrypter interface {
-		Decrypter
-		ID() []byte
-	}
-)
+type IDDecrypter interface {
+	Decrypter
+	ID() []byte
+}
 
 type EncryptFunc func([]byte) ([]byte, error)
 

@@ -2,13 +2,14 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2026-03-17
 
-package xcodec_test
+package xenc_test
 
 import (
 	"testing"
 
-	"github.com/xanygo/anygo/xcipher"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc"
+	"github.com/xanygo/anygo/xenc/xcipher"
+	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xt"
 )
 
@@ -16,14 +17,14 @@ func TestCodecWithCipher(t *testing.T) {
 	aes := &xcipher.AesOFB{
 		Key: "demo",
 	}
-	coder := xcodec.WithCipher(xcodec.JSON, aes)
+	coder := xenc.CodecWithCipher(xcodec.JSON, aes)
 
 	t.Run("case 1", func(t *testing.T) {
 		input := "Hello World"
-		got1, err := coder.Encode(input)
+		got1, err := coder.Marshal(input)
 		xt.NoError(t, err)
 		var str string
-		err = coder.Decode(got1, &str)
+		err = coder.Unmarshal(got1, &str)
 		xt.NoError(t, err)
 		xt.Equal(t, str, input)
 	})
@@ -33,10 +34,10 @@ func TestCodecWithCipher(t *testing.T) {
 			"a": "hello",
 			"b": "你好😄",
 		}
-		got1, err := coder.Encode(input)
+		got1, err := coder.Marshal(input)
 		xt.NoError(t, err)
 		var want map[string]any
-		err = coder.Decode(got1, &want)
+		err = coder.Unmarshal(got1, &want)
 		xt.NoError(t, err)
 		xt.Equal(t, want, input)
 	})
@@ -45,10 +46,10 @@ func TestCodecWithCipher(t *testing.T) {
 			"a": "hello",
 			"b": "你好😄",
 		}
-		got1, err := xcodec.EncodeToString(coder, input)
+		got1, err := xcodec.MarshalToString(coder, input)
 		xt.NoError(t, err)
 		var want map[string]any
-		err = xcodec.DecodeFromString(coder, got1, &want)
+		err = xcodec.UnmarshalFromString(coder, got1, &want)
 		xt.NoError(t, err)
 		xt.Equal(t, want, input)
 	})

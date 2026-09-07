@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/store/xcache"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xhttp/xhttpc"
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xnet/xrpc"

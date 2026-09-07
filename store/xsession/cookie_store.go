@@ -13,8 +13,9 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/xanygo/anygo/xcipher"
-	"github.com/xanygo/anygo/xcompress"
+	"github.com/xanygo/anygo/xenc"
+	"github.com/xanygo/anygo/xenc/xcipher"
+	"github.com/xanygo/anygo/xenc/xcompress"
 	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xsync"
 )
@@ -36,7 +37,7 @@ type CookieStore struct {
 	CookiePath string
 
 	// Cipher cookie value 的压缩，解压缩方法，可选
-	Cipher xcipher.Cipher
+	Cipher xenc.Cipher
 
 	// Life Cookie 的有效期
 	Life time.Duration
@@ -44,14 +45,14 @@ type CookieStore struct {
 	// BeforeSave 可选，用于设置 cookie 的 属性
 	BeforeSave func(c *http.Cookie)
 
-	cipherGetter xsync.OnceDoValue[xcipher.Cipher]
+	cipherGetter xsync.OnceDoValue[xenc.Cipher]
 }
 
-func (cs *CookieStore) getCipher() xcipher.Cipher {
+func (cs *CookieStore) getCipher() xenc.Cipher {
 	return cs.cipherGetter.Do(cs.initCipher)
 }
 
-func (cs *CookieStore) initCipher() xcipher.Cipher {
+func (cs *CookieStore) initCipher() xenc.Cipher {
 	cp := cs.Cipher
 	if cp == nil {
 		var key string
@@ -65,7 +66,7 @@ func (cs *CookieStore) initCipher() xcipher.Cipher {
 		}
 	}
 	return xcipher.Ciphers{
-		xcipher.NewCipher(xcompress.GZipCompress, xcompress.GZipDecompress),
+		xenc.NewCipher(xcompress.GZipCompress, xcompress.GZipDecompress),
 		&xcipher.Base64{
 			Encoder: base64.RawURLEncoding,
 		},

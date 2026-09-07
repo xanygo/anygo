@@ -12,7 +12,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/xanygo/anygo/xcipher"
+	"github.com/xanygo/anygo/xenc/xcipher"
 )
 
 var token = flag.String("token", "anygo-3000", "token for encryption")

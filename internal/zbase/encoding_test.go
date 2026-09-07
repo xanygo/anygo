@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-11-01
 
-package xencoding
+package zbase
 
 import (
 	"math"

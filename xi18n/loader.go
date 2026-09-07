@@ -11,7 +11,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 )
 
 // LoadFS 加载本地化资源到 Bundle 里去
@@ -53,7 +53,7 @@ import (
 //	namespace=目录+文件名(不包含后缀)，如 namespace=home 或者 namespace="ns1/index" .
 //	在后续使用的时候，namespace 也可以拼接到 key 里作为前缀，如 key="home/k1",然后 namespace 传空字符串：
 //	{{ xi "home/k1" }} 或者  {{ xi "ns1/index/k2" }}
-func LoadFS(b *Bundle, f fs.FS, root string, ext string, decoder xcodec.Decoder) error {
+func LoadFS(b *Bundle, f fs.FS, root string, ext string, decoder xcodec.Unmarshaler) error {
 	return fs.WalkDir(f, root, func(fileName string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
@@ -81,7 +81,7 @@ func LoadFS(b *Bundle, f fs.FS, root string, ext string, decoder xcodec.Decoder)
 		nameSpace, _ := strings.CutSuffix(nsName, fileExt)
 
 		var msgs []*Message
-		if err = decoder.Decode(content, &msgs); err != nil {
+		if err = decoder.Unmarshal(content, &msgs); err != nil {
 			return err
 		}
 		return lz.Add(nameSpace, msgs...)

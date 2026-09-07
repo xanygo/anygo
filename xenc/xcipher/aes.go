@@ -10,6 +10,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"sync"
 )
@@ -42,6 +43,10 @@ func (a *AesBlock) init() {
 	a.base.init()
 }
 
+func (a *AesBlock) Name() string {
+	return "AesBlock"
+}
+
 func (a *AesBlock) ID() []byte {
 	a.once.Do(a.init)
 	return a.base.ID()
@@ -68,11 +73,15 @@ type cryptoBlockBase struct {
 	key []byte
 	iv  []byte
 	id  []byte // key 和 iv 的签名
+	err error
 }
+
+var errNoKey = errors.New("key is required")
 
 func (base *cryptoBlockBase) init() {
 	if len(base.Key) == 0 {
-		panic("empty Key")
+		base.err = errNoKey
+		return
 	}
 	base.key = []byte(base.Key)
 	switch len(base.key) {
@@ -93,7 +102,8 @@ func (base *cryptoBlockBase) init() {
 	hh := hmac.New(sha256.New, base.key)
 	_, err := hh.Write(base.iv)
 	if err != nil {
-		panic(err)
+		base.err = err
+		return
 	}
 	base.id = hh.Sum(nil)
 }
@@ -103,6 +113,9 @@ func (base *cryptoBlockBase) ID() []byte {
 }
 
 func (base *cryptoBlockBase) Encrypt(src []byte) ([]byte, error) {
+	if base.err != nil {
+		return nil, base.err
+	}
 	if len(src) == 0 {
 		return nil, nil
 	}
@@ -135,6 +148,9 @@ func (base *cryptoBlockBase) padding(src []byte) ([]byte, []byte, int) {
 }
 
 func (base *cryptoBlockBase) Decrypt(src []byte) ([]byte, error) {
+	if base.err != nil {
+		return nil, base.err
+	}
 	if len(src) == 0 {
 		return nil, nil
 	}
@@ -171,11 +187,17 @@ type AesOFB struct {
 	id  []byte // key 和 iv 的签名
 
 	once sync.Once
+	err  error
+}
+
+func (a *AesOFB) Name() string {
+	return "AesOFB"
 }
 
 func (a *AesOFB) init() {
 	if len(a.Key) == 0 {
-		panic("empty Key")
+		a.err = errNoKey
+		return
 	}
 	key := []byte(a.Key)
 	switch len(key) {
@@ -197,7 +219,8 @@ func (a *AesOFB) init() {
 	hh := hmac.New(sha256.New, a.key)
 	_, err := hh.Write(a.iv)
 	if err != nil {
-		panic(err)
+		a.err = err
+		return
 	}
 	a.id = hh.Sum(nil)
 }
@@ -208,6 +231,9 @@ func (a *AesOFB) ID() []byte {
 }
 
 func (a *AesOFB) Encrypt(src []byte) ([]byte, error) {
+	if a.err != nil {
+		return nil, a.err
+	}
 	if len(src) == 0 {
 		return nil, nil
 	}
@@ -229,6 +255,9 @@ func (a *AesOFB) Encrypt(src []byte) ([]byte, error) {
 }
 
 func (a *AesOFB) Decrypt(src []byte) ([]byte, error) {
+	if a.err != nil {
+		return nil, a.err
+	}
 	if len(src) == 0 {
 		return nil, nil
 	}
@@ -251,11 +280,17 @@ type AesGCM struct {
 	key []byte
 
 	once sync.Once
+	err  error
+}
+
+func (a *AesGCM) Name() string {
+	return "AesGCM"
 }
 
 func (a *AesGCM) init() {
 	if len(a.Key) == 0 {
-		panic("empty Key")
+		a.err = errNoKey
+		return
 	}
 	key := []byte(a.Key)
 	switch len(key) {
@@ -269,6 +304,9 @@ func (a *AesGCM) init() {
 }
 
 func (a *AesGCM) Encrypt(src []byte) ([]byte, error) {
+	if a.err != nil {
+		return nil, a.err
+	}
 	if len(src) == 0 {
 		return nil, nil
 	}
@@ -291,6 +329,9 @@ func (a *AesGCM) Encrypt(src []byte) ([]byte, error) {
 }
 
 func (a *AesGCM) Decrypt(src []byte) ([]byte, error) {
+	if a.err != nil {
+		return nil, a.err
+	}
 	if len(src) == 0 {
 		return nil, nil
 	}
@@ -305,7 +346,7 @@ func (a *AesGCM) Decrypt(src []byte) ([]byte, error) {
 	}
 	nonceSize := gcm.NonceSize()
 	if len(src) < nonceSize {
-		return nil, errors.New("invalid data")
+		return nil, fmt.Errorf("invalid data, input.len=%d, expect >= %d", len(src), nonceSize)
 	}
 
 	nonce := src[:nonceSize]

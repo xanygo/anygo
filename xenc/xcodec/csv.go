@@ -10,10 +10,11 @@ import (
 	"strings"
 
 	"github.com/xanygo/anygo/internal/zreflect"
+	"github.com/xanygo/anygo/xenc"
 )
 
 var _ Codec = (*CSVCodec)(nil)
-var _ HasContentType = (*CSVCodec)(nil)
+var _ xenc.HasContentType = (*CSVCodec)(nil)
 
 type CSVCodec struct {
 }
@@ -26,7 +27,7 @@ func (c CSVCodec) Name() string {
 	return "csv"
 }
 
-func (c CSVCodec) Encode(a any) ([]byte, error) {
+func (c CSVCodec) Marshal(a any) ([]byte, error) {
 	v := reflect.ValueOf(a)
 	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
@@ -53,7 +54,7 @@ func (c CSVCodec) Encode(a any) ([]byte, error) {
 	return []byte(strings.Join(parts, ",")), nil
 }
 
-func (c CSVCodec) Decode(b []byte, a any) error {
+func (c CSVCodec) Unmarshal(b []byte, a any) error {
 	if len(b) == 0 {
 		return nil // 空值表示空 slice
 	}

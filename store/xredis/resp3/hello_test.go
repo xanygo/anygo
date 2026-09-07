@@ -9,12 +9,12 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/xanygo/anygo/xencoding"
+	"github.com/xanygo/anygo/xenc/xbase"
 	"github.com/xanygo/anygo/xt"
 )
 
 func TestHelloResponse(t *testing.T) {
-	content, err := xencoding.ReadBase64File("testdata/hello_resp3.b64")
+	content, err := xbase.ReadBase64File("testdata/hello_resp3.b64")
 	xt.NoError(t, err)
 
 	mp, err1 := ReadByType(bufio.NewReader(bytes.NewBuffer(content)), DataTypeMap)

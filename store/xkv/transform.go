@@ -9,7 +9,7 @@ import (
 	"errors"
 
 	"github.com/xanygo/anygo/store/xkv/internal"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xmap"
 )
 
@@ -59,7 +59,7 @@ type transString[V any] struct {
 }
 
 func (ts transString[V]) Set(ctx context.Context, value V) error {
-	str, err := xcodec.EncodeToString(ts.codec, value)
+	str, err := xcodec.MarshalToString(ts.codec, value)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func (ts transString[V]) Set(ctx context.Context, value V) error {
 }
 
 func (ts transString[V]) SetNX(ctx context.Context, value V) (bool, error) {
-	str, err := xcodec.EncodeToString(ts.codec, value)
+	str, err := xcodec.MarshalToString(ts.codec, value)
 	if err != nil {
 		return false, err
 	}
@@ -82,12 +82,12 @@ func (ts transString[V]) Get(ctx context.Context) (v V, found bool, err error) {
 	if !found {
 		return v, false, nil
 	}
-	err = xcodec.DecodeFromString(ts.codec, str, &v)
+	err = xcodec.UnmarshalFromString(ts.codec, str, &v)
 	return v, err == nil, err
 }
 
 func (ts transString[V]) GetSet(ctx context.Context, value V) (v V, found bool, err error) {
-	str, err := xcodec.EncodeToString(ts.codec, value)
+	str, err := xcodec.MarshalToString(ts.codec, value)
 	if err != nil {
 		return v, false, err
 	}
@@ -95,7 +95,7 @@ func (ts transString[V]) GetSet(ctx context.Context, value V) (v V, found bool, 
 	if err != nil || !found {
 		return v, false, err
 	}
-	err = xcodec.DecodeFromString(ts.codec, oldStr, &v)
+	err = xcodec.UnmarshalFromString(ts.codec, oldStr, &v)
 	return v, err == nil, err
 }
 
@@ -107,7 +107,7 @@ func (ts transString[V]) GetDel(ctx context.Context) (v V, found bool, err error
 	if !found {
 		return v, false, nil
 	}
-	err = xcodec.DecodeFromString(ts.codec, str, &v)
+	err = xcodec.UnmarshalFromString(ts.codec, str, &v)
 	if err != nil {
 		return v, false, err
 	}
@@ -177,7 +177,7 @@ func (t transList[V]) LPop(ctx context.Context) (v V, ok bool, err error) {
 	if !found || err != nil {
 		return v, false, err
 	}
-	err = xcodec.DecodeFromString(t.codec, str, &v)
+	err = xcodec.UnmarshalFromString(t.codec, str, &v)
 	return v, err == nil, err
 }
 
@@ -188,7 +188,7 @@ func (t transList[V]) LPopN(ctx context.Context, count int) (vs []V, err error) 
 	}
 	for _, item := range items {
 		var v V
-		err = xcodec.DecodeFromString(t.codec, item, &v)
+		err = xcodec.UnmarshalFromString(t.codec, item, &v)
 		if err != nil {
 			return nil, err
 		}
@@ -201,7 +201,7 @@ func (t transList[V]) RPop(ctx context.Context) (v V, ok bool, err error) {
 	if !found || err != nil {
 		return v, false, err
 	}
-	err = xcodec.DecodeFromString(t.codec, str, &v)
+	err = xcodec.UnmarshalFromString(t.codec, str, &v)
 	return v, err == nil, err
 }
 
@@ -212,7 +212,7 @@ func (t transList[V]) RPopN(ctx context.Context, count int) (vs []V, err error) 
 	}
 	for _, item := range items {
 		var v V
-		err = xcodec.DecodeFromString(t.codec, item, &v)
+		err = xcodec.UnmarshalFromString(t.codec, item, &v)
 		if err != nil {
 			return nil, err
 		}
@@ -228,7 +228,7 @@ func (t transList[V]) Range(ctx context.Context, fn func(val V) bool) error {
 	var decodeErr error
 	err := t.ss.Range(ctx, func(val string) bool {
 		var v V
-		decodeErr = xcodec.DecodeFromString(t.codec, val, &v)
+		decodeErr = xcodec.UnmarshalFromString(t.codec, val, &v)
 		if decodeErr != nil {
 			return false
 		}
@@ -244,7 +244,7 @@ func (t transList[V]) LRange(ctx context.Context, fn func(val V) bool) error {
 	var decodeErr error
 	err := t.ss.LRange(ctx, func(val string) bool {
 		var v V
-		decodeErr = xcodec.DecodeFromString(t.codec, val, &v)
+		decodeErr = xcodec.UnmarshalFromString(t.codec, val, &v)
 		if decodeErr != nil {
 			return false
 		}
@@ -260,7 +260,7 @@ func (t transList[V]) RRange(ctx context.Context, fn func(val V) bool) error {
 	var decodeErr error
 	err := t.ss.RRange(ctx, func(val string) bool {
 		var v V
-		decodeErr = xcodec.DecodeFromString(t.codec, val, &v)
+		decodeErr = xcodec.UnmarshalFromString(t.codec, val, &v)
 		if decodeErr != nil {
 			return false
 		}
@@ -295,7 +295,7 @@ type transHash[V any] struct {
 }
 
 func (t transHash[V]) HSet(ctx context.Context, field string, value V) error {
-	str, err := xcodec.EncodeToString(t.codec, value)
+	str, err := xcodec.MarshalToString(t.codec, value)
 	if err != nil {
 		return err
 	}
@@ -315,7 +315,7 @@ func (t transHash[V]) HGet(ctx context.Context, field string) (v V, ok bool, err
 	if !found || err != nil {
 		return v, false, err
 	}
-	err = xcodec.DecodeFromString(t.codec, str, &v)
+	err = xcodec.UnmarshalFromString(t.codec, str, &v)
 	return v, err == nil, err
 }
 
@@ -330,7 +330,7 @@ func (t transHash[V]) HMGet(ctx context.Context, fields ...string) (map[string]V
 	result := make(map[string]V, len(datas))
 	for k, str := range datas {
 		var v V
-		err = xcodec.DecodeFromString(t.codec, str, &v)
+		err = xcodec.UnmarshalFromString(t.codec, str, &v)
 		if err != nil {
 			return nil, err
 		}
@@ -347,7 +347,7 @@ func (t transHash[V]) HRange(ctx context.Context, fn func(field string, value V)
 	var decodeErr error
 	err := t.ss.HRange(ctx, func(field string, value string) bool {
 		var v V
-		decodeErr = xcodec.DecodeFromString(t.codec, value, &v)
+		decodeErr = xcodec.UnmarshalFromString(t.codec, value, &v)
 		if decodeErr != nil {
 			return false
 		}
@@ -367,7 +367,7 @@ func (t transHash[V]) HGetAll(ctx context.Context) (map[string]V, error) {
 	result := make(map[string]V, len(datas))
 	for k, str := range datas {
 		var v V
-		err1 := xcodec.DecodeFromString(t.codec, str, &v)
+		err1 := xcodec.UnmarshalFromString(t.codec, str, &v)
 		if err1 != nil {
 			return nil, err1
 		}
@@ -432,7 +432,7 @@ func (t transSet[V]) SRange(ctx context.Context, fn func(val V) bool) error {
 	var decodeErr error
 	err := t.ss.SRange(ctx, func(value string) bool {
 		var v V
-		decodeErr = xcodec.DecodeFromString(t.codec, value, &v)
+		decodeErr = xcodec.UnmarshalFromString(t.codec, value, &v)
 		if decodeErr != nil {
 			return false
 		}
@@ -459,7 +459,7 @@ func (t transSet[V]) SCard(ctx context.Context) (int64, error) {
 }
 
 func (t transSet[V]) SIsMember(ctx context.Context, member V) (bool, error) {
-	str, err := xcodec.EncodeToString(t.codec, member)
+	str, err := xcodec.MarshalToString(t.codec, member)
 	if err != nil {
 		return false, err
 	}
@@ -480,7 +480,7 @@ func (t transSet[V]) SPop(ctx context.Context) (v V, found bool, err error) {
 	if err != nil || !found {
 		return v, false, err
 	}
-	err = xcodec.DecodeFromString(t.codec, str, &v)
+	err = xcodec.UnmarshalFromString(t.codec, str, &v)
 	return v, err == nil, err
 }
 
@@ -492,7 +492,7 @@ func (t transSet[V]) SPopN(ctx context.Context, count int) ([]V, error) {
 	result := make([]V, len(list))
 	for i, str := range list {
 		var v V
-		if err = xcodec.DecodeFromString(t.codec, str, &v); err != nil {
+		if err = xcodec.UnmarshalFromString(t.codec, str, &v); err != nil {
 			return nil, err
 		}
 		result[i] = v
@@ -506,7 +506,7 @@ func (t transSet[V]) SRandMember(ctx context.Context) (v V, found bool, err erro
 	if err != nil || !found {
 		return v, false, err
 	}
-	err = xcodec.DecodeFromString(t.codec, str, &v)
+	err = xcodec.UnmarshalFromString(t.codec, str, &v)
 	return v, err == nil, err
 }
 
@@ -518,7 +518,7 @@ func (t transSet[V]) SRandMemberN(ctx context.Context, count int) ([]V, error) {
 	result := make([]V, len(list))
 	for i, str := range list {
 		var v V
-		if err = xcodec.DecodeFromString(t.codec, str, &v); err != nil {
+		if err = xcodec.UnmarshalFromString(t.codec, str, &v); err != nil {
 			return nil, err
 		}
 		result[i] = v
@@ -545,7 +545,7 @@ type transZSet[V any] struct {
 }
 
 func (t transZSet[V]) ZAdd(ctx context.Context, score float64, member V) error {
-	str, err := xcodec.EncodeToString(t.codec, member)
+	str, err := xcodec.MarshalToString(t.codec, member)
 	if err != nil {
 		return err
 	}
@@ -553,7 +553,7 @@ func (t transZSet[V]) ZAdd(ctx context.Context, score float64, member V) error {
 }
 
 func (t transZSet[V]) ZScore(ctx context.Context, member V) (float64, bool, error) {
-	str, err := xcodec.EncodeToString(t.codec, member)
+	str, err := xcodec.MarshalToString(t.codec, member)
 	if err != nil {
 		return 0, false, err
 	}
@@ -561,7 +561,7 @@ func (t transZSet[V]) ZScore(ctx context.Context, member V) (float64, bool, erro
 }
 
 func (t transZSet[V]) ZIncrBy(ctx context.Context, incr float64, member V) (float64, error) {
-	str, err := xcodec.EncodeToString(t.codec, member)
+	str, err := xcodec.MarshalToString(t.codec, member)
 	if err != nil {
 		return 0, err
 	}
@@ -572,7 +572,7 @@ func (t transZSet[V]) ZRange(ctx context.Context, fn func(member V, score float6
 	var decodeErr error
 	err := t.ss.ZRange(ctx, func(member string, score float64) bool {
 		var v V
-		decodeErr = xcodec.DecodeFromString(t.codec, member, &v)
+		decodeErr = xcodec.UnmarshalFromString(t.codec, member, &v)
 		if decodeErr != nil {
 			return false
 		}
@@ -588,7 +588,7 @@ func (t transZSet[V]) ZRangeByScore(ctx context.Context, min string, max string,
 	var decodeErr error
 	err := t.ss.ZRangeByScore(ctx, min, max, func(member string, score float64) bool {
 		var v V
-		decodeErr = xcodec.DecodeFromString(t.codec, member, &v)
+		decodeErr = xcodec.UnmarshalFromString(t.codec, member, &v)
 		if decodeErr != nil {
 			return false
 		}
@@ -621,7 +621,7 @@ func (t transZSet[V]) ZLen(ctx context.Context) (int64, error) {
 }
 
 func (t transZSet[V]) ZRank(ctx context.Context, member V) (int64, float64, error) {
-	str, err := xcodec.EncodeToString(t.codec, member)
+	str, err := xcodec.MarshalToString(t.codec, member)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -636,7 +636,7 @@ func (t transZSet[V]) ZPopMax(ctx context.Context, count int) ([]V, []float64, e
 	result := make([]V, len(values))
 	for i, str := range values {
 		var v V
-		if err = xcodec.DecodeFromString(t.codec, str, &v); err != nil {
+		if err = xcodec.UnmarshalFromString(t.codec, str, &v); err != nil {
 			return nil, nil, err
 		}
 		result[i] = v
@@ -652,7 +652,7 @@ func (t transZSet[V]) ZPopMin(ctx context.Context, count int) ([]V, []float64, e
 	result := make([]V, len(values))
 	for i, str := range values {
 		var v V
-		if err = xcodec.DecodeFromString(t.codec, str, &v); err != nil {
+		if err = xcodec.UnmarshalFromString(t.codec, str, &v); err != nil {
 			return nil, nil, err
 		}
 		result[i] = v

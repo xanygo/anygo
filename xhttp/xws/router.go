@@ -8,7 +8,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 )
 
 type MessageType uint8
@@ -47,7 +47,7 @@ func (m *Message) MessageType() MessageType {
 
 // Decode 解析 Payload
 func (m *Message) Decode(obj any) error {
-	return xcodec.Decode(xcodec.JSON, m.Payload, obj)
+	return xcodec.Unmarshal(xcodec.JSON, m.Payload, obj)
 }
 
 // DecodeString 解析 Payload 为字符串
@@ -59,7 +59,7 @@ func (m *Message) DecodeString() (string, error) {
 
 // WithPayload 将 obj 使用 JSON encode 编码，并设置为 Payload
 func (m *Message) WithPayload(obj any) error {
-	bf, err := xcodec.Encode(xcodec.JSON, obj)
+	bf, err := xcodec.Marshal(xcodec.JSON, obj)
 	m.Payload = bf
 	return err
 }

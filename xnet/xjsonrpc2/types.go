@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 )
 
 type ID interface {
@@ -40,7 +40,7 @@ func parserID(bf []byte) (ID, error) {
 		return nil, nil
 	}
 	var id any
-	err := xcodec.JSON.Decode(bf, &id)
+	err := xcodec.JSON.Unmarshal(bf, &id)
 	if err != nil {
 		return nil, err
 	}

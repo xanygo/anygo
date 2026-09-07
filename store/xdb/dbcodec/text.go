@@ -6,7 +6,7 @@ package dbcodec
 
 import (
 	"github.com/xanygo/anygo/store/xdb/dbtype"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 )
 
 const TextName = "text"
@@ -25,9 +25,9 @@ func (t Text) Name() string {
 }
 
 func (t Text) Encode(obj any) (any, error) {
-	return xcodec.EncodeToString(xcodec.Text, obj)
+	return xcodec.MarshalToString(xcodec.Text, obj)
 }
 
 func (t Text) Decode(str string, obj any) error {
-	return xcodec.DecodeFromString(xcodec.Text, str, obj)
+	return xcodec.UnmarshalFromString(xcodec.Text, str, obj)
 }

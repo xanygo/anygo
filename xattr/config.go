@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc"
 )
 
 // FileConfig 应用的主配置文件，一般是 conf/app.yml 或 conf/app.json
@@ -147,7 +147,7 @@ func (c FileConfig) SetToDefault() {
 	c.SetTo(Default)
 }
 
-var _ xcodec.DecodeExtra = FileConfig{}
+var _ xenc.UnmarshalExtra = FileConfig{}
 
 func (c FileConfig) NeedDecodeExtra() string {
 	return "Other"

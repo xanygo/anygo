@@ -18,7 +18,7 @@ import (
 	"github.com/xanygo/anygo/internal/zos"
 	"github.com/xanygo/anygo/store/xkv/internal"
 	"github.com/xanygo/anygo/store/xkv/internal/file"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xio/xfs"
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xmap"

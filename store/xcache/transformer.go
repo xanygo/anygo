@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/internal/zreflect"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xmap"
 )
 
@@ -84,7 +84,7 @@ func (t *Transformer[K, V]) valueAsString(value V) (string, error) {
 		}
 	}
 
-	return xcodec.EncodeToString(t.ValueCodec, value)
+	return xcodec.MarshalToString(t.ValueCodec, value)
 }
 
 func (t *Transformer[K, V]) decodeValue(str string) (V, error) {
@@ -103,7 +103,7 @@ func (t *Transformer[K, V]) decodeValue(str string) (V, error) {
 		}
 	}
 
-	err := xcodec.DecodeFromString(t.ValueCodec, str, &value)
+	err := xcodec.UnmarshalFromString(t.ValueCodec, str, &value)
 	return value, err
 }
 

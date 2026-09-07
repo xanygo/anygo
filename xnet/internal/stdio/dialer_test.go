@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xnet/internal/stdio"
 	"github.com/xanygo/anygo/xt"
 )
@@ -30,7 +30,7 @@ func TestDialer_DialContext(t *testing.T) {
 			fp,
 		},
 	}
-	address, _ := xcodec.EncodeToString(xcodec.JSON, data)
+	address, _ := xcodec.MarshalToString(xcodec.JSON, data)
 
 	for i := 0; i < 3; i++ {
 		t.Run(fmt.Sprintf("DialContext_%d", i), func(t *testing.T) {

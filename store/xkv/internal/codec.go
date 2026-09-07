@@ -4,13 +4,13 @@
 
 package internal
 
-import "github.com/xanygo/anygo/xcodec"
+import "github.com/xanygo/anygo/xenc/xcodec"
 
-func EncodeToStrings[V any](codec xcodec.Encoder, members []V) ([]string, []error) {
+func EncodeToStrings[V any](codec xcodec.Marshaler, members []V) ([]string, []error) {
 	ms := make([]string, 0, len(members))
 	var errs []error
 	for _, member := range members {
-		str, err := xcodec.EncodeToString(codec, member)
+		str, err := xcodec.MarshalToString(codec, member)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -20,11 +20,11 @@ func EncodeToStrings[V any](codec xcodec.Encoder, members []V) ([]string, []erro
 	return ms, errs
 }
 
-func EncodeMapValueToStrings[K comparable, V any](codec xcodec.Encoder, values map[K]V) (map[K]string, []error) {
+func EncodeMapValueToStrings[K comparable, V any](codec xcodec.Marshaler, values map[K]V) (map[K]string, []error) {
 	result := make(map[K]string, len(values))
 	var errs []error
 	for key, value := range values {
-		str, err := xcodec.EncodeToString(codec, value)
+		str, err := xcodec.MarshalToString(codec, value)
 		if err != nil {
 			errs = append(errs, err)
 			continue

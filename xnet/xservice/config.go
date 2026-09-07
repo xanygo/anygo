@@ -14,7 +14,7 @@ import (
 
 	"github.com/xanygo/anygo/xbus"
 	"github.com/xanygo/anygo/xcfg"
-	"github.com/xanygo/anygo/xcodec"
+	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xnet/xbalance"
 	"github.com/xanygo/anygo/xnet/xdial"
 	"github.com/xanygo/anygo/xnet/xnaming"
@@ -51,7 +51,7 @@ type Config struct {
 	Extra map[string]any // 其他字段，配置里配置了，但是在此 Config 里没有定义的字段会解析到此处
 }
 
-var _ xcodec.DecodeExtra = (*Config)(nil)
+var _ xcodec.UnmarshalExtra = (*Config)(nil)
 
 func (c *Config) NeedDecodeExtra() string {
 	return "Extra"
