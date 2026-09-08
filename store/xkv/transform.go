@@ -23,7 +23,11 @@ type Transformer[V any] struct {
 
 func (tr *Transformer[V]) Init(item map[string]any) error {
 	if tr.Codec == nil {
-		if name, ok := xmap.GetString(item, "Codec"); ok {
+		name, err := xmap.GetString(item, "Codec")
+		if err != nil {
+			return err
+		}
+		if name != "" {
 			codec, err := xcodec.Find(name)
 			if err != nil {
 				return err

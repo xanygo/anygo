@@ -7,6 +7,7 @@ package xredis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -152,10 +153,11 @@ func (c *Client) FunctionStats(ctx context.Context) (*FunctionStats, error) {
 		return nil, err
 	}
 	fs := &FunctionStats{}
-	if eg, ok := mp["engines"]; ok {
-		xmap.Range[string, any](eg, func(k string, v any) bool {
+	if eg, ok := mp["engines"]; ok && eg != nil {
+		var rangeErr error
+		err = xmap.Range[string, any](eg, func(k string, v any) bool {
 			fse := &FunctionStatsEngine{}
-			ok := xmap.Range[string, any](v, func(k string, v any) bool {
+			err := xmap.Range[string, any](v, func(k string, v any) bool {
 				switch k {
 				case "language":
 					fse.Language, _ = v.(string)
@@ -166,19 +168,24 @@ func (c *Client) FunctionStats(ctx context.Context) (*FunctionStats, error) {
 				}
 				return true
 			})
-			if ok {
-				if fs.Engines == nil {
-					fs.Engines = make(map[string]*FunctionStatsEngine, 1)
-				}
-				fs.Engines[k] = fse
+			if err != nil {
+				rangeErr = err
+				return false
 			}
+			if fs.Engines == nil {
+				fs.Engines = make(map[string]*FunctionStatsEngine, 1)
+			}
+			fs.Engines[k] = fse
 			return true
 		})
+		if err != nil || rangeErr != nil {
+			return fs, errors.Join(err, rangeErr)
+		}
 	}
 
-	if rs, ok := mp["running_script"]; ok {
+	if rs, ok := mp["running_script"]; ok && rs != nil {
 		rn := &FunctionStatsRunning{}
-		ok := xmap.Range[string, any](rs, func(key string, val any) bool {
+		err := xmap.Range[string, any](rs, func(key string, val any) bool {
 			switch key {
 			case "name":
 				rn.Name, _ = val.(string)
@@ -190,9 +197,10 @@ func (c *Client) FunctionStats(ctx context.Context) (*FunctionStats, error) {
 			}
 			return true
 		})
-		if ok {
-			fs.RunningScript = rn
+		if err != nil {
+			return fs, err
 		}
+		fs.RunningScript = rn
 	}
 	return fs, nil
 }

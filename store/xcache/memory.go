@@ -82,8 +82,11 @@ type LRU[K comparable, V any] struct {
 //	param={"Capacity":10000}
 func (lru *LRU[K, V]) Init(param map[string]any) error {
 	if lru.capacity == 1 {
-		num, ok := xmap.GetInt(param, "Capacity")
-		if !ok || num < 1 {
+		num, err := xmap.GetInt(param, "Capacity")
+		if err != nil {
+			return err
+		}
+		if num < 1 {
 			return fmt.Errorf("miss valid Capacity in %v", param)
 		}
 		lru.capacity = num
@@ -392,8 +395,11 @@ type MemoryXIFO[K comparable, V any] struct {
 //	param={"Capacity":10000}
 func (m *MemoryXIFO[K, V]) Init(param map[string]any) error {
 	if m.capacity == 1 {
-		num, ok := xmap.GetInt(param, "Capacity")
-		if !ok || num < 1 {
+		num, err := xmap.GetInt(param, "Capacity")
+		if err != nil {
+			return err
+		}
+		if num < 1 {
 			return fmt.Errorf("miss valid Capacity in %v", param)
 		}
 		m.capacity = num

@@ -42,54 +42,54 @@ func TestRange(t *testing.T) {
 			"k4": map[string]string{"1": "2"},
 		}
 		var keys []string
-		ok := Range[string, any](mp, func(key string, val any) bool {
+		err := Range[string, any](mp, func(key string, val any) bool {
 			keys = append(keys, key)
 			return true
 		})
-		xt.True(t, ok)
+		xt.NoError(t, err)
 		wantKeys := Keys(mp)
 		xt.SliceSortEqual(t, wantKeys, keys)
 
 		keys = nil
-		ok = Range[string, int](mp, func(key string, val int) bool {
+		err = Range[string, int](mp, func(key string, val int) bool {
 			keys = append(keys, key)
 			return true
 		})
 		xt.SliceSortEqual(t, []string{"k1", "k2"}, keys)
-		xt.True(t, ok)
+		xt.NoError(t, err)
 	})
 
-	t.Run("nil map", func(t *testing.T) {
-		ok := Range[string, any](nil, func(key string, val any) bool {
+	t.Run("nil", func(t *testing.T) {
+		err := Range[string, any](nil, func(key string, val any) bool {
 			return true
 		})
-		xt.False(t, ok)
+		xt.Error(t, err)
 	})
 
 	t.Run("empty map", func(t *testing.T) {
 		var m map[string]any
-		ok := Range[string, any](m, func(key string, val any) bool {
+		err := Range[string, any](m, func(key string, val any) bool {
 			return true
 		})
-		xt.True(t, ok)
+		xt.NoError(t, err)
 	})
 }
 
 func TestGetString(t *testing.T) {
 	t.Run("case 1", func(t *testing.T) {
 		var data map[string]any
-		got, ok := GetString(data, "k")
-		xt.False(t, ok)
+		got, err := GetString(data, "k")
+		xt.NoError(t, err)
 		xt.Empty(t, got)
 	})
 	t.Run("case 2", func(t *testing.T) {
 		data := map[string]any{"k1": "123", "k2": 234}
-		got, ok := GetString(data, "k1")
-		xt.True(t, ok)
+		got, err := GetString(data, "k1")
+		xt.NoError(t, err)
 		xt.Equal(t, got, "123")
 
-		got, ok = GetString(data, "k2")
-		xt.True(t, ok)
+		got, err = GetString(data, "k2")
+		xt.NoError(t, err)
 		xt.Equal(t, got, "234")
 	})
 }
@@ -97,8 +97,8 @@ func TestGetString(t *testing.T) {
 func TestGetMap(t *testing.T) {
 	t.Run("case 1", func(t *testing.T) {
 		var data map[string]any
-		got, ok := GetMap(data, "k")
-		xt.False(t, ok)
+		got, err := GetMap(data, "k")
+		xt.NoError(t, err)
 		xt.Empty(t, got)
 	})
 
@@ -110,20 +110,20 @@ func TestGetMap(t *testing.T) {
 			"k4": map[any]any{"t1": "v2"},
 			"k5": any(map[string]any{"t1": "v2"}),
 		}
-		got, ok := GetMap(data, "k1")
-		xt.False(t, ok)
+		got, err := GetMap(data, "k1")
+		xt.Error(t, err)
 		xt.Empty(t, got)
 
-		got, ok = GetMap(data, "k3")
-		xt.True(t, ok)
+		got, err = GetMap(data, "k3")
+		xt.NoError(t, err)
 		xt.Equal(t, got, map[string]any{"t1": "v2"})
 
-		got, ok = GetMap(data, "k4")
-		xt.True(t, ok)
+		got, err = GetMap(data, "k4")
+		xt.NoError(t, err)
 		xt.Equal(t, got, map[string]any{"t1": "v2"})
 
-		got, ok = GetMap(data, "k5")
-		xt.True(t, ok)
+		got, err = GetMap(data, "k5")
+		xt.NoError(t, err)
 		xt.Equal(t, got, map[string]any{"t1": "v2"})
 	})
 }

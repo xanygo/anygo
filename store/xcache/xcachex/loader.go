@@ -211,7 +211,11 @@ func (cf *ConfigFile) newRedis[K comparable, V any](name string, item map[string
 	}
 
 	sp := make(map[string]any, 1)
-	if codec, ok := xmap.GetString(item, "Codec"); ok {
+	codec, err := xmap.GetString(item, "Codec")
+	if err != nil {
+		return nil, err
+	}
+	if codec != "" {
 		sp["ValueCodec"] = codec
 	}
 	return tr, tr.Init(sp)
@@ -228,7 +232,11 @@ func (cf *ConfigFile) newDB[K comparable, V any](name string, item map[string]an
 		Cache: dc,
 	}
 	sp := make(map[string]any, 1)
-	if codec, ok := xmap.GetString(item, "Codec"); ok {
+	codec, err := xmap.GetString(item, "Codec")
+	if err != nil {
+		return nil, err
+	}
+	if codec != "" {
 		sp["ValueCodec"] = codec
 	}
 	return tr, tr.Init(sp)
@@ -288,8 +296,11 @@ func (cf *ConfigFile) newChains[K comparable, V any](name string, item map[strin
 }
 
 func (cf *ConfigFile) newWrap[K comparable, V any](name string, item map[string]any) (xcache.MCache[K, V], error) {
-	ref, ok := xmap.GetString(item, "Ref")
-	if !ok || ref == "" {
+	ref, err := xmap.GetString(item, "Ref")
+	if err != nil {
+		return nil, err
+	}
+	if ref == "" {
 		return nil, errors.New("missing 'Ref'")
 	}
 	c, err := cf.Load[K, V](ref)
@@ -329,8 +340,11 @@ func (cf *ConfigFile) newWrap[K comparable, V any](name string, item map[string]
 func (cf *ConfigFile) parserWrapKeyTransform[K comparable, V any](wp *xcache.Wrapper[K, V], cfg map[string]any) error {
 	kt := reflect.TypeFor[K]()
 	rule := kt.String()
-	param, ok := xmap.GetMap(cfg, rule)
-	if ok {
+	param, err := xmap.GetMap(cfg, rule)
+	if err != nil {
+		return err
+	}
+	if len(param) > 0 {
 		rp, ok := keyTransformFns[rule]
 		if !ok {
 			return fmt.Errorf("%w: KeyTransform %q", xerror.NotFound, rule)
@@ -349,24 +363,28 @@ func (cf *ConfigFile) parserWrapKeyTransform[K comparable, V any](wp *xcache.Wra
 
 	if kt.Kind() == reflect.String {
 		// 用于支持 type MyString string 这种自定义 string 类型的 key
-		param, ok := xmap.GetMap(cfg, "string")
-		if ok {
-			fn := stringKindTransform(param)
-			if fn == nil {
-				return nil
+		param, err := xmap.GetMap(cfg, "string")
+		if err != nil {
+			return err
+		}
+		fn := stringKindTransform(param)
+		if fn == nil {
+			return nil
+		}
+		wp.NewKeyFn = func(k K) K {
+			krv := reflect.ValueOf(k)
+			newKrv := fn(krv)
+			if krv.Equal(newKrv) {
+				return k
 			}
-			wp.NewKeyFn = func(k K) K {
-				krv := reflect.ValueOf(k)
-				newKrv := fn(krv)
-				if krv.Equal(newKrv) {
-					return k
-				}
-				return newKrv.Interface().(K)
-			}
+			return newKrv.Interface().(K)
 		}
 	}
-	child, ok := xmap.GetMap(cfg, "Default")
-	if ok && len(child) > 0 {
+	child, err := xmap.GetMap(cfg, "Default")
+	if err != nil {
+		return err
+	}
+	if len(child) > 0 {
 		if child["Panic"] == true {
 			err := fmt.Errorf("%w KeyTransform func for type %q, pls use xcache.RegisterKeyTransform first", xerror.NotFound, rule)
 			panic(err)
@@ -378,9 +396,9 @@ func (cf *ConfigFile) parserWrapKeyTransform[K comparable, V any](wp *xcache.Wra
 }
 
 func (cf *ConfigFile) parserLife(cfg map[string]any) (*lifeConfig, error) {
-	param, ok := xmap.GetMap(cfg, "Life")
-	if !ok || len(param) == 0 {
-		return nil, nil
+	param, err := xmap.GetMap(cfg, "Life")
+	if err != nil || len(param) == 0 {
+		return nil, err
 	}
 	return xcodec.ConvertAs[*lifeConfig](param)
 }

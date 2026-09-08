@@ -41,8 +41,11 @@ func (r *Redis) Init(param map[string]any) error {
 		r.KeyPrefix, _ = xmap.GetString(param, "KeyPrefix")
 	}
 	if r.Client == nil {
-		service, ok := xmap.GetString(param, "Service")
-		if !ok || service == "" {
+		service, err := xmap.GetString(param, "Service")
+		if err != nil {
+			return err
+		}
+		if service == "" {
 			return fmt.Errorf("invalid Service in %v", param)
 		}
 		r.Client = xredis.NewClient(service)

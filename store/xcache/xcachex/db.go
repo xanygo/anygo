@@ -74,30 +74,35 @@ func (d *Database) Init(param map[string]any) error {
 	}
 
 	if d.GC == 0 {
-		gc, ok := xmap.GetString(param, "GC")
-		if ok {
-			dur, err := time.ParseDuration(gc)
-			if err != nil {
-				return err
-			}
-			d.GC = dur
+		gc, err := xmap.GetString(param, "GC")
+		if err != nil {
+			return err
 		}
+		dur, err := time.ParseDuration(gc)
+		if err != nil {
+			return err
+		}
+		d.GC = dur
 	}
 
 	if d.BGTimeout == 0 {
-		str, ok := xmap.GetString(param, "BGTimeout")
-		if ok {
-			dur, err := time.ParseDuration(str)
-			if err != nil {
-				return err
-			}
-			d.BGTimeout = dur
+		str, err := xmap.GetString(param, "BGTimeout")
+		if err != nil {
+			return err
 		}
+		dur, err := time.ParseDuration(str)
+		if err != nil {
+			return err
+		}
+		d.BGTimeout = dur
 	}
 
 	if d.DB == nil {
-		service, ok := xmap.GetString(param, "Service")
-		if !ok || service == "" {
+		service, err := xmap.GetString(param, "Service")
+		if err != nil {
+			return err
+		}
+		if service == "" {
 			return fmt.Errorf("no Service in %v", param)
 		}
 		db, err := xdb.NewClientWithService(service)

@@ -31,8 +31,11 @@ func (t *Transformer[K, V]) Init(param map[string]any) error {
 		t.KeyPrefix, _ = xmap.GetString(param, "KeyPrefix")
 	}
 	if t.ValueCodec == nil {
-		name, ok := xmap.GetString(param, "ValueCodec")
-		if !ok || name == "" {
+		name, err := xmap.GetString(param, "ValueCodec")
+		if err != nil {
+			return err
+		}
+		if name == "" {
 			t.ValueCodec = xcodec.JSON
 		} else {
 			c, err := xcodec.Find(name)

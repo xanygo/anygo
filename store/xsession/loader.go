@@ -155,8 +155,11 @@ func (cf *ConfigFile) newFn(name string, item map[string]any) (NewStorageFunc, e
 }
 
 func (cf *ConfigFile) getSessionLife(item map[string]any) (time.Duration, error) {
-	life, ok := xmap.GetString(item, "Life")
-	if !ok || life == "" {
+	life, err := xmap.GetString(item, "Life")
+	if err != nil {
+		return 0, err
+	}
+	if life == "" {
 		return 365 * 24 * time.Hour, nil
 	}
 	return xtime.ParseDuration(life)
@@ -167,8 +170,11 @@ func (cf *ConfigFile) newXKV(name string, item map[string]any) (NewStorageFunc, 
 	if err != nil {
 		return nil, err
 	}
-	ref, ok := xmap.GetString(item, "Ref")
-	if !ok || ref == "" {
+	ref, err := xmap.GetString(item, "Ref")
+	if err != nil {
+		return nil, err
+	}
+	if ref == "" {
 		return nil, fmt.Errorf("missing 'Ref' in %v", item)
 	}
 	db, err := xkvx.Load[string](ref)
@@ -194,8 +200,11 @@ func (cf *ConfigFile) newCookie(name string, item map[string]any) (NewStorageFun
 		return nil, err
 	}
 
-	cipherType, ok := xmap.GetString(item, "CipherType")
-	if !ok || cipherType == "" {
+	cipherType, err := xmap.GetString(item, "CipherType")
+	if err != nil {
+		return nil, err
+	}
+	if cipherType == "" {
 		cipherType = "AesOFB"
 	}
 
@@ -246,8 +255,11 @@ func (cf *ConfigFile) newXCache(name string, item map[string]any) (NewStorageFun
 	if err != nil {
 		return nil, err
 	}
-	ref, ok := xmap.GetString(item, "Ref")
-	if !ok || ref == "" {
+	ref, err := xmap.GetString(item, "Ref")
+	if err != nil {
+		return nil, err
+	}
+	if ref == "" {
 		return nil, fmt.Errorf("missing 'Ref' in %v", item)
 	}
 	ch, err := xcachex.Load[string, string](ref)

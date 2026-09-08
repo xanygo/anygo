@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"time"
 
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb"
@@ -46,8 +47,14 @@ func (tr *TableProvider) migrate(ctx context.Context, db xdb.DBCore, obj any, de
 
 // Init 用于从配置中初始化
 func (tr *TableProvider) Init(param map[string]any) error {
-	name, _ := xmap.GetString(param, "Name")
-	total, _ := xmap.GetInt(param, "Total")
+	name, err := xmap.GetString(param, "Name")
+	if err != nil {
+		return err
+	}
+	total, err := xmap.GetInt(param, "Total")
+	if err != nil {
+		return err
+	}
 	if name == "" {
 		return nil
 	}
@@ -204,8 +211,11 @@ func (d *Database) Init(param map[string]any) error {
 		d.KeyPrefix, _ = xmap.GetString(param, "KeyPrefix")
 	}
 	if d.DB == nil {
-		service, ok := xmap.GetString(param, "Service")
-		if !ok || service == "" {
+		service, err := xmap.GetString(param, "Service")
+		if err != nil {
+			return err
+		}
+		if service == "" {
 			return fmt.Errorf("no Service in %v", param)
 		}
 		db, err := xdb.NewClientWithService(service)
@@ -234,13 +244,25 @@ func (d *Database) Init(param map[string]any) error {
 	if err == nil && d.ZSetTable == nil {
 		d.ZSetTable, err = d.initTableProvider(param, "ZSetTable")
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	autoMigrate, err := xmap.GetBool(param, "AutoMigrate")
+	if err != nil {
+		return err
+	}
+	if autoMigrate {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		return d.Migrate(ctx)
+	}
+	return nil
 }
 
 func (d *Database) initTableProvider(param map[string]any, name string) (*TableProvider, error) {
-	cfg, ok := xmap.GetMap(param, name)
-	if !ok || len(cfg) == 0 {
-		return nil, nil
+	cfg, err := xmap.GetMap(param, name)
+	if err != nil {
+		return nil, err
 	}
 	tp := &TableProvider{}
 	if err := tp.Init(cfg); err != nil {

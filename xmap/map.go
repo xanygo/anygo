@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/xanygo/anygo/internal/zreflect"
@@ -34,52 +35,99 @@ func GetDf[K comparable, V any](m map[K]V, key K, def V) V {
 	return def
 }
 
-func GetMap[K comparable, V any](m map[K]V, key K) (map[K]V, bool) {
+// GetMap 从 map 中读取 map
+//
+//	若 key 存在并且类型正确，会返回 map,nil
+//	若 key 不存在，会返回 nil,nil
+//	若 key 类型错误，会返回 nil,error
+func GetMap[K comparable, V any](m map[K]V, key K) (map[K]V, error) {
 	if len(m) == 0 {
-		return nil, false
+		return nil, nil
 	}
 	v, found := m[key]
 	if !found {
-		return nil, false
+		return nil, nil
 	}
 	mc, ok := any(v).(map[K]V)
 	if ok {
-		return mc, true
+		return mc, nil
 	}
 	result := make(map[K]V)
-	ok = Range[K, V](v, func(key K, val V) bool {
+	err := Range[K, V](v, func(key K, val V) bool {
 		result[key] = val
 		return true
 	})
-	if !ok {
-		return nil, false
+	if err != nil {
+		return nil, err
 	}
-	return result, true
+	return result, nil
 }
 
-func GetString[K comparable, V any](m map[K]V, key K) (string, bool) {
+// GetString 从 map 中读取 string
+//
+//	若 key 存在并且类型正确，会返回 str,nil
+//	若 key 不存在，会返回 nil,nil
+//	若 key 类型错误，会返回 nil,error
+func GetString[K comparable, V any](m map[K]V, key K) (string, error) {
 	if len(m) == 0 {
-		return "", false
+		return "", nil
 	}
 	v, found := m[key]
 	if !found {
-		return "", false
+		return "", nil
 	}
-	return zreflect.BaseTypeToString(v)
+	if str, ok := zreflect.BaseTypeToString(v); ok {
+		return str, nil
+	}
+	return "", fmt.Errorf("expect map[%v] is string, got %#v", key, v)
 }
 
-func GetInt64[K comparable, V any](m map[K]V, key K) (int64, bool) {
+// GetInt64 从 map 中读取 int64
+//
+//	若 key 存在并且类型正确，会返回 int64,nil
+//	若 key 不存在，会返回 nil,nil
+//	若 key 类型错误，会返回 nil,error
+func GetInt64[K comparable, V any](m map[K]V, key K) (int64, error) {
 	if len(m) == 0 {
-		return 0, false
+		return 0, nil
 	}
 	v, found := m[key]
 	if !found {
-		return 0, false
+		return 0, nil
 	}
-	return zreflect.BaseTypeToInt64(v)
+	if num, ok := zreflect.BaseTypeToInt64(v); ok {
+		return num, nil
+	}
+	return 0, fmt.Errorf("expect map[%v] is int64, got %#v", key, v)
 }
 
-func GetInt[K comparable, V any](m map[K]V, key K) (int, bool) {
+// GetBool 从 map 中读取 bool
+//
+//	若 key 存在并且类型正确，会返回 bool,nil
+//	若 key 不存在，会返回 nil,nil
+//	若 key 类型错误，会返回 nil,error
+func GetBool[K comparable, V any](m map[K]V, key K) (bool, error) {
+	if len(m) == 0 {
+		return false, nil
+	}
+	v, found := m[key]
+	if !found {
+		return false, nil
+	}
+	if vb, ok := any(v).(bool); ok {
+		return vb, nil
+	}
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Bool:
+		return rv.Bool(), nil
+	case reflect.String:
+		return strconv.ParseBool(rv.String())
+	}
+	return false, fmt.Errorf("expect map[%v] is bool, got %#v", key, v)
+}
+
+func GetInt[K comparable, V any](m map[K]V, key K) (int, error) {
 	num, err := GetInt64(m, key)
 	return int(num), err
 }
@@ -333,10 +381,10 @@ func KeysMiss[K comparable, V any](mp map[K]V, keys []K) []K {
 //   - 使用 rv,ok := value.(Type) 方式断言 key 和 value
 //   - 不确定的类型，可以使用 any 代替，如只关注 key 的类型是 string，可以使用:Range[string,any](m,func(key string,value any)bool)
 //   - 传入的数据可以是任意类型；使用了反射
-func Range[K comparable, V any](m any, fn func(key K, val V) bool) bool {
+func Range[K comparable, V any](m any, fn func(key K, val V) bool) error {
 	rv := reflect.ValueOf(m)
 	if !rv.IsValid() || rv.Kind() != reflect.Map {
-		return false
+		return fmt.Errorf("invalid type, not map: %v", m)
 	}
 	for _, key := range rv.MapKeys() {
 		k, ok := key.Interface().(K)
@@ -351,7 +399,7 @@ func Range[K comparable, V any](m any, fn func(key K, val V) bool) bool {
 			break
 		}
 	}
-	return true
+	return nil
 }
 
 // Len 返回 Map 类型的长度，其他类型总是返回 0

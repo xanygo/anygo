@@ -26,7 +26,8 @@
             "Name":"kv4",
             "Type":"DB",           // 必填，存储类型，数据存储在数据库(如 sqlite、mysql、pgx 等)中
             "Service":"mysql1",    // 必填，数据库的服务名称，对应服务配置一般在 {app}/conf/service/mysql1.yml
-            "KeyPrefix":"prefix"   // 可选，key 的前缀
+            "KeyPrefix":"prefix",   // 可选，key 的前缀
+            "AutoMigrate":true,    // 可选，是否自动创建表结构。生产环境配置为 false 或者不配置
         },
         {
             "Name":"kv5",

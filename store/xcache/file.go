@@ -74,12 +74,13 @@ type File[K comparable, V any] struct {
 //		"Codec":"json",            // 编码器名称，可选，默认为 json
 //		"Capacity":10000           // 容量，可选
 //	}
-func (fc *File[K, V]) Init(param map[string]any) error {
-	var ok bool
-
+func (fc *File[K, V]) Init(param map[string]any) (err error) {
 	if fc.Dir == "" {
-		fc.Dir, ok = xmap.GetString(param, "Dir")
-		if !ok {
+		fc.Dir, err = xmap.GetString(param, "Dir")
+		if err != nil {
+			return err
+		}
+		if fc.Dir == "" {
 			return errors.New("miss Dir")
 		}
 		sign := strconv.FormatUint(uint64(zreflect.TypeID2[K, V]()), 10)
@@ -87,8 +88,11 @@ func (fc *File[K, V]) Init(param map[string]any) error {
 	}
 
 	if fc.Codec == nil {
-		name, ok := xmap.GetString(param, "Codec")
-		if !ok || name == "" {
+		name, err := xmap.GetString(param, "Codec")
+		if err != nil {
+			return err
+		}
+		if name == "" {
 			fc.Codec = xcodec.JSON
 		} else {
 			codec, err := xcodec.Find(name)

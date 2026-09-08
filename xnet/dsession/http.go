@@ -56,17 +56,26 @@ func httpUpgradeFactory(param map[string]any) (Starter, error) {
 	if len(param) == 0 {
 		return nil, errors.New("cannot create Starter by httpUpgradeFactory with empty param")
 	}
-	method, ok := xmap.GetString(param, "Method")
-	if !ok {
-		return nil, errors.New("httpUpgradeFactory method not found")
+	method, err := xmap.GetString(param, "Method")
+	if err != nil {
+		return nil, err
 	}
-	uri, ok := xmap.GetString(param, "URI")
-	if !ok {
-		return nil, errors.New("httpUpgradeFactory URI not found")
+	if method == "" {
+		return nil, fmt.Errorf("invalid httpUpgradeFactory method %q", method)
 	}
-	protocol, ok := xmap.GetString(param, "Protocol")
-	if !ok {
-		return nil, errors.New("httpUpgradeFactory protocol not found")
+	uri, err := xmap.GetString(param, "URI")
+	if err != nil {
+		return nil, err
+	}
+	if uri == "" {
+		return nil, fmt.Errorf("invalid httpUpgradeFactory URI %q", uri)
+	}
+	protocol, err := xmap.GetString(param, "Protocol")
+	if err != nil {
+		return nil, err
+	}
+	if protocol == "" {
+		return nil, fmt.Errorf("invalid httpUpgradeFactory protocol %q", protocol)
 	}
 	return HTTPUpgrade(method, uri, protocol), nil
 }
