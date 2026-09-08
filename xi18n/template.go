@@ -49,8 +49,8 @@ func (tr *TemplateRender) RB(text string, key string, args ...any) (string, erro
 }
 
 func renderB(b *Bundle, ls []Language, text string, key string, args ...any) (string, error) {
-	if len(ls) > 1 {
-		ls = ls[:1] // 只查找第一候选语言
+	if b.preferred(ls) {
+		return renderMsgSlice(text, args...)
 	}
 	msg := FindMessage(b, ls, "", key)
 	if msg != nil {
@@ -149,7 +149,7 @@ func (tr *TemplateRender) BindEn(languages []Language) func(text string, elseTex
 // 2. xit: 优先使用预定义本地化信息，并渲染本地化内容
 //
 //	如 {{ "你好" | xit "index/k1" }} 或者 {{ "你好 {0}" | xit "index/k1" "demo" }}
-//	在 “|” 前的内容是预定义的本地化模版信息,本地化信息中的变量使用 {number} 作为占位符，从 0 依次递增
+//	在 “|” 前的内容是预定义的本地化模版信息（首选语言）,本地化信息中的变量使用 {number} 作为占位符，从 0 依次递增
 //
 // 3. xi_tr: 判断首选语言是否是 lang，若是则输出 text，否则输出 elseText
 //
@@ -157,7 +157,7 @@ func (tr *TemplateRender) BindEn(languages []Language) func(text string, elseTex
 //
 // 4. xi_zh: 判断首选语言是否是 zh（中文），若是则输出 text，否则输出 elseText
 //
-//	如  {{ xi_zh  "你好" “hello” }}、 {{ xi_zh  "你好 {0}" “hello {0}” "HanMeiMei"}}
+//	如  {{ xi_zh  "你好" "hello" }}、 {{ xi_zh  "你好 {0}" “hello {0}” "HanMeiMei"}}
 //
 // 5. xi_en: 判断首选语言是否是 en（英文），若是则输出 text，否则输出 elseText
 //
@@ -177,7 +177,8 @@ func FuncMap(b *Bundle, languages []Language, namespace string) map[string]any {
 var errNoBundleInCtx = errors.New("not found Bundle in context, should ContextWithBundle first")
 
 // RA 使用资源的 key 渲染文本内容,需要提前使用 ContextWithBundle 将 *Bundle 存入 ctx。
-// 若是 Bundle 不存在会 panic，key 不存在会返回错误信息。
+//
+//	若是 Bundle 不存在会 panic，key 不存在会返回错误信息。
 func RA(ctx context.Context, key string, args ...any) (string, error) {
 	rr, ok := ctx.Value(ctxKeyBundle).(*ctxBundle)
 	if !ok {
@@ -190,8 +191,9 @@ func RA(ctx context.Context, key string, args ...any) (string, error) {
 }
 
 // RB 使用资源 key 渲染文本内容,若 key 不存在则使用传入的模版( 参数名: text，作为默认模版 ) 渲染
-// 需要提前使用 ContextWithBundle 将 *Bundle 和 首选语言 Language 存入 ctx。
-// 若是 Bundle 不存在会 panic，key 不存在会返回错误信息。
+//
+//	需要提前使用 ContextWithBundle 将 *Bundle 和 首选语言 Language 存入 ctx。
+//	若是 Bundle 不存在会 panic，key 不存在会返回错误信息。
 func RB(ctx context.Context, text string, key string, args ...any) (string, error) {
 	rr, ok := ctx.Value(ctxKeyBundle).(*ctxBundle)
 	if !ok {

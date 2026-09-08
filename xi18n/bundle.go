@@ -4,7 +4,9 @@
 
 package xi18n
 
-import "slices"
+import (
+	"slices"
+)
 
 // NewBundle 初始化语言资源包，语言优先级顺序（当没有匹配的语言时候，按照此顺序读取消息）同传入的 languages 的顺序
 func NewBundle(languages ...Language) *Bundle {
@@ -75,4 +77,9 @@ func (b *Bundle) Languages() []Language {
 		return nil
 	}
 	return b.languages
+}
+
+// preferred 判断用户浏览器的首选语言和资源包的首选语言是否匹配
+func (b *Bundle) preferred(ls []Language) bool {
+	return len(b.languages) > 0 && len(ls) > 0 && b.languages[0] == ls[0]
 }
