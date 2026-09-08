@@ -77,7 +77,7 @@ func Test_getAttrValue(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getAttrValue(tt.args.key)
+			got, err := getAttrValue(tt.args.key, tt.args.key)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getValue() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -35,13 +35,19 @@
 //
 // 在配置内容中使用 {xattr.属性名}，可读取到 xattr 的属性值，支持的属性名仅限如下：
 //
-//	RootDir : 应用根目录地址，如 /home/work/myapp
+//	RootDir :  应用根目录地址，如 /home/work/myapp
 //	IDC     :  应用所属机房, 如 online
 //	DataDir :  应用数据目录地址，如 /home/work/myapp/data
 //	ConfDir :  应用配置目录地址, 如 /home/work/myapp/conf
 //	TempDir :  应用临时文件目录地址, 如 /home/work/myapp/temp
 //	LogDir  :  应用日志文件目录地址, 如 /home/work/myapp/log
 //	RunMode :  应用运行模式,如 product
+//
+//	RootDir、DataDir、ConfDir、TempDir、LogDir 还可以使用 {xattr.xxxDir|value} 方式来连接地址路径，
+//	如 {xattr.DataDir|store/xkv/kvdb.db}, 等价于 filepath.Join(DataDir,"store/xkv/kvdb.db"),
+//	获取到的地址是当前系统所支持的地址。
+//
+//	RelRootDir、RelDataDir、RelConfDir、RelTempDir、RelLogDir: 返回相对于当前目录的相对地址。
 //
 // 3. 调用标准库的 os.XXX (部分函数)
 //
@@ -54,6 +60,8 @@
 //	UserHomeDir   ：获取当前用户的 Home 目录，即调用 os.UserHomeDir()
 //	UserCacheDir  ：获取当前用户的 Cache 目录，即调用 os.UserCacheDir()
 //	UserConfigDir ：获取当前用户的配置目录，即调用 os.UserConfigDir()
+//
+//	RelTempDir、RelUserHomeDir、RelUserCacheDir、RelUserConfigDir：返回相对于当前目录的相对地址
 //
 // 4. Go Template 语法
 //
@@ -77,6 +85,7 @@
 //	contains : 即 strings.Contains，如 contains "hello" "h"
 //	prefix   : 即 strings.HasPrefix，如 contains "hello" "h"
 //	suffix   : 即 strings.HasSuffix，如 contains "hello" "o"
+//	ToSlash  ：即 filepath.ToSlash
 //
 // # 5. 数据校验( Validator )
 //

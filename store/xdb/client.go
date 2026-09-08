@@ -44,19 +44,26 @@ func NewClientWithService(name any) (*Client, error) {
 		"Timeout":      xoption.TotalTimeout(opt).String(),
 	}
 	var driver, dsn string
-	xmap.Range[string, string](xoption.Extra(srv.Option(), key), func(k, v string) bool {
-		switch k {
-		case "Driver":
-			driver = v
-		case "Username":
-			data["Username"] = v
-		case "Password":
-			data["Password"] = v
-		case "DSN":
-			dsn = v
+	ext := xoption.Extra(srv.Option(), key)
+	if ext != nil {
+		err = xmap.Range(ext, func(k, v string) bool {
+			switch k {
+			case "Driver":
+				driver = v
+			case "Username":
+				data["Username"] = v
+			case "Password":
+				data["Password"] = v
+			case "DSN":
+				dsn = v
+			}
+			return true
+		})
+		if err != nil {
+			return nil, err
 		}
-		return true
-	})
+	}
+
 	if driver == "" {
 		return nil, fmt.Errorf("%s[Driver] missing", key)
 	}

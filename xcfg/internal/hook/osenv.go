@@ -20,11 +20,11 @@ func OsEnvVars(_ context.Context, _ string, content []byte) ([]byte, error) {
 		// 将 {env.xxx} 中的 xxx 部分取出
 		// 或者 将 {env.yyy|val} 中的 yyy|val 部分取出
 
-		keyWithDefaultVal := subStr[len("{env.") : len(subStr)-1] // eg: xxx 或者 yyy|val
+		keyWithDefaultVal := subStr[len("{env.") : len(subStr)-1] // eg: xxx 或者 xxx|val
 		idx := bytes.Index(keyWithDefaultVal, []byte("|"))
 		if idx > 0 {
 			// {env.变量名|默认值} 有默认值的格式
-			key := string(keyWithDefaultVal[:idx])  // eg: yyy
+			key := string(keyWithDefaultVal[:idx])  // eg: xxx
 			defaultVal := keyWithDefaultVal[idx+1:] // eg: val
 			envVal := os.Getenv(key)
 			if len(envVal) == 0 {

@@ -74,6 +74,7 @@ func (t *Template) exec(ctx context.Context, cfPath string, content []byte, tp m
 		"suffix": func(s string, suffix string) bool {
 			return strings.HasSuffix(s, suffix)
 		},
+		"ToSlash": filepath.ToSlash,
 	})
 	tmpl, err = tmpl.Parse(string(content))
 	if err != nil {

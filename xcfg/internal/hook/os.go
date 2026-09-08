@@ -8,8 +8,10 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 // 模板变量格式：{os.变量名}
@@ -19,12 +21,31 @@ func OSVars(_ context.Context, _ string, content []byte) ([]byte, error) {
 	var err error
 	contentNew := osVarReg.ReplaceAllFunc(content, func(subStr []byte) []byte {
 		// 将 {os.xxx} 中的 xxx 部分取出
-		key := subStr[len("{os.") : len(subStr)-1] // eg: xxx
+		key := string(subStr[len("{os.") : len(subStr)-1]) // eg: xxx
+		rawKey := key
+
+		isDir := strings.HasSuffix(key, "Dir")
+		var isRel bool
+		if isDir {
+			// {os.RelUserHomeDir} 取回的是相对目录
+			key, isRel = strings.CutPrefix(key, "Rel")
+		}
+
 		var val string
-		val, err = getOsValue(string(key))
+		val, err = getOsValue(key, rawKey)
 		if err != nil {
 			return nil
 		}
+
+		if isRel {
+			var wd string
+			wd, err = os.Getwd()
+			if err != nil {
+				return nil
+			}
+			val, err = filepath.Rel(wd, val)
+		}
+
 		return []byte(val)
 	})
 	if err != nil {
@@ -33,7 +54,7 @@ func OSVars(_ context.Context, _ string, content []byte) ([]byte, error) {
 	return contentNew, err
 }
 
-func getOsValue(key string) (string, error) {
+func getOsValue(key string, rawKey string) (string, error) {
 	switch key {
 	case "PID":
 		return strconv.Itoa(os.Getpid()), nil
@@ -50,6 +71,6 @@ func getOsValue(key string) (string, error) {
 	case "UserConfigDir":
 		return os.UserConfigDir()
 	default:
-		return "", fmt.Errorf("key=%q not support", key)
+		return "", fmt.Errorf("key=%q not support", rawKey)
 	}
 }
