@@ -283,8 +283,10 @@ func (d SQLServer) ColumnString(fs dbtype.ColumnSchema) string {
 	} else if fs.NotNull && !fs.AutoIncrement {
 		if strings.HasSuffix(baseType, "INT") || baseType == "REAL" || baseType == "FLOAT" {
 			sb.WriteString(" DEFAULT 0")
-		} else if strings.HasPrefix(baseType, "NVARCHAR") || strings.HasPrefix(baseType, "VARBINARY") {
+		} else if strings.HasPrefix(baseType, "NVARCHAR") {
 			sb.WriteString(" DEFAULT ''")
+		} else if strings.HasPrefix(baseType, "VARBINARY") {
+			sb.WriteString(" DEFAULT 0x")
 		}
 	}
 	return sb.String()
