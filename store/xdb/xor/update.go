@@ -187,10 +187,10 @@ func (m *Model[T]) ModifyEach(ctx context.Context, update func(nv T) (T, error),
 		where := WhereByPK(item) // 在 update 之前构建好，避免 update 修改了数据
 		newValue, err2 := update(item)
 		if err2 != nil {
-			if errors.Is(err2, xerror.SkipOne) {
+			if errors.Is(err2, xerror.ErrSkipOne) {
 				continue
 			}
-			if errors.Is(err2, xerror.SkipAll) {
+			if errors.Is(err2, xerror.ErrSkipAll) {
 				break
 			}
 			return num, err2

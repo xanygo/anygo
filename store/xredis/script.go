@@ -155,9 +155,9 @@ func (c *Client) FunctionStats(ctx context.Context) (*FunctionStats, error) {
 	fs := &FunctionStats{}
 	if eg, ok := mp["engines"]; ok && eg != nil {
 		var rangeErr error
-		err = xmap.Range[string, any](eg, func(k string, v any) bool {
+		err = xmap.Range[string, any](eg, func(k string, v any) error {
 			fse := &FunctionStatsEngine{}
-			err := xmap.Range[string, any](v, func(k string, v any) bool {
+			err := xmap.Range[string, any](v, func(k string, v any) error {
 				switch k {
 				case "language":
 					fse.Language, _ = v.(string)
@@ -166,17 +166,16 @@ func (c *Client) FunctionStats(ctx context.Context) (*FunctionStats, error) {
 				case "libraries_count":
 					fse.LibrariesCount, _ = v.(int64)
 				}
-				return true
+				return nil
 			})
 			if err != nil {
-				rangeErr = err
-				return false
+				return err
 			}
 			if fs.Engines == nil {
 				fs.Engines = make(map[string]*FunctionStatsEngine, 1)
 			}
 			fs.Engines[k] = fse
-			return true
+			return nil
 		})
 		if err != nil || rangeErr != nil {
 			return fs, errors.Join(err, rangeErr)
@@ -185,7 +184,7 @@ func (c *Client) FunctionStats(ctx context.Context) (*FunctionStats, error) {
 
 	if rs, ok := mp["running_script"]; ok && rs != nil {
 		rn := &FunctionStatsRunning{}
-		err := xmap.Range[string, any](rs, func(key string, val any) bool {
+		err := xmap.Range[string, any](rs, func(key string, val any) error {
 			switch key {
 			case "name":
 				rn.Name, _ = val.(string)
@@ -195,7 +194,7 @@ func (c *Client) FunctionStats(ctx context.Context) (*FunctionStats, error) {
 			case "command":
 				rn.Command, _ = val.([]string)
 			}
-			return true
+			return nil
 		})
 		if err != nil {
 			return fs, err

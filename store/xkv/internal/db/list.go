@@ -17,7 +17,7 @@ type ListModel struct {
 	KeyHash [32]byte `db:"k,unique_index=t_k_i[2]"`
 	Index   int64    `db:"idx,unique_index=t_k_i[3]"`
 	KeyRaw  string   `db:"k_raw"`
-	Value   string   `db:"v"`
+	Value   []byte   `db:"v"`
 	Created int64    `db:"c"`
 }
 
@@ -60,7 +60,7 @@ func (l *List) xxPush(ctx context.Context, field string, dealt int64, values ...
 				TypeID:  l.Meta.TypeID,
 				KeyHash: l.Meta.KeyHash,
 				KeyRaw:  l.Meta.KeyRaw,
-				Value:   value,
+				Value:   []byte(value),
 				Index:   idx,
 				Created: now,
 			}
@@ -103,7 +103,7 @@ func (l *List) lPopXX(ctx context.Context, orderBy string) (value string, found 
 		if err2 != nil || !ok {
 			return err2
 		}
-		value = v.Value
+		value = string(v.Value)
 		found = true
 		_, err2 = orm.Delete(ctx, xor.Where("t=? and k=? and idx=?", l.Meta.TypeID, l.Meta.KeyHash[:], v.Index))
 		if err2 != nil {
@@ -136,7 +136,7 @@ func (l *List) lPopNXX(ctx context.Context, count int, orderBy string) (result [
 		}
 		idxList := make([]int64, 0, len(items))
 		for _, item := range items {
-			result = append(result, item.Value)
+			result = append(result, string(item.Value))
 			idxList = append(idxList, item.Index)
 		}
 
@@ -242,7 +242,7 @@ func (l *List) Range(ctx context.Context, fn func(val string) bool) error {
 			if err1 != nil {
 				return err1
 			}
-			if !fn(item.Value) {
+			if !fn(string(item.Value)) {
 				return io.EOF
 			}
 		}
@@ -260,7 +260,7 @@ func (l *List) LRange(ctx context.Context, fn func(val string) bool) error {
 			if err1 != nil {
 				return err1
 			}
-			if !fn(item.Value) {
+			if !fn(string(item.Value)) {
 				return io.EOF
 			}
 		}
@@ -278,7 +278,7 @@ func (l *List) RRange(ctx context.Context, fn func(val string) bool) error {
 			if err1 != nil {
 				return err1
 			}
-			if !fn(item.Value) {
+			if !fn(string(item.Value)) {
 				return io.EOF
 			}
 		}

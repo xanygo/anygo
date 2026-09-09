@@ -80,6 +80,30 @@ func (b *Bundle) Languages() []Language {
 }
 
 // preferred 判断用户浏览器的首选语言和资源包的首选语言是否匹配
+//
+//	Bundle.Languages=["zh","en"]
+//	用户浏览器 ls=["zh","en"]     ---> true
+//	用户浏览器 ls=["en","zh"]     ---> false
+//	用户浏览器 ls=["ja","en"]     ---> false
+//	用户浏览器 ls=["zh-CN","ja"]  ---> true
+//	用户浏览器 ls=["ja","zh","ja"]  ---> true ja 不在 Bundle中，应该被剔除掉
 func (b *Bundle) preferred(ls []Language) bool {
-	return len(b.languages) > 0 && len(ls) > 0 && b.languages[0] == ls[0]
+	if len(b.languages) == 0 || len(ls) == 0 {
+		return false
+	}
+	if b.languages[0].SameFamily(ls[0]) {
+		return true
+	}
+	for _, lang := range ls {
+		if _, has := b.localizes[lang]; has {
+			return b.languages[0].SameFamily(lang)
+		} else {
+			for _, bl := range b.languages {
+				if bl.SameFamily(lang) {
+					return b.languages[0].SameFamily(lang)
+				}
+			}
+		}
+	}
+	return false
 }

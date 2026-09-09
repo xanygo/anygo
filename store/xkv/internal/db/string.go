@@ -18,7 +18,7 @@ type StringModel struct {
 	KeyHash [32]byte `db:"k,unique_index=t_k[2]"`
 
 	KeyRaw  string `db:"k_raw"`
-	Value   string `db:"v"`
+	Value   []byte `db:"v"`
 	Created int64  `db:"c"`
 	Updated int64  `db:"u"`
 }
@@ -51,7 +51,7 @@ func (d *String) Set(ctx context.Context, value string) error {
 			TypeID:  d.Meta.TypeID,
 			KeyHash: d.Meta.KeyHash,
 			KeyRaw:  d.Meta.KeyRaw,
-			Value:   value,
+			Value:   []byte(value),
 			Created: now,
 			Updated: now,
 		}
@@ -84,7 +84,7 @@ func (d *String) SetNX(ctx context.Context, value string) (ok bool, err error) {
 			TypeID:  d.Meta.TypeID,
 			KeyHash: d.Meta.KeyHash,
 			KeyRaw:  d.Meta.KeyRaw,
-			Value:   value,
+			Value:   []byte(value),
 			Created: now,
 			Updated: now,
 		}
@@ -109,7 +109,7 @@ func (d *String) Get(ctx context.Context) (val string, ok bool, err error) {
 			return err1
 		}
 		if found {
-			val = value.Value
+			val = string(value.Value)
 			ok = true
 		}
 		return nil
@@ -129,7 +129,7 @@ func (d *String) GetDel(ctx context.Context) (val string, ok bool, err error) {
 		if err2 != nil || !found {
 			return err2
 		}
-		val = value.Value
+		val = string(value.Value)
 		ok = true
 		_, err = orm.Delete(ctx, xor.Where("t=? and k=?", d.Meta.TypeID, d.Meta.KeyHash[:]))
 		return err
@@ -151,7 +151,7 @@ func (d *String) GetSet(ctx context.Context, value string) (old string, ok bool,
 			TypeID:  d.Meta.TypeID,
 			KeyHash: d.Meta.KeyHash,
 			KeyRaw:  d.Meta.KeyRaw,
-			Value:   value,
+			Value:   []byte(value),
 			Created: now,
 			Updated: now,
 		}
@@ -160,7 +160,7 @@ func (d *String) GetSet(ctx context.Context, value string) (old string, ok bool,
 			return err3
 		}
 		if found {
-			old = item.Value
+			old = string(item.Value)
 			ok = true
 		}
 		return nil
@@ -184,7 +184,7 @@ func (d *String) IncrBy(ctx context.Context, incr int64) (num int64, err error) 
 
 		var strVal string
 		if found {
-			num, err1 = strconv.ParseInt(val.Value, 10, 64)
+			num, err1 = strconv.ParseInt(string(val.Value), 10, 64)
 			if err1 != nil {
 				return err1
 			}
@@ -199,7 +199,7 @@ func (d *String) IncrBy(ctx context.Context, incr int64) (num int64, err error) 
 			TypeID:  d.Meta.TypeID,
 			KeyHash: d.Meta.KeyHash,
 			KeyRaw:  d.Meta.KeyRaw,
-			Value:   strVal,
+			Value:   []byte(strVal),
 			Created: now,
 			Updated: now,
 		}
@@ -221,7 +221,7 @@ func (d *String) IncrByFloat(ctx context.Context, incr float64) (num float64, er
 
 		var strVal string
 		if found {
-			num, err1 = strconv.ParseFloat(val.Value, 64)
+			num, err1 = strconv.ParseFloat(string(val.Value), 64)
 			if err1 != nil {
 				return err1
 			}
@@ -236,7 +236,7 @@ func (d *String) IncrByFloat(ctx context.Context, incr float64) (num float64, er
 			TypeID:  d.Meta.TypeID,
 			KeyHash: d.Meta.KeyHash,
 			KeyRaw:  d.Meta.KeyRaw,
-			Value:   strVal,
+			Value:   []byte(strVal),
 			Created: now,
 			Updated: now,
 		}

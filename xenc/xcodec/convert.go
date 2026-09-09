@@ -4,7 +4,7 @@
 
 package xcodec
 
-import "encoding/json"
+import "encoding/json/v2"
 
 // Convert 类型转换(当前使用 JSON 做中间转换，性能一般)
 func Convert(from any, to any) error {

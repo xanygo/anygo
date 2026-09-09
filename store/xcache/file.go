@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/internal/fctime"
+	"github.com/xanygo/anygo/internal/zloader"
 	"github.com/xanygo/anygo/internal/zos"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/safely"
@@ -88,19 +89,11 @@ func (fc *File[K, V]) Init(param map[string]any) (err error) {
 	}
 
 	if fc.Codec == nil {
-		name, err := xmap.GetString(param, "Codec")
+		cc, err := zloader.ParserCodec(param, zloader.FieldCodec, xcodec.JSONV2)
 		if err != nil {
 			return err
 		}
-		if name == "" {
-			fc.Codec = xcodec.JSON
-		} else {
-			codec, err := xcodec.Find(name)
-			if err != nil {
-				return err
-			}
-			fc.Codec = codec
-		}
+		fc.Codec = cc
 	}
 	if fc.Capacity == 0 {
 		fc.Capacity, _ = xmap.GetInt(param, "Capacity")

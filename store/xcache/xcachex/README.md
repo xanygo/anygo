@@ -11,7 +11,9 @@
             "Name":"cache1",     // 必填，名称，Load 方法里使用的 name 参数值
             "Type":"File",       // 必填，缓存类型，使用本地文件存储数据
             "Dir":"{xattr.DataDir}/filecache/cache1",  // 必填参数, 缓存数据目录
-            "Codec":"json",      // 可选。数据编码方式，默认为 json
+            "Codec":{    // 可选。数据编码方式，默认为 json
+                "Type":"JSON"
+            },     
             "Capacity":12345,    // 可选，最大缓存个数(非严格限定)，在清理时，会按照创建时间删除多余的
             "Life":{             // 可选，缓存有效期，所有类型的缓存都可以设置，详见下文
                 "Min":"1h",
@@ -39,7 +41,9 @@
             "Type":"Redis",       // 必填，缓存类型，数据存储在 Redis 数据库中
             "Service":"rds",      // 必填，Redis 数据库的服务名称，对应服务配置一般在 {app}/conf/service/rds.yml 
             "KeyPrefix":"user_", // 可选，缓存前缀
-            "Codec":"json"        // 可选。数据编码方式，默认为 json
+            "Codec":{              // 可选。数据编码方式，默认为 JSONV2
+                "Type":"JSON",     // 可选值，JSON，JSONV2
+            }       
         },
         {
             "Name":"cache6",
@@ -50,7 +54,9 @@
             "Capacity":12345,     // 可选, 缓存容量大小(非严格限定)
             "GC":"30s",           // 可选，自动清理任务的运行周期，默认 60s
             "BGTimeout":"30s",    // 可选，后台任务的超时时间
-            "Codec":"json"        // 可选。数据编码方式，默认为 json
+            "Codec":{             // 可选。数据编码方式，默认为 json
+                "Type":"JSON", 
+            }      
         },
         {
             "Name":"cache7", 
@@ -106,7 +112,11 @@
 }
 ```
 
+### Type
+
 目前的 `Type` 已支持 `File`,`MemoryLRU`,`MemoryFIFO`,`MemoryLIFO`,`Redis`,`DB`,`Nop`,`Chains`,`Wrap` 这些。
+
+### Life
 
 所有的 类型(`Type`)都支持配置 `Life` 来强制干预缓存的有效期：
 ```json5
@@ -129,3 +139,48 @@
     5. 1800s  -> 1800 秒
 
 当配置的时间长度值 >0 时生效，优先级: `Default`  > `Force` > `Min` 和 `Max` 。
+
+### Codec
+
+由于底层存储 value 数据的类型是 `[]byte`, 上层对应使用的时候使用的是泛型,即缓存对象是任意类型，
+所以在存储的时候，需要使用 `Codec` 将数据编码为 `[]byte`,在读取的时候，将 `[]byte` 解码为对象。
+
+`Codec` 内部还可以配置 `Cipher` 来实现对数据的加密、压缩、编码。 
+`Cipher` 可以配置一个对象或者数组。具体如下：
+
+```json5
+{
+    "Codec":{
+        "Type":"JSON",     // 必填，可选值 JSON、JSONV2 
+        "Cipher":{               // 可选，用于对编码后的数据数据加密
+            "Type":"AesGCM",     // 必填，加密算法
+            "Key":"hello-world", // 必填，加密密钥
+        }
+    }
+}
+```
+
+多个对象（先加密，然后压缩、编码）：
+```json5
+{
+    "Codec":{
+        "Type":"JSON",     // 必填，可选值 JSON、JSONV2 
+        "Cipher":[         // 可选，用于对编码后的数据数据加密
+            {               
+                "Type":"AesGCM",     // 必填，加密算法。使用 AesGCM 加密 json encode 后的数据
+                "Key":"hello-world", // 必填，加密密钥
+            },
+            {               
+                "Type":"GZip",       // 必填，压缩算法。对加密后的数据压缩
+            },
+            {               
+                "Type":"Base64",     // 必填，编码算法。对压缩后的数据编码
+            },
+        ]
+    }
+}
+```
+`Cipher` 里可以有 N>=0 个配置项。可以是: `AesGCM`、`AesGCM` + `GZip`、`AesGCM` + `Base64` 等组合方式。
+
+
+Cipher `Type`: 数据处理算法名称，可选值 No，AesOFB，AesGCM，AesBlock, GZip, Base64, Base62, Base58，Base36

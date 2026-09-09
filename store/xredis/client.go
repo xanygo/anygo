@@ -103,8 +103,7 @@ func startSession(ctx context.Context, conn io.ReadWriter, opt xoption.Reader) (
 	const redisKey = "Redis"
 	cfg := xoption.Extra(opt, redisKey)
 	var dbIndex int
-	var err error
-	xmap.Range[string, any](cfg, func(key string, val any) bool {
+	err := xmap.Range[string, any](cfg, func(key string, val any) error {
 		var ok bool
 		switch key {
 		case fieldUsername:
@@ -117,9 +116,9 @@ func startSession(ctx context.Context, conn io.ReadWriter, opt xoption.Reader) (
 			ok = true
 		}
 		if !ok {
-			err = fmt.Errorf("invalid filed %s.%s=%#v", redisKey, key, val)
+			return fmt.Errorf("invalid filed %s.%s=%#v", redisKey, key, val)
 		}
-		return ok
+		return nil
 	})
 	if err != nil {
 		return nil, err

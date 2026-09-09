@@ -4,12 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/xanygo/anygo/internal/zloader"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xcfg"
@@ -210,15 +212,12 @@ func (cf *ConfigFile) newRedis[K comparable, V any](name string, item map[string
 		Cache: rc,
 	}
 
-	sp := make(map[string]any, 1)
-	codec, err := xmap.GetString(item, "Codec")
-	if err != nil {
-		return nil, err
+	item = maps.Clone(item)
+	if len(item) > 0 {
+		// 避免重复设置
+		delete(item, zloader.FieldKeyPrefix)
 	}
-	if codec != "" {
-		sp["ValueCodec"] = codec
-	}
-	return tr, tr.Init(sp)
+	return tr, tr.Init(item)
 }
 
 func (cf *ConfigFile) newDB[K comparable, V any](name string, item map[string]any) (xcache.MCache[K, V], error) {
@@ -231,15 +230,12 @@ func (cf *ConfigFile) newDB[K comparable, V any](name string, item map[string]an
 	tr := &xcache.Transformer[K, V]{
 		Cache: dc,
 	}
-	sp := make(map[string]any, 1)
-	codec, err := xmap.GetString(item, "Codec")
-	if err != nil {
-		return nil, err
+	item = maps.Clone(item)
+	if len(item) > 0 {
+		// 避免重复设置
+		delete(item, zloader.FieldKeyPrefix)
 	}
-	if codec != "" {
-		sp["ValueCodec"] = codec
-	}
-	return tr, tr.Init(sp)
+	return tr, tr.Init(item)
 }
 
 func (cf *ConfigFile) newChains[K comparable, V any](name string, item map[string]any) (xcache.MCache[K, V], error) {
@@ -248,36 +244,29 @@ func (cf *ConfigFile) newChains[K comparable, V any](name string, item map[strin
 		return nil, errors.New("missing [Chains] section")
 	}
 	var chains []*xcache.Chain[K, V]
-	var errs []error
-	xslice.Range[any](val, func(val any) bool {
+	err := xslice.Range[any](val, func(val any) error {
 		zc, err := xcodec.ConvertAs[*chainItemConfig](val)
 		if err != nil {
-			errs = append(errs, err)
-			return false
+			return err
 		}
 		if zc.Ref == "" {
-			errs = append(errs, fmt.Errorf("required Ref in %v", val))
-			return false
+			return errors.New("required Ref")
 		}
 		if zc.Life.empty() {
-			errs = append(errs, fmt.Errorf("required Life in %v", val))
-			return false
+			return errors.New("required Life")
 		}
 
 		if zc.Life.Default <= 0 && zc.Life.Min <= 0 && zc.Life.Force <= 0 {
-			errs = append(errs, fmt.Errorf("required Life.[Default|Min|Force] in %v", val))
-			return false
+			return errors.New("required Life.[Default|Min|Force]")
 		}
 
 		if err := cf.refs.Add(name, zc.Ref); err != nil {
-			errs = append(errs, err)
-			return false
+			return err
 		}
 
 		c, err := cf.Load[K, V](zc.Ref)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("load Chains cache %q failed: %w", zc.Ref, err))
-			return false
+			return fmt.Errorf("load Chains cache %q failed: %w", zc.Ref, err)
 		}
 		ci := &xcache.Chain[K, V]{
 			Cache:        c,
@@ -286,10 +275,10 @@ func (cf *ConfigFile) newChains[K comparable, V any](name string, item map[strin
 		}
 
 		chains = append(chains, ci)
-		return true
+		return nil
 	})
-	if len(errs) > 0 {
-		return nil, errors.Join(errs...)
+	if err != nil {
+		return nil, err
 	}
 	cc := xcache.NewChains[K, V](chains...)
 	return xcache.AsMCache(cc, 10), nil

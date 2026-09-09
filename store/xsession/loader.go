@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/xanygo/anygo/internal/zloader"
 	"github.com/xanygo/anygo/store/xcache/xcachex"
 	"github.com/xanygo/anygo/store/xkv/xkvx"
 	"github.com/xanygo/anygo/xcfg"
-	"github.com/xanygo/anygo/xenc/xcipher"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xtime"
@@ -199,39 +199,9 @@ func (cf *ConfigFile) newCookie(name string, item map[string]any) (NewStorageFun
 	if err != nil {
 		return nil, err
 	}
-
-	cipherType, err := xmap.GetString(item, "CipherType")
+	cp, err := zloader.ParserCipher(item)
 	if err != nil {
 		return nil, err
-	}
-	if cipherType == "" {
-		cipherType = "AesOFB"
-	}
-
-	cipherKey, _ := xmap.GetString(item, "CipherKey")
-	if cipherKey == "" {
-		return nil, fmt.Errorf("missing 'CipherKey' in %v", item)
-	}
-	cipherIV, _ := xmap.GetString(item, "CipherIV")
-
-	var cipher xcipher.Cipher
-	switch cipherType {
-	case "AesOFB":
-		cipher = &xcipher.AesOFB{
-			Key: cipherKey,
-			IV:  cipherIV,
-		}
-	case "AesGCM":
-		cipher = &xcipher.AesGCM{
-			Key: cipherKey,
-		}
-	case "AesBlock":
-		cipher = &xcipher.AesBlock{
-			Key: cipherKey,
-			IV:  cipherIV,
-		}
-	default:
-		return nil, fmt.Errorf("unsupport CipherType %q", cipherType)
 	}
 
 	cookieName, _ := xmap.GetString(item, "CookieName")
@@ -241,7 +211,7 @@ func (cf *ConfigFile) newCookie(name string, item map[string]any) (NewStorageFun
 		return &CookieStore{
 			Writer:     writer,
 			Request:    request,
-			Cipher:     cipher,
+			Cipher:     cp,
 			CookieName: cookieName,
 			CookiePath: cookiePath,
 			Life:       life,

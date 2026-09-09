@@ -91,7 +91,7 @@ func (c *Client) BFInfo(ctx context.Context, key string) (BFInfo, error) {
 		Items:     -1,
 		Expansion: -1,
 	}
-	xmap.Range[string, int64](data, func(key string, val int64) bool {
+	err = xmap.Range[string, int64](data, func(key string, val int64) error {
 		switch key {
 		case "Capacity":
 			info.Capacity = val
@@ -104,9 +104,9 @@ func (c *Client) BFInfo(ctx context.Context, key string) (BFInfo, error) {
 		case "Expansion rate":
 			info.Expansion = val
 		}
-		return true
+		return nil
 	})
-	return info, nil
+	return info, err
 }
 
 type BFInfo struct {

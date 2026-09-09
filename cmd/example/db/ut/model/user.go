@@ -115,7 +115,7 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 		xt.NoError(t, err)
 
 		num, err := orm.ModifyFirstByPK(ctx, first, func(nv User) (User, error) {
-			return nv, xerror.SkipOne
+			return nv, xerror.ErrSkipOne
 		})
 		xt.NoError(t, err)
 		xt.Equal(t, num, 0)

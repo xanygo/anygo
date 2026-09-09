@@ -21,7 +21,7 @@ type HashModel struct {
 	KeyRaw   string `db:"k_raw"`
 	FieldRaw string `db:"f_raw"`
 
-	Value string `db:"v"`
+	Value []byte `db:"v"`
 
 	Created int64 `db:"c"`
 	Updated int64 `db:"u"`
@@ -61,7 +61,7 @@ func (h *Hash) HSet(ctx context.Context, field string, value string) error {
 			KeyRaw:    h.Meta.KeyRaw,
 			FieldHash: fieldHash,
 			FieldRaw:  field,
-			Value:     value,
+			Value:     []byte(value),
 			Updated:   now,
 			Created:   now,
 		}
@@ -86,7 +86,7 @@ func (h *Hash) HMSet(ctx context.Context, data map[string]string) error {
 				KeyRaw:    h.Meta.KeyRaw,
 				FieldHash: KeyHash(field),
 				FieldRaw:  field,
-				Value:     value,
+				Value:     []byte(value),
 				Created:   now,
 				Updated:   now,
 			}
@@ -111,7 +111,7 @@ func (h *Hash) HGet(ctx context.Context, field string) (value string, found bool
 			return err1
 		}
 		found = true
-		value = v.Value
+		value = string(v.Value)
 		return nil
 	})
 	return value, found, err
@@ -147,7 +147,7 @@ func (h *Hash) HMGet(ctx context.Context, fields ...string) (result map[string]s
 		}
 		result = make(map[string]string, len(items))
 		for _, item := range items {
-			result[item.FieldRaw] = item.Value
+			result[item.FieldRaw] = string(item.Value)
 		}
 		return nil
 	})
@@ -207,7 +207,7 @@ func (h *Hash) HRange(ctx context.Context, fn func(field string, value string) b
 			if err1 != nil {
 				return err1
 			}
-			if !fn(item.FieldRaw, item.Value) {
+			if !fn(item.FieldRaw, string(item.Value)) {
 				return io.EOF
 			}
 		}
@@ -254,7 +254,7 @@ func (h *Hash) HIncrBy(ctx context.Context, field string, increment int64) (num 
 		}
 		num = increment
 		if found {
-			oldNum, err2 := strconv.ParseInt(old.Value, 10, 64)
+			oldNum, err2 := strconv.ParseInt(string(old.Value), 10, 64)
 			if err2 != nil {
 				return err2
 			}
@@ -266,7 +266,7 @@ func (h *Hash) HIncrBy(ctx context.Context, field string, increment int64) (num 
 			KeyRaw:    h.Meta.KeyRaw,
 			FieldHash: fieldHash,
 			FieldRaw:  field,
-			Value:     strconv.FormatInt(num, 10),
+			Value:     []byte(strconv.FormatInt(num, 10)),
 			Created:   now,
 			Updated:   now,
 		}

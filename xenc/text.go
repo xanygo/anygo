@@ -103,9 +103,20 @@ func UnmarshalerWithTransform(dec Unmarshaler, trans TextTransformFunc) Unmarsha
 	})
 }
 
-func CodecWithCipher(coder Codec, c Cipher) Codec {
-	enc := MarshalerWithTransform(coder, c.Encrypt)
-	dec := UnmarshalerWithTransform(coder, c.Decrypt)
-	ct, _ := ContentType(coder)
-	return NewCodec(coder.Name(), enc.Marshal, dec.Unmarshal, ct)
+type TextMapperFunc func([]byte) []byte
+
+func (fn TextMapperFunc) Encode(input []byte) ([]byte, error) {
+	return fn(input), nil
+}
+
+func (fn TextMapperFunc) Encrypt(input []byte) ([]byte, error) {
+	return fn(input), nil
+}
+
+func (fn TextMapperFunc) Decode(input []byte) ([]byte, error) {
+	return fn(input), nil
+}
+
+func (fn TextMapperFunc) Decrypt(input []byte) ([]byte, error) {
+	return fn(input), nil
 }

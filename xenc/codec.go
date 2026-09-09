@@ -92,3 +92,11 @@ func ContentType(c Marshaler) (string, error) {
 	}
 	return "", errNoCt
 }
+
+// CodecWithCipher 对 Codec 加密/编码处理
+func CodecWithCipher(coder Codec, c Cipher) Codec {
+	enc := MarshalerWithTransform(coder, c.Encrypt)
+	dec := UnmarshalerWithTransform(coder, c.Decrypt)
+	ct, _ := ContentType(coder)
+	return NewCodec(coder.Name(), enc.Marshal, dec.Unmarshal, ct)
+}

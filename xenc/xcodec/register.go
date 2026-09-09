@@ -21,3 +21,12 @@ func Find(name string) (Codec, error) {
 	}
 	return nil, fmt.Errorf("name=%q %w", name, xerror.NotFound)
 }
+
+func init() {
+	Register(JSON.Name(), JSON)
+	Register(JSONV2.Name(), JSONV2)
+	Register(Raw.Name(), Raw)
+	Register(Form.Name(), Form)
+	Register(CSV.Name(), CSV)
+	Register(Text.Name(), Text)
+}

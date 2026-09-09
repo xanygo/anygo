@@ -19,7 +19,7 @@ type SetModel struct {
 	MemberHash [32]byte `db:"m,unique_index=t_k_m[3]"`
 
 	KeyRaw    string `db:"k_raw"`
-	MemberRaw string `db:"m_raw"`
+	MemberRaw []byte `db:"m_raw"`
 	Created   int64  `db:"c"`
 }
 
@@ -56,7 +56,7 @@ func (s *Set) SAdd(ctx context.Context, members ...string) (num int64, err error
 			KeyHash:    s.Meta.KeyHash,
 			KeyRaw:     s.Meta.KeyRaw,
 			MemberHash: KeyHash(member),
-			MemberRaw:  member,
+			MemberRaw:  []byte(member),
 			Created:    now,
 		}
 		items = append(items, item)
@@ -120,7 +120,7 @@ func (s *Set) SRange(ctx context.Context, fn func(member string) bool) error {
 			if err1 != nil {
 				return err1
 			}
-			if !fn(item.MemberRaw) {
+			if !fn(string(item.MemberRaw)) {
 				return io.EOF
 			}
 		}
@@ -193,7 +193,7 @@ func (s *Set) SMIsMember(ctx context.Context, members []string) (oks []bool, err
 		if err1 == nil {
 			mp := make(map[string]bool, len(items))
 			for _, item := range items {
-				mp[item.MemberRaw] = true
+				mp[string(item.MemberRaw)] = true
 			}
 			for i, member := range members {
 				oks[i] = mp[member]
@@ -228,7 +228,7 @@ func (s *Set) SPop(ctx context.Context) (v string, found bool, err error) {
 			return err3
 		}
 		found = true
-		v = first.MemberRaw
+		v = string(first.MemberRaw)
 		return nil
 	})
 	return v, found, err
@@ -258,7 +258,7 @@ func (s *Set) SPopN(ctx context.Context, count int) (result []string, err error)
 		members := make([]string, 0, len(rows))
 		hashs := make([]any, 0, len(rows))
 		for _, row := range rows {
-			members = append(members, row.MemberRaw)
+			members = append(members, string(row.MemberRaw))
 			hashs = append(hashs, row.MemberHash[:])
 		}
 		cond := &xdb.Condition{}
@@ -294,7 +294,7 @@ func (s *Set) SRandMember(ctx context.Context) (v string, found bool, err error)
 			return err2
 		}
 		found = true
-		v = rows[0].MemberRaw
+		v = string(rows[0].MemberRaw)
 		return nil
 	})
 	return v, found, err
@@ -323,7 +323,7 @@ func (s *Set) SRandMemberN(ctx context.Context, count int) (result []string, err
 		}
 		result = make([]string, 0, len(rows))
 		for _, row := range rows {
-			result = append(result, row.MemberRaw)
+			result = append(result, string(row.MemberRaw))
 		}
 		return nil
 	})

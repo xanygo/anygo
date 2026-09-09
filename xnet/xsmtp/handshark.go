@@ -41,7 +41,7 @@ func handshake(ctx context.Context, rw io.ReadWriter, opt xoption.Reader) (dsess
 	cfg := xoption.Extra(opt, Protocol)
 	var localName, userName, password string
 	var startTLS bool = true // 默认为 true
-	xmap.Range[string, any](cfg, func(k string, v any) bool {
+	err = xmap.Range[string, any](cfg, func(k string, v any) error {
 		var ok bool
 		switch k {
 		case "LocalName":
@@ -57,9 +57,9 @@ func handshake(ctx context.Context, rw io.ReadWriter, opt xoption.Reader) (dsess
 		}
 
 		if !ok {
-			err = fmt.Errorf("invalid field %s.%s=%#v", Protocol, k, v)
+			return fmt.Errorf("invalid field %s.%s=%#v", Protocol, k, v)
 		}
-		return ok
+		return nil
 	})
 	if err != nil {
 		return nil, err

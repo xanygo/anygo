@@ -4,6 +4,10 @@
 
 package xenc
 
+import (
+	"fmt"
+)
+
 type Cipher interface {
 	Encryptor
 	Decrypter
@@ -73,10 +77,10 @@ type Ciphers []Cipher
 
 func (cs Ciphers) Encrypt(src []byte) (out []byte, err error) {
 	out = src
-	for _, cp := range cs {
+	for i, cp := range cs {
 		out, err = cp.Encrypt(out)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("cipher %d/%d Encrypt: %w", i+1, len(cs), err)
 		}
 	}
 	return out, nil
@@ -87,7 +91,7 @@ func (cs Ciphers) Decrypt(src []byte) (out []byte, err error) {
 	for i := len(cs) - 1; i >= 0; i-- {
 		out, err = cs[i].Decrypt(out)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("cipher %d/%d Decrypt: %w", i+1, len(cs), err)
 		}
 	}
 	return out, nil

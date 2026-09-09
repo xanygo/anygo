@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/xanygo/anygo/internal/zloader"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xmap"
@@ -28,22 +29,14 @@ type Transformer[k comparable, V any] struct {
 
 func (t *Transformer[K, V]) Init(param map[string]any) error {
 	if t.KeyPrefix == "" {
-		t.KeyPrefix, _ = xmap.GetString(param, "KeyPrefix")
+		t.KeyPrefix, _ = xmap.GetString(param, zloader.FieldKeyPrefix)
 	}
 	if t.ValueCodec == nil {
-		name, err := xmap.GetString(param, "ValueCodec")
+		cc, err := zloader.ParserCodec(param, zloader.FieldCodec, xcodec.JSONV2)
 		if err != nil {
 			return err
 		}
-		if name == "" {
-			t.ValueCodec = xcodec.JSON
-		} else {
-			c, err := xcodec.Find(name)
-			if err != nil {
-				return err
-			}
-			t.ValueCodec = c
-		}
+		t.ValueCodec = cc
 	}
 	return nil
 }

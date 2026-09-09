@@ -117,7 +117,7 @@ func (e Encoder[T]) encodeStruct(v reflect.Value) (map[string]any, error) {
 		name := fieldSchema.Name
 		encodedVal, err := e.encodeStructFieldValue(fieldSchema, value.Interface())
 		if err != nil {
-			if errors.Is(err, xerror.SkipOne) {
+			if errors.Is(err, xerror.ErrSkipOne) {
 				return nil
 			}
 			return fmt.Errorf("encode field %q: %w", name, err)

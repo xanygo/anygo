@@ -42,34 +42,34 @@ func TestRange(t *testing.T) {
 			"k4": map[string]string{"1": "2"},
 		}
 		var keys []string
-		err := Range[string, any](mp, func(key string, val any) bool {
+		err := Range[string, any](mp, func(key string, val any) error {
 			keys = append(keys, key)
-			return true
+			return nil
 		})
 		xt.NoError(t, err)
 		wantKeys := Keys(mp)
 		xt.SliceSortEqual(t, wantKeys, keys)
 
 		keys = nil
-		err = Range[string, int](mp, func(key string, val int) bool {
+		err = Range[string, int](mp, func(key string, val int) error {
 			keys = append(keys, key)
-			return true
+			return nil
 		})
 		xt.SliceSortEqual(t, []string{"k1", "k2"}, keys)
 		xt.NoError(t, err)
 	})
 
 	t.Run("nil", func(t *testing.T) {
-		err := Range[string, any](nil, func(key string, val any) bool {
-			return true
+		err := Range[string, any](nil, func(key string, val any) error {
+			return nil
 		})
-		xt.Error(t, err)
+		xt.NoError(t, err)
 	})
 
 	t.Run("empty map", func(t *testing.T) {
 		var m map[string]any
-		err := Range[string, any](m, func(key string, val any) bool {
-			return true
+		err := Range[string, any](m, func(key string, val any) error {
+			return nil
 		})
 		xt.NoError(t, err)
 	})

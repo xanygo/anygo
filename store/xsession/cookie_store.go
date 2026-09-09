@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"runtime/debug"
 	"time"
 
 	"github.com/xanygo/anygo/xenc"
@@ -53,20 +52,16 @@ func (cs *CookieStore) getCipher() xenc.Cipher {
 }
 
 func (cs *CookieStore) initCipher() xenc.Cipher {
-	cp := cs.Cipher
-	if cp == nil {
-		var key string
-		if bi, ok := debug.ReadBuildInfo(); ok {
-			key = bi.Path
-		} else {
-			key = "7332d" + "af432078" + "b33dca1d26b" + "431ade36"
-		}
-		cp = &xcipher.AesOFB{
-			Key: key,
+	if cs.Cipher == nil {
+		return xcipher.Ciphers{
+			xenc.NewCipher(xcompress.GZipCompress, xcompress.GZipDecompress),
+			&xcipher.Base64{
+				Encoder: base64.RawURLEncoding,
+			},
 		}
 	}
 	return xcipher.Ciphers{
-		xenc.NewCipher(xcompress.GZipCompress, xcompress.GZipDecompress),
+		cs.Cipher,
 		&xcipher.Base64{
 			Encoder: base64.RawURLEncoding,
 		},

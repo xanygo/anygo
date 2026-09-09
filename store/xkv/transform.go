@@ -8,9 +8,9 @@ import (
 	"context"
 	"errors"
 
+	"github.com/xanygo/anygo/internal/zloader"
 	"github.com/xanygo/anygo/store/xkv/internal"
 	"github.com/xanygo/anygo/xenc/xcodec"
-	"github.com/xanygo/anygo/xmap"
 )
 
 var _ Storage[any] = (*Transformer[any])(nil)
@@ -23,19 +23,11 @@ type Transformer[V any] struct {
 
 func (tr *Transformer[V]) Init(item map[string]any) error {
 	if tr.Codec == nil {
-		name, err := xmap.GetString(item, "Codec")
+		tc, err := zloader.ParserCodec(item, "Codec", xcodec.JSONV2)
 		if err != nil {
 			return err
 		}
-		if name != "" {
-			codec, err := xcodec.Find(name)
-			if err != nil {
-				return err
-			}
-			tr.Codec = codec
-		} else {
-			tr.Codec = xcodec.JSON
-		}
+		tr.Codec = tc
 	}
 	return nil
 }

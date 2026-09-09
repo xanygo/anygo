@@ -5,35 +5,13 @@
 package xcodec
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/url"
 	"reflect"
 	"strings"
 	"unsafe"
 
 	"github.com/xanygo/anygo/xenc"
 )
-
-var (
-	JSON = xenc.NewCodec("json", json.Marshal, json.Unmarshal, "application/json")
-
-	Raw = xenc.NewCodec("raw", rawEncode, rawDecode, "application/octet-stream")
-
-	Form = &FormCodec{}
-
-	CSV = CSVCodec{}
-
-	Text = TextCodec{}
-)
-
-func init() {
-	Register("json", JSON)
-	Register("raw", Raw)
-	Register("form", Form)
-	Register("csv", CSV)
-	Register("text", Text)
-}
 
 type Codec = xenc.Codec
 
@@ -42,96 +20,6 @@ type Marshaler = xenc.Marshaler
 type Unmarshaler = xenc.Unmarshaler
 
 type UnmarshalExtra = xenc.UnmarshalExtra
-
-func rawEncode(obj any) ([]byte, error) {
-	switch val := obj.(type) {
-	case []byte:
-		return val, nil
-	case string:
-		return unsafe.Slice(unsafe.StringData(val), len(val)), nil
-	default:
-		return nil, fmt.Errorf("not support type %T for rawEncode", obj)
-	}
-}
-
-func rawDecode(data []byte, obj any) error {
-	switch val := obj.(type) {
-	case *[]byte:
-		*val = data
-		return nil
-	case *string:
-		*val = string(data)
-		return nil
-	default:
-		return fmt.Errorf("not support type %T for rawDecode", obj)
-	}
-}
-
-func JSONString(obj any) string {
-	bf, err := json.Marshal(obj)
-	if err != nil {
-		return err.Error()
-	}
-	return unsafe.String(unsafe.SliceData(bf), len(bf))
-}
-
-var _ Codec = (*FormCodec)(nil)
-var _ xenc.HasContentType = (*FormCodec)(nil)
-
-type FormCodec struct {
-}
-
-func (f FormCodec) Name() string {
-	return "Form"
-}
-
-func (f FormCodec) ContentType() string {
-	return "application/x-www-form-urlencoded"
-}
-
-func (f FormCodec) Marshal(a any) ([]byte, error) {
-	switch vv := a.(type) {
-	case url.Values:
-		str := vv.Encode()
-		return unsafe.Slice(unsafe.StringData(str), len(str)), nil
-	case map[string]string:
-		uv := make(url.Values, len(vv))
-		for k, v := range vv {
-			uv.Set(k, v)
-		}
-		str := uv.Encode()
-		return unsafe.Slice(unsafe.StringData(str), len(str)), nil
-	default:
-		return nil, fmt.Errorf("not support type %T for FormEncode", a)
-	}
-}
-
-func (f FormCodec) Unmarshal(bf []byte, a any) error {
-	if len(bf) == 0 {
-		return nil
-	}
-	values, err := url.ParseQuery(string(bf))
-	if err != nil {
-		return err
-	}
-
-	switch vv := a.(type) {
-	case *url.Values:
-		*vv = values
-		return nil
-	case *map[string]string:
-		m := make(map[string]string, len(values))
-		for k, v := range values {
-			if len(v) > 0 {
-				m[k] = v[0] // 只取第一个
-			}
-		}
-		*vv = m
-		return nil
-	default:
-		return fmt.Errorf("not support type %T for FormDecode", a)
-	}
-}
 
 // MarshalToString 使用 Marshaler 将 obj 编码为 字符串
 func MarshalToString(enc Marshaler, obj any) (string, error) {

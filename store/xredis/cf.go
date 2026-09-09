@@ -129,7 +129,7 @@ func (c *Client) CFInFo(ctx context.Context, key string) (CFInfo, error) {
 		return CFInfo{}, err
 	}
 	info := CFInfo{}
-	xmap.Range(mp, func(key string, val int64) bool {
+	err = xmap.Range(mp, func(key string, val int64) error {
 		switch key {
 		case "Size":
 			info.Size = val
@@ -148,9 +148,9 @@ func (c *Client) CFInFo(ctx context.Context, key string) (CFInfo, error) {
 		case "Max iterations":
 			info.MaxIterations = val
 		}
-		return true
+		return nil
 	})
-	return info, nil
+	return info, err
 }
 
 // CFInfo Cuckoo Filter 的统计信息

@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/xanygo/anygo/internal/zloader"
 	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/store/xredis"
 	"github.com/xanygo/anygo/xerror"
@@ -38,7 +39,11 @@ type Redis struct {
 
 func (r *Redis) Init(param map[string]any) error {
 	if r.KeyPrefix == "" {
-		r.KeyPrefix, _ = xmap.GetString(param, "KeyPrefix")
+		var err error
+		r.KeyPrefix, err = xmap.GetString(param, zloader.FieldKeyPrefix)
+		if err != nil {
+			return err
+		}
 	}
 	if r.Client == nil {
 		service, err := xmap.GetString(param, "Service")

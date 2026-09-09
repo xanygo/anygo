@@ -20,7 +20,7 @@ type ZSetModel struct {
 	MemberHash [32]byte `db:"m,unique_index=t_k_m[3]"`
 
 	KeyRaw    string `db:"k_raw"`
-	MemberRaw string `db:"m_raw"`
+	MemberRaw []byte `db:"m_raw"`
 
 	Score   float64 `db:"s,index=t_k_s[3]"`
 	Created int64   `db:"c"`
@@ -62,7 +62,7 @@ func (z *ZSet) ZAdd(ctx context.Context, score float64, member string) error {
 			KeyHash:    z.Meta.KeyHash,
 			KeyRaw:     z.Meta.KeyRaw,
 			MemberHash: memberHash,
-			MemberRaw:  member,
+			MemberRaw:  []byte(member),
 			Score:      score,
 			Created:    now,
 			Updated:    now,
@@ -92,7 +92,7 @@ func (z *ZSet) ZIncrBy(ctx context.Context, inc float64, member string) (num flo
 			KeyHash:    z.Meta.KeyHash,
 			KeyRaw:     z.Meta.KeyRaw,
 			MemberHash: memberHash,
-			MemberRaw:  member,
+			MemberRaw:  []byte(member),
 			Score:      num,
 			Created:    now,
 			Updated:    now,
@@ -179,7 +179,7 @@ func (z *ZSet) ZRange(ctx context.Context, fn func(member string, score float64)
 			if err != nil {
 				return err
 			}
-			if !fn(item.MemberRaw, item.Score) {
+			if !fn(string(item.MemberRaw), item.Score) {
 				return nil
 			}
 		}
@@ -203,7 +203,7 @@ func (z *ZSet) ZRangeByScore(ctx context.Context, min string, max string, fn fun
 			if err != nil {
 				return err
 			}
-			if !fn(item.MemberRaw, item.Score) {
+			if !fn(string(item.MemberRaw), item.Score) {
 				return nil
 			}
 		}
@@ -303,7 +303,7 @@ func (z *ZSet) popXX(ctx context.Context, count int, orderBy string) (members []
 		}
 		hashMembers := make([]any, 0, len(values))
 		for _, item := range values {
-			members = append(members, item.MemberRaw)
+			members = append(members, string(item.MemberRaw))
 			scores = append(scores, item.Score)
 			hashMembers = append(hashMembers, item.MemberHash[:])
 		}

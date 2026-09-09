@@ -13,6 +13,8 @@ import (
 	"github.com/xanygo/anygo/xenc"
 )
 
+var CSV = CSVCodec{}
+
 var _ Codec = (*CSVCodec)(nil)
 var _ xenc.HasContentType = (*CSVCodec)(nil)
 

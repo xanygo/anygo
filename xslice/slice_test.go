@@ -247,19 +247,19 @@ func TestRevDeleteFuncN(t *testing.T) {
 func TestRange(t *testing.T) {
 	s1 := []any{"1", 2, 3, int8(3)}
 	var list1 []int
-	ok := Range[int](s1, func(item int) bool {
+	err := Range[int](s1, func(item int) error {
 		list1 = append(list1, item)
-		return true
+		return nil
 	})
-	xt.True(t, ok)
+	xt.NoError(t, err)
 	xt.Equal(t, list1, []int{2, 3})
 
 	var list2 []int64
-	ok = Range[int64](s1, func(item int64) bool {
+	err = Range[int64](s1, func(item int64) error {
 		list2 = append(list2, item)
-		return true
+		return nil
 	})
-	xt.True(t, ok)
+	xt.NoError(t, err)
 	xt.Empty(t, list2)
 }
 

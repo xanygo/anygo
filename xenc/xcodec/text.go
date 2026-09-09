@@ -13,6 +13,8 @@ import (
 	"github.com/xanygo/anygo/internal/zreflect"
 )
 
+var Text = TextCodec{}
+
 var _ Codec = (*TextCodec)(nil)
 
 type TextCodec struct{}

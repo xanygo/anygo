@@ -2,13 +2,16 @@ package xcachex
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"math"
 	"slices"
+	"strings"
 	"sync/atomic"
 	"time"
 
+	"github.com/xanygo/anygo/internal/zloader"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/store/xcache"
@@ -25,21 +28,26 @@ var _ xcache.StringCache = (*Database)(nil)
 var _ xcache.MCache[string, string] = (*Database)(nil)
 var _ xcache.HasStats = (*Database)(nil)
 
+func keyHash(str string) [32]byte {
+	return sha256.Sum256([]byte(str))
+}
+
 type dbModel struct {
-	ID      int64  `db:"id,auto_inc,pk"`
-	TypeID  uint32 `db:"t,unique_index=t_k[1]"` // key 和 value 实际类型签名
-	Key     string `db:"k,unique_index=t_k[2]"`
-	Value   string `db:"v"`
-	Created int64  `db:"c"`
-	Updated int64  `db:"u"`
-	Expires int64  `db:"e,index"` // 赋值为： time.Now().UnixMicro()
+	ID      int64    `db:"id,auto_inc,pk"`
+	TypeID  uint32   `db:"t,unique_index=t_k[1]"` // key 和 value 实际类型签名
+	KeyHash [32]byte `db:"k,unique_index=t_k[2]"` // key 的 hash
+	KeyRaw  string   `db:"k_raw"`                 // 原始的 key
+	Value   []byte   `db:"v"`
+	Created int64    `db:"c"`
+	Updated int64    `db:"u"`
+	Expires int64    `db:"e,index"` // 赋值为： time.Now().UnixMicro()
 }
 
 type Database struct {
 	DB        xdb.DBCore // 必填
 	TypeID    uint32     // 必填，key 和 value 实际类型签名,可以使用 GenTypeID 获取
 	Table     string     // 可选，默认 xcache
-	KeyPrefix string     // 可选, key 的前缀
+	KeyPrefix string     // 可选, key 的前缀,对于同一个缓存对象，一旦使用就不可修改
 
 	// Capacity Dir 近似的最大缓存个数，>0 时有效
 	// 每次 GC 时，若数量超限，会按照缓存的创建时间排序，删除创建时间更靠前的
@@ -62,7 +70,11 @@ type Database struct {
 
 func (d *Database) Init(param map[string]any) error {
 	if d.KeyPrefix == "" {
-		d.KeyPrefix, _ = xmap.GetString(param, "KeyPrefix")
+		var err error
+		d.KeyPrefix, err = xmap.GetString(param, zloader.FieldKeyPrefix)
+		if err != nil {
+			return err
+		}
 	}
 
 	if d.Table == "" {
@@ -128,7 +140,18 @@ func (d *Database) GenTypeID[K comparable, V any]() uint32 {
 }
 
 func (d *Database) fullKey(key string) string {
+	if d.KeyPrefix == "" {
+		return key
+	}
 	return d.KeyPrefix + key
+}
+
+func (d *Database) rawKey(key string) string {
+	if d.KeyPrefix == "" {
+		return key
+	}
+	after, _ := strings.CutPrefix(key, d.KeyPrefix)
+	return after
 }
 
 func (d *Database) getTable() string {
@@ -175,7 +198,7 @@ func (d *Database) orm() *xor.Model[*dbModel] {
 func (d *Database) Has(ctx context.Context, key string) (bool, error) {
 	defer d.autoCompact()
 
-	item, err := d.get(ctx, key)
+	item, err := d.doGet(ctx, d.fullKey(key))
 	if err != nil {
 		if errors.Is(err, xerror.NotFound) {
 			return false, nil
@@ -187,7 +210,7 @@ func (d *Database) Has(ctx context.Context, key string) (bool, error) {
 
 func (d *Database) TTL(ctx context.Context, key string) (time.Duration, error) {
 	defer d.autoCompact()
-	item, err := d.get(ctx, key)
+	item, err := d.doGet(ctx, d.fullKey(key))
 	if err != nil {
 		if errors.Is(err, xerror.NotFound) {
 			return 0, nil
@@ -204,7 +227,7 @@ func (d *Database) Expire(ctx context.Context, key string, life time.Duration) e
 	now := time.Now()
 	cond := &xdb.Condition{}
 	cond.And("t=?", d.getTypeID())
-	cond.And("k=?", key)
+	cond.And("k=?", keyHash(d.fullKey(key)))
 	cond.And("e>?", now.UnixMicro()) // 只有在有效期内，才允许续期
 
 	orm := d.orm()
@@ -216,9 +239,16 @@ func (d *Database) Expire(ctx context.Context, key string, life time.Duration) e
 	return err
 }
 
-func (d *Database) get(ctx context.Context, key string) (*dbModel, error) {
+func (d *Database) doGet(ctx context.Context, fullKey string) (*dbModel, error) {
+	return d.doGetType(ctx, d.getTypeID(), fullKey)
+}
+
+func (d *Database) doGetType(ctx context.Context, typeID uint32, fullKey string) (*dbModel, error) {
 	orm := d.orm()
-	value, found, err := orm.First(ctx, xor.Columns("id", "e", "v"), xor.Where("t=? and k=?", d.getTypeID(), key))
+	value, found, err := orm.First(ctx,
+		xor.Columns("id", "e", "v"),
+		xor.Where("t=? and k=?", typeID, keyHash(fullKey)),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -239,24 +269,31 @@ func (d *Database) Get(ctx context.Context, key string) (value string, err error
 	defer d.autoCompact()
 
 	d.cntRead.Add(1)
-	item, err := d.get(ctx, key)
+	item, err := d.doGet(ctx, d.fullKey(key))
 	if err != nil {
 		return value, err
 	}
 	d.cntHit.Add(1)
-	return item.Value, nil
+	return string(item.Value), nil
 }
 
 func (d *Database) Set(ctx context.Context, key string, value string, ttl time.Duration) error {
 	defer d.autoCompact()
 
 	d.cntWrite.Add(1)
+	keyRaw := d.fullKey(key)
+
+	return d.doSet(ctx, d.getTypeID(), keyRaw, value, ttl)
+}
+
+func (d *Database) doSet(ctx context.Context, typeID uint32, fullKey string, value string, ttl time.Duration) error {
 	now := time.Now().UnixMicro()
 	expires := time.Now().Add(ttl).UnixMicro()
 	item := &dbModel{
-		TypeID:  d.getTypeID(),
-		Key:     d.fullKey(key),
-		Value:   value,
+		TypeID:  typeID,
+		KeyRaw:  fullKey,
+		KeyHash: keyHash(fullKey),
+		Value:   []byte(value),
 		Created: now,
 		Updated: now,
 		Expires: expires,
@@ -274,7 +311,13 @@ func (d *Database) Delete(ctx context.Context, keys ...string) error {
 	d.cntDelete.Add(uint64(len(keys)))
 	cond := &xdb.Condition{}
 	cond.And("t=?", d.getTypeID())
-	cond.AndInFmt("k in (%s)", xslice.ToAnys(keys))
+
+	ksh := make([]any, len(keys))
+	for i, key := range keys {
+		ksh[i] = keyHash(d.fullKey(key))
+	}
+
+	cond.AndInFmt("k in (%s)", ksh)
 	orm := d.orm()
 	_, err := orm.Delete(ctx, xor.WhereByCond(cond))
 	return err
@@ -292,10 +335,12 @@ func (d *Database) MSet(ctx context.Context, values map[string]string, ttl time.
 	orm := d.orm()
 	items := make([]*dbModel, 0, len(values))
 	for k, v := range values {
+		keyRaw := d.fullKey(k)
 		item := &dbModel{
 			TypeID:  d.getTypeID(),
-			Key:     d.fullKey(k),
-			Value:   v,
+			KeyRaw:  keyRaw,
+			KeyHash: keyHash(keyRaw),
+			Value:   []byte(v),
 			Created: now,
 			Updated: now,
 			Expires: expires,
@@ -315,10 +360,15 @@ func (d *Database) MGet(ctx context.Context, keys ...string) (result map[string]
 
 	cond := &xdb.Condition{}
 	cond.And("t=?", d.getTypeID())
-	cond.AndInFmt("k in (%s)", xslice.ToAnys(keys))
+
+	ksh := make([]any, len(keys))
+	for i, key := range keys {
+		ksh[i] = keyHash(d.fullKey(key))
+	}
+	cond.AndInFmt("k in (%s)", ksh)
 
 	orm := d.orm()
-	items, err := orm.List(ctx, xor.Columns("id", "k", "v", "e"), xor.WhereByCond(cond), xor.Limit(len(keys)))
+	items, err := orm.List(ctx, xor.Columns("id", "k_raw", "v", "e"), xor.WhereByCond(cond), xor.Limit(len(keys)))
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +377,8 @@ func (d *Database) MGet(ctx context.Context, keys ...string) (result map[string]
 	var expires []int64
 	for _, item := range items {
 		if item.Expires > now {
-			result[item.Key] = item.Value
+			rawKey := d.rawKey(item.KeyRaw)
+			result[rawKey] = string(item.Value)
 		} else {
 			expires = append(expires, item.ID)
 		}
@@ -352,10 +403,8 @@ func (d *Database) deleteExpired(ctx context.Context, onlyExpire bool, batchNum 
 		batchNum = min(len(ids), 1000)
 	}
 
-	var errs []error
 	for items := range slices.Chunk(ids, batchNum) {
 		cond := &xdb.Condition{}
-		cond.And("t=?", d.getTypeID())
 		cond.AndInFmt("id in (%s)", xslice.ToAnys(items))
 
 		if onlyExpire {
@@ -364,11 +413,11 @@ func (d *Database) deleteExpired(ctx context.Context, onlyExpire bool, batchNum 
 
 		num, err := d.orm().Delete(ctx, xor.WhereByCond(cond))
 		if err != nil {
-			errs = append(errs, err)
+			return total, err
 		}
 		total += num
 	}
-	return total, errors.Join(errs...)
+	return total, nil
 }
 
 // ClearExpired 清理过期数据的方法，需要主动调用
@@ -380,7 +429,7 @@ func (d *Database) ClearExpired(ctx context.Context, limit int, batchNum int) (i
 		limit = math.MaxInt
 	}
 	start := time.Now()
-	deleted, err := d.doClear(ctx, int64(limit), true, batchNum)
+	deleted, err := d.doClear(ctx, true, int64(limit), true, batchNum)
 	xlog.Info(ctx, "xcache.Database.ClearExpired",
 		xlog.Cost(start),
 		xlog.Err("error", err),
@@ -407,7 +456,7 @@ func (d *Database) ClearWithCapacity(ctx context.Context, capacity int64, batchN
 		return 0, nil
 	}
 	start := time.Now()
-	deleted, err := d.doClear(ctx, needDelete, false, batchNum)
+	deleted, err := d.doClear(ctx, true, needDelete, false, batchNum)
 	xlog.Info(ctx, "xcache.Database.ClearWithCapacity",
 		xlog.Cost(start),
 		xlog.Err("error", err),
@@ -423,14 +472,52 @@ func (d *Database) ClearWithCapacity(ctx context.Context, capacity int64, batchN
 	return deleted, err
 }
 
-func (d *Database) doClear(ctx context.Context, needDelete int64, onlyExpire bool, batchNum int) (int64, error) {
+// clearOther 清理其他 typeID 的过期数据
+func (d *Database) clearOther(ctx context.Context) {
+	start := time.Now()
+	deleted, err := d.doClear(ctx, false, 10000, true, 1000)
+	xlog.Info(ctx, "xcache.Database.clearOther",
+		xlog.Cost(start),
+		xlog.Err("error", err),
+		xlog.Int64("deleted", deleted),
+	)
+	if err != nil {
+		xlog.Error(ctx, "xcache.Database.clearOther",
+			xlog.Cost(start),
+			xlog.Err("error", err),
+			xlog.Int64("deleted", deleted),
+		)
+	}
+}
+
+func (d *Database) doClear(ctx context.Context, thisType bool, needDelete int64, onlyExpire bool, batchNum int) (int64, error) {
+	orm := d.orm()
+
+	// 检查任务是否已经运行中，避免同一时刻多个任务
+	// 这里没有用事务，所以若有多个 Database 实例，还是可能会出现多个任务。
+	{
+		const taskName = "clearTask"
+		_, err := d.doGetType(ctx, 0, taskName)
+		if err != nil && !errors.Is(err, xerror.NotFound) {
+			return 0, err
+		}
+		if err == nil {
+			return 0, xerror.ErrAlreadyRunning
+		}
+		if err = d.doSet(ctx, 0, taskName, "", d.getBGTimeout()); err != nil {
+			return 0, fmt.Errorf("%w when try lock task", err)
+		}
+		defer func() {
+			orm.Delete(ctx, xor.Where("t=0 and k=?", keyHash(taskName)))
+		}()
+	}
+
 	if batchNum <= 0 {
 		batchNum = 1000
 	}
 
 	var deleted int64
 	var lastID int64
-	orm := d.orm()
 
 	now := time.Now().UnixMicro()
 
@@ -450,7 +537,12 @@ func (d *Database) doClear(ctx context.Context, needDelete int64, onlyExpire boo
 		}
 
 		cond := &xdb.Condition{}
-		cond.And("t=?", d.getTypeID())
+		if thisType {
+			cond.And("t=?", d.getTypeID())
+		} else {
+			cond.And("t<>?", d.getTypeID())
+		}
+
 		cond.And("id>?", lastID)
 
 		if onlyExpire {
@@ -521,6 +613,7 @@ func (d *Database) doCompact() {
 	if d.Capacity > 0 {
 		d.ClearWithCapacity(ctx, d.Capacity, 1000)
 	}
+	d.clearOther(ctx)
 }
 
 // Migrate 在测试环境下使用，创建表结构

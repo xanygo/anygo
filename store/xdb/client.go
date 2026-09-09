@@ -45,23 +45,21 @@ func NewClientWithService(name any) (*Client, error) {
 	}
 	var driver, dsn string
 	ext := xoption.Extra(srv.Option(), key)
-	if ext != nil {
-		err = xmap.Range(ext, func(k, v string) bool {
-			switch k {
-			case "Driver":
-				driver = v
-			case "Username":
-				data["Username"] = v
-			case "Password":
-				data["Password"] = v
-			case "DSN":
-				dsn = v
-			}
-			return true
-		})
-		if err != nil {
-			return nil, err
+	err = xmap.Range(ext, func(k, v string) error {
+		switch k {
+		case "Driver":
+			driver = v
+		case "Username":
+			data["Username"] = v
+		case "Password":
+			data["Password"] = v
+		case "DSN":
+			dsn = v
 		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	if driver == "" {

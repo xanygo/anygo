@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/internal/zslice"
 )
 
@@ -338,33 +339,16 @@ func CountFunc[S ~[]E, E any](arr S, fn func(item E) bool) int64 {
 	return result
 }
 
-// Range 遍历任意类型的 slice 、Array，返回 value 满足条件且被 fn 接收的个数
+// Range 遍历任意类型的 slice 、array
 //
-//   - 只有 slice 数据的实际类型和 传入的类型完全匹配，才会触发回调
-//   - 使用 rv,ok := value.(Type) 方式断言
-//   - 不确定的类型，可以使用 any 代替
-//   - 传入的数据可以是任意类型；使用了反射
-func Range[T any](obj any, fn func(item T) bool) bool {
-	rv := reflect.ValueOf(obj)
-	if !rv.IsValid() {
-		return false
-	}
-	switch rv.Kind() {
-	case reflect.Array, reflect.Slice:
-	default:
-		return false
-	}
-	for i := 0; i < rv.Len(); i++ {
-		elem := rv.Index(i).Interface()
-		val, ok := elem.(T)
-		if !ok {
-			continue
-		}
-		if !fn(val) {
-			break
-		}
-	}
-	return true
+//	只有 slice 数据的实际类型和 传入的类型完全匹配，才会触发回调
+//	使用 rv,ok := value.(Type) 方式断言
+//	不确定的类型，可以使用 any 代替
+//	传入的数据可以是任意类型；使用了反射
+//
+//	回调函数返回 xerror.ErrBreak 会终止循环
+func Range[T any](obj any, fn func(item T) error) error {
+	return zreflect.RangeSlice(obj, fn)
 }
 
 // Len 返回 Array 或者 Slice 类型的长度，其他类型总是返回 0

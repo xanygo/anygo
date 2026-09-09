@@ -9,6 +9,8 @@ import (
 	"io/fs"
 	"strconv"
 	"strings"
+
+	"github.com/xanygo/anygo/internal/zerror"
 )
 
 type TraceError interface {
@@ -22,8 +24,6 @@ const (
 	CodeInvalidParam
 	CodeDuplicateKey
 	CodeClosed
-	CodeSkipOne
-	CodeSkipAll
 )
 
 var (
@@ -32,13 +32,18 @@ var (
 	AlreadyExist = NewCodeError(CodeAlreadyExist, "already exists")        // 错误：已存在
 	InvalidParam = NewCodeError(CodeInvalidParam, "invalid param")         // 错误：无效的请求参数
 	DuplicateKey = NewCodeError(CodeDuplicateKey, "duplicate primary key") // 错误：重复的主键
+)
 
-	SkipOne = NewCodeError(CodeSkipOne, "skip one") // 跳过当前数据
-	SkipAll = NewCodeError(CodeSkipAll, "skip all") // 跳过当前数据
+var (
+	ErrBreak   = zerror.ErrBreak
+	ErrSkipOne = zerror.ErrSkipOne // 跳过当前数据
+	ErrSkipAll = zerror.ErrSkipAll // 跳过所有数据
+
+	ErrAlreadyRunning = errors.New("task is already running") // 错误：任务已在运行中
 )
 
 func IsSkip(err error) bool {
-	return errors.Is(err, SkipOne) || errors.Is(err, SkipAll)
+	return errors.Is(err, ErrSkipOne) || errors.Is(err, ErrSkipAll)
 }
 
 // IsNotFound 判断是否资源不存在错误

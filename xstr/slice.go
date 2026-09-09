@@ -26,7 +26,7 @@ func ToSliceFunc[T any](str string, sep string, fn func(sub string) (T, error)) 
 		}
 		value, err := fn(v)
 		if err != nil {
-			if errors.Is(err, xerror.SkipOne) {
+			if errors.Is(err, xerror.ErrSkipOne) {
 				continue
 			}
 			return nil, err

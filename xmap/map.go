@@ -53,14 +53,38 @@ func GetMap[K comparable, V any](m map[K]V, key K) (map[K]V, error) {
 		return mc, nil
 	}
 	result := make(map[K]V)
-	err := Range[K, V](v, func(key K, val V) bool {
+	err := Range[K, V](v, func(key K, val V) error {
 		result[key] = val
-		return true
+		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
+}
+
+// GetSlice 从 map 中读取 slice。
+//
+//	若 map 为空 或者 key 不存在，会返回 nil,nil
+//	若 key 存在，但是类型错误，会返回 nil,error
+func GetSlice[K comparable, V any, T any](m map[K]V, key K) ([]T, error) {
+	if Len(m) == 0 {
+		return nil, nil
+	}
+	v, found := m[key]
+	if !found {
+		return nil, nil
+	}
+	sv, ok := any(v).([]T)
+	if ok {
+		return sv, nil
+	}
+	var result []T
+	err := zreflect.RangeSlice(v, func(item T) error {
+		result = append(result, item)
+		return nil
+	})
+	return result, err
 }
 
 // GetString 从 map 中读取 string
@@ -375,31 +399,16 @@ func KeysMiss[K comparable, V any](mp map[K]V, keys []K) []K {
 	return result
 }
 
-// Range 遍历任意类型的 map，返回 key、value 满足条件而且被 fn 接收的个数
+// Range 遍历任意类型的 map
 //
-//   - 只有 map 数据的 key  和 value 的实际类型和 传入的类型完全匹配，才会触发回调
-//   - 使用 rv,ok := value.(Type) 方式断言 key 和 value
-//   - 不确定的类型，可以使用 any 代替，如只关注 key 的类型是 string，可以使用:Range[string,any](m,func(key string,value any)bool)
-//   - 传入的数据可以是任意类型；使用了反射
-func Range[K comparable, V any](m any, fn func(key K, val V) bool) error {
-	rv := reflect.ValueOf(m)
-	if !rv.IsValid() || rv.Kind() != reflect.Map {
-		return fmt.Errorf("invalid type, not map: %v", m)
-	}
-	for _, key := range rv.MapKeys() {
-		k, ok := key.Interface().(K)
-		if !ok {
-			continue
-		}
-		val, ok := rv.MapIndex(key).Interface().(V)
-		if !ok {
-			continue
-		}
-		if !fn(k, val) {
-			break
-		}
-	}
-	return nil
+//	只有 map 数据的 key  和 value 的实际类型和 传入的类型完全匹配，才会触发回调
+//	使用 rv,ok := value.(Type) 方式断言 key 和 value
+//	不确定的类型，可以使用 any 代替，如只关注 key 的类型是 string，可以使用:Range[string,any](m,func(key string,value any)bool)
+//	传入的数据可以是任意类型；使用了反射
+//
+// 回调函数返回 xerror.ErrBreak 会终止循环
+func Range[K comparable, V any](m any, fn func(key K, val V) error) error {
+	return zreflect.RangeMap(m, fn)
 }
 
 // Len 返回 Map 类型的长度，其他类型总是返回 0

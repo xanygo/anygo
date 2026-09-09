@@ -16,9 +16,10 @@
             "Name":"session2",
             "Type":"Cookie",        // 必填，存储类型，session 数据存储在 Cookie 中。由于是在浏览器中，用户可见的，所以需要加密。
             "Life":"8760h",         // 可选，Cookie 有效期。默认为 365 天。
-            "CipherType":"AesOFB",  // 可选，加密算法，支持 AesOFB、AesGCM、AesBlock，默认为 AesOFB
-            "CipherKey":"",         // 必填，加密密钥 
-            "CipherIV":"",          // 可选，加密向量
+            "Cipher":{
+                "Type":"AesOFB",     // 可选，加密算法，支持 AesOFB、AesGCM、AesBlock，默认为 AesOFB
+                "Key":"hello-world", // 必填，加密密钥 
+            }
             "CookieName":"",        // 可选，存储数据的 cookie 名字，默认为 session
             "CookiePath":"",        // 可选，cookie 的保存路径，默认为 /
         },
@@ -31,4 +32,32 @@
 }
 ```
 
-正常情况下，一个应用只需要配置一个。
+正常情况下，一个应用只需要在 Items 中配置一个。
+
+`Cipher` 可以配置一个对象或者数组。具体如下：
+
+```json5
+{
+    "Cipher":{              
+        "Type":"AesGCM",     // 必填，加密算法
+        "Key":"hello-world", // 必填，加密密钥
+    }
+}
+```
+或者：
+```json5
+{
+    "Cipher":[        
+        {               
+            "Type":"AesGCM",     // 必填，加密算法。使用 AesGCM 加密 json encode 后的数据
+            "Key":"hello-world", // 必填，加密密钥
+        },
+        {               
+            "Type":"GZip",       // 必填，压缩算法。对加密后的数据压缩
+        },
+    ]
+}
+```
+
+Cipher `Type`: 数据处理算法名称，可选值 No，AesOFB，AesGCM，AesBlock, GZip。
+采用 `Cookie` 存储时，session 数据自动会添加 Base64 编码处理，故在 `Cipher` 中不需要配置 `Base64` 等编码器。
