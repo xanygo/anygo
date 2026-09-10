@@ -29,11 +29,13 @@ func init() {
 
 func getSQLiteDB(name string) *xdb.Client {
 	_ = os.Remove(name)
-	db, err := sql.Open("sqlite3", name)
+	db, err := sql.Open("sqlite3", "file:"+name+"?_journal_mode=WAL&_busy_timeout=5000")
 
 	if err != nil {
 		log.Fatalln(err)
 	}
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
 
 	return xdb.NewClient("sqlite3", "cache", db)
 }

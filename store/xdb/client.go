@@ -17,6 +17,7 @@ import (
 	"github.com/xanygo/anygo/xnet/xservice"
 	"github.com/xanygo/anygo/xoption"
 	"github.com/xanygo/anygo/xstr"
+	"github.com/xanygo/anygo/xtime"
 )
 
 type FactoryFunc func(ctx context.Context) (*sql.DB, error)
@@ -45,21 +46,61 @@ func NewClientWithService(name any) (*Client, error) {
 	}
 	var driver, dsn string
 	ext := xoption.Extra(srv.Option(), key)
-	err = xmap.Range(ext, func(k, v string) error {
-		switch k {
-		case "Driver":
-			driver = v
-		case "Username":
-			data["Username"] = v
-		case "Password":
-			data["Password"] = v
-		case "DSN":
-			dsn = v
+
+	var maxOpenConns, maxIdleConns *int
+	var connMaxIdleTime, connMaxLifeTime *time.Duration
+
+	if ext != nil {
+		err = xmap.Range(ext, func(k, v string) error {
+			switch k {
+			case "Driver":
+				driver = v
+			case "Username":
+				data["Username"] = v
+			case "Password":
+				data["Password"] = v
+			case "DBName":
+				data["DBName"] = v
+			case "DSN":
+				dsn = v
+			case "ConnMaxLifeTime":
+				v, err1 := xtime.ParseDuration(v)
+				if err1 != nil {
+					return err1
+				}
+				connMaxLifeTime = new(v)
+			case "ConnMaxIdleTime":
+				v, err1 := xtime.ParseDuration(v)
+				if err1 != nil {
+					return err1
+				}
+				connMaxIdleTime = new(v)
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return nil, err
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
+
+		err = xmap.Range(ext, func(k string, v int) error {
+			switch k {
+			case "MaxOpenConns":
+				maxOpenConns = new(v)
+			case "MaxIdleConns":
+				maxIdleConns = new(v)
+			case "ConnMaxLifeTime":
+				connMaxLifeTime = new(time.Duration(v) * time.Millisecond)
+			case "ConnMaxIdleTime":
+				connMaxIdleTime = new(time.Duration(v) * time.Millisecond)
+			}
+			return nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if driver == "" {
@@ -76,6 +117,19 @@ func NewClientWithService(name any) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	if maxOpenConns != nil {
+		db.SetMaxOpenConns(*maxOpenConns)
+	}
+	if maxIdleConns != nil {
+		db.SetMaxIdleConns(*maxIdleConns)
+	}
+	if connMaxLifeTime != nil {
+		db.SetConnMaxLifetime(*connMaxLifeTime)
+	}
+	if connMaxIdleTime != nil {
+		db.SetConnMaxIdleTime(*connMaxIdleTime)
+	}
+
 	return NewClient(driver, srv.Name(), db), nil
 }
 
