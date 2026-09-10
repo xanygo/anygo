@@ -11,23 +11,42 @@ import (
 
 // PanicCaller 查找触发 panic 的文件和函数名
 func PanicCaller(skip int) (file string, line int, fn string) {
-	pc := make([]uintptr, 10)
-	n := runtime.Callers(skip, pc)
+	pcs := make([]uintptr, 32)
+	n := runtime.Callers(skip, pcs)
+	if n == 0 {
+		return "", 0, ""
+	}
+
+	frames := runtime.CallersFrames(pcs[:n])
+
 	var foundPanic bool
-	for i := range n {
-		fn := runtime.FuncForPC(pc[i])
-		fileName, lineNo := fn.FileLine(pc[i])
-		//
-		// 查找到下面这几行
-		//  panic({0x7ff6b7018460?, 0x14abf27deaa0?})
-		// 	C:/soft/go/src/runtime/panic.go:859 +0x125
-		// github.com/xanygo/anygo/xkv/xkvx.MustLoad[...]({0x7ff6b6718602?, 0x3})
-		//
-		isPanicFile := len(fileName) > 16 && strings.Contains(fileName, "runtime") && strings.Contains(fileName, "panic.go:")
-		if foundPanic && !isPanicFile {
-			return fileName, lineNo, fn.Name()
+	var goRootDir string
+	for {
+		frame, more := frames.Next()
+		fileName := frame.File
+		if !foundPanic {
+			//  go build 添加 -trimpath 后，
+			// 输出 fileName= runtime/panic.go ,lineNo= 855
+			foundPanic = strings.Contains(fileName, "runtime/panic.go")
+			if foundPanic && strings.Contains(fileName, "/src/runtime/") {
+				// 若有 -trimpath，则 -trimpath 为空
+				goRootDir = fileName[:(len(fileName) - len("runtime/panic.go"))]
+			}
+		} else {
+			if goRootDir == "" {
+				if !strings.HasPrefix(fileName, "internal/") && !strings.HasPrefix(fileName, "runtime/") {
+					return fileName, frame.Line, frame.Function
+				}
+			} else {
+				if !strings.HasPrefix(fileName, goRootDir) {
+					return fileName, frame.Line, frame.Function
+				}
+			}
 		}
-		foundPanic = isPanicFile
+
+		if !more {
+			break
+		}
 	}
 	return "", 0, ""
 }
