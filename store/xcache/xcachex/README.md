@@ -148,6 +148,15 @@
 `Codec` 内部还可以配置 `Cipher` 来实现对数据的加密、压缩、编码。 
 `Cipher` 可以配置一个对象或者数组。具体如下：
 
+
+格式1：只 JSON 编码
+```json5
+{
+    "Codec":"JSON",
+}
+```
+
+格式2：JSON 编码后加密
 ```json5
 {
     "Codec":{
@@ -160,7 +169,7 @@
 }
 ```
 
-多个对象（先加密，然后压缩、编码）：
+格式3：JSON 编码后加密，压缩，Base编码：
 ```json5
 {
     "Codec":{
@@ -183,4 +192,4 @@
 `Cipher` 里可以有 N>=0 个配置项。可以是: `AesGCM`、`AesGCM` + `GZip`、`AesGCM` + `Base64` 等组合方式。
 
 
-Cipher `Type`: 数据处理算法名称，可选值 No，AesOFB，AesGCM，AesBlock, GZip, Base64, Base62, Base58，Base36
+Cipher `Type`: 数据处理算法名称，可选值 No（跳过，无任何操作），AesOFB，AesGCM，AesBlock, GZip, Base64, Base62, Base58，Base36

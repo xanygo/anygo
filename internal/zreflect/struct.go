@@ -9,6 +9,7 @@ import (
 	"reflect"
 
 	"github.com/xanygo/anygo/internal/zcache"
+	"github.com/xanygo/anygo/internal/zerror"
 )
 
 type structMeta struct {
@@ -38,7 +39,7 @@ func collectFields(t reflect.Type) ([]reflect.StructField, error) {
 		t = t.Elem()
 	}
 	if t.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("invalid type %s, not struct or *struct", raw.String())
+		return nil, fmt.Errorf("%w, expect struct or *struct, got %s", zerror.ErrInvalidType, raw.String())
 	}
 	var fields []reflect.StructField
 	for f := range t.Fields() {

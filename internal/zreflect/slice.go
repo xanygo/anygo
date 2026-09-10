@@ -54,7 +54,7 @@ func RangeSlice[T any](obj any, fn func(item T) error) error {
 	switch rv.Kind() {
 	case reflect.Array, reflect.Slice:
 	default:
-		return fmt.Errorf("rangeSlice with invalid type %T", obj)
+		return fmt.Errorf("%w, expect array/slice, got %T", zerror.ErrInvalidType, obj)
 	}
 	for i := 0; i < rv.Len(); i++ {
 		elem := rv.Index(i).Interface()

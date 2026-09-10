@@ -28,8 +28,8 @@
             "Service":"mysql1",    // 必填，数据库的服务名称，对应服务配置一般在 {app}/conf/service/mysql1.yml
             "KeyPrefix":"prefix",  // 可选，key 的前缀
             "AutoMigrate":true,    // 可选，是否自动创建表结构。生产环境配置为 false 或者不配置
-            "Codec":{
-                "Type":"JSON",     // 必填，可选值 JSON、JSONV2 
+            "Codec":{              // 可选，数据编解码器，默认为 JSON
+                "Type":"JSON",           // 必填，可选值 JSON、JSONV2 
                 "Cipher":{               // 可选，用于对编码后的数据数据加密
                     "Type":"AesGCM",     // 必填，加密算法，可选值：No，AesOFB 等
                     "Key":"hello-world", // 必填，加密密钥
@@ -52,6 +52,14 @@
 
 `Codec` 内部可以配置 `Cipher` 来实现对数据的加密、压缩、编码。 `Cipher` 可以配置一个对象或者数组。具体如下：
 
+格式1：只 JSON 编码
+```json5
+{
+    "Codec":"JSON",
+}
+```
+
+格式2：JSON 编码后加密
 ```json5
 {
     "Codec":{
@@ -64,7 +72,7 @@
 }
 ```
 
-多个对象（先加密，然后压缩、编码）：
+格式3：JSON 编码后加密，压缩，Base编码：
 ```json5
 {
     "Codec":{

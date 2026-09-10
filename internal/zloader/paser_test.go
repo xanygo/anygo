@@ -169,4 +169,21 @@ func TestParserCodec(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("case 9-0", func(t *testing.T) {
+		item := map[string]any{
+			"Codec": "",
+		}
+		got, err := zloader.ParserCodec(item, zloader.FieldCodec, xcodec.JSON)
+		xt.NoError(t, err)
+		xt.NotNil(t, got)
+	})
+	t.Run("case 9-1", func(t *testing.T) {
+		item := map[string]any{
+			"Codec": "JSON",
+		}
+		got, err := zloader.ParserCodec(item, zloader.FieldCodec, xcodec.JSON)
+		xt.NoError(t, err)
+		xt.NotNil(t, got)
+	})
 }

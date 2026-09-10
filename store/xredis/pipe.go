@@ -12,6 +12,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/xanygo/anygo/internal/zerror"
 	"github.com/xanygo/anygo/store/xredis/resp3"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xio"
@@ -239,7 +240,7 @@ func (resp *pipeResponse) readTx(ctx context.Context, rd resp3.Reader) error {
 	}
 	arr, ok := reply.(resp3.Array)
 	if !ok {
-		return fmt.Errorf("invalid type: %T, expect array", reply)
+		return fmt.Errorf("%w %T, expect array", zerror.ErrInvalidType, reply)
 	}
 	if len(arr) != len(resp.cmds) {
 		return fmt.Errorf("invalid cmds reply length: %d != %d", len(resp.cmds), len(arr))

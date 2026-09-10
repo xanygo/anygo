@@ -13,6 +13,7 @@ import (
 
 	"github.com/xanygo/anygo/internal/xstruct"
 	"github.com/xanygo/anygo/internal/zcache"
+	"github.com/xanygo/anygo/internal/zerror"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb/dbcodec"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
@@ -91,7 +92,7 @@ func (sp schemaParser) getSchema(rt reflect.Type) (*dbtype.TableSchema, error) {
 		rt = rt.Elem()
 	}
 	if rt.Kind() != reflect.Struct {
-		return sc, fmt.Errorf("dbschema: invalid type %T, should struct or *struct", raw.String())
+		return sc, fmt.Errorf("%w, expect struct/*struct, got %T", zerror.ErrInvalidType, raw.String())
 	}
 
 	var scan func(reflect.Type) error

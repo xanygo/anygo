@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/xanygo/anygo/internal/zerror"
 	"github.com/xanygo/anygo/internal/zreflect"
 )
 
@@ -103,7 +104,7 @@ func GetString[K comparable, V any](m map[K]V, key K) (string, error) {
 	if str, ok := zreflect.BaseTypeToString(v); ok {
 		return str, nil
 	}
-	return "", fmt.Errorf("expect map[%v] is string, got %#v", key, v)
+	return "", fmt.Errorf("%w, expect map[%v] is string, got %T", zerror.ErrInvalidType, key, v)
 }
 
 // GetInt64 从 map 中读取 int64
@@ -122,7 +123,7 @@ func GetInt64[K comparable, V any](m map[K]V, key K) (int64, error) {
 	if num, ok := zreflect.BaseTypeToInt64(v); ok {
 		return num, nil
 	}
-	return 0, fmt.Errorf("expect map[%v] is int64, got %#v", key, v)
+	return 0, fmt.Errorf("%w, expect map[%v] is int64, got %T", zerror.ErrInvalidType, key, v)
 }
 
 // GetBool 从 map 中读取 bool
@@ -148,7 +149,7 @@ func GetBool[K comparable, V any](m map[K]V, key K) (bool, error) {
 	case reflect.String:
 		return strconv.ParseBool(rv.String())
 	}
-	return false, fmt.Errorf("expect map[%v] is bool, got %#v", key, v)
+	return false, fmt.Errorf("%w, expect map[%v] is bool, got %T", zerror.ErrInvalidType, key, v)
 }
 
 func GetInt[K comparable, V any](m map[K]V, key K) (int, error) {
@@ -359,14 +360,14 @@ func Create[K comparable, V any](pairs ...any) (map[K]V, error) {
 
 		kt, ok1 := key.(K)
 		if !ok1 {
-			return nil, fmt.Errorf("key(%d)=%#v is not %T", i, key, kt)
+			return nil, fmt.Errorf("%w, key(%d)=%#v is not %T", zerror.ErrInvalidType, i, key, kt)
 		}
 		var vt V
 		if val != nil {
 			var ok2 bool
 			vt, ok2 = val.(V)
 			if !ok2 {
-				return nil, fmt.Errorf("map[%v]=%#v is not %T", key, val, vt)
+				return nil, fmt.Errorf("%w, map[%v]=%#v is not %T", zerror.ErrInvalidType, key, val, vt)
 			}
 		}
 		result[kt] = vt

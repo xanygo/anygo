@@ -53,7 +53,7 @@ func RangeMap[K comparable, V any](m any, fn func(key K, val V) error) error {
 	}
 	rv := reflect.ValueOf(m)
 	if !rv.IsValid() || rv.Kind() != reflect.Map {
-		return fmt.Errorf("invalid type, not map: %v", m)
+		return fmt.Errorf("%w, expect map but got %T", zerror.ErrInvalidType, m)
 	}
 	for _, key := range rv.MapKeys() {
 		k, ok := key.Interface().(K)

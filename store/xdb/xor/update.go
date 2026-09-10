@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/xanygo/anygo/internal/zerror"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/store/xdb"
 	"github.com/xanygo/anygo/store/xdb/dbtype"
@@ -105,7 +106,7 @@ func (m *Model[T]) Modify(ctx context.Context, old T, update func(nv T) (T, erro
 	}
 	nv, err := update(clonedValue)
 	if err != nil {
-		if xerror.IsSkip(err) {
+		if errors.Is(err, zerror.ErrBreak) {
 			return 0, nil
 		}
 		return 0, err

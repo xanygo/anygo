@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/xanygo/anygo/internal/zerror"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xnet"
@@ -125,7 +126,7 @@ func FindService(srv any) (Service, error) {
 	case string:
 		name = obj
 	default:
-		return nil, fmt.Errorf("invalid type: %T", srv)
+		return nil, fmt.Errorf("%w, expect Service/string, got %T", zerror.ErrInvalidType, srv)
 	}
 	pre, after, found := strings.Cut(name, "/")
 	if !found {

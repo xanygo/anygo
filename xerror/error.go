@@ -35,16 +35,15 @@ var (
 )
 
 var (
-	ErrBreak   = zerror.ErrBreak
-	ErrSkipOne = zerror.ErrSkipOne // 跳过当前数据
-	ErrSkipAll = zerror.ErrSkipAll // 跳过所有数据
-
-	ErrAlreadyRunning = errors.New("task is already running") // 错误：任务已在运行中
+	ErrBreak   = zerror.ErrBreak   // 用于跳过 xmap.Range 这类循环的特殊标记
+	ErrSkipOne = zerror.ErrSkipOne // 跳过当前一条数据, 是 ErrBreak 的细化类型
+	ErrSkipAll = zerror.ErrSkipAll // 跳过所有数据，是 ErrBreak 的细化类型
 )
 
-func IsSkip(err error) bool {
-	return errors.Is(err, ErrSkipOne) || errors.Is(err, ErrSkipAll)
-}
+var (
+	ErrInvalidType    = zerror.ErrInvalidType                 // 错误的数据类型
+	ErrAlreadyRunning = errors.New("task is already running") // 错误：任务已在运行中
+)
 
 // IsNotFound 判断是否资源不存在错误
 func IsNotFound(err error) bool {

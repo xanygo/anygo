@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/xanygo/anygo/internal/zerror"
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/xenc"
 	"github.com/xanygo/anygo/xenc/xbase"
@@ -16,8 +17,18 @@ import (
 )
 
 func ParserCodec(cfg map[string]any, name string, defaultValue xenc.Codec) (xenc.Codec, error) {
+	// Map 形式：
+	// {"Codec":{"Type":"JSON","Cipher":{xx}}}
+	// {"Codec":{"Type":"JSON","Cipher":[{xx}]}}
 	sub, err := xmap.GetMap(cfg, name)
 	if err != nil {
+		if errors.Is(err, zerror.ErrInvalidType) {
+			// 字符串形式:Codec="JSON"
+			str, err1 := xmap.GetString(cfg, name)
+			if err1 == nil {
+				return getCodeCByName(str, defaultValue)
+			}
+		}
 		return nil, err
 	}
 	if len(sub) == 0 {
@@ -27,14 +38,9 @@ func ParserCodec(cfg map[string]any, name string, defaultValue xenc.Codec) (xenc
 	if err != nil {
 		return nil, err
 	}
-	var codec xenc.Codec
-	if typ == "" {
-		codec = defaultValue
-	} else {
-		codec, err = xcodec.Find(typ)
-		if err != nil {
-			return nil, err
-		}
+	codec, err := getCodeCByName(typ, defaultValue)
+	if err != nil {
+		return nil, err
 	}
 	cipher, err := ParserCipher(sub)
 	if err != nil {
@@ -44,6 +50,13 @@ func ParserCodec(cfg map[string]any, name string, defaultValue xenc.Codec) (xenc
 		return codec, nil
 	}
 	return xenc.CodecWithCipher(codec, cipher), nil
+}
+
+func getCodeCByName(name string, defaultValue xenc.Codec) (xenc.Codec, error) {
+	if name == "" {
+		return defaultValue, nil
+	}
+	return xcodec.Find(name)
 }
 
 func ParserCipher(cfg map[string]any) (xenc.Cipher, error) {

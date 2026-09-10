@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/xanygo/anygo/internal/zerror"
 	"github.com/xanygo/anygo/store/xredis/resp3"
 	"github.com/xanygo/anygo/xslice"
 )
@@ -404,7 +405,7 @@ func parserJSONPtrInt64Slice(data resp3.Element, err error) ([]*int64, error) {
 	case resp3.SimpleError:
 		return nil, rv
 	default:
-		return nil, fmt.Errorf("invalid type for result: %T", rv)
+		return nil, fmt.Errorf("resp3 return %w %T", zerror.ErrInvalidType, rv)
 	}
 }
 
@@ -475,7 +476,7 @@ func parserJSONPtrBoolSlice(data resp3.Element, err error) ([]*bool, error) {
 	case resp3.SimpleError:
 		return nil, rv
 	default:
-		return nil, fmt.Errorf("invalid type for result: %T", rv)
+		return nil, fmt.Errorf("%w for result: %T", zerror.ErrInvalidType, rv)
 	}
 }
 
