@@ -1,0 +1,33 @@
+//  Copyright(C) 2025 github.com/hidu  All Rights Reserved.
+//  Author: hidu <duv123+git@gmail.com>
+//  Date: 2025-11-11
+
+package dbcodec
+
+import (
+	"github.com/xanygo/anygo/xdb/dbtype"
+	"github.com/xanygo/anygo/xenc/xcodec"
+)
+
+const TextName = "text"
+
+var _ dbtype.Codec = (*Text)(nil)
+var _ dbtype.HasKind = (*Text)(nil)
+
+type Text struct{}
+
+func (t Text) Kind() dbtype.Kind {
+	return dbtype.KindString
+}
+
+func (t Text) Name() string {
+	return TextName
+}
+
+func (t Text) Encode(obj any) (any, error) {
+	return xcodec.MarshalToString(xcodec.Text, obj)
+}
+
+func (t Text) Decode(str string, obj any) error {
+	return xcodec.UnmarshalFromString(xcodec.Text, str, obj)
+}

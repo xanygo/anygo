@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/internal/zslice"
-	"github.com/xanygo/anygo/store/xcache"
 	"github.com/xanygo/anygo/xattr"
+	"github.com/xanygo/anygo/xcache"
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xnet/internal"

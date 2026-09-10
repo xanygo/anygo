@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/xdb"
 	"github.com/xanygo/anygo/xt"
 	_ "modernc.org/sqlite" // sqlite driver
 

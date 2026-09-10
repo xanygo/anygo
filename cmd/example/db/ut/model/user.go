@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xanygo/anygo/store/xdb"
-	"github.com/xanygo/anygo/store/xdb/xor"
+	"github.com/xanygo/anygo/xdb"
+	"github.com/xanygo/anygo/xdb/xor"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xt"
 )

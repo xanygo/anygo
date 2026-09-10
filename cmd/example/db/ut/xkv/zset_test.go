@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xanygo/anygo/store/xkv"
+	"github.com/xanygo/anygo/xkv"
 	"github.com/xanygo/anygo/xt"
 )
 

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	_ "github.com/ncruces/go-sqlite3/driver" // sqlite driver
-	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/xdb"
 	"github.com/xanygo/anygo/xt"
 
 	"cmd/example/db/ut/model"

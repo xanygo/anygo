@@ -10,9 +10,9 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3" // sqlite driver
-	"github.com/xanygo/anygo/store/xcache"
-	"github.com/xanygo/anygo/store/xcache/xcachex"
-	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/xcache"
+	"github.com/xanygo/anygo/xcache/xcachex"
+	"github.com/xanygo/anygo/xdb"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xt"

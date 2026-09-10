@@ -1,0 +1,312 @@
+//  Copyright(C) 2025 github.com/hidu  All Rights Reserved.
+//  Author: hidu <duv123+git@gmail.com>
+//  Date: 2025-11-11
+
+package dialect
+
+import (
+	"context"
+	"fmt"
+	"reflect"
+	"strings"
+
+	"github.com/xanygo/anygo/internal/zreflect"
+	"github.com/xanygo/anygo/xdb/dbtype"
+	"github.com/xanygo/anygo/xslice"
+)
+
+var _ dbtype.Dialect = (*MySQL)(nil)
+
+type MySQL struct{}
+
+// Name 返回方言名称
+func (MySQL) Name() string {
+	return "mysql"
+}
+
+func (MySQL) RandomOrder() string {
+	return "RAND()"
+}
+
+// BindVar 返回绑定变量占位符。
+// MySQL 使用 "?" 占位符，忽略序号。
+func (MySQL) BindVar(i int) string {
+	return "?"
+}
+
+// QuoteIdentifier 为标识符添加反引号。
+// 若标识符中包含反引号，则替换为双反引号（避免语法错误）。
+func (MySQL) QuoteIdentifier(s string) string {
+	safe := strings.ReplaceAll(s, "`", "``")
+	return fmt.Sprintf("`%s`", safe)
+}
+
+// QuoteQualifiedIdentifier 引用多级标识符（例如 schema.table.column）
+func (d MySQL) QuoteQualifiedIdentifier(parts ...string) string {
+	quoted := make([]string, len(parts))
+	for i, p := range parts {
+		quoted[i] = d.QuoteIdentifier(p)
+	}
+	return strings.Join(quoted, ".")
+}
+
+func (MySQL) LimitOffsetRequiresOrderBy() bool {
+	return false
+}
+
+// LimitOffsetClause 生成 LIMIT/OFFSET 语句片段。
+// MySQL 支持两种写法：
+//
+//	LIMIT 10 OFFSET 20
+//	LIMIT 20,10
+//
+// 通常推荐使用前者（兼容性更好）
+func (MySQL) LimitOffsetClause(limit, offset int) string {
+	if limit <= 0 && offset <= 0 {
+		return ""
+	}
+	switch {
+	case limit > 0 && offset > 0:
+		return fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
+	case limit > 0:
+		return fmt.Sprintf("LIMIT %d", limit)
+	default:
+		// limit < 0, offset > 0 不常见
+		// 效果上等价于 “无限大 LIMIT”,当于告诉 MySQL “跳过前 offset 条，然后返回后面所有剩余的行”。
+		// 2^64 - 1 -> unsigned BIGINT 的最大值
+		return fmt.Sprintf("LIMIT 18446744073709551615 OFFSET %d", offset)
+	}
+}
+
+// PlaceholderList 返回 n 个问号占位符，用逗号分隔。
+func (MySQL) PlaceholderList(n, start int) string {
+	if n <= 0 {
+		return ""
+	}
+	return strings.TrimRight(strings.Repeat("?,", n), ",")
+}
+
+// SupportReturning MySQL 直到 8.0.19 仍不支持 RETURNING 子句（除非用 MariaDB）。
+func (MySQL) SupportReturning() bool {
+	return false
+}
+
+func (MySQL) SupportLastInsertId() bool {
+	return true
+}
+
+var _ dbtype.UpsertDialect = MySQL{}
+
+func (d MySQL) UpsertSQL(table string, count int, columns, conflictCols, updateCols []string, returningCols []string) string {
+	colList := strings.Join(xslice.MapFunc(columns, d.QuoteIdentifier), ",")
+
+	valPlaceholders := "(" + strings.Join(xslice.Repeat("?", len(columns)), ",") + ")"
+
+	updateAssignments := make([]string, len(updateCols))
+	for i, c := range updateCols {
+		c = d.QuoteIdentifier(c)
+		updateAssignments[i] = fmt.Sprintf("%s = VALUES(%s)", c, c)
+	}
+
+	sqlStr := fmt.Sprintf("INTO %s (%s) VALUES %s",
+		d.QuoteIdentifier(table),
+		colList,
+		strings.Join(xslice.Repeat(valPlaceholders, count), ","),
+	)
+	if len(updateAssignments) > 0 {
+		sqlStr = "INSERT " + sqlStr
+		sqlStr += " ON DUPLICATE KEY UPDATE " + strings.Join(updateAssignments, ", ")
+	} else {
+		sqlStr = "INSERT IGNORE " + sqlStr
+	}
+
+	return sqlStr
+}
+
+var _ dbtype.SchemaDialect = MySQL{}
+
+func (MySQL) ColumnKindType(kind dbtype.Kind, size int) string {
+	switch kind {
+	case dbtype.KindString:
+		if size <= 0 {
+			size = 255
+		}
+		return fmt.Sprintf("VARCHAR(%d)", size)
+
+	case dbtype.KindInt:
+		return "INT"
+	case dbtype.KindInt8:
+		return "TINYINT"
+	case dbtype.KindInt16:
+		return "SMALLINT"
+	case dbtype.KindInt32:
+		return "INT"
+	case dbtype.KindInt64:
+		return "BIGINT"
+
+	case dbtype.KindUint:
+		return "INT UNSIGNED"
+	case dbtype.KindUint8:
+		return "TINYINT UNSIGNED"
+	case dbtype.KindUint16:
+		return "SMALLINT UNSIGNED"
+	case dbtype.KindUint32:
+		return "INT UNSIGNED"
+	case dbtype.KindUint64:
+		return "BIGINT UNSIGNED"
+
+	case dbtype.KindBoolean:
+		return "TINYINT(1)"
+	case dbtype.KindFloat32:
+		return "FLOAT"
+	case dbtype.KindFloat64:
+		return "DOUBLE"
+	case dbtype.KindBinary:
+		if size > 0 {
+			return fmt.Sprintf("BINARY(%d)", size)
+		}
+		return "BLOB"
+	case dbtype.KindJSON:
+		return "TEXT"
+	case dbtype.KindDate:
+		return "DATE"
+	case dbtype.KindDateTime:
+		return "DATETIME"
+	default:
+		panic("unknown kind:" + kind)
+	}
+}
+
+func (d MySQL) CreateTableIfNotExists(table string) string {
+	return "CREATE TABLE IF NOT EXISTS " + d.QuoteIdentifier(table)
+}
+
+func (d MySQL) UniqIndex(name string, columns []string) string {
+	return fmt.Sprintf("UNIQUE KEY %s(%s)", d.QuoteIdentifier(name), quoteIdentifiersJoin(d, columns))
+}
+
+func (d MySQL) AlterCreateIndex(indexType string, name string, table string, columns []string) string {
+	// 不支持 IF NOT EXISTS
+	return fmt.Sprintf(`ALTER TABLE %s ADD %s %s(%s)`,
+		d.QuoteIdentifier(table), indexType, d.QuoteIdentifier(name), quoteIdentifiersJoin(d, columns))
+}
+
+//	func (d MySQL) addColumnIfNotExists(table string, col string) string {
+//		return fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s", d.QuoteIdentifier(table), d.QuoteIdentifier(col))
+//	}
+func (d MySQL) ColumnString(fs dbtype.ColumnSchema) string {
+	var sb strings.Builder
+	sb.WriteString(d.QuoteIdentifier(fs.Name))
+	sb.WriteString(" ")
+	baseType := fs.Native
+	if baseType == "" {
+		baseType = d.ColumnKindType(fs.Kind, fs.Size)
+	}
+	sb.WriteString(baseType)
+	if fs.NotNull {
+		sb.WriteString(" NOT NULL")
+	}
+	if fs.Unique {
+		sb.WriteString(" UNIQUE")
+	}
+	if fs.IsPrimaryKey {
+		sb.WriteString(" PRIMARY KEY")
+	}
+	if fs.AutoIncrement {
+		sb.WriteString(" AUTO_INCREMENT")
+	}
+	if dv := fs.Default; dv != nil {
+		sb.WriteString(" DEFAULT ")
+		switch dv.Type {
+		case dbtype.DefaultValueTypeNumber:
+			sb.WriteString(dv.Value)
+		case dbtype.DefaultValueTypeFn:
+			// mysql 默认支持  CURRENT_DATE (2026-08-08),CURRENT_TIMESTAMP (2026-08-08 08:08:08)
+			sb.WriteString(dv.Value)
+		case dbtype.DefaultValueTypeString:
+			sb.WriteString(d.QuoteIdentifier(fs.Default.Value))
+		default:
+			panic(fmt.Sprintf("unknown default value type: %v", dv.Type))
+		}
+	} else if fs.NotNull && !fs.AutoIncrement {
+		if baseType == "FLOAT" ||
+			baseType == "DOUBLE" ||
+			strings.HasPrefix(baseType, "TINYINT") ||
+			strings.HasSuffix(baseType, "INT") ||
+			strings.HasSuffix(baseType, "UNSIGNED") {
+			sb.WriteString(" DEFAULT 0")
+		} else if baseType == "TEXT" || baseType == "LONGTEXT" || strings.HasPrefix(baseType, "VARCHAR") {
+			sb.WriteString(" DEFAULT ''")
+		} else {
+		}
+
+	}
+	return sb.String()
+}
+
+var _ dbtype.MigrateDialect = MySQL{}
+
+func (d MySQL) Migrate(ctx context.Context, db dbtype.DBCore, schema dbtype.TableSchema) error {
+	return doMigrate(ctx, d, db, schema)
+}
+
+var _ dbtype.DescDialect = MySQL{}
+
+func (d MySQL) CurrentDatabase(ctx context.Context, q dbtype.Queryer) (string, error) {
+	const str = "SELECT DATABASE()"
+	return queryOneString(ctx, q, str)
+}
+
+func (d MySQL) Databases(ctx context.Context, q dbtype.Queryer) ([]string, error) {
+	const str = `SHOW DATABASES`
+	return querySliceString(ctx, q, str)
+}
+
+func (d MySQL) Tables(ctx context.Context, q dbtype.Queryer) ([]string, error) {
+	const str = `SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()`
+	return querySliceString(ctx, q, str)
+}
+
+func (d MySQL) TableExists(ctx context.Context, q dbtype.Queryer, table string) (bool, error) {
+	const str = `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ? )`
+	return queryBool(ctx, q, str, table)
+}
+
+func (d MySQL) TableColumns(ctx context.Context, q dbtype.Queryer, table string) ([]string, error) {
+	const str = `SELECT column_name FROM information_schema.columns
+WHERE table_schema = DATABASE() AND table_name = ? ORDER BY ordinal_position`
+	return querySliceString(ctx, q, str, table)
+}
+
+// EncodeValue 将 Go 值转换为当前数据库驱动可接受的参数值。
+func (d MySQL) EncodeValue(value any) (any, error) {
+	rv := reflect.ValueOf(value)
+	for rv.IsValid() && rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			return nil, nil
+		}
+		rv = rv.Elem()
+	}
+
+	if !rv.IsValid() {
+		return nil, nil
+	}
+	switch rv.Kind() {
+	case reflect.Array:
+		return zreflect.ArrayToSlice(rv), nil
+	default:
+		return rv.Interface(), nil
+	}
+}
+
+func (d MySQL) SavepointSQL(name string) string {
+	return "SAVEPOINT " + d.QuoteIdentifier(name)
+}
+
+func (d MySQL) RollbackToSavepointSQL(name string) string {
+	return "ROLLBACK TO SAVEPOINT " + d.QuoteIdentifier(name)
+}
+
+func (d MySQL) ReleaseSavepointSQL(name string) string {
+	return "RELEASE SAVEPOINT " + d.QuoteIdentifier(name)
+}

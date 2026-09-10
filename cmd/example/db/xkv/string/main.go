@@ -8,8 +8,8 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3" // sqlite driver
-	"github.com/xanygo/anygo/store/xdb"
-	"github.com/xanygo/anygo/store/xkv/xkvx"
+	"github.com/xanygo/anygo/xdb"
+	"github.com/xanygo/anygo/xkv/xkvx"
 	"github.com/xanygo/anygo/xlog"
 )
 

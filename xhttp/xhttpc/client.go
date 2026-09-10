@@ -17,7 +17,7 @@ import (
 
 	"github.com/xanygo/anygo/internal/xhash"
 	"github.com/xanygo/anygo/safely"
-	"github.com/xanygo/anygo/store/xcache"
+	"github.com/xanygo/anygo/xcache"
 	"github.com/xanygo/anygo/xctx"
 	"github.com/xanygo/anygo/xenc"
 	"github.com/xanygo/anygo/xenc/xcodec"

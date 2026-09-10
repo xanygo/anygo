@@ -1,0 +1,614 @@
+//  Copyright(C) 2025 github.com/hidu  All Rights Reserved.
+//  Author: hidu <duv123+git@gmail.com>
+//  Date: 2025-11-10
+
+package xdb
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"io"
+	"time"
+
+	"github.com/xanygo/anygo/xdb/dbtype"
+	"github.com/xanygo/anygo/xdb/dialect"
+	"github.com/xanygo/anygo/xmap"
+	"github.com/xanygo/anygo/xnet/xservice"
+	"github.com/xanygo/anygo/xoption"
+	"github.com/xanygo/anygo/xstr"
+	"github.com/xanygo/anygo/xtime"
+)
+
+type FactoryFunc func(ctx context.Context) (*sql.DB, error)
+
+func NewClient(driver string, name string, db *sql.DB) *Client {
+	return &Client{
+		driver: driver,
+		name:   name,
+		db:     db,
+	}
+}
+
+func NewClientWithService(name any) (*Client, error) {
+	srv, err := xservice.FindService(name)
+	if err != nil {
+		return nil, err
+	}
+	opt := srv.Option()
+	const key = "Database"
+	data := map[string]any{
+		"Network":      xservice.Network,
+		"HOST_PORT":    srv.Name(),
+		"ReadTimeout":  xoption.ReadTimeout(opt).String(),
+		"WriteTimeout": xoption.WriteTimeout(opt).String(),
+		"Timeout":      xoption.TotalTimeout(opt).String(),
+	}
+	var driver, dsn string
+	ext := xoption.Extra(srv.Option(), key)
+
+	var maxOpenConns, maxIdleConns *int
+	var connMaxIdleTime, connMaxLifeTime *time.Duration
+
+	if ext != nil {
+		err = xmap.Range(ext, func(k, v string) error {
+			switch k {
+			case "Driver":
+				driver = v
+			case "Username":
+				data["Username"] = v
+			case "Password":
+				data["Password"] = v
+			case "DBName":
+				data["DBName"] = v
+			case "DSN":
+				dsn = v
+			case "ConnMaxLifeTime":
+				v, err1 := xtime.ParseDuration(v)
+				if err1 != nil {
+					return err1
+				}
+				connMaxLifeTime = new(v)
+			case "ConnMaxIdleTime":
+				v, err1 := xtime.ParseDuration(v)
+				if err1 != nil {
+					return err1
+				}
+				connMaxIdleTime = new(v)
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		err = xmap.Range(ext, func(k string, v int) error {
+			switch k {
+			case "MaxOpenConns":
+				maxOpenConns = new(v)
+			case "MaxIdleConns":
+				maxIdleConns = new(v)
+			case "ConnMaxLifeTime":
+				connMaxLifeTime = new(time.Duration(v) * time.Millisecond)
+			case "ConnMaxIdleTime":
+				connMaxIdleTime = new(time.Duration(v) * time.Millisecond)
+			}
+			return nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if driver == "" {
+		return nil, fmt.Errorf("%s[Driver] missing", key)
+	}
+	if dsn == "" {
+		return nil, fmt.Errorf("%s[DSN] missing", key)
+	}
+	dsn, err = xstr.RenderTemplate(dsn, data)
+	if err != nil {
+		return nil, err
+	}
+	db, err := sql.Open(driver, dsn)
+	if err != nil {
+		return nil, err
+	}
+	if maxOpenConns != nil {
+		db.SetMaxOpenConns(*maxOpenConns)
+	}
+	if maxIdleConns != nil {
+		db.SetMaxIdleConns(*maxIdleConns)
+	}
+	if connMaxLifeTime != nil {
+		db.SetConnMaxLifetime(*connMaxLifeTime)
+	}
+	if connMaxIdleTime != nil {
+		db.SetConnMaxIdleTime(*connMaxIdleTime)
+	}
+
+	return NewClient(driver, srv.Name(), db), nil
+}
+
+type HasDriver interface {
+	Driver() string
+}
+
+type Client struct {
+	name   string
+	driver string
+	db     *sql.DB
+}
+
+func (c *Client) Name() string {
+	return c.name
+}
+
+// Driver 驱动名称，同时也是方言名称
+func (c *Client) Driver() string {
+	return c.driver
+}
+
+func (c *Client) Dialect() (dbtype.Dialect, error) {
+	return dialect.Find(c.driver)
+}
+
+func (c *Client) PingContext(ctx context.Context) (err error) {
+	its := allInterceptors(ctx)
+	if len(its) > 0 {
+		event := Event{
+			Action: "Ping",
+			Start:  time.Now(),
+			Client: c.Name(),
+			Driver: c.Driver(),
+		}
+		defer func() {
+			event.End = time.Now()
+			event.Error = err
+			its.CallAfter(ctx, event)
+		}()
+	}
+	return c.db.PingContext(ctx)
+}
+
+var _ Queryer = (*Client)(nil)
+
+func (c *Client) QueryContext(ctx context.Context, query string, args ...any) (rows *sql.Rows, err error) {
+	its := allInterceptors(ctx)
+	if len(its) > 0 {
+		event := Event{
+			Action: "Query",
+			Start:  time.Now(),
+			Client: c.Name(),
+			Driver: c.Driver(),
+			Query:  query,
+			Args:   args,
+		}
+		defer func() {
+			event.End = time.Now()
+			event.Error = err
+			its.CallAfter(ctx, event)
+		}()
+	}
+	rows, err = c.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		err = newQueryError(err, "QueryContext", query, args)
+	}
+	return rows, err
+}
+
+type canBeginTx interface {
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (te TxExecutor, err error)
+}
+
+func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (te TxExecutor, err error) {
+	var txID string
+	its := allInterceptors(ctx)
+	if len(its) > 0 {
+		txID = xstr.RandNChar(5)
+		event := Event{
+			Action: "BeginTx",
+			Start:  time.Now(),
+			Client: c.Name(),
+			Driver: c.Driver(),
+			TxID:   txID,
+		}
+		defer func() {
+			event.End = time.Now()
+			event.Error = err
+			its.CallAfter(ctx, event)
+		}()
+	}
+	t, err := c.db.BeginTx(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	return &myTx{Raw: t, client: c, txID: txID, its: its, ctx: ctx}, nil
+}
+
+var _ Execer = (*Client)(nil)
+
+func (c *Client) ExecContext(ctx context.Context, query string, args ...any) (ret sql.Result, err error) {
+	its := allInterceptors(ctx)
+	if len(its) > 0 {
+		event := Event{
+			Action: "Exec",
+			Start:  time.Now(),
+			Client: c.Name(),
+			Driver: c.Driver(),
+			Query:  query,
+			Args:   args,
+		}
+		defer func() {
+			event.End = time.Now()
+			event.Error = err
+			its.CallAfter(ctx, event)
+		}()
+	}
+	ret, err = c.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		err = newQueryError(err, "ExecContext", query, args)
+	}
+	return ret, err
+}
+
+var _ Preparer = (*Client)(nil)
+
+func (c *Client) PrepareContext(ctx context.Context, query string) (ns Statement, err error) {
+	its := allInterceptors(ctx)
+	var stmtID string
+	if len(its) > 0 {
+		stmtID = xstr.RandNChar(5)
+		event := Event{
+			Action: "Prepare",
+			Start:  time.Now(),
+			Client: c.Name(),
+			Driver: c.Driver(),
+			StmtID: stmtID,
+			Query:  query,
+		}
+		defer func() {
+			event.End = time.Now()
+			event.Error = err
+			its.CallAfter(ctx, event)
+		}()
+	}
+
+	s, err := c.db.PrepareContext(ctx, query)
+	if err != nil {
+		return nil, newQueryError(err, "PrepareContext", query, nil)
+	}
+	return &myStmt{Raw: s, client: c, query: query, stmtID: stmtID}, nil
+}
+
+var _ RowQuerier = (*Client)(nil)
+
+func (c *Client) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+	its := allInterceptors(ctx)
+	if len(its) > 0 {
+		event := Event{
+			Action: "QueryRow",
+			Start:  time.Now(),
+			Client: c.Name(),
+			Driver: c.Driver(),
+			Query:  query,
+			Args:   args,
+		}
+		defer func() {
+			event.End = time.Now()
+			its.CallAfter(ctx, event)
+		}()
+	}
+	return c.db.QueryRowContext(ctx, query, args...)
+}
+
+var _ io.Closer = (*Client)(nil)
+
+func (c *Client) Close() error {
+	return c.db.Close()
+}
+
+var _ TxExecutor = (*myTx)(nil)
+var _ HasDriver = (*myTx)(nil)
+
+type canSavePoint interface {
+	TxExecutor
+	SavePoint(ctx context.Context, name string) error
+	RollbackTo(ctx context.Context, name string) error
+	ReleaseSavepoint(ctx context.Context, name string) error
+}
+
+type myTx struct {
+	Raw    *sql.Tx
+	client *Client
+	txID   string
+	its    interceptors
+	ctx    context.Context // 创建 myTx 时候的 ctx
+}
+
+func (t *myTx) Driver() string {
+	return t.client.Driver()
+}
+
+func (t *myTx) SavePoint(ctx context.Context, name string) error {
+	d, err := t.client.Dialect()
+	if err != nil {
+		return err
+	}
+	query := d.SavepointSQL(name)
+	_, err = t.ExecContext(ctx, query)
+	return err
+}
+
+func (t *myTx) RollbackTo(ctx context.Context, name string) error {
+	d, err := t.client.Dialect()
+	if err != nil {
+		return err
+	}
+	query := d.RollbackToSavepointSQL(name)
+	_, err = t.ExecContext(ctx, query)
+	return err
+}
+
+func (t *myTx) ReleaseSavepoint(ctx context.Context, name string) error {
+	d, err := t.client.Dialect()
+	if err != nil {
+		return err
+	}
+	query := d.ReleaseSavepointSQL(name)
+	if query == "" {
+		return nil
+	}
+	_, err = t.ExecContext(ctx, query)
+	return err
+}
+
+func (t *myTx) QueryContext(ctx context.Context, query string, args ...any) (rows *sql.Rows, err error) {
+	if len(t.its) > 0 {
+		event := Event{
+			Action: "Query",
+			Start:  time.Now(),
+			Driver: t.Driver(),
+			Client: t.client.Name(),
+			Query:  query,
+			Args:   args,
+			TxID:   t.txID,
+		}
+		defer func() {
+			event.End = time.Now()
+			event.Error = err
+			t.its.CallAfter(ctx, event)
+		}()
+	}
+	rows, err = t.Raw.QueryContext(ctx, query, args...)
+	if err != nil {
+		err = newQueryError(err, "tx.QueryContext", query, args)
+	}
+	return rows, err
+}
+
+func (t *myTx) ExecContext(ctx context.Context, query string, args ...any) (ret sql.Result, err error) {
+	if len(t.its) > 0 {
+		event := Event{
+			Action: "Exec",
+			Start:  time.Now(),
+			Driver: t.Driver(),
+			Client: t.client.Name(),
+			Query:  query,
+			Args:   args,
+			TxID:   t.txID,
+		}
+		defer func() {
+			event.End = time.Now()
+			event.Error = err
+			t.its.CallAfter(ctx, event)
+		}()
+	}
+	ret, err = t.Raw.ExecContext(ctx, query, args...)
+	if err != nil {
+		err = newQueryError(err, "tx.ExecContext", query, args)
+	}
+	return ret, err
+}
+
+func (t *myTx) PrepareContext(ctx context.Context, query string) (ns Statement, err error) {
+	var stmtID string
+	if len(t.its) > 0 {
+		stmtID = xstr.RandNChar(5)
+		event := Event{
+			Action: "Exec",
+			Start:  time.Now(),
+			Driver: t.Driver(),
+			Client: t.client.Name(),
+			Query:  query,
+			TxID:   t.txID,
+			StmtID: stmtID,
+		}
+		defer func() {
+			event.End = time.Now()
+			event.Error = err
+			t.its.CallAfter(ctx, event)
+		}()
+	}
+	s, err := t.Raw.PrepareContext(ctx, query)
+	if err != nil {
+		return nil, newQueryError(err, "tx.PrepareContext", query, nil)
+	}
+	return &myStmt{Raw: s, query: query, stmtID: stmtID, txID: t.txID}, nil
+}
+
+func (t *myTx) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+	if len(t.its) > 0 {
+		event := Event{
+			Action: "QueryRow",
+			Start:  time.Now(),
+			Driver: t.Driver(),
+			Client: t.client.Name(),
+			Query:  query,
+			Args:   args,
+			TxID:   t.txID,
+		}
+		defer func() {
+			event.End = time.Now()
+			t.its.CallAfter(ctx, event)
+		}()
+	}
+	return t.Raw.QueryRowContext(ctx, query, args...)
+}
+
+func (t *myTx) StmtContext(ctx context.Context, s Statement) Statement {
+	st := t.Raw.StmtContext(ctx, s.Unwrap())
+	nst := &myStmt{
+		Raw:    st,
+		txID:   t.txID,
+		client: t.client,
+	}
+	if hq, ok := s.(hasSQLQuery); ok {
+		nst.query = hq.SQLQuery()
+	}
+	return nst
+}
+
+func (t *myTx) Commit() (err error) {
+	if len(t.its) > 0 {
+		event := Event{
+			Action: "Commit",
+			Start:  time.Now(),
+			Driver: t.Driver(),
+			TxID:   t.txID,
+		}
+		defer func() {
+			event.End = time.Now()
+			event.Error = err
+			t.its.CallAfter(t.ctx, event)
+		}()
+	}
+	return t.Raw.Commit()
+}
+
+func (t *myTx) Rollback() (err error) {
+	if len(t.its) > 0 {
+		event := Event{
+			Action: "Rollback",
+			Start:  time.Now(),
+			Driver: t.Driver(),
+			TxID:   t.txID,
+		}
+		defer func() {
+			event.End = time.Now()
+			event.Error = err
+			t.its.CallAfter(t.ctx, event)
+		}()
+	}
+	return t.Raw.Rollback()
+}
+
+var _ Statement = (*myStmt)(nil)
+
+type myStmt struct {
+	Raw    *sql.Stmt
+	client *Client
+	query  string
+	txID   string
+	stmtID string
+}
+
+var _ HasDriver = (*myStmt)(nil)
+
+func (s *myStmt) Driver() string {
+	return s.client.Driver()
+}
+
+func (s *myStmt) Unwrap() *sql.Stmt {
+	return s.Raw
+}
+
+type hasSQLQuery interface {
+	SQLQuery() string
+}
+
+var _ hasSQLQuery = (*myStmt)(nil)
+
+func (s *myStmt) SQLQuery() string {
+	return s.query
+}
+
+func (s *myStmt) QueryContext(ctx context.Context, args ...any) (rows *sql.Rows, err error) {
+	its := allInterceptors(ctx)
+	if len(its) > 0 {
+		event := Event{
+			Action: "StmtQuery",
+			Start:  time.Now(),
+			Driver: s.Driver(),
+			Client: s.client.Name(),
+			TxID:   s.txID,
+			StmtID: s.stmtID,
+			Query:  s.query,
+			Args:   args,
+		}
+		defer func() {
+			event.End = time.Now()
+			event.Error = err
+			its.CallAfter(ctx, event)
+		}()
+	}
+	rows, err = s.Raw.QueryContext(ctx, args...)
+	if err != nil {
+		err = newQueryError(err, "stmt.QueryContext", s.query, args)
+	}
+	return rows, err
+}
+
+func (s *myStmt) ExecContext(ctx context.Context, args ...any) (ret sql.Result, err error) {
+	its := allInterceptors(ctx)
+	if len(its) > 0 {
+		event := Event{
+			Action: "StmtExec",
+			Start:  time.Now(),
+			Driver: s.Driver(),
+			Client: s.client.Name(),
+			TxID:   s.txID,
+			StmtID: s.stmtID,
+			Query:  s.query,
+			Args:   args,
+		}
+		defer func() {
+			event.End = time.Now()
+			event.Error = err
+			its.CallAfter(ctx, event)
+		}()
+	}
+	ret, err = s.Raw.ExecContext(ctx, args...)
+	if err != nil {
+		err = newQueryError(err, "stmt.ExecContext", s.query, args)
+	}
+	return ret, err
+}
+
+func (s *myStmt) QueryRowContext(ctx context.Context, args ...any) *sql.Row {
+	its := allInterceptors(ctx)
+	if len(its) > 0 {
+		event := Event{
+			Action: "StmtQueryRow",
+			Start:  time.Now(),
+			Driver: s.Driver(),
+			Client: s.client.Name(),
+			TxID:   s.txID,
+			StmtID: s.stmtID,
+			Query:  s.query,
+			Args:   args,
+		}
+		defer func() {
+			event.End = time.Now()
+			its.CallAfter(ctx, event)
+		}()
+	}
+	return s.Raw.QueryRowContext(ctx, args...)
+}
+
+func (s *myStmt) Close() error {
+	return s.Raw.Close()
+}

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/xdb"
 )
 
 func DoCheck(t *testing.T, client *xdb.Client) {

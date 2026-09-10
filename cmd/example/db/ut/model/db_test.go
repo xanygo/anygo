@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/xanygo/anygo/store/xdb"
+	"github.com/xanygo/anygo/xdb"
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xt"
 

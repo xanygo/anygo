@@ -10,13 +10,13 @@ RPC Client 功能：
 - 通用的 TCP RPC Client 组件，内置拦截器功能，已实现协议：
   1. Redis： Redis Resp3 协议的 Client
   2. HTTP：HTTP/HTTPS 的 Client
-- Redis Client ( store/xredis ): 使用 resp3 协议的 Redis Client
-- db Client (store/xdb )：内置拦截器功能，轻量 ORM 支持，内置已支持 MariaDB、MySQL、SQL Server、Sqlite、Postgres
+- Redis Client ( xredis ): 使用 resp3 协议的 Redis Client
+- db Client (xdb )：内置拦截器功能，轻量 ORM 支持，内置已支持 MariaDB、MySQL、SQL Server、Sqlite、Postgres
   - 注：需要自己注册对应数据库的驱动 
 
 RPC Server 功能：
 - 支持中间件、多种路由参数 HTTP Router ( xhttp.Router )
-- HTTP Session 组件 ( store/xsession )
+- HTTP Session 组件 ( xhttp/xsession )
 - 验证码功能：( ximage/caption )
 
 通用基础库：
@@ -24,7 +24,7 @@ RPC Server 功能：
 - 支持多种格式的配置读取功能( xcfg )，支持从环境变量，应用全局环境信息( xattr )中读取配置值。
   1. 默认支持 .json 和  .xml
   2. .yaml  和  .toml 等其他格式可自行注册对应的驱动。 
-- 支持泛型的缓存组件（store/xcache），已内置支持：
+- 支持泛型的缓存组件（xcache），已内置支持：
   1. File Storage：本地文件系统存储
   2. Memory Storage：内存存储，支持 LRU（最少使用先过期）、FIFO(先写入先过期)、LIFO(后写入先过期)
   3. Nop：黑洞，总是能成功写入但是读取不到值

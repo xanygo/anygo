@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"strings"
 
-	"github.com/xanygo/anygo/store/xredis"
+	"github.com/xanygo/anygo/xredis"
 )
 
 func NewPostgres() (*sql.DB, error) {

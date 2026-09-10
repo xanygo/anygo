@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/internal/zreflect"
-	"github.com/xanygo/anygo/store/xredis"
+	"github.com/xanygo/anygo/xredis"
 	"github.com/xanygo/anygo/xslice"
 )
 
