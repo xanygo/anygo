@@ -50,3 +50,29 @@ func PanicCaller(skip int) (file string, line int, fn string) {
 	}
 	return "", 0, ""
 }
+
+const selfPkg = "github.com/xanygo/anygo/"
+
+// CallerPC 定位到排除框架外的 api 调用的地址
+func CallerPC(skip int) uintptr {
+	pcs := make([]uintptr, 32)
+	n := runtime.Callers(skip, pcs)
+	if n == 0 {
+		return 0
+	}
+	frames := runtime.CallersFrames(pcs[:n])
+	var found bool
+	for {
+		frame, more := frames.Next()
+		if !found {
+			found = strings.Contains(frame.File, selfPkg)
+		} else if !strings.Contains(frame.File, selfPkg) {
+			// 返回紧挨着框架文的下一个文件
+			return frame.PC
+		}
+		if !more {
+			break
+		}
+	}
+	return 0
+}

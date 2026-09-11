@@ -15,13 +15,17 @@ type ctxKey uint8
 const (
 	ctxKeyBaggage ctxKey = iota
 	ctxKeyMeta
+	ctxKeyCallSkip
+	ctxKeyCallPC
 )
 
+// NewContext 初始化 context，在其内预置日志字段的槽位，方便后续往 context 里追加日志字段
 func NewContext(ctx context.Context) context.Context {
 	ctx = WithMetaContext(ctx)
 	return context.WithValue(ctx, ctxKeyBaggage, newBaggage())
 }
 
+// WithContext 若 context 是经过 NewContext 处理后的则原样返回，否则调用 NewContext
 func WithContext(ctx context.Context) context.Context {
 	if ctx.Value(ctxKeyBaggage) != nil {
 		return ctx
@@ -29,6 +33,7 @@ func WithContext(ctx context.Context) context.Context {
 	return NewContext(ctx)
 }
 
+// ForkContext 拷贝 context 里的所有日志字段，并附在新的 子 context 返回
 func ForkContext(ctx context.Context) context.Context {
 	bg := findBaggage(ctx)
 	if bg == nil {
@@ -209,4 +214,24 @@ func AppendMeta(ctx context.Context, key string, values ...any) {
 	items = append(items, values...)
 	attr1 := Any(key, items)
 	AddMetaAttr(ctx, attr1)
+}
+
+// WithCallerSkip 强制设置日志的 caller Skip 值
+func WithCallerSkip(ctx context.Context, skip int) context.Context {
+	return context.WithValue(ctx, ctxKeyCallSkip, skip)
+}
+
+func CallerSkip(ctx context.Context) (int, bool) {
+	num, ok := ctx.Value(ctxKeyCallSkip).(int)
+	return num, ok
+}
+
+// WithCallerPC 自定义日志的 caller 获取方法
+func WithCallerPC(ctx context.Context, fn func(skip int) uintptr) context.Context {
+	return context.WithValue(ctx, ctxKeyCallPC, fn)
+}
+
+func CallerPC(ctx context.Context) func(skip int) uintptr {
+	fn, _ := ctx.Value(ctxKeyCallPC).(func(int) uintptr)
+	return fn
 }

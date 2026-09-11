@@ -199,7 +199,7 @@ func (al *AccessLog) after(ctx context.Context, start time.Time, w *captureWrite
 	if err := ctx.Err(); err != nil {
 		fields = append(fields, xlog.Err("after.ctx.err", ctx.Err()))
 	}
-	al.Logger.Info(ctx, "", fields...)
+	al.Logger.Output(ctx, xlog.LevelInfo, 0, "", fields...)
 }
 
 var _ xhttp.WrappedResponseWriter = (*captureWriter)(nil)

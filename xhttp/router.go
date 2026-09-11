@@ -172,10 +172,12 @@ func (r *Router) mustRegister(pattern string, handler http.Handler, mds ...Middl
 	return infos
 }
 
+var logCtx = xlog.WithCallerSkip(context.Background(), 0)
+
 func (r *Router) register(pattern string, handler http.Handler, mds ...MiddlewareFunc) ([]RouteInfo, error) {
 	routes, err := zroute.ParserPattern(r.prefix, pattern)
 	if err != nil {
-		r.AutoLogger().Warn(context.Background(),
+		r.AutoLogger().Warn(logCtx,
 			"register with invalid pattern",
 			xlog.String("Pattern", pattern),
 			xlog.Err("Error", err))
@@ -183,13 +185,13 @@ func (r *Router) register(pattern string, handler http.Handler, mds ...Middlewar
 	}
 
 	if handler == nil {
-		r.AutoLogger().Warn(context.Background(),
+		r.AutoLogger().Warn(logCtx,
 			"register with nil handler",
 			xlog.String("Pattern", pattern))
 		return nil, errors.New("register with a nil handler")
 	}
 
-	r.AutoLogger().Info(context.Background(), "Register http.Handler",
+	r.AutoLogger().Info(logCtx, "Register http.Handler",
 		xlog.Int64("RouterID", r.id),
 		xlog.String("Pattern", pattern),
 		xlog.String("Prefix", r.prefix),
@@ -213,7 +215,7 @@ func (r *Router) register(pattern string, handler http.Handler, mds ...Middlewar
 		r.subRoute = append(r.subRoute, route)
 		result = append(result, info)
 
-		r.AutoLogger().Debug(context.Background(), "Route", route.LogFields()...)
+		r.AutoLogger().Debug(logCtx, "Route", route.LogFields()...)
 	}
 	return result, nil
 }

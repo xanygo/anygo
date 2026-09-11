@@ -11,6 +11,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/xanygo/anygo/internal/xruntime"
 )
 
 // Level 日志等级
@@ -143,6 +145,10 @@ func (sl *Simple) Error(ctx context.Context, msg string, attr ...Attr) {
 	sl.Output(ctx, LevelError, 1, msg, attr...)
 }
 
+// Output 可以指定 level 和 callerSkip 的日志输出方法
+//
+// callerSkip: 跳过的 caller frame 层数，应传入 >=0 的值。
+// 若传入0，则自动跳过 Go 标准库库和此框架所有 frame，定位到业务 frame 的第一个
 func (sl *Simple) Output(ctx context.Context, level Level, callerSkip int, msg string, attrs ...Attr) {
 	err := handlerOutput(ctx, sl.Handler, level, callerSkip+1, msg, attrs...)
 	if err != nil && sl.Errors != nil {
@@ -168,9 +174,23 @@ func handlerOutput(ctx context.Context, handler Handler, level Level, callerSkip
 	if !handler.Enabled(ctx, level) {
 		return nil
 	}
-	var pcs [1]uintptr
-	runtime.Callers(callerSkip+2, pcs[:])
-	rec := slog.NewRecord(time.Now(), level, msg, pcs[0])
+	var pc uintptr
+	if fn := CallerPC(ctx); fn != nil {
+		pc = fn(callerSkip + 2)
+	} else {
+		if ck, ok := CallerSkip(ctx); ok {
+			callerSkip = ck
+		}
+		if callerSkip == 0 {
+			pc = xruntime.CallerPC(0)
+		} else {
+			var pcs [1]uintptr
+			runtime.Callers(callerSkip+2, pcs[:])
+			pc = pcs[0]
+		}
+	}
+
+	rec := slog.NewRecord(time.Now(), level, msg, pc)
 	meta := MetaAttrsFromCtx(ctx)
 	data := AttrsFromCtx(ctx)
 	if len(attrs) > 0 {
