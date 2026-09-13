@@ -30,7 +30,7 @@ func (t Date) Encode(a any) (any, error) {
 	if !ok {
 		return nil, fmt.Errorf("expect time.Time but got %T", a)
 	}
-	return tm.Format("2006"), nil
+	return tm.Format(time.DateOnly), nil
 }
 
 func (t Date) Decode(str string, a any) error {
@@ -42,9 +42,9 @@ func (t Date) Decode(str string, a any) error {
 		*ptr = time.Time{}
 		return nil
 	}
-	tm, err := time.ParseInLocation("2006", str, time.Local)
+	tm, err := time.ParseInLocation(time.DateOnly, str, time.Local)
 	if err != nil {
-		return fmt.Errorf("parse time failed: %w", err)
+		return fmt.Errorf("parse time %q failed: %w", str, err)
 	}
 	*ptr = tm
 	return nil

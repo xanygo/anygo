@@ -31,6 +31,9 @@ func (t TimeSpan) Encode(a any) (any, error) {
 	if !ok {
 		return nil, fmt.Errorf("expect time.Time but got %T", a)
 	}
+	if tm.IsZero() {
+		return 0, nil
+	}
 	return tm.Unix(), nil
 }
 
@@ -39,13 +42,13 @@ func (t TimeSpan) Decode(str string, a any) error {
 	if !ok {
 		return fmt.Errorf("expect *time.Time but got %T", a)
 	}
-	if len(str) == 0 {
+	if len(str) == 0 || str == "0" {
 		*ptr = time.Time{}
 		return nil
 	}
 	sec, err := strconv.ParseInt(str, 10, 64)
 	if err != nil {
-		return err
+		return fmt.Errorf("parser TimeSpan %q: %w", str, err)
 	}
 	tm := time.Unix(sec, 0)
 	*ptr = tm

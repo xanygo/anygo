@@ -15,6 +15,8 @@ var _ dbtype.Codec = (*DateTime)(nil)
 var _ dbtype.HasKind = (*DateTime)(nil)
 
 // DateTime 不包含时区的日期时间格式，可用于 time.Time 类型，输出格式为 "2025-10-10 10:10:10"
+//
+// 传入和输出的时区都采用本地(本机)时区
 type DateTime struct{}
 
 func (t DateTime) Kind() dbtype.Kind {
@@ -50,7 +52,7 @@ func (t DateTime) Decode(str string, a any) error {
 		tm, err = time.ParseInLocation(time.DateTime, str, time.Local)
 	}
 	if err != nil {
-		return fmt.Errorf("parse time failed: %w", err)
+		return fmt.Errorf("parse time %q failed: %w", str, err)
 	}
 	*ptr = tm
 	return nil

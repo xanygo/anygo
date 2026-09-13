@@ -27,6 +27,9 @@ func (t Nanoseconds) Encode(a any) (any, error) {
 	if !ok {
 		return nil, fmt.Errorf("expect time.Time but got %T", a)
 	}
+	if tm.IsZero() {
+		return 0, nil
+	}
 	return tm.UnixNano(), nil
 }
 
@@ -35,16 +38,16 @@ func (t Nanoseconds) Decode(str string, a any) error {
 	if !ok {
 		return fmt.Errorf("expect *time.Time but got %T", a)
 	}
-	if len(str) == 0 {
+	if len(str) == 0 || str == "0" {
 		*ptr = time.Time{}
 		return nil
 	}
 
 	ns, err := strconv.ParseInt(str, 10, 64)
 	if err != nil {
-		return err
+		return fmt.Errorf("parser Nanoseconds %q: %w", str, err)
 	}
 
-	*ptr = time.Unix(0, ns)
+	*ptr = time.Unix(0, ns).UTC()
 	return nil
 }
