@@ -12,6 +12,8 @@ var _ dbtype.Codec = (*Nanoseconds)(nil)
 var _ dbtype.HasKind = (*Nanoseconds)(nil)
 
 // Nanoseconds 用于 time.Time 类型的数据，将时间编码为 time.Time.UnixNano()
+//
+// 可存储时间范围有限：1677-09-21 - 2262-04-11
 type Nanoseconds struct{}
 
 func (t Nanoseconds) Kind() dbtype.Kind {

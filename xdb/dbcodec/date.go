@@ -22,7 +22,7 @@ func (t Date) Kind() dbtype.Kind {
 }
 
 func (t Date) Name() string {
-	return "date"
+	return dbtype.KindDate.String()
 }
 
 func (t Date) Encode(a any) (any, error) {

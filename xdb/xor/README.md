@@ -110,9 +110,20 @@ uniqueIndex 示例：
 | Fn                | 说明      | Go 类型     | 数据库中的值              |
 |-------------------|---------|-----------|---------------------| 
 | CURRENT_DATE      | 当前日期    | time.Time | 2026-08-08          |
-| CURRENT_TIMESTAMP | 当前日期+时间 | time.Time | 2026-08-08 08:08:08 |
+| CURRENT_TIMESTAMP | 当前日期+时间 | time.Time | 2026-08-08 08:08:08 (还支持其他值) |
 
 默认值 `CURRENT_DATE` 和 `CURRENT_TIMESTAMP` 会转换为数据库支持的方言，除此之外其他的值会直接传给数据库。
+
+下列的 Time 类型，也可以使用 `CURRENT_TIMESTAMP` 关键字，在使用 `Migrate`功能生成 Table Schema 时，会自动转换为对应方言。
+```go
+type User struct{
+  Time1 time.Time `db:"time1,default=fn|CURRENT_TIMESTAMP"`                   // 数据库使用 bigint，存储 Time.UnixMilli()
+  Time2 time.Time `db:"time2,kind=date_time,default=fn|CURRENT_TIMESTAMP"`   // 数据库使用方言，如 mysql-DateTime, 存储 2025-11-11 13:00:00
+	Time3 time.Time `db:"time3,kind=timespan,default=fn|CURRENT_TIMESTAMP"`     // 数据库使用bigint, 存储 Time.Unix()
+	Time4 time.Time `db:"time4,kind=milliseconds,default=fn|CURRENT_TIMESTAMP"` // 数据库使用bigint, 存储 Time.UnixMilli()
+	Time5 time.Time `db:"time5,kind=microseconds,default=fn|CURRENT_TIMESTAMP"` // 数据库使用bigint, 存储 Time.UnixMicro()
+}
+```
 
 #### native
 设置数据库中字段类型使用数据库原生类型，如 `native:varchar(32)`

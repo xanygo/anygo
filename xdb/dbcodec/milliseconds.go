@@ -15,11 +15,11 @@ var _ dbtype.HasKind = (*Milliseconds)(nil)
 type Milliseconds struct{}
 
 func (t Milliseconds) Kind() dbtype.Kind {
-	return dbtype.KindInt64
+	return dbtype.KindMilliseconds
 }
 
 func (t Milliseconds) Name() string {
-	return "milliseconds"
+	return dbtype.KindMilliseconds.String()
 }
 
 func (t Milliseconds) Encode(a any) (any, error) {

@@ -24,7 +24,7 @@ func (t DateTime) Kind() dbtype.Kind {
 }
 
 func (t DateTime) Name() string {
-	return "date_time"
+	return dbtype.KindDateTime.String()
 }
 
 func (t DateTime) Encode(a any) (any, error) {

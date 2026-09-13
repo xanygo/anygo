@@ -19,11 +19,11 @@ var _ dbtype.HasKind = (*TimeSpan)(nil)
 type TimeSpan struct{}
 
 func (t TimeSpan) Kind() dbtype.Kind {
-	return dbtype.KindInt64
+	return dbtype.KindTimespan
 }
 
 func (t TimeSpan) Name() string {
-	return "timespan"
+	return dbtype.KindTimespan.String()
 }
 
 func (t TimeSpan) Encode(a any) (any, error) {
