@@ -204,6 +204,12 @@ func (sp schemaParser) trySetKindByCodec(field *dbtype.ColumnSchema) {
 	}
 }
 
+var (
+	instBin    = &dbcodec.Binary{}
+	instJSON   = &dbcodec.JSON{}
+	instNative = &dbcodec.Native{}
+)
+
 func (sp schemaParser) parserCodec(field *dbtype.ColumnSchema, f reflect.StructField, tag xstruct.Tag) (err error) {
 	codecName := tag.Value(TagCodec)
 	if codecName != "" && codecName != codecAutoJSON {
@@ -234,11 +240,11 @@ func (sp schemaParser) parserCodec(field *dbtype.ColumnSchema, f reflect.StructF
 	}
 
 	if field.Codec == nil && field.Kind == dbtype.KindBinary {
-		field.Codec = dbcodec.Binary{}
+		field.Codec = instBin
 	}
 
 	if field.Codec == nil && codecName == codecAutoJSON {
-		field.Codec = dbcodec.JSON{}
+		field.Codec = instJSON
 	}
 
 	sp.trySetKindByCodec(field)
@@ -249,7 +255,7 @@ func (sp schemaParser) parserCodec(field *dbtype.ColumnSchema, f reflect.StructF
 
 	if field.Codec == nil {
 		if zreflect.IsBasicKind(f.Type.Kind()) {
-			field.Codec = dbcodec.Native{}
+			field.Codec = instNative
 		} else {
 			field.Codec = findCodec(sp.dialect, dbcodec.TextName)
 		}

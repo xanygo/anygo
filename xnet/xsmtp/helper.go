@@ -7,7 +7,6 @@ package xsmtp
 import (
 	"encoding/base64"
 	"fmt"
-	"log"
 	"net/smtp"
 	"regexp"
 	"strings"
@@ -69,7 +68,6 @@ var mailReg = regexp.MustCompile(`^\S+@\S+$`)
 
 func checkAddress(list ...string) error {
 	for _, to := range list {
-		log.Println("checkAddress:", to)
 		if strings.Count(to, "@") != 1 {
 			return fmt.Errorf("invalid address %q", to)
 		}

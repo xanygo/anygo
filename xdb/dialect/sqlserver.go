@@ -230,6 +230,11 @@ func (SQLServer) ColumnKindType(kind dbtype.Kind, size int) string {
 		return "DATETIME2" // 可存储  0001-9999
 	case dbtype.KindDate:
 		return "DATE"
+	case dbtype.KindTimespan, dbtype.KindMilliseconds, dbtype.KindMicroseconds:
+		// 时间戳
+		return "BIGINT"
+	case dbtype.KindUUID:
+		return "UNIQUEIDENTIFIER"
 	default:
 		panic("unknown kind:" + kind)
 	}
@@ -271,7 +276,7 @@ func (d SQLServer) ColumnString(fs dbtype.ColumnSchema) string {
 			case dbtype.CurrentDate: // 2026-08-08
 				sb.WriteString("CAST(GETDATE() AS date)")
 			case dbtype.CurrentTimestamp: // 2026-08-08 08:08:08
-				sb.WriteString("SYSDATETIME()") // 用 datetime2 类型存储
+				sb.WriteString(d.defaultFnValue(fs, dv.Value))
 			default:
 				sb.WriteString(dv.Value)
 			}
@@ -281,15 +286,41 @@ func (d SQLServer) ColumnString(fs dbtype.ColumnSchema) string {
 			panic(fmt.Sprintf("unknown default value type: %v", dv.Type))
 		}
 	} else if fs.NotNull && !fs.AutoIncrement {
-		if strings.HasSuffix(baseType, "INT") || baseType == "REAL" || baseType == "FLOAT" {
+		if strings.HasSuffix(baseType, "INT") || baseType == "REAL" || baseType == "FLOAT" || baseType == "BIT" {
 			sb.WriteString(" DEFAULT 0")
 		} else if strings.HasPrefix(baseType, "NVARCHAR") {
 			sb.WriteString(" DEFAULT ''")
-		} else if strings.HasPrefix(baseType, "VARBINARY") {
+		} else if strings.Contains(baseType, "BINARY") {
 			sb.WriteString(" DEFAULT 0x")
+		} else {
+			switch baseType {
+			case "DATETIME2":
+				sb.WriteString(" DEFAULT '0001-01-01 00:00:00'")
+			case "DATE":
+				sb.WriteString(" DEFAULT '0001-01-01'")
+			case "UNIQUEIDENTIFIER":
+				sb.WriteString(" DEFAULT '00000000-0000-0000-0000-000000000000'")
+			}
 		}
 	}
 	return sb.String()
+}
+
+func (d SQLServer) defaultFnValue(fs dbtype.ColumnSchema, fn string) string {
+	// pgx 默认支持  CURRENT_DATE (2026-08-08),CURRENT_TIMESTAMP (2026-08-08 08:08:08)
+	if fn != dbtype.CurrentTimestamp {
+		return fn
+	}
+	switch fs.Kind {
+	case dbtype.KindTimespan:
+		return `DATEDIFF_BIG(SECOND, '19700101', SYSUTCDATETIME())`
+	case dbtype.KindMilliseconds:
+		return `DATEDIFF_BIG(MILLISECOND, '19700101', SYSUTCDATETIME())`
+	case dbtype.KindMicroseconds:
+		return `DATEDIFF_BIG(MICROSECOND, '19700101', SYSUTCDATETIME())`
+	default:
+		return "SYSDATETIME()" // 用 datetime2 类型存储
+	}
 }
 
 func (d SQLServer) UniqIndex(name string, columns []string) string {
@@ -346,7 +377,7 @@ func (d SQLServer) EncodeValue(value any) (any, error) {
 	}
 
 	if !rv.IsValid() {
-		return nil, nil
+		return nil, fmt.Errorf("invalid value %v", value)
 	}
 	switch rv.Kind() {
 	case reflect.Array:

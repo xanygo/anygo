@@ -50,8 +50,13 @@ const (
 	KindArray  Kind = "array"  // 数组类型
 	KindJSON   Kind = "json"
 
-	KindDate     Kind = "date"      // 仅日期 '2000-01-01'
-	KindDateTime Kind = "date_time" // 日期和时间 '2000-01-01 00:00:00'
+	KindUUID Kind = "uuid"
+
+	KindDate         Kind = "date"         // 仅日期 '2000-01-01'
+	KindDateTime     Kind = "date_time"    // 日期和时间 '2000-01-01 00:00:00'
+	KindTimespan     Kind = "timespan"     //  时间戳，秒
+	KindMilliseconds Kind = "milliseconds" //  时间戳，毫秒
+	KindMicroseconds Kind = "microseconds" //  时间戳，微妙
 )
 
 var allKinds = map[Kind]bool{
@@ -75,9 +80,14 @@ var allKinds = map[Kind]bool{
 	KindFloat64: true,
 
 	KindBinary: true,
-	KindJSON:   true,
-	KindArray:  true,
+	KindUUID:   true,
 
-	KindDate:     true,
-	KindDateTime: true,
+	KindJSON:  true,
+	KindArray: true,
+
+	KindDate:         true,
+	KindDateTime:     true,
+	KindTimespan:     true,
+	KindMilliseconds: true,
+	KindMicroseconds: true,
 }

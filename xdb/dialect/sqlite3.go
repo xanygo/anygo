@@ -161,6 +161,13 @@ func (SQLite3) ColumnKindType(kind dbtype.Kind, size int) string {
 		return "TEXT"
 	case dbtype.KindBinary:
 		return "BLOB"
+	case dbtype.KindDateTime:
+		return "Text"
+	case dbtype.KindTimespan, dbtype.KindMilliseconds, dbtype.KindMicroseconds:
+		// 时间戳
+		return "INTEGER"
+	case dbtype.KindUUID:
+		return "BLOB"
 	default:
 		return "TEXT"
 	}
@@ -194,23 +201,46 @@ func (d SQLite3) ColumnString(fs dbtype.ColumnSchema) string {
 		case dbtype.DefaultValueTypeNumber:
 			sb.WriteString(dv.Value)
 		case dbtype.DefaultValueTypeFn:
-			// sqlite 内置支持  CURRENT_DATE (2026-08-08),CURRENT_TIMESTAMP (2026-08-08 08:08:08)
-			sb.WriteString(dv.Value)
+
+			sb.WriteString(d.defaultFnValue(fs, dv.Value))
 		case dbtype.DefaultValueTypeString:
 			sb.WriteString(d.QuoteIdentifier(fs.Default.Value))
 		default:
 			panic(fmt.Sprintf("unknown default value type: %v", dv.Type))
 		}
 	} else if fs.NotNull && !fs.AutoIncrement {
-		switch baseType {
-		case "TEXT", "BLOB":
-			sb.WriteString(" DEFAULT ''")
-		case "INTEGER", "REAL":
-			sb.WriteString(" DEFAULT 0")
+		if fs.Kind == dbtype.KindUUID {
+			sb.WriteString(" DEFAULT X'00000000000000000000000000000000'")
+		} else {
+			switch baseType {
+			case "TEXT":
+				sb.WriteString(" DEFAULT ''")
+			case "BLOB":
+				sb.WriteString(" DEFAULT X''")
+			case "INTEGER", "REAL":
+				sb.WriteString(" DEFAULT 0")
+			}
 		}
 	}
 
 	return sb.String()
+}
+
+func (d SQLite3) defaultFnValue(fs dbtype.ColumnSchema, fn string) string {
+	// sqlite 内置支持  CURRENT_DATE (2026-08-08),CURRENT_TIMESTAMP (2026-08-08 08:08:08)
+	if fn != dbtype.CurrentTimestamp {
+		return fn
+	}
+	switch fs.Kind {
+	case dbtype.KindTimespan:
+		return "unixepoch()"
+	case dbtype.KindMilliseconds:
+		return "(unixepoch('subsec') * 1000)"
+	case dbtype.KindMicroseconds:
+		return `CAST(unixepoch('subsec') * 1000000 AS INTEGER)`
+	default:
+		return fn
+	}
 }
 
 func (d SQLite3) UniqIndex(name string, columns []string) string {
@@ -308,7 +338,7 @@ func (d SQLite3) EncodeValue(value any) (any, error) {
 	}
 
 	if !rv.IsValid() {
-		return nil, nil
+		return nil, fmt.Errorf("invalid value %v", value)
 	}
 	switch rv.Kind() {
 	case reflect.Array:

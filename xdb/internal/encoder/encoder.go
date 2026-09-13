@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/xanygo/anygo/internal/xstruct"
 	"github.com/xanygo/anygo/internal/zreflect"
@@ -300,6 +301,18 @@ func (e Encoder[T]) PrimaryKeys(obj T) (columns []dbtype.ColumnSchema, values []
 	return columns, values, nil
 }
 
+func (e Encoder[T]) EncodeNamedValue(field sql.NamedArg) (any, error) {
+	name, _ := strings.CutPrefix(field.Name, "?")
+	col, err := e.Schema.ColumnByName(name)
+	if err != nil {
+		return nil, err
+	}
+	if col.Codec == nil {
+		return e.Dialect.EncodeValue(field.Value)
+	}
+	return col.Codec.Encode(field.Value)
+}
+
 // EncodeArgs 对 where 的参数编码
 func (e Encoder[T]) EncodeArgs(args ...any) ([]any, error) {
 	if len(args) == 0 {
@@ -309,12 +322,16 @@ func (e Encoder[T]) EncodeArgs(args ...any) ([]any, error) {
 	for i, arg := range args {
 		switch item := arg.(type) {
 		case sql.NamedArg:
-			v, err := e.Dialect.EncodeValue(item.Value)
+			v, err := e.EncodeNamedValue(item)
 			if err != nil {
 				return nil, fmt.Errorf("encode args %#v: %w", arg, err)
 			}
 			item.Value = v
-			result[i] = item
+			if strings.HasPrefix(item.Name, "?") {
+				result[i] = v
+			} else {
+				result[i] = item
+			}
 		default:
 			val, err := e.Dialect.EncodeValue(arg)
 			if err != nil {

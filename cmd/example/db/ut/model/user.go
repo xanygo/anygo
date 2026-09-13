@@ -6,12 +6,15 @@ package model
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
+	"uuid"
 
 	"github.com/xanygo/anygo/xdb"
+	"github.com/xanygo/anygo/xdb/dbschema"
 	"github.com/xanygo/anygo/xdb/xor"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xt"
@@ -35,6 +38,17 @@ type User struct {
 	JS1     *UserJS1  `db:"js1,codec=json"`
 	Created time.Time `db:"created,auto=Created"`
 	Updated time.Time `db:"updated,auto=Updated"`
+
+	Time3 time.Time `db:"time3,codec=timespan"`
+
+	// default=fn|CURRENT_TIMESTAMP 同时支持
+	// date_time，timespan，milliseconds，microseconds 这些类型
+	Time4 time.Time `db:"time4,kind=timespan,default=fn|CURRENT_TIMESTAMP"`
+
+	Time5 time.Time `db:"time5,kind=milliseconds,default=fn|CURRENT_TIMESTAMP"`
+	Time6 time.Time `db:"time6,kind=microseconds,default=fn|CURRENT_TIMESTAMP"`
+
+	UUID uuid.UUID `db:"uuid"`
 }
 
 type UserEmb1 struct {
@@ -50,9 +64,36 @@ func (u User) TableName() string {
 	return "ut_user"
 }
 
+func checkSchema(t *testing.T, client *xdb.Client) {
+	fy, err := client.Dialect()
+	xt.NoError(t, err)
+	sc, err := dbschema.Schema(fy, User{})
+	xt.NoError(t, err)
+	xt.NotNil(t, sc)
+
+	t.Run("register_time", func(t *testing.T) {
+		rt, err := sc.ColumnByName("register_time")
+		xt.NoError(t, err)
+		xt.NotEmpty(t, rt)
+
+		xt.Equal(t, rt.Codec.Name(), "date_time")
+	})
+
+	t.Run("created", func(t *testing.T) {
+		rt, err := sc.ColumnByName("created")
+		xt.NoError(t, err)
+		xt.NotEmpty(t, rt)
+
+		xt.Equal(t, rt.Codec.Name(), "milliseconds")
+	})
+}
+
 type Status uint
 
 func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
+	t.Run("schema", func(t *testing.T) {
+		checkSchema(t, client)
+	})
 	sc := xdb.MustNewSchemaAPI(client)
 	err := sc.DropTableIfExists(ctx, User{}.TableName())
 	xt.NoError(t, err)
@@ -180,5 +221,39 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 			}
 		}
 		xt.True(t, found)
+	})
+
+	t.Run("timespan", func(t *testing.T) {
+		for i := 0; i < 3; i++ {
+			u1 := User{
+				Username:     fmt.Sprintf("timespan-%d", i),
+				Time3:        time.Now(),
+				RegisterTime: time.Now(),
+			}
+			err1 := orm.Insert(ctx, u1)
+			xt.NoError(t, err1)
+		}
+		t.Run("register_time", func(t *testing.T) {
+			// register_time 实际存储的类型是 DataTime
+			list, err := orm.New().List(ctx, xor.Where("register_time>?", sql.Named("?register_time", time.Now().Add(-time.Minute))))
+			xt.NoError(t, err)
+			xt.NotEmpty(t, list)
+		})
+
+		t.Run("time3", func(t *testing.T) {
+			// time3 实际存储的类型是 millseconds
+			list, err := orm.New().List(ctx, xor.Where("time3>?", sql.Named("?time3", time.Now().Add(-time.Minute))))
+			xt.NoError(t, err)
+			xt.NotEmpty(t, list)
+		})
+	})
+
+	t.Run("timespan-default", func(t *testing.T) {
+		u := User{}
+		name := "user-timespan-default"
+		str := fmt.Sprintf("insert into %s (%s)values( '%s' )", orm.Quote(u.TableName()), orm.Quote("username"), name)
+		ret, err := xdb.Exec(ctx, client, str)
+		xt.NoError(t, err)
+		xt.NotEmpty(t, ret)
 	})
 }

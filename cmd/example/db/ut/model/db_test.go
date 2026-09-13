@@ -1,20 +1,13 @@
 package model
 
 import (
-	"os"
 	"testing"
 
 	"github.com/xanygo/anygo/xdb"
-	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xt"
 
 	"cmd/example/db/internal"
 )
-
-func init() {
-	internal.Init()
-	xdb.RegisterIT((&xdb.Logger{Logger: xlog.NewSimple(os.Stderr)}).ToInterceptor())
-}
 
 func TestPGX(t *testing.T) {
 	db, err := internal.NewPostgres()

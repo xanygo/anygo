@@ -484,3 +484,35 @@ func OffsetLimit[S ~[]T, T any](s S, offset int, limit int) S {
 
 	return s[offset:end]
 }
+
+// OrderWith 按照 all 中定义的顺序排列 src。
+//
+//	src 中存在 all 未包含的值时返回错误。
+//	all 中若存在重复值，使用首次出现的顺序。
+//	src 允许出现重复值
+func OrderWith[S ~[]T, T comparable](src S, all S) (S, error) {
+	if len(src) == 0 {
+		return nil, nil
+	}
+
+	order := make(map[T]int, len(all))
+	for i, v := range all {
+		if _, exists := order[v]; exists {
+			// 允许重复，跳过
+			continue
+		}
+		order[v] = i
+	}
+	result := make(S, len(src))
+	for i, v := range src {
+		if _, has := order[v]; !has {
+			return nil, fmt.Errorf("value %v is not in order", v)
+		}
+		result[i] = v
+	}
+
+	slices.SortStableFunc(result, func(a, b T) int {
+		return order[a] - order[b]
+	})
+	return result, nil
+}

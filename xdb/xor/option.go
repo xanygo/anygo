@@ -30,6 +30,14 @@ var optionNop = optionFunc(func(o *config) {})
 //	如 Where("id > ? and score >?", 1000, 75)
 //	或者
 //	Where("{id} > ? and {score} >?", 1000, 75)，其中的 {id} 和 {score} 会依据使用的方言自动转义(Quote) 以避免和数据库关键字冲突
+//
+// 若是字段设置了非默认的 codec，比如：
+//
+//	type User struct{
+//		Created   time.Time `db:"created,codec=date_time"`
+//	}
+//	Time 类型默认的 codec 是 milliseconds,此处定义为 date_time，为了在where 参数中正确的编码，可以这样：
+//	xor.Where("created>?", sql.Named("?created", time.Now().Add(-time.Minute)))
 func Where(where string, args ...any) Option {
 	return optionFunc(func(o *config) {
 		o.noWhere = false

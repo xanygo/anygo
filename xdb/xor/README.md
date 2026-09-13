@@ -133,6 +133,9 @@ uniqueIndex 示例：
 | microseconds | 可用于 time.Time 类型的字段，数据库中存储的 bigint 类型的值(微秒：time.Time.UnixMicro()) | `1786931063369864`    |
 | nanoseconds  | 可用于 time.Time 类型的字段，数据库中存储的 bigint 类型的值(纳秒：time.Time.UnixNano())  | `1786931063369864300` |
 
+
+Go 的 `time.Time` 类型默认的 codec 是 `milliseconds`，所有数据库都采用 `bigint` 存储，如此可避开时区问题，实现也更统一，简单。
+
 通过 codec 参数指定复杂类型在编码为 SQL 语句时的序列化方式，以及从数据库中读取出来后反序列化的方式。
 除了上述内置的 codec，还可以通过 dbcodec.Register 注册自定义的 codec。
 
@@ -144,7 +147,7 @@ Scores       []int     `db:"scores,codec=auto_json"`
 对于不支持数组的，如 sqlite, 会退化为 json 编码，数据库字段类型时 Text 类型。
 
 #### auto (自动赋值)
-1. tag 定义的 `auto`值为 `Created`、`CreatedUnix`（是 `Created` 的别名）、`CreatedNano` 的字段被认为是数据的创建字段，当类型是 `time.Time` 或者 `int64` 类型的时候：
+1. tag 定义的 `auto`值为 `Created`、`CreatedNano` 的字段被认为是数据的创建字段，当类型是 `time.Time` 或者 `int64` 类型的时候：
 ```
   Created time.time `db:"created_at,auto=Created"`   // 赋值 time.Now()
   Created int64 `db:"created_at,auto=Created"`       // 赋值 time.Now().Unix()
@@ -157,10 +160,16 @@ Scores       []int     `db:"scores,codec=auto_json"`
 | Created     | int64     | time.Now().Unix()     |
 | CreatedNano | time.Time | time.Now()            |
 | CreatedNano | int64     | time.Now().UnixNano() |
+| CreatedMS | time.Time | time.Now()            |
+| CreatedMS | int64     | time.Now().UnixMilli() |
+| UUID4 | uuid.UUID / [16]byte    | uuid.NewV4() |
+| UUID4 | string     | uuid.NewV4().String() |
+| UUID7 | uuid.UUID / [16]byte    | uuid.NewV7() |
+| UUID7 | string     | uuid.NewV7().String() |
 
 
 
-2. tag 定义的 `auto`值为 `Updated`、`UpdatedUnix`（是 `Updated` 的别名）、`UpdatedNano` 的字段被认为是数据的创建字段，当类型是 `time.Time` 或者 `int64` 类型的时候：
+1. tag 定义的 `auto`值为 `Updated`、`UpdatedNano` 的字段被认为是数据的创建字段，当类型是 `time.Time` 或者 `int64` 类型的时候：
 ```
   Updated time.time `db:"updated_at,auto=Updated"`   // 赋值 time.Now()
   Updated int64 `db:"updated_at,auto=Updated"`       // 赋值 time.Now().Unix()
@@ -173,6 +182,8 @@ Scores       []int     `db:"scores,codec=auto_json"`
 | Updated     | int64                            | time.Now().Unix()     |
 | UpdatedNano | time.Time                        | time.Now()            |
 | UpdatedNano | int64                            | time.Now().UnixNano() |
+| UpdatedMS | time.Time                        | time.Now()            |
+| UpdatedMS | int64                            | time.Now().UnixMilli() |
 | Now         | time.Time                        | time.Now()            |
 | Incr        | int/int64/uint64/float64/float32 | value + 1             |
 

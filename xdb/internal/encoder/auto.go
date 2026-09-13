@@ -2,6 +2,7 @@ package encoder
 
 import (
 	"time"
+	"uuid"
 
 	"github.com/xanygo/anygo/xdb/dbtype"
 )
@@ -37,13 +38,15 @@ func init() {
 
 	// -------- Insert ------------------------------
 	insertAutoFns["Created"] = autoCreatedTimeUnix
-	insertAutoFns["CreatedUnix"] = autoCreatedTimeUnix
 	insertAutoFns["CreatedNano"] = autoCreatedTimeNano
+	insertAutoFns["CreatedMS"] = autoCreatedTimeMS
+	insertAutoFns["UUID4"] = autoCreatedUUID4
+	insertAutoFns["UUID7"] = autoCreatedUUID7
 
 	// -------- Update ------------------------------
 	updateAutoFns["Updated"] = autoUpdatedTimeUnix
-	updateAutoFns["UpdatedUnix"] = autoUpdatedTimeUnix
 	updateAutoFns["UpdatedNano"] = autoUpdatedTimeNano
+	updateAutoFns["UpdatedMS"] = autoUpdatedTimeMS
 
 	// 只需要注册 update，updateAutoFns 在 insert 时总是会被执行
 	updateAutoFns["Now"] = autoNowTime
@@ -106,6 +109,58 @@ func autoCreatedTimeNano(schema dbtype.ColumnSchema, val any) (any, bool) {
 	return nil, false
 }
 
+func autoCreatedTimeMS(schema dbtype.ColumnSchema, val any) (any, bool) {
+	switch tv := val.(type) {
+	case time.Time:
+		if tv.IsZero() {
+			return time.Now(), true
+		}
+	case int64:
+		if tv == 0 {
+			return time.Now().UnixMilli(), true
+		}
+	}
+	return nil, false
+}
+
+var uuidZero = uuid.Nil()
+
+func autoCreatedUUID4(schema dbtype.ColumnSchema, val any) (any, bool) {
+	switch tv := val.(type) {
+	case uuid.UUID:
+		if tv == uuidZero {
+			return uuid.NewV4(), true
+		}
+	case [16]byte:
+		if tv == uuidZero {
+			return uuid.NewV4(), true
+		}
+	case string:
+		if tv == "" {
+			return uuid.NewV4().String(), true
+		}
+	}
+	return nil, false
+}
+
+func autoCreatedUUID7(schema dbtype.ColumnSchema, val any) (any, bool) {
+	switch tv := val.(type) {
+	case uuid.UUID:
+		if tv == uuidZero {
+			return uuid.NewV7(), true
+		}
+	case [16]byte:
+		if tv == uuidZero {
+			return uuid.NewV7(), true
+		}
+	case string:
+		if tv == "" {
+			return uuid.NewV7().String(), true
+		}
+	}
+	return nil, false
+}
+
 func autoUpdatedTimeUnix(schema dbtype.ColumnSchema, val any) (any, bool) {
 	switch val.(type) {
 	case time.Time:
@@ -117,6 +172,16 @@ func autoUpdatedTimeUnix(schema dbtype.ColumnSchema, val any) (any, bool) {
 }
 
 func autoUpdatedTimeNano(schema dbtype.ColumnSchema, val any) (any, bool) {
+	switch val.(type) {
+	case time.Time:
+		return time.Now(), true
+	case int64:
+		return time.Now().UnixNano(), true
+	}
+	return nil, false
+}
+
+func autoUpdatedTimeMS(schema dbtype.ColumnSchema, val any) (any, bool) {
 	switch val.(type) {
 	case time.Time:
 		return time.Now(), true

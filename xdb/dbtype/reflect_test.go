@@ -12,7 +12,7 @@ func TestReflectToKind(t *testing.T) {
 	t.Run("time", func(t *testing.T) {
 		got, ok := ReflectToKind(reflect.TypeOf(time.Now()))
 		xt.True(t, ok)
-		xt.Equal(t, got, KindDateTime)
+		xt.Equal(t, got, KindMilliseconds)
 	})
 	t.Run("bytes", func(t *testing.T) {
 		var b []byte

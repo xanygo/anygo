@@ -166,12 +166,17 @@ func (MySQL) ColumnKindType(kind dbtype.Kind, size int) string {
 			return fmt.Sprintf("BINARY(%d)", size)
 		}
 		return "BLOB"
+	case dbtype.KindUUID:
+		return "BINARY(16)"
 	case dbtype.KindJSON:
 		return "TEXT"
 	case dbtype.KindDate:
 		return "DATE"
 	case dbtype.KindDateTime:
 		return "DATETIME"
+	case dbtype.KindTimespan, dbtype.KindMilliseconds, dbtype.KindMicroseconds:
+		// 时间戳
+		return "BIGINT"
 	default:
 		panic("unknown kind:" + kind)
 	}
@@ -221,8 +226,7 @@ func (d MySQL) ColumnString(fs dbtype.ColumnSchema) string {
 		case dbtype.DefaultValueTypeNumber:
 			sb.WriteString(dv.Value)
 		case dbtype.DefaultValueTypeFn:
-			// mysql 默认支持  CURRENT_DATE (2026-08-08),CURRENT_TIMESTAMP (2026-08-08 08:08:08)
-			sb.WriteString(dv.Value)
+			sb.WriteString(d.defaultFnValue(fs, dv.Value))
 		case dbtype.DefaultValueTypeString:
 			sb.WriteString(d.QuoteIdentifier(fs.Default.Value))
 		default:
@@ -237,11 +241,35 @@ func (d MySQL) ColumnString(fs dbtype.ColumnSchema) string {
 			sb.WriteString(" DEFAULT 0")
 		} else if baseType == "TEXT" || baseType == "LONGTEXT" || strings.HasPrefix(baseType, "VARCHAR") {
 			sb.WriteString(" DEFAULT ''")
+		} else if baseType == "BLOB" || strings.Contains(baseType, "BINARY") {
+			sb.WriteString(" DEFAULT (CAST('' AS BINARY))")
 		} else {
+			switch baseType {
+			case "DATE":
+				sb.WriteString(" DEFAULT '0001-01-01'")
+			case "DATETIME":
+				sb.WriteString(" DEFAULT '0001-01-01 00:00:00'")
+			}
 		}
-
 	}
 	return sb.String()
+}
+
+func (d MySQL) defaultFnValue(fs dbtype.ColumnSchema, fn string) string {
+	// mysql 默认支持  CURRENT_DATE (2026-08-08),CURRENT_TIMESTAMP (2026-08-08 08:08:08)
+	if fn != dbtype.CurrentTimestamp {
+		return fn
+	}
+	switch fs.Kind {
+	case dbtype.KindTimespan:
+		return "UNIX_TIMESTAMP()"
+	case dbtype.KindMilliseconds:
+		return `CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3)) * 1000 AS UNSIGNED)`
+	case dbtype.KindMicroseconds:
+		return `CAST(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(6)) * 1000000 AS UNSIGNED)`
+	default:
+		return fn
+	}
 }
 
 var _ dbtype.MigrateDialect = MySQL{}
@@ -289,7 +317,7 @@ func (d MySQL) EncodeValue(value any) (any, error) {
 	}
 
 	if !rv.IsValid() {
-		return nil, nil
+		return nil, fmt.Errorf("invalid value %v", value)
 	}
 	switch rv.Kind() {
 	case reflect.Array:

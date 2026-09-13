@@ -7,6 +7,7 @@ package dbtype
 import (
 	"reflect"
 	"time"
+	"uuid"
 )
 
 var typeToKindMap = map[reflect.Kind]Kind{
@@ -37,18 +38,20 @@ var typeToKindMap = map[reflect.Kind]Kind{
 }
 
 var specTypeToKindMap = map[reflect.Type]Kind{
-	reflect.TypeFor[time.Time](): KindDateTime,
+	reflect.TypeFor[time.Time](): KindMilliseconds,
 	reflect.TypeFor[[]byte]():    KindBinary,
+	reflect.TypeFor[uuid.UUID](): KindUUID,
 }
 
 func ReflectToKind(rt reflect.Type) (Kind, bool) {
+	if k, ok := specTypeToKindMap[rt]; ok {
+		return k, true
+	}
+
 	if (rt.Kind() == reflect.Array || rt.Kind() == reflect.Slice) && rt.Elem().Kind() == reflect.Uint8 {
 		return KindBinary, true
 	}
 
-	if k, ok := specTypeToKindMap[rt]; ok {
-		return k, true
-	}
 	kind := rt.Kind()
 	if k, ok := typeToKindMap[kind]; ok {
 		return k, true

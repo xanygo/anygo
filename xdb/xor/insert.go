@@ -9,7 +9,6 @@ import (
 	"github.com/xanygo/anygo/xdb"
 	"github.com/xanygo/anygo/xdb/dbtype"
 	"github.com/xanygo/anygo/xdb/internal/encoder"
-	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xslice"
 )
 
@@ -29,7 +28,13 @@ func (m *Model[T]) Insert(ctx context.Context, v T, opts ...Option) error {
 
 	qcols := make([]string, 0, len(kv))
 	args := make([]any, 0, len(kv))
-	for field, value := range kv {
+
+	// 保持 Model 中字段的顺序
+	for _, field := range m.schema.ColumnNames {
+		value, has := kv[field]
+		if !has {
+			continue
+		}
 		qcols = append(qcols, m.dialect.QuoteIdentifier(field))
 		args = append(args, value)
 	}
@@ -62,9 +67,15 @@ func (m *Model[T]) InsertReturningID(ctx context.Context, v T, opts ...Option) (
 
 	qcols := make([]string, 0, len(kv))
 	args := make([]any, 0, len(kv))
-	for k, v := range kv {
-		qcols = append(qcols, m.dialect.QuoteIdentifier(k))
-		args = append(args, v)
+
+	// 保持 Model 中字段的顺序
+	for _, field := range m.schema.ColumnNames {
+		value, has := kv[field]
+		if !has {
+			continue
+		}
+		qcols = append(qcols, m.dialect.QuoteIdentifier(field))
+		args = append(args, value)
 	}
 
 	sqlStr := fmt.Sprintf(
@@ -109,12 +120,23 @@ func (m *Model[T]) InsertBatch(ctx context.Context, items []T, opts ...Option) e
 	if err != nil {
 		return err
 	}
-	cols := xmap.Keys(values[0])
+
+	var cols []string
+	var qCols []string
+
+	// 保持 Model 中字段的顺序
+	for _, field := range m.schema.ColumnNames {
+		_, has := values[0][field]
+		if !has {
+			continue
+		}
+		cols = append(cols, field)
+		qCols = append(qCols, m.dialect.QuoteIdentifier(field))
+	}
+
 	if len(cols) == 0 {
 		return errors.New("no columns")
 	}
-
-	qCols := xslice.MapFunc(cols, m.dialect.QuoteIdentifier)
 
 	valuePlaceHolders := make([]string, len(values))
 	for i := range len(values) {
@@ -171,7 +193,17 @@ func (m *Model[T]) Upsert(ctx context.Context, conflictCols []string, updateCols
 	if err != nil {
 		return 0, err
 	}
-	cols := xmap.Keys(kvSlice[0])
+
+	var cols []string
+	// 保持 Model 中字段的顺序
+	for _, field := range m.schema.ColumnNames {
+		_, has := kvSlice[0][field]
+		if !has {
+			continue
+		}
+		cols = append(cols, field)
+	}
+
 	if miss, ok := xslice.AllContains(cols, updateCols); !ok {
 		return 0, fmt.Errorf("invalid updateCols: %q not in %q", miss, cols)
 	}

@@ -174,6 +174,11 @@ func (Postgres) ColumnKindType(kind dbtype.Kind, size int) string {
 		return "DATE"
 	case dbtype.KindDateTime:
 		return "TIMESTAMP"
+	case dbtype.KindTimespan, dbtype.KindMilliseconds, dbtype.KindMicroseconds:
+		// 时间戳
+		return "BIGINT"
+	case dbtype.KindUUID:
+		return "UUID"
 	default:
 		return "TEXT"
 	}
@@ -189,7 +194,7 @@ func (d Postgres) EncodeValue(value any) (any, error) {
 	}
 
 	if !rv.IsValid() {
-		return nil, nil
+		return nil, fmt.Errorf("invalid value %v", value)
 	}
 	switch rv.Kind() {
 	case reflect.Array:
@@ -282,8 +287,7 @@ func (d Postgres) ColumnString(fs dbtype.ColumnSchema) string {
 		case dbtype.DefaultValueTypeNumber:
 			sb.WriteString(dv.Value)
 		case dbtype.DefaultValueTypeFn:
-			// pgx 内置支持 CURRENT_DATE (2026-08-08),CURRENT_TIMESTAMP (2026-08-08 08:08:08)
-			sb.WriteString(dv.Value)
+			sb.WriteString(d.defaultFnValue(fs, dv.Value))
 		case dbtype.DefaultValueTypeString:
 			sb.WriteString(d.QuoteIdentifier(fs.Default.Value))
 		default:
@@ -302,10 +306,33 @@ func (d Postgres) ColumnString(fs dbtype.ColumnSchema) string {
 				sb.WriteString(" DEFAULT 0")
 			case "BOOLEAN":
 				sb.WriteString(" DEFAULT false")
+			case "TIMESTAMP":
+				sb.WriteString(" DEFAULT '0001-01-01 00:00:00'")
+			case "DATE":
+				sb.WriteString(" DEFAULT '0001-01-01'")
+			case "UUID":
+				sb.WriteString(" DEFAULT '00000000-0000-0000-0000-000000000000'")
 			}
 		}
 	}
 	return sb.String()
+}
+
+func (d Postgres) defaultFnValue(fs dbtype.ColumnSchema, fn string) string {
+	// pgx 默认支持  CURRENT_DATE (2026-08-08),CURRENT_TIMESTAMP (2026-08-08 08:08:08)
+	if fn != dbtype.CurrentTimestamp {
+		return fn
+	}
+	switch fs.Kind {
+	case dbtype.KindTimespan:
+		return `(EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::BIGINT)`
+	case dbtype.KindMilliseconds:
+		return `((EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT)`
+	case dbtype.KindMicroseconds:
+		return `((EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000000)::BIGINT)`
+	default:
+		return fn
+	}
 }
 
 func (d Postgres) UniqIndex(name string, columns []string) string {

@@ -77,7 +77,7 @@ var _ = testUser6{skip: "ok"}
 type testUser7 struct {
 	Name    string    `db:"name"`
 	Number  int64     `db:"number,auto=Incr"`
-	Leave   time.Time `db:"leave,auto=Now"`
+	Leave   time.Time `db:"leave,codec=date_time,auto=Now"`
 	Created time.Time `db:"c,auto=Created"`
 	Updated int64     `db:"u,auto=Updated"`
 	Version *int64    `db:"v"`
@@ -198,10 +198,10 @@ func TestEncodeInsert(t *testing.T) {
 				t.Logf("out: %#v", out1)
 				xt.Len(t, out1, 6)
 				xt.NotEmpty(t, out1["name"])
-				date := time.Now().Format("2006-01-02")
-				xt.HasPrefix(t, out1["c"].(string), date)
+				xt.NotEmpty(t, out1["c"])
 				xt.NotEmpty(t, out1["u"])
-				xt.Equal[any](t, out1["number"], int64(1))    // Incr
+				xt.Equal[any](t, out1["number"], int64(1)) // Incr
+				date := time.Now().Format("2006-01-02")
 				xt.HasPrefix(t, out1["leave"].(string), date) // Now
 			})
 		}
@@ -219,10 +219,10 @@ func TestEncodeInsert(t *testing.T) {
 				t.Logf("out: %#v", out1)
 				xt.Len(t, out1, 6)
 				xt.NotEmpty(t, out1["name"])
-				date := time.Now().Format("2006-01-02")
-				xt.HasPrefix(t, out1["c"].(string), date)
+				xt.NotEmpty(t, out1["c"])
 				xt.NotEmpty(t, out1["u"])
-				xt.Equal[any](t, out1["number"], int64(1))    // Incr
+				xt.Equal[any](t, out1["number"], int64(1)) // Incr
+				date := time.Now().Format("2006-01-02")
 				xt.HasPrefix(t, out1["leave"].(string), date) // Now
 			})
 		}
@@ -305,8 +305,16 @@ func TestEncoder_EncodeArgs(t *testing.T) {
 		Schema:  schema,
 		Dialect: dialect.SQLite3{},
 	}
-	ok := true
-	got, err := enc.EncodeArgs(1, true, nil, &ok, false)
-	xt.NoError(t, err)
-	xt.Equal(t, got, []any{1, 1, nil, 1, 0})
+	t.Run("ok", func(t *testing.T) {
+		ok := true
+		got, err := enc.EncodeArgs(1, true, &ok, false)
+		xt.NoError(t, err)
+		xt.Equal(t, got, []any{1, 1, 1, 0})
+	})
+
+	t.Run("invalid", func(t *testing.T) {
+		got, err := enc.EncodeArgs(1, nil)
+		xt.Error(t, err)
+		xt.Empty(t, got)
+	})
 }

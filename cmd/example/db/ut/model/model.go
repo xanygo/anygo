@@ -2,11 +2,20 @@ package model
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/xanygo/anygo/xdb"
+	"github.com/xanygo/anygo/xlog"
+
+	"cmd/example/db/internal"
 )
+
+func init() {
+	internal.Init()
+	xdb.RegisterIT((&xdb.Logger{Logger: xlog.NewSimple(os.Stderr)}).ToInterceptor())
+}
 
 func DoCheck(t *testing.T, client *xdb.Client) {
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
