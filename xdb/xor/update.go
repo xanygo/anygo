@@ -23,8 +23,8 @@ func (m *Model[T]) Update(ctx context.Context, v T, opts ...Option) (int64, erro
 }
 
 func (m *Model[T]) doUpdate(ctx context.Context, v T, cfg *config) (int64, error) {
-	if m.err != nil {
-		return 0, m.err
+	if err := m.checkErr(); err != nil {
+		return 0, err
 	}
 	kv, err := m.getEncoder(encoder.ActionUpdate, cfg).Encode(v)
 	if err != nil {
@@ -80,8 +80,8 @@ func (m *Model[T]) doUpdateMap(ctx context.Context, kv map[string]any, cfg *conf
 //
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`。支持联合主键。
 func (m *Model[T]) UpdateByPK(ctx context.Context, v T) (int64, error) {
-	if m.err != nil {
-		return 0, m.err
+	if err := m.checkErr(); err != nil {
+		return 0, err
 	}
 	cfg := m.cfg.mergeOnClone(WhereByPK(v))
 
@@ -97,8 +97,8 @@ func (m *Model[T]) UpdateByPK(ctx context.Context, v T) (int64, error) {
 // update: 更新处理，返回的数据会和 old 做 diff，然后只更新 diff 字段。
 // 若返回 error 是 xerror.SkipOne 或 xerror.SkipAll 则跳过。其他 error 则直接返回
 func (m *Model[T]) Modify(ctx context.Context, old T, update func(nv T) (T, error), opts ...Option) (int64, error) {
-	if m.err != nil {
-		return 0, m.err
+	if err := m.checkErr(); err != nil {
+		return 0, err
 	}
 	clonedValue, err := zreflect.Clone(old)
 	if err != nil {
@@ -118,8 +118,8 @@ func (m *Model[T]) Modify(ctx context.Context, old T, update func(nv T) (T, erro
 //
 // 应采用 Option 传递更新条件，若没有传递则将 old 数据的主键当作更新条件
 func (m *Model[T]) UpdateDiff(ctx context.Context, old T, newValue T, opts ...Option) (int64, error) {
-	if m.err != nil {
-		return 0, m.err
+	if err := m.checkErr(); err != nil {
+		return 0, err
 	}
 	if reflect.DeepEqual(old, newValue) {
 		return 0, nil
@@ -150,8 +150,8 @@ func (m *Model[T]) ModifyFirstByPK(ctx context.Context, q T, update func(nv T) (
 //	注意：若 where 条件返回多条，会查询第一条数据，并以此位基础更新所有数据
 //	update: 数据更新方法。若返回 error 是 xerror.SkipOne 或 xerror.SkipAll 则跳过。其他 error 则直接返回
 func (m *Model[T]) ModifyFirst(ctx context.Context, update func(nv T) (T, error), opts ...Option) (int64, error) {
-	if m.err != nil {
-		return 0, m.err
+	if err := m.checkErr(); err != nil {
+		return 0, err
 	}
 	var num int64
 	err := xdb.BeginTx(ctx, m.client, nil, func(ctx context.Context, tx xdb.DBCore) error {
@@ -176,8 +176,8 @@ func (m *Model[T]) ModifyFirst(ctx context.Context, update func(nv T) (T, error)
 //
 // update: 数据更新方法。若返回 error 是 xerror.SkipOne,则跳过此条数据，若是 xerror.SkipAll 则跳过所有。其他 error 则直接返回
 func (m *Model[T]) ModifyEach(ctx context.Context, update func(nv T) (T, error), opts ...Option) (int64, error) {
-	if m.err != nil {
-		return 0, m.err
+	if err := m.checkErr(); err != nil {
+		return 0, err
 	}
 	m1 := m.New()
 	var num int64
@@ -217,6 +217,9 @@ func (m *Model[T]) ModifyEach(ctx context.Context, update func(nv T) (T, error),
 func (m *Model[T]) UpdateMap(ctx context.Context, data xdb.Map, opts ...Option) (int64, error) {
 	if len(data) == 0 {
 		return 0, nil
+	}
+	if err := m.checkErr(); err != nil {
+		return 0, err
 	}
 	cfg := m.cfg.mergeOnClone(opts...)
 	return m.doUpdateMap(ctx, data, cfg)

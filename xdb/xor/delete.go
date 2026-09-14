@@ -9,8 +9,8 @@ import (
 
 // Delete 执行 delete 语句，必须通过 Option传递删除条件
 func (m *Model[T]) Delete(ctx context.Context, opts ...Option) (int64, error) {
-	if m.err != nil {
-		return 0, m.err
+	if err := m.checkErr(); err != nil {
+		return 0, err
 	}
 	cfg := m.cfg.mergeOnClone(opts...)
 	where, args, err := cfg.getWhereArgs(0)

@@ -14,8 +14,8 @@ import (
 
 // Insert 基本的 Insert 功能
 func (m *Model[T]) Insert(ctx context.Context, v T, opts ...Option) error {
-	if m.err != nil {
-		return m.err
+	if err := m.checkErr(); err != nil {
+		return err
 	}
 	cfg := m.cfg.mergeOnClone(opts...)
 	kv, err := m.getEncoder(encoder.ActionInsert, cfg).Encode(v)
@@ -53,8 +53,8 @@ func (m *Model[T]) Insert(ctx context.Context, v T, opts ...Option) error {
 //
 // 若没有主键或者数据库不支持 LastInsertId 或者 Returning，会返回 0
 func (m *Model[T]) InsertReturningID(ctx context.Context, v T, opts ...Option) (int64, error) {
-	if m.err != nil {
-		return 0, m.err
+	if err := m.checkErr(); err != nil {
+		return 0, err
 	}
 	cfg := m.cfg.mergeOnClone(opts...)
 	kv, err := m.getEncoder(encoder.ActionInsert, cfg).Encode(v)
@@ -109,8 +109,8 @@ func (m *Model[T]) execReturning(ctx context.Context, sql string, args ...any) (
 }
 
 func (m *Model[T]) InsertBatch(ctx context.Context, items []T, opts ...Option) error {
-	if m.err != nil {
-		return m.err
+	if err := m.checkErr(); err != nil {
+		return err
 	}
 	if len(items) == 0 {
 		return errors.New("no values")
@@ -171,8 +171,8 @@ func (m *Model[T]) InsertBatch(ctx context.Context, items []T, opts ...Option) e
 //
 //	返回值：受影响条数，错误
 func (m *Model[T]) Upsert(ctx context.Context, conflictCols []string, updateCols []string, values ...T) (int64, error) {
-	if m.err != nil {
-		return 0, m.err
+	if err := m.checkErr(); err != nil {
+		return 0, err
 	}
 	if len(values) == 0 {
 		return 0, errors.New("no values")
@@ -238,8 +238,8 @@ func (m *Model[T]) Upsert(ctx context.Context, conflictCols []string, updateCols
 //
 //	m.UpsertByGroup(ctx,"sign","update",user1)
 func (m *Model[T]) UpsertByGroup(ctx context.Context, conflictGroup string, updateGroup string, values ...T) (int64, error) {
-	if m.err != nil {
-		return 0, m.err
+	if err := m.checkErr(); err != nil {
+		return 0, err
 	}
 	conflictCols := m.schema.FilterByGroup(conflictGroup).Names()
 	if conflictGroup != "" && len(conflictCols) == 0 {

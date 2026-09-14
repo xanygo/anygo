@@ -12,8 +12,8 @@ import (
 
 // Select 查询数据并返回
 func (m *Model[T]) Select[V any](ctx context.Context, opts ...Option) ([]V, error) {
-	if m.err != nil {
-		return nil, m.err
+	if err := m.checkErr(); err != nil {
+		return nil, err
 	}
 	cfg := m.cfg.mergeOnClone(opts...)
 	where, args, err := cfg.getWhereArgs(0)
@@ -34,8 +34,8 @@ func (m *Model[T]) Select[V any](ctx context.Context, opts ...Option) ([]V, erro
 //
 // 可通过 SetSelectFields、SetSelectIgnore 限制查询返回的字段
 func (m *Model[T]) First(ctx context.Context, opts ...Option) (v T, ok bool, err error) {
-	if m.err != nil {
-		return v, false, m.err
+	if err := m.checkErr(); err != nil {
+		return v, false, err
 	}
 	opts = append(opts, Limit(1))
 	cfg := m.cfg.mergeOnClone(opts...)
@@ -109,8 +109,8 @@ func (m *Model[T]) ListIter(ctx context.Context, opts ...Option) iter.Seq2[T, er
 	cfg := m.cfg.mergeOnClone(opts...)
 	return func(yield func(T, error) bool) {
 		var zero T
-		if m.err != nil {
-			yield(zero, m.err)
+		if err := m.checkErr(); err != nil {
+			yield(zero, err)
 			return
 		}
 
@@ -136,8 +136,8 @@ func (m *Model[T]) ListIter(ctx context.Context, opts ...Option) iter.Seq2[T, er
 }
 
 func (m *Model[T]) Count(ctx context.Context, field string, opts ...Option) (num int64, err error) {
-	if m.err != nil {
-		return 0, m.err
+	if err := m.checkErr(); err != nil {
+		return 0, err
 	}
 	if field == "" {
 		field = "*"
@@ -164,7 +164,7 @@ func (m *Model[T]) doCount(ctx context.Context, field string, opts ...Option) (n
 
 // ListPage 分页查询，适应于数据量不太大的场景
 func (m *Model[T]) ListPage(ctx context.Context, page int, size int, opts ...Option) (xdb.Pagination, []xdb.PageRecord[T], error) {
-	if m.err != nil {
+	if err := m.checkErr(); err != nil {
 		return xdb.Pagination{}, nil, m.err
 	}
 	if size < 1 {

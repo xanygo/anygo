@@ -15,8 +15,8 @@ import (
 )
 
 func sprintfDiff[T any](actual T, expected T) string {
-	xcolor.SetColorable(true)
-	defer xcolor.SetColorable(false)
+	fn := xcolor.SetColorEnabled(true)
+	defer fn()
 
 	var sb strings.Builder
 	line := xcolor.CyanString(strings.Repeat("-", 100)) + "\n"

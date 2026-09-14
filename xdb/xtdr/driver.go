@@ -17,6 +17,13 @@ import (
 )
 
 // ExpectQuery 提前预埋查询请求( db.Query )的 sql 对应的结果集
+//
+//	query: 即将执行的 SQL语句，支持通配符
+//		1.普通字符串，完全匹配： "select * from user"
+//		2.通配符（* 匹配任意长度字符串（包含空字符串），? 匹配任意单个字符）: "wc:SELECT*" ,会匹配所有 "SELECT" 开头的语句
+//		2.正则: "re:SELECT.*" ,会匹配所有 "SELECT" 开头的语句
+//	columns： 返回的字段
+//	rows：返回的结果
 func ExpectQuery(query string, columns []string, rows [][]any) {
 	mu.Lock()
 	defer mu.Unlock()

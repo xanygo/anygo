@@ -118,10 +118,10 @@ uniqueIndex 示例：
 ```go
 type User struct{
   Time1 time.Time `db:"time1,default=fn|CURRENT_TIMESTAMP"`                   // 数据库使用 bigint，存储 Time.UnixMilli()
-  Time2 time.Time `db:"time2,kind=date_time,default=fn|CURRENT_TIMESTAMP"`   // 数据库使用方言，如 mysql-DateTime, 存储 2025-11-11 13:00:00
-	Time3 time.Time `db:"time3,kind=timespan,default=fn|CURRENT_TIMESTAMP"`     // 数据库使用bigint, 存储 Time.Unix()
-	Time4 time.Time `db:"time4,kind=milliseconds,default=fn|CURRENT_TIMESTAMP"` // 数据库使用bigint, 存储 Time.UnixMilli()
-	Time5 time.Time `db:"time5,kind=microseconds,default=fn|CURRENT_TIMESTAMP"` // 数据库使用bigint, 存储 Time.UnixMicro()
+  Time2 time.Time `db:"time2,codec=date_time,default=fn|CURRENT_TIMESTAMP"`   // 数据库使用方言，如 mysql-DateTime, 存储 2025-11-11 13:00:00
+	Time3 time.Time `db:"time3,codec=timespan,default=fn|CURRENT_TIMESTAMP"`     // 数据库使用bigint, 存储 Time.Unix()
+	Time4 time.Time `db:"time4,codec=milliseconds,default=fn|CURRENT_TIMESTAMP"` // 数据库使用bigint, 存储 Time.UnixMilli()
+	Time5 time.Time `db:"time5,codec=microseconds,default=fn|CURRENT_TIMESTAMP"` // 数据库使用bigint, 存储 Time.UnixMicro()
 }
 ```
 

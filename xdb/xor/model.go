@@ -5,6 +5,7 @@
 package xor
 
 import (
+	"errors"
 	"slices"
 
 	"github.com/xanygo/anygo/xdb"
@@ -112,4 +113,16 @@ func (m *Model[T]) getEncoder(action encoder.Action, cfg *config) encoder.Encode
 // Quote 将标识符转义
 func (m *Model[T]) Quote(name string) string {
 	return m.dialect.QuoteIdentifier(name)
+}
+
+var errTableRequired = errors.New("table name required")
+
+func (m *Model[T]) checkErr() error {
+	if m.err != nil {
+		return m.err
+	}
+	if m.table == "" {
+		return errTableRequired
+	}
+	return nil
 }

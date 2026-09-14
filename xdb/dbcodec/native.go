@@ -36,5 +36,9 @@ func (r Native) Encode(a any) (any, error) {
 }
 
 func (r Native) Decode(str string, obj any) error {
+	// 若是基础类型，则先尝试直接解析值
+	if err := xcodec.Text.UnmarshalCustom([]byte(str), obj, false); err == nil {
+		return nil
+	}
 	return xcodec.UnmarshalFromString(xcodec.Text, str, obj)
 }

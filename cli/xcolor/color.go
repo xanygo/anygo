@@ -19,6 +19,9 @@ import (
 var noColor atomic.Bool
 
 func init() {
+	if os.Getenv("FORCE_COLOR") == "yes" {
+		return
+	}
 	no := os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" || !zos.IsTerminalFile(os.Stdout)
 	noColor.Store(no)
 }
@@ -37,8 +40,19 @@ func Output() io.Writer {
 	return val.(io.Writer)
 }
 
+// SetColorable 强制设置是否输出颜色
 func SetColorable(enable bool) {
 	noColor.Store(!enable)
+}
+
+// SetColorEnabled 强制设置是否输出颜色，并返回恢复颜色的方法
+// todo 更好的名字
+func SetColorEnabled(enable bool) func() {
+	old := noColor.Load()
+	noColor.Store(!enable)
+	return func() {
+		noColor.Store(old)
+	}
 }
 
 func New(ids ...Code) *Color {

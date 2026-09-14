@@ -48,6 +48,10 @@ type User struct {
 	Time5 time.Time `db:"time5,kind=milliseconds,default=fn|CURRENT_TIMESTAMP"`
 	Time6 time.Time `db:"time6,kind=microseconds,default=fn|CURRENT_TIMESTAMP"`
 
+	Time7 time.Time `db:"time7,codec=timespan,default=fn|CURRENT_TIMESTAMP"`
+	Time8 time.Time `db:"time8,codec=milliseconds,default=fn|CURRENT_TIMESTAMP"`
+	Time9 time.Time `db:"time9,codec=microseconds,default=fn|CURRENT_TIMESTAMP"`
+
 	UUID uuid.UUID `db:"uuid"`
 }
 

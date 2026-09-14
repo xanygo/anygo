@@ -233,11 +233,11 @@ func (d SQLite3) defaultFnValue(fs dbtype.ColumnSchema, fn string) string {
 	}
 	switch fs.Kind {
 	case dbtype.KindTimespan:
-		return "unixepoch()"
+		return "(unixepoch())"
 	case dbtype.KindMilliseconds:
 		return "(unixepoch('subsec') * 1000)"
 	case dbtype.KindMicroseconds:
-		return `CAST(unixepoch('subsec') * 1000000 AS INTEGER)`
+		return `(CAST(unixepoch('subsec') * 1000000 AS INTEGER))`
 	default:
 		return fn
 	}
