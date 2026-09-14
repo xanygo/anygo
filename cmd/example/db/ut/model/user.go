@@ -41,9 +41,9 @@ type User struct {
 
 	Time3 time.Time `db:"time3,codec=timespan"`
 
-	// default=fn|CURRENT_TIMESTAMP 同时支持
+	// default=fn|Now 同时支持
 	// date_time，timespan，milliseconds，microseconds 这些类型
-	Time4 time.Time `db:"time4,kind=timespan,default=fn|CURRENT_TIMESTAMP"`
+	Time4 time.Time `db:"time4,kind=date_time,default=fn|Now"`
 
 	Time5 time.Time `db:"time5,kind=milliseconds,default=fn|Now"`
 	Time6 time.Time `db:"time6,kind=microseconds,default=fn|Now"`

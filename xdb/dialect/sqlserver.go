@@ -276,6 +276,8 @@ func (d SQLServer) ColumnString(fs dbtype.ColumnSchema) string {
 			case dbtype.FnCurrentDate: // 2026-08-08
 				sb.WriteString("CAST(GETDATE() AS date)")
 			case dbtype.FnCurrentTimestamp: // 2026-08-08 08:08:08
+				sb.WriteString("SYSDATETIME()")
+			case dbtype.FnNow:
 				sb.WriteString(d.defaultFnValue(fs, dv.Value))
 			default:
 				sb.WriteString(dv.Value)

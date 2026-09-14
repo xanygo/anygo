@@ -201,7 +201,6 @@ func (d SQLite3) ColumnString(fs dbtype.ColumnSchema) string {
 		case dbtype.DefaultValueTypeNumber:
 			sb.WriteString(dv.Value)
 		case dbtype.DefaultValueTypeFn:
-
 			sb.WriteString(d.defaultFnValue(fs, dv.Value))
 		case dbtype.DefaultValueTypeString:
 			sb.WriteString(d.QuoteIdentifier(fs.Default.Value))
