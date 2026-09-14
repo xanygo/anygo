@@ -1,10 +1,12 @@
 package encoder
 
 import (
+	"fmt"
 	"time"
 	"uuid"
 
 	"github.com/xanygo/anygo/xdb/dbtype"
+	"github.com/xanygo/anygo/xtime"
 )
 
 //	type User struct{
@@ -18,14 +20,16 @@ import (
 //
 //	 OtherTime int64 `db:"other,auto=Now"`       // auto=Now -> insert/update 时，自动赋值当前时间
 //	}
-type autoFunc func(schema dbtype.ColumnSchema, val any) (any, bool)
+//
+// 返回值 (any, bool, error) -> (新值, 已替换标记, 错误)
+type autoFunc func(schema dbtype.ColumnSchema, val any) (any, bool, error)
 
 type autoFuncMap map[string]autoFunc
 
-func (ma autoFuncMap) do(schema dbtype.ColumnSchema, val any) (any, bool) {
+func (ma autoFuncMap) do(schema dbtype.ColumnSchema, val any) (any, bool, error) {
 	fn, ok := ma[schema.Auto]
 	if !ok {
-		return nil, false
+		return nil, false, nil
 	}
 	return fn(schema, val)
 }
@@ -53,140 +57,189 @@ func init() {
 	updateAutoFns["Incr"] = autoIncr
 }
 
-func autoNowTime(schema dbtype.ColumnSchema, val any) (any, bool) {
+func autoNotSupportErr(val any, auto string) error {
+	return fmt.Errorf("%T not support auto=%s", val, auto)
+}
+
+func autoNowTime(schema dbtype.ColumnSchema, val any) (any, bool, error) {
 	switch tv := val.(type) {
 	case time.Time:
 		if tv.IsZero() {
-			return time.Now(), true
+			return time.Now(), true, nil
 		}
+		return val, false, nil
+	case xtime.DateInt:
+		if tv.Time().IsZero() {
+			return xtime.DateIntOf(time.Now()), true, nil
+		}
+		return val, false, nil
+	case xtime.TimestampSecond:
+		if tv == 0 {
+			return time.Now().Unix(), true, nil
+		}
+		return val, false, nil
 	}
-	return nil, false
+	return val, false, autoNotSupportErr(val, "Now")
 }
 
 // 自增长，uint8 等类型，存储的值较小，容易溢出，故不支持
-func autoIncr(schema dbtype.ColumnSchema, val any) (any, bool) {
+func autoIncr(schema dbtype.ColumnSchema, val any) (any, bool, error) {
 	switch tv := val.(type) {
 	case int:
-		return tv + 1, true
+		return tv + 1, true, nil
 	case int64:
-		return tv + 1, true
+		return tv + 1, true, nil
 	case uint64:
-		return tv + 1, true
+		return tv + 1, true, nil
 	case float64:
-		return tv + 1, true
+		return tv + 1, true, nil
 	case float32:
-		return tv + 1, true
+		return tv + 1, true, nil
 	default:
-		return nil, false
+		return nil, false, autoNotSupportErr(val, "Incr")
 	}
 }
 
-func autoCreatedTimeUnix(schema dbtype.ColumnSchema, val any) (any, bool) {
+func autoCreatedTimeUnix(schema dbtype.ColumnSchema, val any) (any, bool, error) {
 	switch tv := val.(type) {
 	case time.Time:
 		if tv.IsZero() {
-			return time.Now(), true
+			return time.Now(), true, nil
 		}
+		return val, false, nil
 	case int64:
 		if tv == 0 {
-			return time.Now().Unix(), true
+			return time.Now().Unix(), true, nil
 		}
+		return val, false, nil
+	case xtime.DateInt:
+		if tv.Time().IsZero() {
+			return xtime.DateIntOf(time.Now()), true, nil
+		}
+		return val, false, nil
+	case xtime.TimestampSecond:
+		if tv == 0 {
+			return time.Now().Unix(), true, nil
+		}
+		return val, false, nil
+	default:
+		return val, false, autoNotSupportErr(val, "Created")
 	}
-	return nil, false
 }
 
-func autoCreatedTimeNano(schema dbtype.ColumnSchema, val any) (any, bool) {
+func autoCreatedTimeNano(schema dbtype.ColumnSchema, val any) (any, bool, error) {
 	switch tv := val.(type) {
 	case time.Time:
 		if tv.IsZero() {
-			return time.Now(), true
+			return time.Now(), true, nil
 		}
+		return val, false, nil
 	case int64:
 		if tv == 0 {
-			return time.Now().UnixNano(), true
+			return time.Now().UnixNano(), true, nil
 		}
+		return tv, false, nil
+	default:
+		return nil, false, autoNotSupportErr(val, "CreatedNano")
 	}
-	return nil, false
 }
 
-func autoCreatedTimeMS(schema dbtype.ColumnSchema, val any) (any, bool) {
+func autoCreatedTimeMS(schema dbtype.ColumnSchema, val any) (any, bool, error) {
 	switch tv := val.(type) {
 	case time.Time:
 		if tv.IsZero() {
-			return time.Now(), true
+			return time.Now(), true, nil
 		}
+		return val, false, nil
 	case int64:
 		if tv == 0 {
-			return time.Now().UnixMilli(), true
+			return time.Now().UnixMilli(), true, nil
 		}
+		return val, false, nil
+	default:
+		return nil, false, autoNotSupportErr(val, "CreatedMS")
 	}
-	return nil, false
 }
 
 var uuidZero = uuid.Nil()
 
-func autoCreatedUUID4(schema dbtype.ColumnSchema, val any) (any, bool) {
+func autoCreatedUUID4(schema dbtype.ColumnSchema, val any) (any, bool, error) {
 	switch tv := val.(type) {
 	case uuid.UUID:
 		if tv == uuidZero {
-			return uuid.NewV4(), true
+			return uuid.NewV4(), true, nil
 		}
+		return val, false, nil
 	case [16]byte:
 		if tv == uuidZero {
-			return uuid.NewV4(), true
+			return uuid.NewV4(), true, nil
 		}
+		return val, false, nil
 	case string:
 		if tv == "" {
-			return uuid.NewV4().String(), true
+			return uuid.NewV4().String(), true, nil
 		}
+		return val, false, nil
+	default:
+		return nil, false, autoNotSupportErr(val, "UUID4")
 	}
-	return nil, false
 }
 
-func autoCreatedUUID7(schema dbtype.ColumnSchema, val any) (any, bool) {
+func autoCreatedUUID7(schema dbtype.ColumnSchema, val any) (any, bool, error) {
 	switch tv := val.(type) {
 	case uuid.UUID:
 		if tv == uuidZero {
-			return uuid.NewV7(), true
+			return uuid.NewV7(), true, nil
 		}
+		return val, false, nil
 	case [16]byte:
 		if tv == uuidZero {
-			return uuid.NewV7(), true
+			return uuid.NewV7(), true, nil
 		}
+		return val, false, nil
 	case string:
 		if tv == "" {
-			return uuid.NewV7().String(), true
+			return uuid.NewV7().String(), true, nil
 		}
+		return val, false, nil
+	default:
+		return nil, false, autoNotSupportErr(val, "UUID7")
 	}
-	return nil, false
 }
 
-func autoUpdatedTimeUnix(schema dbtype.ColumnSchema, val any) (any, bool) {
+func autoUpdatedTimeUnix(schema dbtype.ColumnSchema, val any) (any, bool, error) {
 	switch val.(type) {
 	case time.Time:
-		return time.Now(), true
+		return time.Now(), true, nil
 	case int64:
-		return time.Now().Unix(), true
+		return time.Now().Unix(), true, nil
+	case xtime.DateInt:
+		return xtime.DateIntOf(time.Now()), true, nil
+	case xtime.TimestampSecond:
+		return time.Now().Unix(), true, nil
+	default:
+		return nil, false, autoNotSupportErr(val, "Updated")
 	}
-	return nil, false
 }
 
-func autoUpdatedTimeNano(schema dbtype.ColumnSchema, val any) (any, bool) {
+func autoUpdatedTimeNano(schema dbtype.ColumnSchema, val any) (any, bool, error) {
 	switch val.(type) {
 	case time.Time:
-		return time.Now(), true
+		return time.Now(), true, nil
 	case int64:
-		return time.Now().UnixNano(), true
+		return time.Now().UnixNano(), true, nil
+	default:
+		return nil, false, autoNotSupportErr(val, "UpdatedNano")
 	}
-	return nil, false
 }
 
-func autoUpdatedTimeMS(schema dbtype.ColumnSchema, val any) (any, bool) {
+func autoUpdatedTimeMS(schema dbtype.ColumnSchema, val any) (any, bool, error) {
 	switch val.(type) {
 	case time.Time:
-		return time.Now(), true
+		return time.Now(), true, nil
 	case int64:
-		return time.Now().UnixNano(), true
+		return time.Now().UnixNano(), true, nil
+	default:
+		return nil, false, autoNotSupportErr(val, "UpdatedMS")
 	}
-	return nil, false
 }

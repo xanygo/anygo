@@ -45,12 +45,12 @@ type User struct {
 	// date_time，timespan，milliseconds，microseconds 这些类型
 	Time4 time.Time `db:"time4,kind=timespan,default=fn|CURRENT_TIMESTAMP"`
 
-	Time5 time.Time `db:"time5,kind=milliseconds,default=fn|CURRENT_TIMESTAMP"`
-	Time6 time.Time `db:"time6,kind=microseconds,default=fn|CURRENT_TIMESTAMP"`
+	Time5 time.Time `db:"time5,kind=milliseconds,default=fn|Now"`
+	Time6 time.Time `db:"time6,kind=microseconds,default=fn|Now"`
 
-	Time7 time.Time `db:"time7,codec=timespan,default=fn|CURRENT_TIMESTAMP"`
-	Time8 time.Time `db:"time8,codec=milliseconds,default=fn|CURRENT_TIMESTAMP"`
-	Time9 time.Time `db:"time9,codec=microseconds,default=fn|CURRENT_TIMESTAMP"`
+	Time7 time.Time `db:"time7,codec=timespan,default=fn|Now"`
+	Time8 time.Time `db:"time8,codec=milliseconds,default=fn|Now"`
+	Time9 time.Time `db:"time9,codec=microseconds,default=fn|Now"`
 
 	UUID uuid.UUID `db:"uuid"`
 }

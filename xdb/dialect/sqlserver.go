@@ -273,9 +273,9 @@ func (d SQLServer) ColumnString(fs dbtype.ColumnSchema) string {
 			sb.WriteString(dv.Value)
 		case dbtype.DefaultValueTypeFn:
 			switch dv.Value {
-			case dbtype.CurrentDate: // 2026-08-08
+			case dbtype.FnCurrentDate: // 2026-08-08
 				sb.WriteString("CAST(GETDATE() AS date)")
-			case dbtype.CurrentTimestamp: // 2026-08-08 08:08:08
+			case dbtype.FnCurrentTimestamp: // 2026-08-08 08:08:08
 				sb.WriteString(d.defaultFnValue(fs, dv.Value))
 			default:
 				sb.WriteString(dv.Value)
@@ -308,10 +308,14 @@ func (d SQLServer) ColumnString(fs dbtype.ColumnSchema) string {
 
 func (d SQLServer) defaultFnValue(fs dbtype.ColumnSchema, fn string) string {
 	// pgx 默认支持  CURRENT_DATE (2026-08-08),CURRENT_TIMESTAMP (2026-08-08 08:08:08)
-	if fn != dbtype.CurrentTimestamp {
+	if fn != dbtype.FnNow {
 		return fn
 	}
 	switch fs.Kind {
+	case dbtype.KindDateTime:
+		return "CURRENT_TIMESTAMP"
+	case dbtype.KindDate:
+		return "CURRENT_DATE"
 	case dbtype.KindTimespan:
 		return `DATEDIFF_BIG(SECOND, '19700101', SYSUTCDATETIME())`
 	case dbtype.KindMilliseconds:

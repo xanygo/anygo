@@ -110,18 +110,19 @@ uniqueIndex 示例：
 | Fn                | 说明      | Go 类型     | 数据库中的值              |
 |-------------------|---------|-----------|---------------------| 
 | CURRENT_DATE      | 当前日期    | time.Time | 2026-08-08          |
-| CURRENT_TIMESTAMP | 当前日期+时间 | time.Time | 2026-08-08 08:08:08 (还支持其他值) |
+| CURRENT_TIMESTAMP | 当前日期+时间 | time.Time | 2026-08-08 08:08:08|
+| Now | 当前时间 | time.Time | bigint: Time.Unix() / Time.UnixMilli() / Time.UnixMicro()|
 
-默认值 `CURRENT_DATE` 和 `CURRENT_TIMESTAMP` 会转换为数据库支持的方言，除此之外其他的值会直接传给数据库。
+默认值 `CURRENT_DATE` 、 `CURRENT_TIMESTAMP` 、`Now` 会转换为数据库支持的方言，除此之外其他的值会直接传给数据库。
 
 下列的 Time 类型，也可以使用 `CURRENT_TIMESTAMP` 关键字，在使用 `Migrate`功能生成 Table Schema 时，会自动转换为对应方言。
 ```go
 type User struct{
-  Time1 time.Time `db:"time1,default=fn|CURRENT_TIMESTAMP"`                   // 数据库使用 bigint，存储 Time.UnixMilli()
-  Time2 time.Time `db:"time2,codec=date_time,default=fn|CURRENT_TIMESTAMP"`   // 数据库使用方言，如 mysql-DateTime, 存储 2025-11-11 13:00:00
-	Time3 time.Time `db:"time3,codec=timespan,default=fn|CURRENT_TIMESTAMP"`     // 数据库使用bigint, 存储 Time.Unix()
-	Time4 time.Time `db:"time4,codec=milliseconds,default=fn|CURRENT_TIMESTAMP"` // 数据库使用bigint, 存储 Time.UnixMilli()
-	Time5 time.Time `db:"time5,codec=microseconds,default=fn|CURRENT_TIMESTAMP"` // 数据库使用bigint, 存储 Time.UnixMicro()
+  Time1 time.Time `db:"time1,default=fn|CURRENT_TIMESTAMP"`      // 数据库使用 bigint，存储 Time.UnixMilli()
+  Time2 time.Time `db:"time2,codec=date_time,default=fn|Now"`    // 数据库使用方言，如 mysql:DateTime, 存储 2025-11-11 13:00:00
+	Time3 time.Time `db:"time3,codec=timespan,default=fn|Now"`     // 数据库使用 bigint, 存储 Time.Unix()
+	Time4 time.Time `db:"time4,codec=milliseconds,default=fn|Now"` // 数据库使用 bigint, 存储 Time.UnixMilli()
+	Time5 time.Time `db:"time5,codec=microseconds,default=fn|Now"` // 数据库使用 bigint, 存储 Time.UnixMicro()
 }
 ```
 
@@ -169,6 +170,8 @@ Scores       []int     `db:"scores,codec=auto_json"`
 |-------------|-----------|-----------------------|
 | Created     | time.Time | time.Now()            |
 | Created     | int64     | time.Now().Unix()     |
+| Created     | xtime.DateInt    | time.Now()     |
+| Created     | xtime.TimestampSecond    | time.Now()     |
 | CreatedNano | time.Time | time.Now()            |
 | CreatedNano | int64     | time.Now().UnixNano() |
 | CreatedMS | time.Time | time.Now()            |
@@ -191,11 +194,15 @@ Scores       []int     `db:"scores,codec=auto_json"`
 |-------------|----------------------------------|-----------------------|
 | Updated     | time.Time                        | time.Now()            |
 | Updated     | int64                            | time.Now().Unix()     |
+| Updated     | xtime.DateInt                    | time.Now()     |
+| Updated     | xtime.TimestampSecond                    | time.Now()     |
 | UpdatedNano | time.Time                        | time.Now()            |
 | UpdatedNano | int64                            | time.Now().UnixNano() |
 | UpdatedMS | time.Time                        | time.Now()            |
 | UpdatedMS | int64                            | time.Now().UnixMilli() |
 | Now         | time.Time                        | time.Now()            |
+| Now     | xtime.DateInt    | time.Now()     |
+| Now     | xtime.TimestampSecond    | time.Now()     |
 | Incr        | int/int64/uint64/float64/float32 | value + 1             |
 
 

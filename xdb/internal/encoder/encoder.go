@@ -199,13 +199,27 @@ func (e Encoder[T]) rangeStructFields(v reflect.Value, fn func(fieldSchema dbtyp
 func (e Encoder[T]) encodeStructFieldValue(schema dbtype.ColumnSchema, val any) (any, error) {
 	if schema.Auto != "" {
 		if e.Action.IsInsert() {
-			if nv, ok := insertAutoFns.do(schema, val); ok {
+			nv, ok, err := insertAutoFns.do(schema, val)
+			if err != nil {
+				return nil, err
+			}
+			if ok {
 				val = nv
-			} else if nv, ok = updateAutoFns.do(schema, val); ok {
-				val = nv
+			} else {
+				nv, ok, err = updateAutoFns.do(schema, val)
+				if err != nil {
+					return nil, err
+				}
+				if ok {
+					val = nv
+				}
 			}
 		} else if e.Action.IsUpdate() {
-			if nv, ok := updateAutoFns.do(schema, val); ok {
+			nv, ok, err := updateAutoFns.do(schema, val)
+			if err != nil {
+				return nil, err
+			}
+			if ok {
 				val = nv
 			}
 		}

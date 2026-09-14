@@ -12,6 +12,7 @@ import (
 	"github.com/xanygo/anygo/xdb/dialect"
 	"github.com/xanygo/anygo/xdb/internal/encoder"
 	"github.com/xanygo/anygo/xt"
+	"github.com/xanygo/anygo/xtime"
 )
 
 type testUser1 struct {
@@ -316,5 +317,56 @@ func TestEncoder_EncodeArgs(t *testing.T) {
 		got, err := enc.EncodeArgs(1, nil)
 		xt.Error(t, err)
 		xt.Empty(t, got)
+	})
+}
+
+type model1 struct {
+	A time.Time     `db:"a,auto=Created"`
+	B time.Time     `db:"b,auto=Now"`
+	C xtime.DateInt `db:"c,auto=Now"`
+}
+
+type model2 struct {
+	A string `db:"a,auto=Created"` // 错误，string 类型不支持 auto=Created
+}
+
+func TestEncodeAuto(t *testing.T) {
+	now := time.Now()
+	t.Run("case 1", func(t *testing.T) {
+		schema, err := dbschema.Schema(dialect.SQLite3{}, model1{})
+		xt.NoError(t, err)
+		enc := encoder.Encoder[model1]{
+			Schema:  schema,
+			Action:  encoder.ActionInsert,
+			Dialect: dialect.SQLite3{},
+		}
+		data, err := enc.Encode(model1{})
+		xt.NoError(t, err)
+		xt.Len(t, data, 3)
+
+		a, ok := data["a"].(int64)
+		xt.True(t, ok)
+		xt.GreaterOrEqual(t, a, now.UnixMilli())
+
+		b, ok := data["b"].(int64)
+		xt.True(t, ok)
+		xt.GreaterOrEqual(t, b, now.UnixMilli())
+
+		c, ok := data["c"].(xtime.DateInt)
+		xt.True(t, ok)
+		xt.GreaterOrEqual(t, c, xtime.DateIntOf(now))
+	})
+
+	t.Run("case 2", func(t *testing.T) {
+		schema, err := dbschema.Schema(dialect.SQLite3{}, model2{})
+		xt.NoError(t, err)
+		enc := encoder.Encoder[model2]{
+			Schema:  schema,
+			Action:  encoder.ActionInsert,
+			Dialect: dialect.SQLite3{},
+		}
+		data, err := enc.Encode(model2{})
+		xt.Error(t, err)
+		xt.Empty(t, data)
 	})
 }
