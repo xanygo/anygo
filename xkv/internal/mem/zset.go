@@ -2,6 +2,7 @@ package mem
 
 import (
 	"context"
+	"maps"
 	"slices"
 	"sync"
 
@@ -177,10 +178,14 @@ func (mz *zsetValue) PopMin(count int) (members []string, scores []float64) {
 }
 
 func (mz *zsetValue) Range(fn func(member string, score float64) bool) {
+	// 拷贝一份，已支持在 fn 里 Add 或者 Remove
 	mz.mux.Lock()
-	defer mz.mux.Unlock()
-	for _, member := range mz.Members {
-		score := mz.Scores[member]
+	members := slices.Clone(mz.Members)
+	scores := maps.Clone(mz.Scores)
+	mz.mux.Unlock()
+
+	for _, member := range members {
+		score := scores[member]
 		if !fn(member, score) {
 			return
 		}
@@ -196,17 +201,22 @@ type ZSet struct {
 	Key  string
 }
 
-func (m *ZSet) withLocked(fn func(*zsetValue) (*zsetValue, operate, error)) error {
-	return withLocked[*zsetValue](m.Base, m.Key, internal.DataTypeZSet, func(value *zsetValue) (*zsetValue, operate, error) {
+func (m *ZSet) withWriteLocked(fn func(*zsetValue) (*zsetValue, operate, error)) error {
+	return withWriteLocked(m.Base, m.Key, internal.DataTypeZSet, func(value *zsetValue) (*zsetValue, operate, error) {
 		if value == nil {
 			value = &zsetValue{}
 		}
 		return fn(value)
 	}, zSetValueEmpty)
 }
+func (m *ZSet) withReadLocked(fn func(*zsetValue) error) error {
+	return withReadLocked(m.Base, m.Key, internal.DataTypeZSet, func(value *zsetValue) error {
+		return fn(value)
+	})
+}
 
 func (m *ZSet) ZAdd(ctx context.Context, score float64, member string) error {
-	return m.withLocked(func(zv *zsetValue) (*zsetValue, operate, error) {
+	return m.withWriteLocked(func(zv *zsetValue) (*zsetValue, operate, error) {
 		zv.Add(score, member)
 		return zv, opWrite, nil
 	})
@@ -216,7 +226,7 @@ func (m *ZSet) ZMAdd(ctx context.Context, items ...xkv.ZItem[string]) error {
 	if len(items) == 0 {
 		return nil
 	}
-	return m.withLocked(func(zv *zsetValue) (*zsetValue, operate, error) {
+	return m.withWriteLocked(func(zv *zsetValue) (*zsetValue, operate, error) {
 		for _, item := range items {
 			zv.Add(item.Score, item.Member)
 		}
@@ -227,16 +237,18 @@ func (m *ZSet) ZMAdd(ctx context.Context, items ...xkv.ZItem[string]) error {
 func (m *ZSet) ZScore(ctx context.Context, member string) (float64, bool, error) {
 	var score float64
 	var found bool
-	err := m.withLocked(func(zv *zsetValue) (*zsetValue, operate, error) {
-		score, found = zv.Score(member)
-		return zv, opSkip, nil
+	err := m.withReadLocked(func(zv *zsetValue) error {
+		if zv != nil {
+			score, found = zv.Score(member)
+		}
+		return nil
 	})
 	return score, found, err
 }
 
 func (m *ZSet) ZIncrBy(ctx context.Context, incr float64, member string) (float64, error) {
 	var score float64
-	err := m.withLocked(func(zv *zsetValue) (*zsetValue, operate, error) {
+	err := m.withWriteLocked(func(zv *zsetValue) (*zsetValue, operate, error) {
 		score = zv.IncrBy(member, incr)
 		return zv, opWrite, nil
 	})
@@ -248,9 +260,11 @@ func (m *ZSet) ZCount(ctx context.Context, min, max string) (num int64, err erro
 	if err != nil {
 		return 0, err
 	}
-	err = m.withLocked(func(zv *zsetValue) (*zsetValue, operate, error) {
-		num = zv.Count(match)
-		return zv, opSkip, nil
+	err = m.withReadLocked(func(zv *zsetValue) error {
+		if zv != nil {
+			num = zv.Count(match)
+		}
+		return nil
 	})
 	return num, err
 }
@@ -261,9 +275,9 @@ func (m *ZSet) ZLen(ctx context.Context) (num int64, err error) {
 
 func (m *ZSet) ZRange(ctx context.Context, fn func(member string, score float64) bool) error {
 	var value *zsetValue
-	err := m.withLocked(func(zv *zsetValue) (*zsetValue, operate, error) {
+	err := m.withReadLocked(func(zv *zsetValue) error {
 		value = zv
-		return zv, opSkip, nil
+		return nil
 	})
 	if err != nil || value == nil {
 		return err
@@ -286,9 +300,11 @@ func (m *ZSet) ZRangeByScore(ctx context.Context, min string, max string, fn fun
 }
 
 func (m *ZSet) ZRank(ctx context.Context, member string) (index int64, score float64, err error) {
-	err = m.withLocked(func(zv *zsetValue) (*zsetValue, operate, error) {
-		index, score = zv.Rank(member)
-		return zv, opSkip, nil
+	err = m.withReadLocked(func(zv *zsetValue) error {
+		if zv != nil {
+			index, score = zv.Rank(member)
+		}
+		return nil
 	})
 	return index, score, err
 }
@@ -297,7 +313,7 @@ func (m *ZSet) ZRem(ctx context.Context, members ...string) error {
 	if len(members) == 0 {
 		return nil
 	}
-	return m.withLocked(func(value *zsetValue) (*zsetValue, operate, error) {
+	return m.withWriteLocked(func(value *zsetValue) (*zsetValue, operate, error) {
 		var op operate
 		for _, member := range members {
 			if value.Remove(member) {
@@ -313,7 +329,7 @@ func (m *ZSet) ZRemRangeByScore(ctx context.Context, min, max string) (num int64
 	if err != nil {
 		return 0, err
 	}
-	err = m.withLocked(func(zv *zsetValue) (*zsetValue, operate, error) {
+	err = m.withWriteLocked(func(zv *zsetValue) (*zsetValue, operate, error) {
 		num = zv.RemoveRange(match)
 		if num > 0 {
 			return zv, opWrite, nil
@@ -324,7 +340,7 @@ func (m *ZSet) ZRemRangeByScore(ctx context.Context, min, max string) (num int64
 }
 
 func (m *ZSet) ZPopMax(ctx context.Context, count int) (members []string, scores []float64, err error) {
-	err = m.withLocked(func(value *zsetValue) (*zsetValue, operate, error) {
+	err = m.withWriteLocked(func(value *zsetValue) (*zsetValue, operate, error) {
 		members, scores = value.PopMax(count)
 		return value, opWrite, nil
 	})
@@ -332,7 +348,7 @@ func (m *ZSet) ZPopMax(ctx context.Context, count int) (members []string, scores
 }
 
 func (m *ZSet) ZPopMin(ctx context.Context, count int) (members []string, scores []float64, err error) {
-	err = m.withLocked(func(value *zsetValue) (*zsetValue, operate, error) {
+	err = m.withWriteLocked(func(value *zsetValue) (*zsetValue, operate, error) {
 		members, scores = value.PopMin(count)
 		return value, opWrite, nil
 	})

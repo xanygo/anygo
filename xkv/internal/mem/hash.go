@@ -17,8 +17,8 @@ func strMapEmpty(d map[string]string) bool {
 	return len(d) == 0
 }
 
-func (m *Hash) withLocked(fn func(map[string]string) (map[string]string, operate, error)) error {
-	return withLocked[map[string]string](m.Base, m.Key, internal.DataTypeHash, func(m map[string]string) (map[string]string, operate, error) {
+func (m *Hash) withWriteLocked(fn func(map[string]string) (map[string]string, operate, error)) error {
+	return withWriteLocked[map[string]string](m.Base, m.Key, internal.DataTypeHash, func(m map[string]string) (map[string]string, operate, error) {
 		if m == nil {
 			m = make(map[string]string)
 		}
@@ -26,15 +26,21 @@ func (m *Hash) withLocked(fn func(map[string]string) (map[string]string, operate
 	}, strMapEmpty)
 }
 
+func (m *Hash) withReadLocked(fn func(map[string]string) error) error {
+	return withReadLocked[map[string]string](m.Base, m.Key, internal.DataTypeHash, func(m map[string]string) error {
+		return fn(m)
+	})
+}
+
 func (m *Hash) HSet(ctx context.Context, field string, value string) error {
-	return m.withLocked(func(m map[string]string) (map[string]string, operate, error) {
+	return m.withWriteLocked(func(m map[string]string) (map[string]string, operate, error) {
 		m[field] = value
 		return m, opWrite, nil
 	})
 }
 
 func (m *Hash) HMSet(ctx context.Context, values map[string]string) error {
-	return m.withLocked(func(m map[string]string) (map[string]string, operate, error) {
+	return m.withWriteLocked(func(m map[string]string) (map[string]string, operate, error) {
 		maps.Copy(m, values)
 		return m, opWrite, nil
 	})
@@ -43,9 +49,11 @@ func (m *Hash) HMSet(ctx context.Context, values map[string]string) error {
 func (m *Hash) HGet(ctx context.Context, field string) (string, bool, error) {
 	var value string
 	var found bool
-	err := m.withLocked(func(m map[string]string) (map[string]string, operate, error) {
-		value, found = m[field]
-		return m, opSkip, nil
+	err := m.withReadLocked(func(m map[string]string) error {
+		if len(m) > 0 {
+			value, found = m[field]
+		}
+		return nil
 	})
 	return value, found, err
 }
@@ -55,19 +63,22 @@ func (m *Hash) HMGet(ctx context.Context, fields ...string) (result map[string]s
 		return nil, nil
 	}
 	result = make(map[string]string, len(fields))
-	err = m.withLocked(func(m map[string]string) (map[string]string, operate, error) {
+	err = m.withReadLocked(func(m map[string]string) error {
+		if len(m) == 0 {
+			return nil
+		}
 		for _, field := range fields {
 			if value, found := m[field]; found {
 				result[field] = value
 			}
 		}
-		return m, opSkip, nil
+		return nil
 	})
 	return result, err
 }
 
 func (m *Hash) HDel(ctx context.Context, fields ...string) error {
-	return m.withLocked(func(m map[string]string) (map[string]string, operate, error) {
+	return m.withWriteLocked(func(m map[string]string) (map[string]string, operate, error) {
 		if len(m) == 0 {
 			return m, opSkip, nil
 		}
@@ -97,23 +108,25 @@ func (m *Hash) HRange(ctx context.Context, fn func(field string, value string) b
 
 func (m *Hash) HGetAll(ctx context.Context) (map[string]string, error) {
 	var result map[string]string
-	err := m.withLocked(func(m map[string]string) (map[string]string, operate, error) {
+	err := m.withReadLocked(func(m map[string]string) error {
 		result = maps.Clone(m)
-		return m, opSkip, nil
+		return nil
 	})
 	return result, err
 }
 
 func (m *Hash) HExists(ctx context.Context, field string) (found bool, err error) {
-	err = m.withLocked(func(m map[string]string) (map[string]string, operate, error) {
-		_, found = m[field]
-		return m, opSkip, nil
+	err = m.withReadLocked(func(m map[string]string) error {
+		if len(m) > 0 {
+			_, found = m[field]
+		}
+		return nil
 	})
 	return found, err
 }
 
 func (m *Hash) HIncrBy(ctx context.Context, field string, increment int64) (num int64, err error) {
-	err = m.withLocked(func(m map[string]string) (map[string]string, operate, error) {
+	err = m.withWriteLocked(func(m map[string]string) (map[string]string, operate, error) {
 		value, found := m[field]
 		if !found {
 			num = increment
@@ -132,9 +145,9 @@ func (m *Hash) HIncrBy(ctx context.Context, field string, increment int64) (num 
 }
 
 func (m *Hash) HLen(ctx context.Context) (num int64, err error) {
-	err = m.withLocked(func(m map[string]string) (map[string]string, operate, error) {
+	err = m.withReadLocked(func(m map[string]string) error {
 		num = int64(len(m))
-		return m, opSkip, nil
+		return nil
 	})
 	return num, err
 }

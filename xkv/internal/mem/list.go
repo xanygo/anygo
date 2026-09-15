@@ -17,13 +17,17 @@ func strSliceEmpty(list []string) bool {
 	return len(list) == 0
 }
 
-func (m *List) withLocked(fn func([]string) ([]string, operate, error)) error {
-	return withLocked[[]string](m.Base, m.Key, internal.DataTypeList, fn, strSliceEmpty)
+func (m *List) withWriteLocked(fn func([]string) ([]string, operate, error)) error {
+	return withWriteLocked[[]string](m.Base, m.Key, internal.DataTypeList, fn, strSliceEmpty)
+}
+
+func (m *List) withReadLocked(fn func([]string) error) error {
+	return withReadLocked[[]string](m.Base, m.Key, internal.DataTypeList, fn)
 }
 
 func (m *List) LPush(ctx context.Context, values ...string) (int64, error) {
 	var num int64
-	err := m.withLocked(func(list []string) ([]string, operate, error) {
+	err := m.withWriteLocked(func(list []string) ([]string, operate, error) {
 		ret := slices.Insert(list, 0, values...)
 		num = int64(len(ret))
 		return ret, opWrite, nil
@@ -33,7 +37,7 @@ func (m *List) LPush(ctx context.Context, values ...string) (int64, error) {
 
 func (m *List) RPush(ctx context.Context, values ...string) (int64, error) {
 	var num int64
-	err := m.withLocked(func(list []string) ([]string, operate, error) {
+	err := m.withWriteLocked(func(list []string) ([]string, operate, error) {
 		ret := append(list, values...)
 		num = int64(len(ret))
 		return ret, opWrite, nil
@@ -44,7 +48,7 @@ func (m *List) RPush(ctx context.Context, values ...string) (int64, error) {
 func (m *List) LPop(ctx context.Context) (string, bool, error) {
 	var value string
 	var found bool
-	err := m.withLocked(func(list []string) ([]string, operate, error) {
+	err := m.withWriteLocked(func(list []string) ([]string, operate, error) {
 		if len(list) == 0 {
 			return nil, opSkip, nil
 		}
@@ -56,7 +60,7 @@ func (m *List) LPop(ctx context.Context) (string, bool, error) {
 }
 
 func (m *List) LPopN(ctx context.Context, count int) (result []string, err error) {
-	err = m.withLocked(func(list []string) ([]string, operate, error) {
+	err = m.withWriteLocked(func(list []string) ([]string, operate, error) {
 		if len(list) == 0 {
 			return nil, opSkip, nil
 		}
@@ -70,7 +74,7 @@ func (m *List) LPopN(ctx context.Context, count int) (result []string, err error
 func (m *List) RPop(ctx context.Context) (string, bool, error) {
 	var value string
 	var found bool
-	err := m.withLocked(func(list []string) ([]string, operate, error) {
+	err := m.withWriteLocked(func(list []string) ([]string, operate, error) {
 		if len(list) == 0 {
 			return nil, opSkip, nil
 		}
@@ -82,7 +86,7 @@ func (m *List) RPop(ctx context.Context) (string, bool, error) {
 }
 
 func (m *List) RPopN(ctx context.Context, count int) (result []string, err error) {
-	err = m.withLocked(func(list []string) ([]string, operate, error) {
+	err = m.withWriteLocked(func(list []string) ([]string, operate, error) {
 		if len(list) == 0 {
 			return nil, opSkip, nil
 		}
@@ -95,7 +99,7 @@ func (m *List) RPopN(ctx context.Context, count int) (result []string, err error
 
 func (m *List) LRem(ctx context.Context, count int64, element string) (int64, error) {
 	var deleted int64
-	err := m.withLocked(func(list []string) ([]string, operate, error) {
+	err := m.withWriteLocked(func(list []string) ([]string, operate, error) {
 		var op operate
 		if count == 0 { // 移除所有等于 element 的元素。
 			list = slices.DeleteFunc(list, func(s string) bool {
@@ -138,9 +142,9 @@ func (m *List) Range(ctx context.Context, fn func(val string) bool) error {
 
 func (m *List) LRange(ctx context.Context, fn func(val string) bool) error {
 	var values []string
-	err := m.withLocked(func(list []string) ([]string, operate, error) {
+	err := m.withReadLocked(func(list []string) error {
 		values = slices.Clone(list)
-		return list, opSkip, nil
+		return nil
 	})
 	if err != nil {
 		return err
@@ -158,9 +162,9 @@ func (m *List) LRange(ctx context.Context, fn func(val string) bool) error {
 
 func (m *List) RRange(ctx context.Context, fn func(val string) bool) error {
 	var values []string
-	err := m.withLocked(func(list []string) ([]string, operate, error) {
+	err := m.withReadLocked(func(list []string) error {
 		values = slices.Clone(list)
-		return list, opSkip, nil
+		return nil
 	})
 	if err != nil {
 		return err
@@ -177,9 +181,9 @@ func (m *List) RRange(ctx context.Context, fn func(val string) bool) error {
 }
 
 func (m *List) LLen(ctx context.Context) (num int64, err error) {
-	err = m.withLocked(func(list []string) ([]string, operate, error) {
+	err = m.withReadLocked(func(list []string) error {
 		num = int64(len(list))
-		return list, opSkip, nil
+		return nil
 	})
 	return num, err
 }

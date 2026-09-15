@@ -14,13 +14,17 @@ type Set struct {
 	Key  string
 }
 
-func (m *Set) withLocked(fn func([]string) ([]string, operate, error)) error {
-	return withLocked[[]string](m.Base, m.Key, internal.DataTypeZSet, fn, strSliceEmpty)
+func (m *Set) withWriteLocked(fn func([]string) ([]string, operate, error)) error {
+	return withWriteLocked[[]string](m.Base, m.Key, internal.DataTypeZSet, fn, strSliceEmpty)
+}
+
+func (m *Set) withReadLocked(fn func([]string) error) error {
+	return withReadLocked[[]string](m.Base, m.Key, internal.DataTypeZSet, fn)
 }
 
 func (m *Set) SAdd(ctx context.Context, members ...string) (int64, error) {
 	var added int64
-	err := m.withLocked(func(list []string) ([]string, operate, error) {
+	err := m.withWriteLocked(func(list []string) ([]string, operate, error) {
 		var op operate
 		for _, member := range members {
 			if slices.Contains(list, member) {
@@ -36,7 +40,7 @@ func (m *Set) SAdd(ctx context.Context, members ...string) (int64, error) {
 }
 
 func (m *Set) SRem(ctx context.Context, members ...string) error {
-	return m.withLocked(func(list []string) ([]string, operate, error) {
+	return m.withWriteLocked(func(list []string) ([]string, operate, error) {
 		var op operate
 		for _, member := range members {
 			if !slices.Contains(list, member) {
@@ -64,43 +68,46 @@ func (m *Set) SRange(ctx context.Context, fn func(val string) bool) error {
 
 func (m *Set) SMembers(ctx context.Context) ([]string, error) {
 	var list []string
-	err := m.withLocked(func(values []string) ([]string, operate, error) {
+	err := m.withReadLocked(func(values []string) error {
 		list = slices.Clone(values)
-		return list, opSkip, nil
+		return nil
 	})
 	return list, err
 }
 
 func (m *Set) SCard(ctx context.Context) (int64, error) {
 	var num int64
-	err := m.withLocked(func(values []string) ([]string, operate, error) {
+	err := m.withReadLocked(func(values []string) error {
 		num = int64(len(values))
-		return values, opSkip, nil
+		return nil
 	})
 	return num, err
 }
 
 func (m *Set) SIsMember(ctx context.Context, member string) (ok bool, err error) {
-	err = m.withLocked(func(values []string) ([]string, operate, error) {
+	err = m.withReadLocked(func(values []string) error {
 		ok = slices.Contains(values, member)
-		return values, opSkip, nil
+		return nil
 	})
 	return ok, err
 }
 
 func (m *Set) SMIsMember(ctx context.Context, members []string) (ok []bool, err error) {
 	ok = make([]bool, len(members))
-	err = m.withLocked(func(values []string) ([]string, operate, error) {
+	err = m.withReadLocked(func(values []string) error {
+		if len(values) == 0 {
+			return nil
+		}
 		for i := range members {
 			ok[i] = slices.Contains(values, members[i])
 		}
-		return values, opSkip, nil
+		return nil
 	})
 	return ok, err
 }
 
 func (m *Set) SPop(ctx context.Context) (v string, found bool, err error) {
-	err = m.withLocked(func(values []string) ([]string, operate, error) {
+	err = m.withWriteLocked(func(values []string) ([]string, operate, error) {
 		if len(values) == 0 {
 			return nil, opSkip, nil
 		}
@@ -116,7 +123,7 @@ func (m *Set) SPopN(ctx context.Context, count int) (result []string, err error)
 	if count == 0 {
 		return nil, nil
 	}
-	err = m.withLocked(func(values []string) ([]string, operate, error) {
+	err = m.withWriteLocked(func(values []string) ([]string, operate, error) {
 		if len(values) == 0 {
 			return nil, opSkip, nil
 		}
@@ -127,29 +134,29 @@ func (m *Set) SPopN(ctx context.Context, count int) (result []string, err error)
 }
 
 func (m *Set) SRandMember(ctx context.Context) (v string, found bool, err error) {
-	err = m.withLocked(func(values []string) ([]string, operate, error) {
+	err = m.withReadLocked(func(values []string) error {
 		if len(values) == 0 {
-			return nil, opSkip, nil
+			return nil
 		}
 		index := rand.IntN(len(values))
 		v = values[index]
 		found = true
-		return values, opSkip, nil
+		return nil
 	})
 	return v, found, err
 }
 
 func (m *Set) SRandMemberN(ctx context.Context, count int) (result []string, err error) {
-	err = m.withLocked(func(values []string) ([]string, operate, error) {
+	err = m.withReadLocked(func(values []string) error {
 		if len(values) == 0 {
-			return nil, opSkip, nil
+			return nil
 		}
 		if count >= len(values) {
 			result = slices.Clone(values)
-			return values, opSkip, nil
+			return nil
 		}
 		result = xslice.RandN(values, count)
-		return values, opSkip, nil
+		return nil
 	})
 	return result, err
 }

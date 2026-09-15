@@ -37,14 +37,20 @@ func (m *Base) getLocked(key string, wantType internal.DataType) (value any, fou
 	return value, found, nil
 }
 
-func (m *Base) withLock(fn func() error) error {
+func (m *Base) withWriteLock(fn func() error) error {
 	m.mux.Lock()
 	defer m.mux.Unlock()
 	return fn()
 }
 
+func (m *Base) withReadLock(fn func() error) error {
+	m.mux.RLock()
+	defer m.mux.RUnlock()
+	return fn()
+}
+
 func (m *Base) Delete(ctx context.Context, keys ...string) error {
-	return m.withLock(func() error {
+	return m.withWriteLock(func() error {
 		for _, key := range keys {
 			delete(m.values, key)
 			delete(m.keyTypes, key)
@@ -54,7 +60,7 @@ func (m *Base) Delete(ctx context.Context, keys ...string) error {
 }
 
 func (m *Base) Has(ctx context.Context, key string) (found bool, err error) {
-	err = m.withLock(func() error {
+	err = m.withWriteLock(func() error {
 		_, found = m.values[key]
 		return nil
 	})
@@ -68,14 +74,8 @@ const (
 	opWrite operate = 1
 )
 
-func withLocked[T any](
-	base *Base,
-	key string,
-	dt internal.DataType,
-	fn func(T) (T, operate, error),
-	dataEmpty func(T) bool,
-) error {
-	return base.withLock(func() error {
+func withWriteLocked[T any](base *Base, key string, dt internal.DataType, fn func(T) (T, operate, error), dataEmpty func(T) bool) error {
+	return base.withWriteLock(func() error {
 		value, found := base.values[key]
 		var result T
 		var op operate
@@ -104,5 +104,21 @@ func withLocked[T any](
 			}
 		}
 		return nil
+	})
+}
+
+func withReadLocked[T any](base *Base, key string, dt internal.DataType, fn func(T) error) error {
+	return base.withReadLock(func() error {
+		value, found := base.values[key]
+		if !found {
+			var zero T
+			return fn(zero)
+		}
+		tp := base.keyTypes[key]
+		if tp != dt {
+			return internal.ErrInvalidType
+		}
+		return fn(value.(T))
+
 	})
 }

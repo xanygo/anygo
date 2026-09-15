@@ -64,7 +64,7 @@ func (m *String) GetSet(ctx context.Context, value string) (old string, found bo
 }
 
 func (m *String) withWrite(fn func(value string, found bool) error) error {
-	return m.Base.withLock(func() error {
+	return m.Base.withWriteLock(func() error {
 		value, found := m.Base.values[m.Key]
 		if !found {
 			return fn("", found)
