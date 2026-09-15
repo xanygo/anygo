@@ -176,6 +176,17 @@ func (mz *zsetValue) PopMin(count int) (members []string, scores []float64) {
 	return members, scores
 }
 
+func (mz *zsetValue) Range(fn func(member string, score float64) bool) {
+	mz.mux.Lock()
+	defer mz.mux.Unlock()
+	for _, member := range mz.Members {
+		score := mz.Scores[member]
+		if !fn(member, score) {
+			return
+		}
+	}
+}
+
 func zSetValueEmpty(mz *zsetValue) bool {
 	return mz == nil || mz.Len() == 0
 }
@@ -254,16 +265,10 @@ func (m *ZSet) ZRange(ctx context.Context, fn func(member string, score float64)
 		value = zv
 		return zv, opSkip, nil
 	})
-	if err != nil {
+	if err != nil || value == nil {
 		return err
 	}
-	if value != nil {
-		for _, member := range value.Members {
-			if !fn(member, value.Scores[member]) {
-				return nil
-			}
-		}
-	}
+	value.Range(fn)
 	return nil
 }
 
