@@ -1,5 +1,25 @@
 # anygo
-一个 * 极少依赖 * 的 Go RPC 框架和基础库。
+一个 只依赖标准库的 Go 应用基础设施。
+
+```
+                         anygo
+                           │
+             Go Application Infrastructure
+                           │
+        ┌──────────────────┼──────────────────┐
+        │                  │                  │
+      Network            Storage          Application
+        │                  │                  │
+      xrpc                xdb               xcfg
+      xtcp                xkv               xattr
+      xhttp               xcache            xlog
+      service             xcookiejar        xi18n
+      ...                 ...               ...
+```
+RPC Server 功能：
+- 支持中间件、多种路由参数 HTTP Router ( xhttp.Router )
+- HTTP Session 组件 ( xhttp/xsession )
+- 验证码功能：( ximage/caption )
 
 RPC Client 功能：
 - 下游服务管理器：抽象的下游服务 (Service)，可通过配置文件管理下游的信息，如连接超时、socket 读写超时、重试、
@@ -35,10 +55,7 @@ Storage：
   6. 当使用 K-V 存储时，使用此，可避免和 Redis 等具体的实现绑定，轻松配置管理实际存储方案。
 - xhttp/xcokiejar: 用于 http.Client 的支持多种存储的 CookieJar 实现。已内置支持使用 DataBase、xkv 作为存储引擎。 
 
-RPC Server 功能：
-- 支持中间件、多种路由参数 HTTP Router ( xhttp.Router )
-- HTTP Session 组件 ( xhttp/xsession )
-- 验证码功能：( ximage/caption )
+
 
 通用基础库：
 - 应用全局环境信息( xattr ): 管理应用基础环境信息如应用的根目录、配置文件目录、日志目录，数据目录等
