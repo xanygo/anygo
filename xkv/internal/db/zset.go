@@ -53,21 +53,32 @@ func (z *ZSet) deleteWithKey(ctx context.Context, tx xdb.DBCore) error {
 }
 
 func (z *ZSet) ZAdd(ctx context.Context, score float64, member string) error {
-	memberHash := KeyHash(member)
+	return z.ZMAdd(ctx, xkv.ZItem[string]{Member: member, Score: score})
+}
+
+func (z *ZSet) ZMAdd(ctx context.Context, items ...xkv.ZItem[string]) error {
+	if len(items) == 0 {
+		return nil
+	}
 	now := time.Now().UnixNano()
-	return z.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
-		orm := z.orm(tx)
+	values := make([]ZSetModel, 0, len(items))
+	for _, item := range items {
 		data := ZSetModel{
 			TypeID:     z.Meta.TypeID,
 			KeyHash:    z.Meta.KeyHash,
 			KeyRaw:     z.Meta.KeyRaw,
-			MemberHash: memberHash,
-			MemberRaw:  []byte(member),
-			Score:      score,
+			MemberHash: KeyHash(item.Member),
+			MemberRaw:  []byte(item.Member),
+			Score:      item.Score,
 			Created:    now,
 			Updated:    now,
 		}
-		_, err := orm.Upsert(ctx, []string{"t", "k", "m"}, []string{"s", "u"}, data)
+		values = append(values, data)
+	}
+
+	return z.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
+		orm := z.orm(tx)
+		_, err := orm.Upsert(ctx, []string{"t", "k", "m"}, []string{"s", "u"}, values...)
 		return err
 	})
 }

@@ -116,7 +116,7 @@ func (e Encoder[T]) encodeStruct(v reflect.Value) (map[string]any, error) {
 			}
 		}
 		name := fieldSchema.Name
-		encodedVal, err := e.encodeStructFieldValue(fieldSchema, value.Interface())
+		encodedVal, err := e.encodeColumnValue(fieldSchema, value.Interface())
 		if err != nil {
 			if errors.Is(err, xerror.ErrSkipOne) {
 				return nil
@@ -195,8 +195,8 @@ func (e Encoder[T]) rangeStructFields(v reflect.Value, fn func(fieldSchema dbtyp
 	})
 }
 
-// encodeStructFieldValue 对单个字段根据类型和 serializer 转换
-func (e Encoder[T]) encodeStructFieldValue(schema dbtype.ColumnSchema, val any) (any, error) {
+// encodeColumnValue 对单个字段根据类型和 serializer 转换
+func (e Encoder[T]) encodeColumnValue(schema dbtype.ColumnSchema, val any) (any, error) {
 	if schema.Auto != "" {
 		if e.Action.IsInsert() {
 			nv, ok, err := insertAutoFns.do(schema, val)
@@ -265,7 +265,7 @@ func (e Encoder[T]) PKNameAndValues(obj T) (map[string]any, error) {
 	}
 	result := make(map[string]any, len(cols))
 	for i, col := range cols {
-		value, err1 := e.encodeStructFieldValue(col, values[i].Interface())
+		value, err1 := e.encodeColumnValue(col, values[i].Interface())
 		if err1 != nil {
 			return nil, err1
 		}
@@ -284,7 +284,7 @@ func (e Encoder[T]) NonZero(obj T) (map[string]any, error) {
 		if value.IsZero() {
 			return nil
 		}
-		ev, err1 := e.encodeStructFieldValue(fieldSchema, value.Interface())
+		ev, err1 := e.encodeColumnValue(fieldSchema, value.Interface())
 		if err1 != nil {
 			return err1
 		}
@@ -352,6 +352,30 @@ func (e Encoder[T]) EncodeArgs(args ...any) ([]any, error) {
 				return nil, fmt.Errorf("encode args %#v: %w", arg, err)
 			}
 			result[i] = val
+		}
+	}
+	return result, nil
+}
+
+func (e Encoder[T]) EncodeMap(input map[string]any) (map[string]any, error) {
+	if len(input) == 0 {
+		return nil, nil
+	}
+	result := make(map[string]any, len(input))
+	for name, value := range input {
+		sch, err := e.Schema.ColumnByName(name)
+		if err != nil {
+			return nil, err
+		}
+		switch value.(type) {
+		case dbtype.Expr:
+			result[name] = value
+		default:
+			vv, err := e.encodeColumnValue(sch, value)
+			if err != nil {
+				return nil, err
+			}
+			result[name] = vv
 		}
 	}
 	return result, nil

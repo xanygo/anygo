@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 
+	"github.com/xanygo/anygo/xkv"
 	"github.com/xanygo/anygo/xredis"
 )
 
@@ -15,6 +16,18 @@ type ZSet struct {
 
 func (z *ZSet) ZAdd(ctx context.Context, score float64, member string) error {
 	_, err := z.Client.ZAdd(ctx, z.Key, score, member)
+	return err
+}
+
+func (z *ZSet) ZMAdd(ctx context.Context, items ...xkv.ZItem[string]) error {
+	if len(items) == 0 {
+		return nil
+	}
+	data := make(map[string]float64, len(items))
+	for _, item := range items {
+		data[item.Member] = item.Score
+	}
+	_, err := z.Client.ZAddMap(ctx, z.Key, data)
 	return err
 }
 

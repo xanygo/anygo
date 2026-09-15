@@ -1,4 +1,4 @@
-package xkv
+package xkvmintor
 
 // DataType 数据类型，在  Monitor.After 中会用到
 type DataType string

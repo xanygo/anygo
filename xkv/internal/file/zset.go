@@ -10,8 +10,11 @@ import (
 
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xcontainer"
+	"github.com/xanygo/anygo/xkv"
 	"github.com/xanygo/anygo/xkv/internal"
 )
+
+var _ xkv.ZSet[string] = (*ZSet)(nil)
 
 type ZSet struct {
 	Compact func()
@@ -48,6 +51,20 @@ func (z *ZSet) memberScore(member string) (float64, bool, error) {
 func (z *ZSet) ZAdd(ctx context.Context, score float64, member string) error {
 	return z.Base.lockWrite(ctx, func(ctx context.Context, meta *Meta) error {
 		return z.saveMember(member, score)
+	})
+}
+
+func (z *ZSet) ZMAdd(ctx context.Context, items ...xkv.ZItem[string]) error {
+	if len(items) == 0 {
+		return nil
+	}
+	return z.Base.lockWrite(ctx, func(ctx context.Context, meta *Meta) error {
+		for _, item := range items {
+			if err := z.saveMember(item.Member, item.Score); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 

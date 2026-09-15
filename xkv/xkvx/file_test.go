@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2025-09-20
 
-package xkv_test
+package xkvx_test
 
 import (
 	"os"
@@ -14,6 +14,7 @@ import (
 	"github.com/xanygo/anygo/xenc/xcipher"
 	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xkv"
+	"github.com/xanygo/anygo/xkv/xkvx"
 	"github.com/xanygo/anygo/xt"
 )
 
@@ -23,7 +24,7 @@ func TestFile(t *testing.T) {
 	t.Logf("xkv_file dir: %s", dir)
 	_ = os.RemoveAll(dir)
 
-	ff := &xkv.File{
+	ff := &xkvx.File{
 		Dir: dir,
 	}
 
@@ -37,7 +38,7 @@ func TestFileStorageCipher(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "xkv_file")
 	t.Logf("xkv_file dir: %s", dir)
 
-	ff := &xkv.File{
+	ff := &xkvx.File{
 		Dir: dir,
 	}
 	aes := &xcipher.AesOFB{

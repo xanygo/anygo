@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/xanygo/anygo/internal/ut/xkvut"
-	"github.com/xanygo/anygo/xkv"
+	"github.com/xanygo/anygo/xkv/xkvx"
 	"github.com/xanygo/anygo/xt"
 )
 
@@ -19,11 +19,11 @@ func (t testT) Run(name string, fn func(tb xt.TB)) {
 }
 
 func TestMemStringStorage1(t *testing.T) {
-	kv := xkv.NewMemory()
+	kv := xkvx.NewMemory()
 	xkvut.TestStringStorage1(testT{T: t}, kv)
 }
 
 func TestMemStringStorage2(t *testing.T) {
-	kv := xkv.NewMemory()
+	kv := xkvx.NewMemory()
 	xkvut.TestStringStorage2(testT{T: t}, kv)
 }

@@ -33,6 +33,7 @@ func (m *Model[T]) doUpdate(ctx context.Context, v T, cfg *config) (int64, error
 	return m.doUpdateMap(ctx, kv, cfg)
 }
 
+// doUpdateMap 使用已经 encode 过的 kv 数据执行更新
 func (m *Model[T]) doUpdateMap(ctx context.Context, kv map[string]any, cfg *config) (int64, error) {
 	if len(kv) == 0 {
 		return 0, errors.New("no update values")
@@ -222,5 +223,9 @@ func (m *Model[T]) UpdateMap(ctx context.Context, data xdb.Map, opts ...Option) 
 		return 0, err
 	}
 	cfg := m.cfg.mergeOnClone(opts...)
-	return m.doUpdateMap(ctx, data, cfg)
+	encoded, err := cfg.getEncoder(encoder.ActionUpdate).EncodeMap(data)
+	if err != nil {
+		return 0, err
+	}
+	return m.doUpdateMap(ctx, encoded, cfg)
 }

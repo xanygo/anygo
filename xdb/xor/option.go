@@ -235,6 +235,15 @@ func Columns(cols ...any) Option {
 	})
 }
 
+func StringColumns(cols ...string) Option {
+	return optionFunc(func(o *config) {
+		o.columns = nil
+		for _, col := range cols {
+			o.columns = append(o.columns, col)
+		}
+	})
+}
+
 // Ignores  设置 查询、写入、更新时忽略的字段列表
 func Ignores(cols ...string) Option {
 	return optionFunc(func(o *config) {

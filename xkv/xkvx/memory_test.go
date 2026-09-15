@@ -2,20 +2,20 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2025-09-24
 
-package xkv_test
+package xkvx_test
 
 import (
 	"testing"
 
-	"github.com/xanygo/anygo/xkv"
+	"github.com/xanygo/anygo/xkv/xkvx"
 )
 
 func TestMemory(t *testing.T) {
-	ff := &xkv.Memory{}
+	ff := &xkvx.Memory{}
 	testStringStorage(t, ff)
 }
 
 func BenchmarkMemory(b *testing.B) {
-	ff := &xkv.Memory{}
+	ff := &xkvx.Memory{}
 	benchStorage(b, ff)
 }

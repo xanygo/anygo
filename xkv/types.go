@@ -17,8 +17,8 @@ type String[V any] interface {
 
 	// Get 获取字符串的值（类似 Redis 的 GET 命令）
 	//
-	// 返回：值，是否存在，错误
-	// key 不存在时，会返回 zero,false,nil
+	//	返回：值，是否存在，错误
+	//	key 不存在时，会返回 zero,false,nil
 	Get(ctx context.Context) (V, bool, error)
 
 	// GetSet 读取值，并将新的值写入
@@ -28,8 +28,8 @@ type String[V any] interface {
 
 	// GetDel 读取然后删除值
 	//
-	// 返回：值，是否存在，错误
-	// key 不存在时，会返回 zero,false,nil
+	//	返回：值，是否存在，错误
+	//	key 不存在时，会返回 zero,false,nil
 	GetDel(ctx context.Context) (V, bool, error)
 
 	// Incr 将字符串中的数字自增 1（类似 Redis 的 INCR 命令）
@@ -78,11 +78,11 @@ type List[V any] interface {
 	RPopN(ctx context.Context, count int) ([]V, error)
 
 	// LRem 从存储在键（key）的列表中删除等于元素（ element ）的前 count 个元素。count 参数以以下方式影响操作：
-	// count > 0: 从头部到尾部移除 count 个等于 element 的元素。
-	// count < 0: 从尾部到头部移除 abs(count) 个等于 element 的元素。
-	// count = 0: 移除所有等于 element 的元素。
-	// 例如，LREM list -2 "hello" 将从存储在 list 中的列表中删除 "hello" 的最后两个出现。
-	// 请注意，不存在的键被视为空列表，因此当键不存在时，命令将始终返回0
+	//	count > 0: 从头部到尾部移除 count 个等于 element 的元素。
+	//	count < 0: 从尾部到头部移除 abs(count) 个等于 element 的元素。
+	//	count = 0: 移除所有等于 element 的元素。
+	//	例如，LREM list -2 "hello" 将从存储在 list 中的列表中删除 "hello" 的最后两个出现。
+	//	请注意，不存在的键被视为空列表，因此当键不存在时，命令将始终返回0
 	LRem(ctx context.Context, count int64, element string) (int64, error)
 
 	// Range 不保证顺序的遍历
@@ -96,6 +96,11 @@ type List[V any] interface {
 
 	// LLen 返回队列的长度
 	LLen(ctx context.Context) (int64, error)
+}
+
+type HItem[T any] struct {
+	Field string
+	Value T
 }
 
 type Hash[V any] interface {
@@ -141,14 +146,14 @@ type Set[V any] interface {
 	SRem(ctx context.Context, members ...V) error
 
 	// SPop 从集合中随机弹出（返回并删除）一个元素
-	// 返回值：值，成功状态，错误
+	//	返回值：值，成功状态，错误
 	SPop(ctx context.Context) (V, bool, error)
 
 	// SPopN 从集合中随机弹出（返回并删除）最多 N 个元素
 	SPopN(ctx context.Context, count int) ([]V, error)
 
 	// SRandMember 从集合中随机返回一个元素
-	// 返回值：值，成功状态，错误
+	//	返回值：值，成功状态，错误
 	SRandMember(ctx context.Context) (V, bool, error)
 
 	// SRandMemberN 从集合中随机返回最多 N 个元素
@@ -172,10 +177,19 @@ type Set[V any] interface {
 	SCard(ctx context.Context) (int64, error)
 }
 
+// ZItem zset 的一条数据
+type ZItem[T any] struct {
+	Member T
+	Score  float64
+}
+
 // ZSet Sorted Set
 type ZSet[V any] interface {
 	// ZAdd 向有序集合中添加一个成员及其分数（类似 Redis 的 ZADD 命令）
 	ZAdd(ctx context.Context, score float64, member V) error
+
+	// ZMAdd 向有序集合中批量添加成员及其分数（类似 Redis 的 ZADD 命令）
+	ZMAdd(ctx context.Context, items ...ZItem[V]) error
 
 	// ZScore 读取分数
 	// 返回：值，是否存在，错误
@@ -195,13 +209,13 @@ type ZSet[V any] interface {
 	ZRange(ctx context.Context, fn func(member V, score float64) bool) error
 
 	// ZRangeByScore 返回所有分数在  min 和 max 之间的元素，不保证顺序
-	// min: 最小分数，如 "2"表示 >=2，"(2" 表示 >2，"-inf" 表示无穷小
-	// max: 最大分数，如 "2"表示 <=2，"(2" 表示 <2，"+inf" 表示无穷大
+	//	min: 最小分数，如 "2"表示 >=2，"(2" 表示 >2，"-inf" 表示无穷小
+	//	max: 最大分数，如 "2"表示 <=2，"(2" 表示 <2，"+inf" 表示无穷大
 	ZRangeByScore(ctx context.Context, min string, max string, fn func(member V, score float64) bool) error
 
 	// ZCount 统计 score 在 min 和 max 之间的元素个数
-	// min: 最小分数，如 "2"表示 >=2，"(2" 表示 >2，"-inf" 表示无穷小
-	// max: 最大分数，如 "2"表示 <=2，"(2" 表示 <2，"+inf" 表示无穷大
+	//	min: 最小分数，如 "2"表示 >=2，"(2" 表示 >2，"-inf" 表示无穷小
+	//	max: 最大分数，如 "2"表示 <=2，"(2" 表示 <2，"+inf" 表示无穷大
 	ZCount(ctx context.Context, min string, max string) (int64, error)
 
 	// ZLen 统计元素个数,等价于  ZCount(ctx,"-inf","+inf")
@@ -230,9 +244,9 @@ type Storage[V any] interface {
 	ZSet(key string) ZSet[V]
 
 	// Has 返回 key 是否存在
-	// 存在：返回 true,nil
-	// 不存在：返回 false,nil
-	// 异常： 返回 false,error (error 不会是 xerror.NotFound)
+	//	存在：返回 true,nil
+	//	不存在：返回 false,nil
+	//	异常： 返回 false,error (error 不会是 xerror.NotFound)
 	Has(ctx context.Context, key string) (bool, error)
 
 	// Delete 批量删除 key

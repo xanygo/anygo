@@ -2,13 +2,14 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2025-09-23
 
-package xkv
+package xkvx
 
 import (
 	"context"
 	"sync"
 
 	"github.com/xanygo/anygo/xenc/xcodec"
+	"github.com/xanygo/anygo/xkv"
 	"github.com/xanygo/anygo/xkv/internal/mem"
 )
 
@@ -17,14 +18,14 @@ func NewMemory() *Memory {
 }
 
 // NewMemoryAny 创建一个值类型支持泛型类型的，全内存存储的 KV 存储对象
-func NewMemoryAny[V any](coder xcodec.Codec) *Transformer[V] {
-	return &Transformer[V]{
+func NewMemoryAny[V any](coder xcodec.Codec) *xkv.Transformer[V] {
+	return &xkv.Transformer[V]{
 		Codec:   coder,
 		Storage: NewMemory(),
 	}
 }
 
-var _ Storage[string] = (*Memory)(nil)
+var _ xkv.Storage[string] = (*Memory)(nil)
 
 // Memory 底层基础类型为 string 的内存存储实现
 type Memory struct {
@@ -39,35 +40,35 @@ func (m *Memory) getBase() *mem.Base {
 	return m.base
 }
 
-func (m *Memory) String(key string) String[string] {
+func (m *Memory) String(key string) xkv.String[string] {
 	return &mem.String{
 		Base: m.getBase(),
 		Key:  key,
 	}
 }
 
-func (m *Memory) List(key string) List[string] {
+func (m *Memory) List(key string) xkv.List[string] {
 	return &mem.List{
 		Base: m.getBase(),
 		Key:  key,
 	}
 }
 
-func (m *Memory) Hash(key string) Hash[string] {
+func (m *Memory) Hash(key string) xkv.Hash[string] {
 	return &mem.Hash{
 		Base: m.getBase(),
 		Key:  key,
 	}
 }
 
-func (m *Memory) Set(key string) Set[string] {
+func (m *Memory) Set(key string) xkv.Set[string] {
 	return &mem.Set{
 		Base: m.getBase(),
 		Key:  key,
 	}
 }
 
-func (m *Memory) ZSet(key string) ZSet[string] {
+func (m *Memory) ZSet(key string) xkv.ZSet[string] {
 	return &mem.ZSet{
 		Base: m.getBase(),
 		Key:  key,

@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/xanygo/anygo/xcmp"
+	"github.com/xanygo/anygo/xkv"
 	"github.com/xanygo/anygo/xkv/internal"
 	"github.com/xanygo/anygo/xslice"
 )
@@ -196,6 +197,18 @@ func (m *ZSet) withLocked(fn func(*zsetValue) (*zsetValue, operate, error)) erro
 func (m *ZSet) ZAdd(ctx context.Context, score float64, member string) error {
 	return m.withLocked(func(zv *zsetValue) (*zsetValue, operate, error) {
 		zv.Add(score, member)
+		return zv, opWrite, nil
+	})
+}
+
+func (m *ZSet) ZMAdd(ctx context.Context, items ...xkv.ZItem[string]) error {
+	if len(items) == 0 {
+		return nil
+	}
+	return m.withLocked(func(zv *zsetValue) (*zsetValue, operate, error) {
+		for _, item := range items {
+			zv.Add(item.Score, item.Member)
+		}
 		return zv, opWrite, nil
 	})
 }

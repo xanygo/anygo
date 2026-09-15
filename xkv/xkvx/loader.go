@@ -155,9 +155,9 @@ func (cf *ConfigFile) newKV[V any](name string, item map[string]any) (xkv.Storag
 	case "File":
 		return cf.newFile[V](name, item)
 	case "Nop":
-		return &xkv.Nop[V]{}, nil
+		return &Nop[V]{}, nil
 	case "Memory":
-		return xkv.NewMemoryAny[V](xcodec.JSON), nil
+		return NewMemoryAny[V](xcodec.JSON), nil
 	case "Redis":
 		return cf.newRedis[V](name, item)
 	case "DB":
@@ -168,7 +168,7 @@ func (cf *ConfigFile) newKV[V any](name string, item map[string]any) (xkv.Storag
 }
 
 func (cf *ConfigFile) newFile[V any](name string, item map[string]any) (xkv.Storage[V], error) {
-	fc := &xkv.File{}
+	fc := &File{}
 	if err := fc.Init(item); err != nil {
 		return nil, err
 	}

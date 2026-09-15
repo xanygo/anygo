@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2025-09-20
 
-package xkv
+package xkvx
 
 import (
 	"context"
@@ -18,6 +18,7 @@ import (
 	"github.com/xanygo/anygo/internal/zos"
 	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xio/xfs"
+	"github.com/xanygo/anygo/xkv"
 	"github.com/xanygo/anygo/xkv/internal"
 	"github.com/xanygo/anygo/xkv/internal/file"
 	"github.com/xanygo/anygo/xlog"
@@ -26,7 +27,7 @@ import (
 	"github.com/xanygo/anygo/xsync"
 )
 
-var _ StringStorage = (*File)(nil)
+var _ xkv.StringStorage = (*File)(nil)
 
 func NewFile(dataDir string) *File {
 	return &File{
@@ -35,8 +36,8 @@ func NewFile(dataDir string) *File {
 }
 
 // NewFileAny 创建一个值类型支持泛型类型的，使用文件系统存储的 KV 存储对象
-func NewFileAny[V any](dataDir string, coder xcodec.Codec) *Transformer[V] {
-	return &Transformer[V]{
+func NewFileAny[V any](dataDir string, coder xcodec.Codec) *xkv.Transformer[V] {
+	return &xkv.Transformer[V]{
 		Codec:   coder,
 		Storage: NewFile(dataDir),
 	}
@@ -121,7 +122,7 @@ func (f *File) getDataDir(key string) string {
 	return fp
 }
 
-func (f *File) String(key string) String[string] {
+func (f *File) String(key string) xkv.String[string] {
 	return &file.String{
 		Base: &file.Base{
 			Key:        key,
@@ -132,7 +133,7 @@ func (f *File) String(key string) String[string] {
 	}
 }
 
-func (f *File) List(key string) List[string] {
+func (f *File) List(key string) xkv.List[string] {
 	return &file.List{
 		Compact: f.autoCompact,
 		Base: &file.Base{
@@ -144,7 +145,7 @@ func (f *File) List(key string) List[string] {
 	}
 }
 
-func (f *File) Hash(key string) Hash[string] {
+func (f *File) Hash(key string) xkv.Hash[string] {
 	return &file.Hash{
 		Compact: f.autoCompact,
 		Base: &file.Base{
@@ -156,7 +157,7 @@ func (f *File) Hash(key string) Hash[string] {
 	}
 }
 
-func (f *File) Set(key string) Set[string] {
+func (f *File) Set(key string) xkv.Set[string] {
 	return &file.Set{
 		Compact: f.autoCompact,
 		Base: &file.Base{
@@ -168,7 +169,7 @@ func (f *File) Set(key string) Set[string] {
 	}
 }
 
-func (f *File) ZSet(key string) ZSet[string] {
+func (f *File) ZSet(key string) xkv.ZSet[string] {
 	return &file.ZSet{
 		Compact: f.autoCompact,
 		Base: &file.Base{

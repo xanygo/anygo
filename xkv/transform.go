@@ -548,6 +548,25 @@ func (t transZSet[V]) ZAdd(ctx context.Context, score float64, member V) error {
 	return t.ss.ZAdd(ctx, score, str)
 }
 
+func (t transZSet[V]) ZMAdd(ctx context.Context, items ...ZItem[V]) error {
+	if len(items) == 0 {
+		return nil
+	}
+	ms := make([]ZItem[string], len(items))
+	for index, item := range items {
+		str, err := xcodec.MarshalToString(t.codec, item.Member)
+		if err != nil {
+			return err
+		}
+		nv := ZItem[string]{
+			Score:  item.Score,
+			Member: str,
+		}
+		ms[index] = nv
+	}
+	return t.ss.ZMAdd(ctx, ms...)
+}
+
 func (t transZSet[V]) ZScore(ctx context.Context, member V) (float64, bool, error) {
 	str, err := xcodec.MarshalToString(t.codec, member)
 	if err != nil {

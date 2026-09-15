@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2025-09-24
 
-package xkv_test
+package xkvx_test
 
 import (
 	"testing"

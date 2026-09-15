@@ -75,7 +75,7 @@ const (
 )
 
 func TagHasAutoInc(tag xstruct.Tag) bool {
-	return tag.Has(TagAutoInc) || tag.Has("autoIncrement")
+	return tag.Has(TagAutoInc) || tag.Has("autoIncrement") || tag.Has("auto_incr")
 }
 
 func TagHasPrimaryKey(tag xstruct.Tag) bool {

@@ -1,10 +1,18 @@
 package nop
 
-import "context"
+import (
+	"context"
+
+	"github.com/xanygo/anygo/xkv"
+)
 
 type ZSet[V any] struct{}
 
 func (n ZSet[V]) ZAdd(ctx context.Context, score float64, member V) error {
+	return nil
+}
+
+func (n ZSet[V]) ZMAdd(ctx context.Context, items ...xkv.ZItem[V]) error {
 	return nil
 }
 
