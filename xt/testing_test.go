@@ -22,59 +22,60 @@ var _ Helper = (*myTesting)(nil)
 
 type myTesting struct {
 	t           *testing.T
-	msg         string
 	wantSuccess bool // 期望成功
-	gotSuccess  bool // 是否运行成功
+	statusOk    bool // 运行状态是否正常
 	lastCaller  string
 }
 
 func (m *myTesting) Helper() {
-	if m.lastCaller != "" && m.gotSuccess != m.wantSuccess {
-		m.check()
-	}
-	m.reset()
-	_, file, lineNo, _ := runtime.Caller(2)
+	_, file, lineNo, _ := runtime.Caller(1)
 	m.lastCaller = fmt.Sprintf("%s:%d", filepath.Base(file), lineNo)
 }
 
-func (m *myTesting) reset() {
-	m.gotSuccess = true
-	m.msg = ""
-	m.lastCaller = ""
-}
-
-func (m *myTesting) check() {
-	defer m.reset()
-
+func (m *myTesting) Fatalf(format string, args ...any) {
+	m.statusOk = false
 	m.t.Helper()
-	// m.t.Logf("%s wantSuccess=%v, gotSuccess=%v",m.lastCaller,m.wantSuccess,m.gotSuccess)
 	if m.wantSuccess {
-		if !m.gotSuccess {
-			m.t.Fatalf("%s expect success, but not", m.lastCaller)
-		}
-	} else {
-		if m.gotSuccess {
-			m.t.Fatalf("%s expect fail, but not", m.lastCaller)
-		}
+		msg := fmt.Sprintf(format, args...)
+		m.t.Fatalf("%s: expect success, but not, "+msg, m.lastCaller)
 	}
 }
 
-func (m *myTesting) Fatalf(format string, args ...any) {
-	m.gotSuccess = false
-	m.msg = fmt.Sprintf(format, args...)
+// Success 期望传入的 fn 都运行成功
+// fn 里一次能写多条断言代码
+func (m *myTesting) Success(fns ...func(t Testing)) {
+	m.t.Run("success", func(t *testing.T) {
+		for i, fn := range fns {
+			t.Run(fmt.Sprintf("fn-%d", i), func(t *testing.T) {
+				m1 := &myTesting{
+					t:           t,
+					wantSuccess: true,
+					statusOk:    true,
+				}
+				fn(m1)
+			})
+		}
+	})
 }
 
-func (m *myTesting) Success(fn func(t Testing)) {
-	m.t.Helper()
-	m.wantSuccess = true
-	fn(m)
-	m.check()
-}
-
-func (m *myTesting) Fail(fn func(t Testing)) {
-	m.wantSuccess = false
-	fn(m)
-	m.check()
+// Fail 期望传入的 fn 都运行失败
+// fn 里一次只能写一条断言代码
+func (m *myTesting) Fail(fns ...func(t Testing)) {
+	m.t.Run("Fail", func(t *testing.T) {
+		for i, fn := range fns {
+			t.Run(fmt.Sprintf("fn-%d", i), func(t *testing.T) {
+				m1 := &myTesting{
+					t:           t,
+					wantSuccess: false,
+					statusOk:    true,
+				}
+				fn(m1)
+				if m1.statusOk {
+					m1.t.Fatalf("%s: expect fail but not", m.lastCaller)
+				}
+			})
+		}
+	})
 }
 
 func TestCollector(t *testing.T) {

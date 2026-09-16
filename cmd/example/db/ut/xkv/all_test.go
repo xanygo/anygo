@@ -95,7 +95,7 @@ func checkDB(t *testing.T, db *xdb.Client) {
 			ts, err := sc.Tables(ctx)
 			xt.NoError(t, err)
 			xt.NotEmpty(t, ts)
-			xt.SliceContains(t, ts, "xkv_meta")
+			xt.InSlice(t, "xkv_meta", ts)
 		})
 		t.Run("TableColumns", func(t *testing.T) {
 			for _, table := range tables {

@@ -25,7 +25,6 @@ type Entry struct {
 	HostOnly   bool          `json:"HostOnly,omitzero"`
 	Expires    time.Time     `json:"Expires,omitzero"`
 	Creation   time.Time     `json:"Creation,omitzero"`
-	SeqNum     int64         `json:"SeqNum,omitzero"`
 }
 
 // id returns the domain;path;name triple of e as an id.

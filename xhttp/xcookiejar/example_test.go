@@ -5,8 +5,11 @@
 package xcookiejar_test
 
 import (
-	"context"
+	"fmt"
+	"log"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 
 	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xhttp/xcookiejar"
@@ -15,6 +18,22 @@ import (
 )
 
 func ExampleJar() {
+	// Start a server to give us cookies.
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if cookie, err := r.Cookie("Flavor"); err != nil {
+			http.SetCookie(w, &http.Cookie{Name: "Flavor", Value: "Chocolate Chip"})
+		} else {
+			cookie.Value = "Oatmeal Raisin"
+			http.SetCookie(w, cookie)
+		}
+	}))
+	defer ts.Close()
+
+	u, err := url.Parse(ts.URL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	db1 := xkvx.NewMemoryAny[xcookiejar.Entry](xcodec.JSON)
 	db2 := xkvx.NewMemory()
 	store := &xcookiejar.KV{
@@ -28,20 +47,33 @@ func ExampleJar() {
 
 	jar := &xcookiejar.Jar{
 		Storage: store,
+		PSList:  publicsuffix.List,
 	}
 
-	httpCall := func(ctx context.Context, url string) error {
-		client := &http.Client{
-			// 使用 CookieJar。由于可能涉及 RPC 调用，所以需要将 context 传入
-			Jar: jar.WithContext(ctx),
-		}
-		resp, err := client.Get(url)
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-		// do something ...
-		return nil
+	client := &http.Client{
+		Jar: jar,
 	}
-	_ = httpCall
+
+	if _, err = client.Get(u.String()); err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("After 1st request:")
+	for _, cookie := range jar.Cookies(u) {
+		fmt.Printf("  %s: %s\n", cookie.Name, cookie.Value)
+	}
+
+	if _, err = client.Get(u.String()); err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("After 2nd request:")
+	for _, cookie := range jar.Cookies(u) {
+		fmt.Printf("  %s: %s\n", cookie.Name, cookie.Value)
+	}
+	// Output:
+	// After 1st request:
+	//   Flavor: Chocolate Chip
+	// After 2nd request:
+	//   Flavor: Oatmeal Raisin
 }

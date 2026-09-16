@@ -31,8 +31,8 @@ func testDB(t *testing.T, client *xdb.Client) {
 	xt.NoError(t, err)
 
 	store := &xcookiejar.Database{
-		Client: client,
-		Table:  table,
+		DB:    client,
+		Table: table,
 	}
 	err = store.Migrate(t.Context())
 	xt.NoError(t, err)

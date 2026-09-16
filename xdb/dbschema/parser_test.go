@@ -250,7 +250,7 @@ func TestSchemaUser1(t *testing.T) {
 		colNames1 := xslice.FilterAs(testUser1Cols, func(item dbtype.ColumnSchema) (string, bool) {
 			return item.Name, true
 		})
-		xt.SliceSortEqual(t, colNames1, sc.ColumnNames)
+		xt.SortEqual(t, colNames1, sc.ColumnNames)
 		for _, col := range testUser1Cols {
 			t.Run(col.Name, func(t *testing.T) {
 				got, err := sc.ColumnByName(col.Name)
@@ -298,7 +298,7 @@ func TestSchemaAdmin1(t *testing.T) {
 			return item.Name, true
 		})
 		colNames1 = append(colNames1, "class")
-		xt.SliceSortEqual(t, colNames1, sc.ColumnNames)
+		xt.SortEqual(t, colNames1, sc.ColumnNames)
 		for _, col := range cols {
 			t.Run(col.Name, func(t *testing.T) {
 				got, err := sc.ColumnByName(col.Name)

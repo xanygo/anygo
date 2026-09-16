@@ -83,7 +83,7 @@ func checkSet(t *testing.T, kvs xkv.StringStorage) {
 		one, found, err := se.SPop(ctx)
 		xt.NoError(t, err)
 		xt.True(t, found)
-		xt.SliceContains(t, members, one)
+		xt.InSlice(t, one, members)
 
 		num, err = se.SCard(ctx)
 		xt.NoError(t, err)
@@ -91,7 +91,7 @@ func checkSet(t *testing.T, kvs xkv.StringStorage) {
 
 		many, err := se.SPopN(ctx, 2)
 		xt.NoError(t, err)
-		xt.SliceContains(t, members, many...)
+		xt.AllInSlice(t, many, members)
 
 		num, err = se.SCard(ctx)
 		xt.NoError(t, err)
@@ -108,7 +108,7 @@ func checkSet(t *testing.T, kvs xkv.StringStorage) {
 		one, found, err := se.SRandMember(ctx)
 		xt.NoError(t, err)
 		xt.True(t, found)
-		xt.SliceContains(t, members, one)
+		xt.InSlice(t, one, members)
 
 		num, err = se.SCard(ctx)
 		xt.NoError(t, err)
@@ -116,7 +116,7 @@ func checkSet(t *testing.T, kvs xkv.StringStorage) {
 
 		many, err := se.SRandMemberN(ctx, 2)
 		xt.NoError(t, err)
-		xt.SliceContains(t, members, many...)
+		xt.AllInSlice(t, many, members)
 
 		num, err = se.SCard(ctx)
 		xt.NoError(t, err)

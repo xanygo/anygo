@@ -70,7 +70,7 @@ func TestRangeStructFields(t *testing.T) {
 			return nil
 		})
 		xt.NoError(t, err)
-		xt.SliceSortEqual(t, []string{"Name", "Class", "age"}, names)
+		xt.SortEqual(t, []string{"Name", "Class", "age"}, names)
 
 		xt.Equal(t, zreflect.StructMetaCache.Count(), 3)
 	})

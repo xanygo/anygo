@@ -5,6 +5,7 @@
 package xt
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -14,73 +15,66 @@ import (
 	"github.com/xanygo/anygo/internal/zreflect"
 )
 
-func sprintfDiff[T any](actual T, expected T) string {
+func doDiff[T any](actual T, expected T) Labeleds {
 	fn := xcolor.SetColorEnabled(true)
 	defer fn()
 
-	var sb strings.Builder
-	line := xcolor.CyanString(strings.Repeat("-", 100)) + "\n"
-	sb.WriteString(line)
-
 	strExpected := prettyGoValue(expected)
 	strActual := prettyGoValue(actual)
-	diffIndex := getDiffIndex(strExpected, strActual)
 
-	const format1 = " %12s : "
-	sb.WriteString(xcolor.GreenString(format1, "Expected"))
-
-	sb.WriteString(strExpected[:diffIndex])
-	sb.WriteString(xcolor.GreenString(strExpected[diffIndex:]))
-	sb.WriteString("\n")
-
-	sb.WriteString(xcolor.RedString(format1, "Actual"))
-	sb.WriteString(strActual[:diffIndex])
-	sb.WriteString(xcolor.RedString(strActual[diffIndex:]))
-	sb.WriteString("\n")
-	sb.WriteString(line)
-	sb.WriteString("\n")
+	var items Labeleds
+	items = append(items, Labeled{Label: "Actual", Content: strActual})
+	items = append(items, Labeled{Label: "Expected", Content: strExpected})
 
 	// 0x 开头的是指针的地址，这类信息不可直接观察到
 	if strExpected != strActual && len(strActual) < 60 && !strings.Contains(strActual, "(0x") {
-		return sb.String()
+		return items
 	}
-
-	sb.WriteString(xcolor.CyanString("Diff:"))
-	sb.WriteString("\n")
-	sb.WriteString(xcolor.BgGreenString("Expected:"))
-	sb.WriteString("\n")
 
 	strExpectedDump := sprintLineNo(zreflect.DumpString(expected))
 	strActualDump := sprintLineNo(zreflect.DumpString(actual))
 
+	diffValue := Labeled{Label: "Diff"}
 	diffIndex2 := getDiffIndex(strExpectedDump, strActualDump)
-	sb.WriteString(xcolor.GreenString(strExpectedDump[:diffIndex2]))
+	{
+		bf1 := &bytes.Buffer{}
+		bf1.WriteString(xcolor.GreenString(strExpectedDump[:diffIndex2]))
 
-	s1, s2, f1 := strings.Cut(strExpectedDump[diffIndex2:], "\n")
-	if f1 {
-		sb.WriteString(xcolor.RedString(s1))
-		sb.WriteString("\t←────🟢 diff here\n")
-		sb.WriteString(xcolor.RedString(cutDiffAfter(s2)))
-	} else {
-		sb.WriteString(xcolor.RedString(strExpectedDump[diffIndex2:]))
+		s1, s2, f1 := strings.Cut(strExpectedDump[diffIndex2:], "\n")
+		if f1 {
+			bf1.WriteString(xcolor.RedString(s1))
+			bf1.WriteString("\t←────🟢 diff here\n")
+			bf1.WriteString(xcolor.RedString(cutDiffAfter(s2)))
+		} else {
+			bf1.WriteString(xcolor.RedString(strExpectedDump[diffIndex2:]))
+		}
+		c1 := Labeled{
+			Label:   "Expected",
+			Content: bf1.String(),
+		}
+		diffValue.Children = append(diffValue.Children, c1)
 	}
 
-	sb.WriteString("\n\n")
-	sb.WriteString(xcolor.BgYellowString("Actual:"))
-	sb.WriteString("\n")
-	sb.WriteString(xcolor.GreenString(strActualDump[:diffIndex2]))
+	{
+		bf2 := &bytes.Buffer{}
+		bf2.WriteString(xcolor.GreenString(strActualDump[:diffIndex2]))
 
-	s3, s4, f2 := strings.Cut(strActualDump[diffIndex2:], "\n")
-	if f2 {
-		sb.WriteString(xcolor.RedString(s3))
-		sb.WriteString("\t←────🔴 diff here\n")
-		sb.WriteString(xcolor.RedString(cutDiffAfter(s4)))
-	} else {
-		sb.WriteString(xcolor.RedString(strActualDump[diffIndex2:]))
+		s3, s4, f2 := strings.Cut(strActualDump[diffIndex2:], "\n")
+		if f2 {
+			bf2.WriteString(xcolor.RedString(s3))
+			bf2.WriteString("\t←────🔴 diff here\n")
+			bf2.WriteString(xcolor.RedString(cutDiffAfter(s4)))
+		} else {
+			bf2.WriteString(xcolor.RedString(strActualDump[diffIndex2:]))
+		}
+		c2 := Labeled{
+			Label:   "Actual",
+			Content: bf2.String(),
+		}
+		diffValue.Children = append(diffValue.Children, c2)
 	}
-
-	sb.WriteString("\n")
-	return sb.String()
+	items = append(items, diffValue)
+	return items
 }
 
 func prettyGoValue(v any) string {

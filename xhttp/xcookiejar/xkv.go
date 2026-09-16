@@ -2,11 +2,16 @@ package xcookiejar
 
 import (
 	"context"
+	"errors"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/xanygo/anygo/internal/zloader"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xkv"
+	"github.com/xanygo/anygo/xkv/xkvx"
+	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xsync"
 )
 
@@ -22,6 +27,54 @@ type KV struct {
 	MetaStore func() xkv.ZSet[string]
 
 	compactTime xsync.Interval // 存储上一次清理的时间
+}
+
+func (d *KV) Init(param map[string]any) error {
+	if d.EntryStore == nil || d.MetaStore == nil {
+		ref, err := xmap.GetString(param, "Ref")
+		if err != nil {
+			return err
+		}
+		if ref == "" {
+			return errors.New("missing 'Ref'")
+		}
+
+		keyPrefix, err := xmap.GetString(param, zloader.FieldKeyPrefix)
+		if err != nil {
+			return err
+		}
+
+		if d.EntryStore == nil {
+			store, err := xkvx.Load[Entry](ref)
+			if err != nil {
+				return err
+			}
+			d.EntryStore = func(key string) xkv.Hash[Entry] {
+				return store.Hash(keyPrefix + key)
+			}
+		}
+
+		if d.MetaStore == nil {
+			store, err := xkvx.Load[string](ref)
+			if err != nil {
+				return err
+			}
+			metaKey, err := xmap.GetString(param, "MetaKey")
+			if err != nil {
+				return err
+			}
+			if metaKey == "" {
+				metaKey = "xcookiejar-keys"
+			}
+			if !strings.EqualFold(metaKey, "no") {
+				fn := store.ZSet(metaKey)
+				d.MetaStore = func() xkv.ZSet[string] {
+					return fn
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // Get implements [Storage].
@@ -44,10 +97,12 @@ func (k *KV) doGet(ctx context.Context, key string, byCompact bool) ([]Entry, er
 		return nil, err
 	}
 
+	now := time.Now()
+
 	result := make([]Entry, 0, len(values))
 	var expired []string
 	for field, item := range values {
-		if item.Expires.Before(time.Now()) {
+		if item.Expires.Before(now) {
 			expired = append(expired, field)
 		} else {
 			result = append(result, item)
@@ -76,12 +131,10 @@ func (k *KV) Set(ctx context.Context, key string, items []Entry) error {
 			return err
 		}
 	}
-	seqNum := time.Now().UnixMilli()
 
 	values := make(map[string]Entry, len(items))
-	for index, item := range items {
+	for _, item := range items {
 		key := hash(item.ID())
-		item.SeqNum = seqNum + int64(index) // 以此递增的
 		values[string(key[:])] = item
 	}
 	return k.EntryStore(key).HMSet(ctx, values)

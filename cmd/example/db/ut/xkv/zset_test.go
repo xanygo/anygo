@@ -207,8 +207,8 @@ func checkZSet(t *testing.T, kvs xkv.StringStorage) {
 				return true
 			})
 			xt.NoError(t, err)
-			xt.SliceSortEqual(t, members, want1)
-			xt.SliceSortEqual(t, scores, wang2)
+			xt.SortEqual(t, members, want1)
+			xt.SortEqual(t, scores, wang2)
 		}
 
 		checkRange(t, "1", "2", []string{"m1", "m2"}, []float64{1, 2})

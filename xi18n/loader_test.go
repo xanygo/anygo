@@ -17,7 +17,7 @@ func TestLoadFS(t *testing.T) {
 	b := &xi18n.Bundle{}
 	err := xi18n.LoadFS(b, os.DirFS("testdata/data1"), ".", ".json", xcodec.JSON)
 	xt.NoError(t, err)
-	xt.SliceSortEqual(t, b.Languages(), []xi18n.Language{"zh", "en"})
+	xt.SortEqual(t, b.Languages(), []xi18n.Language{"zh", "en"})
 
 	t.Run("zh", func(t *testing.T) {
 		zh := b.Localize("zh")

@@ -3,12 +3,14 @@ package xcookiejar
 import (
 	"context"
 	"crypto/sha256"
+	"fmt"
 	"time"
 
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xdb"
 	"github.com/xanygo/anygo/xdb/xor"
 	"github.com/xanygo/anygo/xlog"
+	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xsync"
 )
 
@@ -18,8 +20,8 @@ const DefaultMaxPerKey = 128
 
 // Database 使用数据库存储 Cookie 信息的实现
 type Database struct {
-	Client xdb.DBCore // 必填，数据库对象
-	Table  string     // 可选，表名，默认值为 xcookiejar
+	DB    xdb.DBCore // 必填，数据库对象
+	Table string     // 可选，表名，默认值为 xcookiejar
 
 	// MaxPerKey 可选，一个 jar 最多允许多少个 Cookie，默认值为 128，-1 为不限制
 	MaxPerKey int
@@ -42,15 +44,51 @@ func (d *Database) getLimit() int {
 	return d.MaxPerKey
 }
 
+func (d *Database) Init(param map[string]any) error {
+	if d.DB == nil {
+		service, err := xmap.GetString(param, "Service")
+		if err != nil {
+			return err
+		}
+		if service == "" {
+			return fmt.Errorf("no Service in %v", param)
+		}
+		db, err := xdb.NewClientWithService(service)
+		if err != nil {
+			return err
+		}
+		d.DB = db
+	}
+
+	if d.Table == "" {
+		table, err := xmap.GetString(param, "Table")
+		if err != nil {
+			return err
+		}
+		d.Table = table
+	}
+
+	autoMigrate, err := xmap.GetBool(param, "AutoMigrate")
+	if err != nil {
+		return err
+	}
+	if autoMigrate {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		return d.Migrate(ctx)
+	}
+	return nil
+}
+
 // DeleteEntry implements [Storage].
 func (d *Database) orm() *xor.Model[dbModel] {
-	return xor.New[dbModel](d.Client).Table(d.getTable())
+	return xor.New[dbModel](d.DB).Table(d.getTable())
 }
 
 // Migrate 在测试环境下使用，创建表结构
 func (d *Database) Migrate(ctx context.Context) error {
 	obj := dbModel{}
-	return xor.MigrateWithTable(ctx, d.Client, obj, d.getTable())
+	return xor.MigrateWithTable(ctx, d.DB, obj, d.getTable())
 }
 
 var dbSelectField = []string{"id", "domain", "path", "name", "expires", "entry", "created"}
@@ -76,7 +114,6 @@ func (d *Database) Get(ctx context.Context, key string) ([]Entry, error) {
 			entry.Domain = item.Domain
 			entry.Path = item.Path
 			entry.Name = item.Name
-			entry.SeqNum = item.ID
 			entry.Creation = item.Created
 
 			result = append(result, entry)

@@ -22,7 +22,9 @@ func TestEqual(t *testing.T) {
 
 	mt.Fail(func(t Testing) {
 		Equal(t, 1, 2)
+	}, func(t Testing) {
 		Equal(t, "a", "b")
+	}, func(t Testing) {
 		NotEqual(t, 1, 1)
 	})
 }
@@ -30,23 +32,24 @@ func TestEqual(t *testing.T) {
 func TestAnyOf(t *testing.T) {
 	mt := newMyTesting(t)
 	mt.Success(func(t Testing) {
-		AnyOf(t, 1, 1, 2)
-		AnyOf(t, "a", "b", "a")
+		AnyOf(t, 1, Slice(1, 2))
+		AnyOf(t, "a", Slice("b", "a"))
 	})
 	mt.Fail(func(t Testing) {
-		AnyOf(t, "a", "b", "c")
-		AnyOf(t, 1, 2, 3)
+		AnyOf(t, "a", Slice("b", "c"))
+	}, func(t Testing) {
+		AnyOf(t, 1, Slice(2, 3))
 	})
 }
 
 func TestNotAnyOf(t *testing.T) {
 	mt := newMyTesting(t)
 	mt.Success(func(t Testing) {
-		NotAnyOf(t, 1, 0, 2)
-		NotAnyOf(t, "a", "b")
+		NotAnyOf(t, 1, Slice(0, 2))
+		NotAnyOf(t, "a", Slice("b"))
 	})
 	mt.Fail(func(t Testing) {
-		NotAnyOf(t, "a", "a", "c")
+		NotAnyOf(t, "a", Slice("a", "c"))
 	})
 }
 
@@ -151,13 +154,17 @@ func TestContains(t *testing.T) {
 
 func TestSliceContains(t *testing.T) {
 	mt := newMyTesting(t)
+
 	mt.Success(func(t Testing) {
-		SliceContains(t, []int{1, 2}, 1)
-		SliceNotContains(t, []int{1, 2}, 3)
+		InSlice(t, 1, []int{1, 2})
+	}, func(t Testing) {
+		NotInSlice(t, 3, []int{1, 2})
 	})
+
 	mt.Fail(func(t Testing) {
-		SliceContains(t, []int{1, 2}, 3)
-		SliceNotContains(t, []int{1, 2}, 1)
+		InSlice(t, 3, []int{1, 2})
+	}, func(t Testing) {
+		NotInSlice(t, 1, []int{1, 2})
 	})
 }
 
@@ -170,11 +177,15 @@ func TestSamePtr(t *testing.T) {
 		v1 := &TStruct{}
 		v2 := v1
 		SamePtr(t, v1, v2)
+	}, func(t Testing) {
+		v1 := &TStruct{}
 		v3 := &TStruct{}
 		NotSamePtr(t, v1, v3)
 	})
+
 	mt.Fail(func(t Testing) {
 		SamePtr(t, &TStruct{}, &TStruct{})
+	}, func(t Testing) {
 		v1 := &TStruct{}
 		v2 := v1
 		NotSamePtr(t, v1, v2)
@@ -189,10 +200,14 @@ func TestLess(t *testing.T) {
 		Less(t, 0.1, 0.2)
 		Less(t, uint32(1), uint32(2))
 	})
+
 	mt.Fail(func(t Testing) {
 		Less(t, 3, 2)
+	}, func(t Testing) {
 		Less(t, "c", "b")
+	}, func(t Testing) {
 		Less(t, 0.3, 0.2)
+	}, func(t Testing) {
 		Less(t, uint32(3), uint32(2))
 	})
 }
@@ -214,8 +229,11 @@ func TestLessOrEqual(t *testing.T) {
 	})
 	mt.Fail(func(t Testing) {
 		LessOrEqual(t, 3, 2)
+	}, func(t Testing) {
 		LessOrEqual(t, "c", "b")
+	}, func(t Testing) {
 		LessOrEqual(t, 0.3, 0.2)
+	}, func(t Testing) {
 		LessOrEqual(t, uint32(3), uint32(2))
 	})
 }
@@ -230,17 +248,22 @@ func TestGreater(t *testing.T) {
 		Greater(t, 0.3, 0.2)
 		Greater(t, uint32(3), uint32(2))
 	})
+
 	mt.Fail(func(t Testing) {
 		Greater(t, 1, 2)
+	}, func(t Testing) {
 		Greater(t, 2, 2)
-
+	}, func(t Testing) {
 		Greater(t, "a", "b")
+	}, func(t Testing) {
 		Greater(t, "b", "b")
-
+	}, func(t Testing) {
 		Greater(t, 0.2, 0.2)
+	}, func(t Testing) {
 		Greater(t, 0.1, 0.2)
-
+	}, func(t Testing) {
 		Greater(t, uint32(2), uint32(2))
+	}, func(t Testing) {
 		Greater(t, uint32(1), uint32(2))
 	})
 }
@@ -262,8 +285,11 @@ func TestGreaterOrEqual(t *testing.T) {
 	})
 	mt.Fail(func(t Testing) {
 		GreaterOrEqual(t, 1, 2)
+	}, func(t Testing) {
 		GreaterOrEqual(t, "a", "b")
+	}, func(t Testing) {
 		GreaterOrEqual(t, 0.1, 0.2)
+	}, func(t Testing) {
 		GreaterOrEqual(t, uint32(1), uint32(2))
 	})
 }
@@ -276,6 +302,7 @@ func TestErrorIs(t *testing.T) {
 	})
 	mt.Fail(func(t Testing) {
 		ErrorIs(t, nil, io.EOF)
+	}, func(t Testing) {
 		ErrorIs(t, io.EOF, fmt.Errorf("%w ,ok", io.EOF))
 	})
 }
@@ -283,11 +310,11 @@ func TestErrorIs(t *testing.T) {
 func TestNotErrorIs(t *testing.T) {
 	mt := newMyTesting(t)
 	mt.Success(func(t Testing) {
-		NotErrorIs(t, nil, io.EOF)
-		NotErrorIs(t, io.EOF, fmt.Errorf("%w ,ok", io.EOF))
+		ErrorNot(t, nil, io.EOF)
+		ErrorNot(t, io.EOF, fmt.Errorf("%w ,ok", io.EOF))
 	})
 	mt.Fail(func(t Testing) {
-		NotErrorIs(t, io.EOF, io.EOF)
+		ErrorNot(t, io.EOF, io.EOF)
 	})
 }
 
@@ -305,11 +332,15 @@ func TestLen(t *testing.T) {
 
 	mt.Fail(func(t Testing) {
 		Len(t, 0, 0)
+	}, func(t Testing) {
 		Len(t, []string{}, 1)
+	}, func(t Testing) {
 		Len(t, []string{"a"}, 0)
-
+	}, func(t Testing) {
 		type ss []string
 		Len(t, ss{}, 1)
+	}, func(t Testing) {
+		type ss []string
 		Len(t, ss{"a"}, 2)
 	})
 }
@@ -344,16 +375,14 @@ func TestHasPrefix(t *testing.T) {
 	mt := newMyTesting(t)
 	mt.Success(func(t Testing) {
 		HasPrefix(t, "abc", "a")
-		HasPrefix(t, "abc", "ab")
-		HasPrefix(t, "abc", "abc")
-		HasPrefix[str1](t, str1("abc"), str1("a"))
-		HasPrefix[str2](t, str2("abc"), str2("a"))
 	})
 	mt.Fail(func(t Testing) {
-		HasPrefix(t, "abc", "b")
 		HasPrefix(t, "abc", "c")
+	}, func(t Testing) {
 		HasPrefix(t, "abc", "abcd")
+	}, func(t Testing) {
 		HasPrefix[str1](t, str1("abc"), str1("b"))
+	}, func(t Testing) {
 		HasPrefix[str2](t, str2("abc"), str2("b"))
 	})
 }
@@ -369,11 +398,16 @@ func TestNotPrefix(t *testing.T) {
 		NotPrefix[str1](t, str1("abc"), str1("b"))
 		NotPrefix[str2](t, str2("abc"), str2("b"))
 	})
+
 	mt.Fail(func(t Testing) {
 		NotPrefix(t, "abc", "a")
+	}, func(t Testing) {
 		NotPrefix(t, "abc", "ab")
+	}, func(t Testing) {
 		NotPrefix(t, "abc", "abc")
+	}, func(t Testing) {
 		NotPrefix[str1](t, str1("abc"), str1("a"))
+	}, func(t Testing) {
 		NotPrefix[str2](t, str2("abc"), str2("a"))
 	})
 }
@@ -384,16 +418,14 @@ func TestHasSuffix(t *testing.T) {
 	mt := newMyTesting(t)
 	mt.Success(func(t Testing) {
 		HasSuffix(t, "abc", "c")
-		HasSuffix(t, "abc", "bc")
-		HasSuffix(t, "abc", "abc")
-		HasSuffix[str1](t, str1("abc"), str1("c"))
-		HasSuffix[str2](t, str2("abc"), str2("c"))
 	})
 	mt.Fail(func(t Testing) {
-		HasSuffix(t, "abc", "a")
 		HasSuffix(t, "abc", "ab")
+	}, func(t Testing) {
 		HasSuffix(t, "abc", "abcd")
+	}, func(t Testing) {
 		HasSuffix[str1](t, str1("abc"), str1("b"))
+	}, func(t Testing) {
 		HasSuffix[str2](t, str2("abc"), str2("b"))
 	})
 }
@@ -411,9 +443,13 @@ func TestNotSuffix(t *testing.T) {
 	})
 	mt.Fail(func(t Testing) {
 		NotSuffix(t, "abc", "c")
+	}, func(t Testing) {
 		NotSuffix(t, "abc", "bc")
+	}, func(t Testing) {
 		NotSuffix(t, "abc", "abc")
+	}, func(t Testing) {
 		NotSuffix[str1](t, str1("abc"), str1("c"))
+	}, func(t Testing) {
 		NotSuffix[str2](t, str2("abc"), str2("c"))
 	})
 }

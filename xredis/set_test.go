@@ -155,11 +155,11 @@ func TestClient_Set(t *testing.T) {
 
 		got, err = client.SUnion(ctx, "s-u-1")
 		xt.NoError(t, err)
-		xt.SliceSortEqual(t, []string{"v1", "v2"}, got)
+		xt.SortEqual(t, []string{"v1", "v2"}, got)
 
 		got, err = client.SUnion(ctx, "s-u-1", "s-u-not-found")
 		xt.NoError(t, err)
-		xt.SliceSortEqual(t, []string{"v1", "v2"}, got)
+		xt.SortEqual(t, []string{"v1", "v2"}, got)
 
 		num, err = client.SAdd(ctx, "s-u-2", "v3", "v2")
 		xt.NoError(t, err)
@@ -167,7 +167,7 @@ func TestClient_Set(t *testing.T) {
 
 		got, err = client.SUnion(ctx, "s-u-1", "s-u-not-found", "s-u-2")
 		xt.NoError(t, err)
-		xt.SliceSortEqual(t, []string{"v1", "v2", "v3"}, got)
+		xt.SortEqual(t, []string{"v1", "v2", "v3"}, got)
 	})
 
 	t.Run("SUnionStore", func(t *testing.T) {

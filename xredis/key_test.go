@@ -103,7 +103,7 @@ func TestClientKey(t *testing.T) {
 		vs, err := client.Keys(ctx, "e*")
 		xt.NoError(t, err)
 		xt.NotEmpty(t, vs)
-		xt.SliceContains(t, vs, "e1")
+		xt.InSlice(t, "e1", vs)
 	})
 
 	t.Run("Move", func(t *testing.T) {

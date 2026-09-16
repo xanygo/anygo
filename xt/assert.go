@@ -5,124 +5,119 @@
 package xt
 
 import (
-	"bytes"
 	"cmp"
 	"errors"
-	"reflect"
+	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
+	"github.com/xanygo/anygo/cli/xcolor"
 	"github.com/xanygo/anygo/internal/zreflect"
 )
 
-func Equal[T any](t Testing, actual T, expected T) {
-	if h, ok := t.(Helper); ok {
-		h.Helper()
-	}
-	if !equal(expected, actual) {
-		var zero T
-		t.Fatalf("Not equal (%T): \n%s", zero, sprintfDiff(actual, expected))
-	}
-}
-
-// AnyOf 获取到的值等于任意一个预期值
-func AnyOf[T any](t Testing, actual T, expected ...T) {
-	if h, ok := t.(Helper); ok {
-		h.Helper()
-	}
-	for _, item := range expected {
-		if equal(actual, item) {
-			return
-		}
-	}
-	var zero T
-	var bf bytes.Buffer
-	for _, item := range expected {
-		bf.WriteString(sprintfDiff(actual, item))
-	}
-	t.Fatalf("Not AnyOf (%d %T): \n%s", len(expected), zero, bf.String())
-}
-
-func NotEqual[T any](t Testing, actual T, expected T) {
+func Equal[T any](t Testing, actual T, expected T, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
 	if equal(expected, actual) {
-		str := zreflect.DumpString(actual)
-		var zero T
-		t.Fatalf("Should not equal (%T): %s", zero, str)
+		return
 	}
+	var zero T
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", zero)},
+	}
+	txts = append(txts, doDiff(actual, expected)...)
+	Fail(t, "Not equal", txts, msgAndArgs...)
 }
 
-// NotAnyOf 获取到的值，必须不是任意输入值
-func NotAnyOf[T any](t Testing, actual T, expected ...T) {
+func NotEqual[T any](t Testing, actual T, expected T, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
-	for _, item := range expected {
-		if equal(actual, item) {
-			str := zreflect.DumpString(actual)
-			var zero T
-			t.Fatalf("Should not equal (%T): %s", zero, str)
-		}
+	if !equal(expected, actual) {
+		return
 	}
+	var zero T
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", zero)},
+		Labeled{Label: "Actual", Content: prettyGoValue(actual)},
+	}
+	Fail(t, "Should not equal", txts, msgAndArgs...)
 }
 
-func Less[T cmp.Ordered](t Testing, x T, y T) {
+func Slice[T any](v ...T) []T {
+	return v
+}
+
+func Less[T cmp.Ordered](t Testing, x T, y T, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
 	if cmp.Compare(x, y) != -1 {
-		t.Fatalf(`"%v" is not less than "%v"`, x, y)
+		msg := fmt.Sprintf(`"%v" is not less than "%v"`, x, y)
+		Fail(t, msg, nil, msgAndArgs...)
 	}
 }
 
-func LessOrEqual[T cmp.Ordered](t Testing, x T, y T) {
+func LessOrEqual[T cmp.Ordered](t Testing, x T, y T, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
 	if cmp.Compare(x, y) == 1 {
-		t.Fatalf(`"%v" is not less than or equal to "%v"`, x, y)
+		msg := fmt.Sprintf(`"%v" is not less than or equal to "%v"`, x, y)
+		Fail(t, msg, nil, msgAndArgs...)
 	}
 }
 
-func Greater[T cmp.Ordered](t Testing, x T, y T) {
+func Greater[T cmp.Ordered](t Testing, x T, y T, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
 	if cmp.Compare(x, y) != 1 {
-		t.Fatalf(`"%v" is not greater than "%v"`, x, y)
+		msg := fmt.Sprintf(`"%v" is not greater than "%v"`, x, y)
+		Fail(t, msg, nil, msgAndArgs...)
 	}
 }
 
-func GreaterOrEqual[T cmp.Ordered](t Testing, x T, y T) {
+func GreaterOrEqual[T cmp.Ordered](t Testing, x T, y T, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
 	if cmp.Compare(x, y) == -1 {
-		t.Fatalf(`"%v" is not greater than or equal to "%v"`, x, y)
+		msg := fmt.Sprintf(`"%v" is not greater than or equal to "%v"`, x, y)
+		Fail(t, msg, nil, msgAndArgs...)
 	}
 }
 
-func Error(t Testing, err error) {
-	if h, ok := t.(Helper); ok {
-		h.Helper()
-	}
-	if err == nil {
-		t.Fatalf("An error is expected but got nil.")
-	}
-}
-
-func NoError(t Testing, err error) {
+func Error(t Testing, err error, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
 	if err != nil {
-		t.Fatalf("Received unexpected error: %s", errorText(err))
+		return
 	}
+	msg := "An error is expected but got nil"
+	Fail(t, msg, nil, msgAndArgs...)
 }
 
-func ErrorIs(t Testing, err error, target error) {
+func NoError(t Testing, err error, msgAndArgs ...any) {
+	if h, ok := t.(Helper); ok {
+		h.Helper()
+	}
+	if err == nil {
+		return
+	}
+
+	txts := Labeleds{
+		Labeled{Label: "Actual", Content: zreflect.DumpString(err)},
+	}
+
+	msg := fmt.Sprintf("Received unexpected error: %s", errorText(err))
+	Fail(t, msg, txts, msgAndArgs...)
+}
+
+func ErrorIs(t Testing, err error, target error, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
@@ -130,32 +125,52 @@ func ErrorIs(t Testing, err error, target error) {
 		return
 	}
 
-	t.Fatalf("errors.Is(%#v, %q) = false, want true", err, target)
+	txts := Labeleds{
+		Labeled{Label: "Actual", Content: errorText(err)},
+		Labeled{Label: "Target", Content: errorText(err)},
+		Labeled{Label: "ActualDump", Content: zreflect.DumpString(err)},
+		Labeled{Label: "TargetDump", Content: zreflect.DumpString(target)},
+	}
+
+	msg := fmt.Sprintf("errors.Is(%#v, %q) = false, want true", err, target)
+	Fail(t, msg, txts, msgAndArgs...)
 }
 
-func NotErrorIs(t Testing, err error, target error) {
+func ErrorNot(t Testing, err error, target error, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
 	if !errors.Is(err, target) {
 		return
 	}
+	txts := Labeleds{
+		Labeled{Label: "Actual", Content: errorText(err)},
+		Labeled{Label: "Target", Content: errorText(err)},
+		Labeled{Label: "ActualDump", Content: zreflect.DumpString(err)},
+		Labeled{Label: "TargetDump", Content: zreflect.DumpString(target)},
+	}
 
-	t.Fatalf("errors.Is(%#v, %#v) = true, want false", err, target)
+	msg := fmt.Sprintf("errors.Is(%T, %T) = true, want false", err, target)
+	Fail(t, msg, txts, msgAndArgs...)
 }
 
-func ErrorContains(t Testing, err error, substr string) {
+func ErrorContains(t Testing, err error, substr string, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
+	}
+	if err == nil {
+		Fail(t, "error is nil", nil, msgAndArgs...)
+		return
 	}
 	et := err.Error()
 	if strings.Contains(et, substr) {
 		return
 	}
-	t.Fatalf("error %q should contains %q", et, substr)
+	msg := fmt.Sprintf("error %q should contains %q", et, substr)
+	Fail(t, msg, nil, msgAndArgs...)
 }
 
-func ErrorNotContains(t Testing, err error, substr string) {
+func ErrorNotContains(t Testing, err error, substr string, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
@@ -163,221 +178,336 @@ func ErrorNotContains(t Testing, err error, substr string) {
 	if !strings.Contains(et, substr) {
 		return
 	}
-	t.Fatalf("error %q should not contains %q", et, substr)
+	msg := fmt.Sprintf("error %q should not contains %q", et, substr)
+	Fail(t, msg, nil, msgAndArgs...)
 }
 
-func True(t Testing, got bool) {
+func True(t Testing, actual bool, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
-	if !got {
-		t.Fatalf("Should be true")
+	if actual {
+		return
 	}
+	Fail(t, "Should be true", nil, msgAndArgs...)
 }
 
-func False(t Testing, got bool) {
+func False(t Testing, actual bool, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
-	if got {
-		t.Fatalf("Should be false")
+	if !actual {
+		return
 	}
+	Fail(t, "Should be false", nil, msgAndArgs...)
 }
 
-func Nil(t Testing, got any) {
+func Nil(t Testing, actual any, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
-	if !isNil(got) {
-		t.Fatalf("Expected nil, but got: %#v\n dump:\n%s", got, zreflect.DumpString(got))
+	if isNil(actual) {
+		return
 	}
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", actual)},
+		Labeled{Label: "Actual", Content: zreflect.DumpString(actual)},
+	}
+	Fail(t, "Expected nil, but not", txts, msgAndArgs...)
 }
 
-func NotNil(t Testing, got any) {
+func NotNil(t Testing, actual any, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
-	if isNil(got) {
-		t.Fatalf("Expected value not to be nil")
+	if !isNil(actual) {
+		return
 	}
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", actual)},
+		Labeled{Label: "Actual", Content: fmt.Sprintf("%#v", actual)},
+	}
+	Fail(t, "Expected not nil value, but nil", txts, msgAndArgs...)
 }
 
-func Empty(t Testing, got any) {
+func Empty(t Testing, actual any, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
 
-	if !isEmpty(got) {
-		t.Fatalf("Should be empty, but was %#v\n dump:\n%s", got, zreflect.DumpString(got))
+	if isEmpty(actual) {
+		return
 	}
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", actual)},
+		Labeled{Label: "Actual", Content: zreflect.DumpString(actual)},
+	}
+	Fail(t, "Should be empty, but not", txts, msgAndArgs...)
 }
 
-func NotEmpty(t Testing, got any) {
+func NotEmpty(t Testing, actual any, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
-	if isEmpty(got) {
-		t.Fatalf("Should NOT be empty, but was %v", got)
+	if !isEmpty(actual) {
+		return
 	}
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", actual)},
+		Labeled{Label: "Actual", Content: zreflect.DumpString(actual)},
+	}
+	Fail(t, "Should NOT be empty, but not", txts, msgAndArgs...)
 }
 
-func HasPrefix[T StringByte](t Testing, s T, prefix T) {
+func HasPrefix[T StringByte](t Testing, actual T, prefix T, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
-	vt := reflect.ValueOf(s)
-	switch vt.Kind() {
-	case reflect.String:
-		if strings.HasPrefix(vt.String(), reflect.ValueOf(prefix).String()) {
-			return
-		}
-	case reflect.Slice:
-		if bytes.HasPrefix(vt.Bytes(), reflect.ValueOf(prefix).Bytes()) {
-			return
-		}
+	if strings.HasPrefix(string(actual), string(prefix)) {
+		return
 	}
-	t.Fatalf("Should HasPrefix but not\n content : %q\n prefix  : %q", s, prefix)
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", actual)},
+		Labeled{Label: "Actual", Content: fmt.Sprintf("%q", actual)},
+		Labeled{Label: "Prefix", Content: fmt.Sprintf("%q", prefix)},
+	}
+	Fail(t, "Should HasPrefix but not", txts, msgAndArgs...)
 }
 
-func NotPrefix[T StringByte](t Testing, s T, prefix T) {
+func NotPrefix[T StringByte](t Testing, actual T, prefix T, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
-	vt := reflect.ValueOf(s)
-	switch vt.Kind() {
-	case reflect.String:
-		if !strings.HasPrefix(vt.String(), reflect.ValueOf(prefix).String()) {
-			return
-		}
-	case reflect.Slice:
-		if !bytes.HasPrefix(vt.Bytes(), reflect.ValueOf(prefix).Bytes()) {
-			return
-		}
+	if !strings.HasPrefix(string(actual), string(prefix)) {
+		return
 	}
-	t.Fatalf("Should not HasPrefix but yes\n content : %q\n prefix  : %q", s, prefix)
+
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", actual)},
+		Labeled{Label: "Actual", Content: fmt.Sprintf("%q", actual)},
+		Labeled{Label: "Prefix", Content: fmt.Sprintf("%q", prefix)},
+	}
+	Fail(t, "Should not HasPrefix but yes", txts, msgAndArgs...)
 }
 
-func HasSuffix[T StringByte](t Testing, s T, prefix T) {
+func HasSuffix[T StringByte](t Testing, actual T, suffix T, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
-	vt := reflect.ValueOf(s)
-	switch vt.Kind() {
-	case reflect.String:
-		if strings.HasSuffix(vt.String(), reflect.ValueOf(prefix).String()) {
-			return
-		}
-	case reflect.Slice:
-		if bytes.HasSuffix(vt.Bytes(), reflect.ValueOf(prefix).Bytes()) {
-			return
-		}
+	if strings.HasSuffix(string(actual), string(suffix)) {
+		return
 	}
-	t.Fatalf("Should HasSuffix but not\n content : %q\n prefix  : %q", s, prefix)
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", actual)},
+		Labeled{Label: "Actual", Content: fmt.Sprintf("%q", actual)},
+		Labeled{Label: "Suffix", Content: fmt.Sprintf("%q", suffix)},
+	}
+	Fail(t, "Should HasSuffix but not", txts, msgAndArgs...)
 }
 
-func NotSuffix[T StringByte](t Testing, s T, prefix T) {
+func NotSuffix[T StringByte](t Testing, actual T, suffix T, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
-	vt := reflect.ValueOf(s)
-	switch vt.Kind() {
-	case reflect.String:
-		if !strings.HasSuffix(vt.String(), reflect.ValueOf(prefix).String()) {
-			return
-		}
-	case reflect.Slice:
-		if !bytes.HasSuffix(vt.Bytes(), reflect.ValueOf(prefix).Bytes()) {
-			return
-		}
+	if !strings.HasSuffix(string(actual), string(suffix)) {
+		return
 	}
-	t.Fatalf("Should not HasSuffix but yes\n content : %q\n prefix  : %q", s, prefix)
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", actual)},
+		Labeled{Label: "Actual", Content: fmt.Sprintf("%q", actual)},
+		Labeled{Label: "Suffix", Content: fmt.Sprintf("%q", suffix)},
+	}
+	Fail(t, "Should not HasSuffix but yes", txts, msgAndArgs...)
 }
 
 // Contains 是否包含子字符串
-func Contains[T StringByte](t Testing, s T, substr T) {
+func Contains[T StringByte](t Testing, s T, substr T, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
-	vt := reflect.ValueOf(s)
-	switch vt.Kind() {
-	case reflect.String:
-		if strings.Contains(vt.String(), reflect.ValueOf(substr).String()) {
-			return
-		}
-	case reflect.Slice:
-		if bytes.Contains(vt.Bytes(), reflect.ValueOf(substr).Bytes()) {
-			return
-		}
+	if strings.Contains(string(s), string(substr)) {
+		return
 	}
-	t.Fatalf("%#v should not substr %#v", s, substr)
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", s)},
+		Labeled{Label: "Actual", Content: fmt.Sprintf("%q", s)},
+		Labeled{Label: "Substr", Content: fmt.Sprintf("%q", substr)},
+	}
+	Fail(t, "Should Contains but not", txts, msgAndArgs...)
 }
 
 // NotContains 是否不包含子字符串
-func NotContains[T StringByte](t Testing, s T, substr T) {
+func NotContains[T StringByte](t Testing, s T, substr T, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
-	vt := reflect.ValueOf(s)
-	switch vt.Kind() {
-	case reflect.String:
-		if !strings.Contains(vt.String(), reflect.ValueOf(substr).String()) {
+	index := strings.Index(string(s), string(substr))
+	if index < 0 {
+		return
+	}
+
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", s)},
+		Labeled{Label: "Actual", Content: fmt.Sprintf("%q", s)},
+		Labeled{Label: "Index", Content: strconv.Itoa(index)},
+		Labeled{Label: "Substr", Content: fmt.Sprintf("%q", substr)},
+	}
+	Fail(t, "Should not Contains but yes", txts, msgAndArgs...)
+}
+
+// AnyOf 获取到的值等于任意一个预期值
+func AnyOf[T any](t Testing, actual T, collection []T, msgAndArgs ...any) {
+	if h, ok := t.(Helper); ok {
+		h.Helper()
+	}
+	for _, item := range collection {
+		if equal(actual, item) {
 			return
 		}
-	case reflect.Slice:
-		if !bytes.Contains(vt.Bytes(), reflect.ValueOf(substr).Bytes()) {
-			return
-		}
 	}
-	t.Fatalf("%#v should not substr %#v", s, substr)
+	var zero T
+	txts := Labeleds{
+		Labeled{Label: "DataType", Content: fmt.Sprintf("%T", zero)},
+		Labeled{Label: "Actual", Content: prettyGoValue(actual)},
+		Labeled{Label: "Collection", Content: prettyGoValue(collection)},
+	}
+	Fail(t, fmt.Sprintf("Should AnyOf [%d]%T", len(collection), zero), txts, msgAndArgs...)
 }
 
-// SliceContains 检查 values 是否包含所有的 items
-func SliceContains[S ~[]E, E comparable](t Testing, values S, items ...E) {
+// NotAnyOf 获取到的值，必须不是任意输入值
+func NotAnyOf[T any](t Testing, actual T, collection []T, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
+	var indexs []int
+	for i, item := range collection {
+		if equal(actual, item) {
+			indexs = append(indexs, i)
+		}
+	}
+	if len(indexs) == 0 {
+		return
+	}
+
+	var zero T
+	txts := Labeleds{
+		Labeled{Label: "DataType", Content: fmt.Sprintf("%T", zero)},
+		Labeled{Label: "Value", Content: prettyGoValue(actual)},
+		Labeled{Label: "Index", Content: fmt.Sprintf("%v", indexs)},
+		Labeled{Label: "Set", Content: prettyGoValue(collection)},
+	}
+	Fail(t, fmt.Sprintf("Should Not AnyOf [%d]%T", len(collection), zero), txts, msgAndArgs...)
+}
+
+// InSlice 检查 item 已在 collection 之中
+func InSlice[S ~[]E, E comparable](t Testing, item E, collection S, msgAndArgs ...any) {
+	if h, ok := t.(Helper); ok {
+		h.Helper()
+	}
+
+	if slices.Contains(collection, item) {
+		return
+	}
+
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", collection)},
+		Labeled{Label: "Value", Content: fmt.Sprintf("%#v", item)},
+		Labeled{Label: "Collection", Content: prettyGoValue(collection)},
+	}
+	Fail(t, "Should Contains but not", txts, msgAndArgs...)
+}
+
+// NotInSlice 判断 item 应该不在 collection 之中
+func NotInSlice[S ~[]E, E comparable](t Testing, item E, collection S, msgAndArgs ...any) {
+	if h, ok := t.(Helper); ok {
+		h.Helper()
+	}
+	index := slices.Index(collection, item)
+	if index < 0 {
+		return
+	}
+
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", collection)},
+		Labeled{Label: "Value", Content: fmt.Sprintf("%#v", item)},
+		Labeled{Label: "Index", Content: strconv.Itoa(index)},
+		Labeled{Label: "Collection", Content: prettyGoValue(collection)},
+	}
+	Fail(t, "Should NotContains but yes", txts, msgAndArgs...)
+}
+
+// AllInSlice 判断 items 所有元素都在 collection 之中
+func AllInSlice[S ~[]E, E comparable](t Testing, items S, collection S, msgAndArgs ...any) {
 	if len(items) == 0 {
-		t.Fatalf("empty items")
+		return
 	}
-	for _, item := range items {
-		if !slices.Contains(values, item) {
-			t.Fatalf("%#v does not contains %#v", values, item)
-		}
-	}
-}
-
-// SliceNotContains 检查 values 没哟包含任意的 items
-func SliceNotContains[S ~[]E, E comparable](t Testing, values S, items ...E) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
+	mp := make(map[E]struct{}, len(collection))
+	for _, v := range collection {
+		mp[v] = struct{}{}
+	}
+	notIn := make(map[int]E)
+	for index, item := range items {
+		if _, has := mp[item]; !has {
+			notIn[index] = item
+		}
+	}
+	if len(notIn) == 0 {
+		return
+	}
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", collection)},
+		Labeled{Label: "Items", Content: prettyGoValue(items)},
+		Labeled{Label: "Collection", Content: prettyGoValue(collection)},
+		Labeled{Label: "NotIn", Content: prettyGoValue(notIn)},
+	}
+	var zero E
+	if len(notIn) == len(items) {
+		Fail(t, fmt.Sprintf("All items are not in [%d]%T", len(items), zero), txts, msgAndArgs...)
+	} else {
+		Fail(t, fmt.Sprintf("%d items are not in [%d]%T", len(notIn), len(items), zero), txts, msgAndArgs...)
+	}
+}
+
+// AllInSlice 判断 items 所有元素都不在 collection 之中
+func AllNotInSlice[S ~[]E, E comparable](t Testing, items S, collection S, msgAndArgs ...any) {
 	if len(items) == 0 {
-		t.Fatalf("empty items")
+		return
 	}
-	for _, item := range items {
-		if slices.Contains(values, item) {
-			t.Fatalf("%#v should not contains %#v", values, item)
-		}
-	}
-}
-
-// SliceSortEqual 将两个 slice 排序后比较内容是否一样
-func SliceSortEqual[S ~[]E, E cmp.Ordered](t Testing, expected S, actual S) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
-	expected = slices.Clone(expected)
-	slices.Sort(expected)
-
-	actual = slices.Clone(actual)
-	slices.Sort(actual)
-	if !equal(expected, actual) {
-		t.Fatalf("Not equal: \n%s", sprintfDiff(actual, expected))
+	mp := make(map[E]struct{}, len(collection))
+	for _, v := range collection {
+		mp[v] = struct{}{}
+	}
+	in := make(map[int]E)
+	for index, item := range items {
+		if _, has := mp[item]; has {
+			in[index] = item
+		}
+	}
+	if len(in) == 0 {
+		return
+	}
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", collection)},
+		Labeled{Label: "Items", Content: prettyGoValue(items)},
+		Labeled{Label: "Collection", Content: prettyGoValue(collection)},
+		Labeled{Label: "Contains", Content: prettyGoValue(in)},
+	}
+	var zero E
+	if len(in) == len(items) {
+		Fail(t, fmt.Sprintf("All items are in [%d]%T", len(items), zero), txts, msgAndArgs...)
+	} else {
+		Fail(t, fmt.Sprintf("%d items are in [%d]%T", len(in), len(items), zero), txts, msgAndArgs...)
 	}
 }
 
-// SliceSortNotEqual 将两个 slice 排序后比较内容是否不一样
-func SliceSortNotEqual[S ~[]E, E cmp.Ordered](t Testing, expected S, actual S) {
+// SortEqual 将两个 slice 排序后比较内容是否一样
+func SortEqual[S ~[]E, E cmp.Ordered](t Testing, actual S, expected S, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
@@ -387,48 +517,98 @@ func SliceSortNotEqual[S ~[]E, E cmp.Ordered](t Testing, expected S, actual S) {
 	actual = slices.Clone(actual)
 	slices.Sort(actual)
 	if equal(expected, actual) {
-		str := zreflect.DumpString(actual)
-		t.Fatalf("Values should not be equal:\n %s", str)
+		return
 	}
+
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", actual)},
+	}
+	txts = append(txts, doDiff(actual, expected)...)
+	Fail(t, "Sorted Slice not equal", txts, msgAndArgs...)
 }
 
-func SamePtr(t Testing, expected any, actual any) {
+// SortNotEqual 将两个 slice 排序后比较内容是否不一样
+func SortNotEqual[S ~[]E, E cmp.Ordered](t Testing, actual S, expected S, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
-	if !samePointers(expected, actual) {
-		t.Fatalf("Not same: \n"+
-			"expected: %p %#v\n"+
-			"actual  : %p %#v", expected, expected, actual, actual)
+	expected = slices.Clone(expected)
+	slices.Sort(expected)
+
+	actualClone := slices.Clone(actual)
+	slices.Sort(actualClone)
+	if !equal(expected, actualClone) {
+		return
 	}
+
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", actualClone)},
+		Labeled{Label: "Actual", Content: zreflect.DumpString(actualClone)},
+	}
+	Fail(t, "Sorted Slice should not equal", txts, msgAndArgs...)
 }
 
-func NotSamePtr(t Testing, expected any, actual any) {
+func SamePtr(t Testing, actual any, expected any, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
 	if samePointers(expected, actual) {
-		t.Fatalf("Expected and actual point to the same object: %p %#v", expected, expected)
+		return
 	}
+
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", actual)},
+		Labeled{Label: "Actual", Content: fmt.Sprintf("%p %#v", actual, actual)},
+		Labeled{Label: "Expected", Content: fmt.Sprintf("%p %#v", expected, expected)},
+	}
+	Fail(t, "Not same Ptr", txts, msgAndArgs...)
 }
 
-func Len(t Testing, object any, length int) {
+func NotSamePtr(t Testing, expected any, actual any, msgAndArgs ...any) {
+	if h, ok := t.(Helper); ok {
+		h.Helper()
+	}
+	if !samePointers(expected, actual) {
+		return
+	}
+
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", actual)},
+		Labeled{Label: "Actual", Content: fmt.Sprintf("%p %#v", actual, actual)},
+		Labeled{Label: "ExpectedNot", Content: fmt.Sprintf("%p %#v", expected, expected)},
+	}
+	Fail(t, "Sholud Not same Ptr", txts, msgAndArgs...)
+}
+
+func Len(t Testing, object any, length int, msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
 
 	l, ok := getLen(object)
 	if !ok {
-		t.Fatalf(`"%v" could not be applied builtin len()`, object)
+		txts := Labeleds{
+			Labeled{Label: "Type", Content: fmt.Sprintf("%T", object)},
+			Labeled{Label: "Value", Content: prettyGoValue(object)},
+			Labeled{Label: "Expected", Content: strconv.Itoa(length)},
+		}
+		Fail(t, "Could not be applied builtin len()", txts, msgAndArgs...)
 		return
 	}
-
-	if l != length {
-		t.Fatalf(`"%v" should have %d item(s), but has %d`, object, length, l)
+	if l == length {
+		return
 	}
+	txts := Labeleds{
+		Labeled{Label: "Type", Content: fmt.Sprintf("%T", object)},
+		Labeled{Label: "Actual", Content: strconv.Itoa(l)},
+		Labeled{Label: "Expected", Content: strconv.Itoa(length)},
+		Labeled{Label: "Value", Content: zreflect.DumpString(object)},
+	}
+	msg := fmt.Sprintf(`should have %d item(s), but has %d`, length, l)
+	Fail(t, msg, txts, msgAndArgs...)
 }
 
-func Panic(t Testing, fn func()) {
+func Panic(t Testing, fn func(), msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
@@ -442,10 +622,10 @@ func Panic(t Testing, fn func()) {
 	if re != nil {
 		return
 	}
-	t.Fatalf("func should panic")
+	Fail(t, "func should panic", nil, msgAndArgs...)
 }
 
-func NoPanic(t Testing, fn func()) {
+func NoPanic(t Testing, fn func(), msgAndArgs ...any) {
 	if h, ok := t.(Helper); ok {
 		h.Helper()
 	}
@@ -459,5 +639,44 @@ func NoPanic(t Testing, fn func()) {
 	if re == nil {
 		return
 	}
-	t.Fatalf("func panic: %v", re)
+	msg := fmt.Sprintf("func panic: %v", re)
+	Fail(t, msg, nil, msgAndArgs...)
+}
+
+func Fail(t Testing, failureMessage string, labels []Labeled, msgAndArgs ...any) {
+	if h, ok := t.(Helper); ok {
+		h.Helper()
+	}
+
+	var content Labeleds
+
+	if n, ok := t.(interface{ Name() string }); ok {
+		content = append(content, Labeled{Label: "Test", Content: n.Name()})
+	}
+
+	content = append(content, Labeled{Label: xcolor.RedString("Error"), Content: failureMessage})
+	message := messageFromMsgAndArgs(msgAndArgs...)
+	if len(message) > 0 {
+		content = append(content, Labeled{Label: "Messages", Content: message})
+	}
+	content = append(content, labels...)
+
+	t.Fatalf("\n%s\n", content.String())
+}
+
+func messageFromMsgAndArgs(msgAndArgs ...any) string {
+	if len(msgAndArgs) == 0 || msgAndArgs == nil {
+		return ""
+	}
+	if len(msgAndArgs) == 1 {
+		msg := msgAndArgs[0]
+		if msgAsStr, ok := msg.(string); ok {
+			return msgAsStr
+		}
+		return fmt.Sprintf("%+v", msg)
+	}
+	if len(msgAndArgs) > 1 {
+		return fmt.Sprintf(msgAndArgs[0].(string), msgAndArgs[1:]...)
+	}
+	return ""
 }

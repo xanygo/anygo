@@ -274,7 +274,7 @@ func TestClientTS(t *testing.T) {
 		got, err = client.TSQueryIndex(ctx, "f1=v1")
 		xt.NoError(t, err)
 		xt.NotEmpty(t, got)
-		xt.SliceContains(t, got, "TSQueryIndex-1")
+		xt.InSlice(t, "TSQueryIndex-1", got)
 	})
 
 	t.Run("TSRange", func(t *testing.T) {

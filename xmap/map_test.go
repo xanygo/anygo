@@ -48,14 +48,14 @@ func TestRange(t *testing.T) {
 		})
 		xt.NoError(t, err)
 		wantKeys := Keys(mp)
-		xt.SliceSortEqual(t, wantKeys, keys)
+		xt.SortEqual(t, wantKeys, keys)
 
 		keys = nil
 		err = Range[string, int](mp, func(key string, val int) error {
 			keys = append(keys, key)
 			return nil
 		})
-		xt.SliceSortEqual(t, []string{"k1", "k2"}, keys)
+		xt.SortEqual(t, []string{"k1", "k2"}, keys)
 		xt.NoError(t, err)
 	})
 

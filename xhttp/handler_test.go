@@ -42,7 +42,7 @@ func TestRegisterGroup(t *testing.T) {
 	for _, sr := range router.subRoute {
 		gotKeys = append(gotKeys, sr.UniqKey())
 	}
-	xt.SliceSortEqual(t, wantKeys, gotKeys)
+	xt.SortEqual(t, wantKeys, gotKeys)
 }
 
 var _ GroupHandler = (*testUserHandler)(nil)

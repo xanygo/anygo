@@ -296,11 +296,11 @@ func TestPopRand(t *testing.T) {
 			arr, one, ok = PopRand(arr)
 			xt.True(t, ok)
 			xt.Len(t, arr, 4-i)
-			xt.SliceContains(t, l1, one)
+			xt.InSlice(t, one, l1)
 			poped = append(poped, one)
 		}
 		xt.Empty(t, arr)
-		xt.SliceSortEqual(t, l1, poped)
+		xt.SortEqual(t, l1, poped)
 		xt.Len(t, ns, 5)
 	})
 }
@@ -315,17 +315,17 @@ func TestPopRandN(t *testing.T) {
 			ns, vs = PopRandN(ns, 2)
 			xt.Len(t, ns, 3-i*2)
 			xt.Len(t, vs, 2)
-			xt.SliceContains(t, l1, vs...)
+			xt.AllInSlice(t, vs, l1)
 			poped = append(poped, vs...)
 		}
 
 		ns, vs = PopRandN(ns, 2)
 		xt.Len(t, ns, 0)
 		xt.Len(t, vs, 1)
-		xt.SliceContains(t, l1, vs...)
+		xt.AllInSlice(t, vs, l1)
 		poped = append(poped, vs...)
 
 		xt.Empty(t, ns)
-		xt.SliceSortEqual(t, l1, poped)
+		xt.SortEqual(t, l1, poped)
 	})
 }

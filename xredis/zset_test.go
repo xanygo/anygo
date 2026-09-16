@@ -182,7 +182,7 @@ func TestClientZSet(t *testing.T) {
 
 		got, err = client.ZInter(ctx, "ZInter-1")
 		xt.NoError(t, err)
-		xt.SliceSortEqual(t, []string{"f1", "f2"}, got)
+		xt.SortEqual(t, []string{"f1", "f2"}, got)
 
 		got, err = client.ZInter(ctx, "ZInter-1", "ZInter-2")
 		xt.NoError(t, err)
@@ -297,7 +297,7 @@ func TestClientZSet(t *testing.T) {
 		got, ok, err = client.ZRandMember(ctx, "ZRandMember-1")
 		xt.NoError(t, err)
 		xt.True(t, ok)
-		xt.SliceContains(t, []string{"m1", "m2", "m3"}, got)
+		xt.InSlice(t, got, []string{"m1", "m2", "m3"})
 	})
 
 	t.Run("ZRandMemberN", func(t *testing.T) {
@@ -312,7 +312,7 @@ func TestClientZSet(t *testing.T) {
 		got, err = client.ZRandMemberN(ctx, "ZRandMemberN-1", 2)
 		xt.NoError(t, err)
 		xt.Len(t, got, 2)
-		xt.SliceContains(t, []string{"m1", "m2", "m3"}, got...)
+		xt.AllInSlice(t, got, []string{"m1", "m2", "m3"})
 	})
 
 	t.Run("ZRandMemberWithScores", func(t *testing.T) {
@@ -327,7 +327,7 @@ func TestClientZSet(t *testing.T) {
 		got, err = client.ZRandMemberWithScores(ctx, "ZRandMemberWithScores-1", 2)
 		xt.NoError(t, err)
 		xt.Len(t, got, 2)
-		xt.SliceContains(t, []string{"m1", "m2", "m3"}, got[0].Member, got[1].Member)
+		xt.AllInSlice(t, xt.Slice(got[0].Member, got[1].Member), []string{"m1", "m2", "m3"})
 	})
 
 	t.Run("ZRange", func(t *testing.T) {

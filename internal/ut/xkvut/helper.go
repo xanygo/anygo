@@ -146,8 +146,8 @@ func TestStringStorage1(t xt.TB, kvs xkv.StringStorage) {
 			return true
 		})
 		xt.NoError(t, err1)
-		xt.SliceSortEqual(t, members, []string{"m1", "m3", "m2"})
-		xt.SliceSortEqual(t, scores, []float64{1, 1.5, 2})
+		xt.SortEqual(t, members, []string{"m1", "m3", "m2"})
+		xt.SortEqual(t, scores, []float64{1, 1.5, 2})
 
 		xt.NoError(t, zset.ZRem(context.Background(), "m2"))
 		got2, found2, err2 := zset.ZScore(context.Background(), "m2")
@@ -590,7 +590,7 @@ func checkSet(t xt.TB, kvs xkv.StringStorage) {
 		})
 		xt.NoError(t, err)
 		if hasFlag("SRange-NotSorted") {
-			xt.SliceSortEqual(t, values, []string{"m1", "m2"})
+			xt.SortEqual(t, values, []string{"m1", "m2"})
 		} else {
 			xt.Equal(t, values, []string{"m1", "m2"})
 		}
@@ -633,7 +633,7 @@ func checkSet(t xt.TB, kvs xkv.StringStorage) {
 		one, found, err := se.SPop(ctx)
 		xt.NoError(t, err)
 		xt.True(t, found)
-		xt.SliceContains(t, members, one)
+		xt.InSlice(t, one, members)
 
 		num, err = se.SCard(ctx)
 		xt.NoError(t, err)
@@ -641,7 +641,7 @@ func checkSet(t xt.TB, kvs xkv.StringStorage) {
 
 		many, err := se.SPopN(ctx, 2)
 		xt.NoError(t, err)
-		xt.SliceContains(t, members, many...)
+		xt.AllInSlice(t, many, members)
 
 		num, err = se.SCard(ctx)
 		xt.NoError(t, err)
@@ -658,7 +658,7 @@ func checkSet(t xt.TB, kvs xkv.StringStorage) {
 		one, found, err := se.SRandMember(ctx)
 		xt.NoError(t, err)
 		xt.True(t, found)
-		xt.SliceContains(t, members, one)
+		xt.InSlice(t, one, members)
 
 		num, err = se.SCard(ctx)
 		xt.NoError(t, err)
@@ -666,7 +666,7 @@ func checkSet(t xt.TB, kvs xkv.StringStorage) {
 
 		many, err := se.SRandMemberN(ctx, 2)
 		xt.NoError(t, err)
-		xt.SliceContains(t, members, many...)
+		xt.AllInSlice(t, many, members)
 
 		num, err = se.SCard(ctx)
 		xt.NoError(t, err)
@@ -858,8 +858,8 @@ func checkZSet(t xt.TB, kvs xkv.StringStorage) {
 				return true
 			})
 			xt.NoError(t, err)
-			xt.SliceSortEqual(t, members, want1)
-			xt.SliceSortEqual(t, scores, wang2)
+			xt.SortEqual(t, members, want1)
+			xt.SortEqual(t, scores, wang2)
 		}
 
 		checkRange(t, "1", "2", []string{"m1", "m2"}, []float64{1, 2})

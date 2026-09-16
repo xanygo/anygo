@@ -297,7 +297,7 @@ func TestClientHash(t *testing.T) {
 
 		next, vals, err = client.HScanNoValues(ctx, "HScanNoValues-1", 0, "", 10)
 		xt.NoError(t, err)
-		xt.SliceSortEqual(t, xmap.Keys(data), vals)
+		xt.SortEqual(t, xmap.Keys(data), vals)
 		xt.Equal(t, next, 0)
 
 		var count int

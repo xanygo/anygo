@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"errors"
+	"log"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -65,7 +66,7 @@ func hasDotSuffix(s, suffix string) bool {
 // It returns an empty slice if the URL's scheme is not HTTP or HTTPS.
 func (j *Jar) Cookies(u *url.URL) []*http.Cookie {
 	j.lastErr.Clear()
-	cookies, err := j.cookies(j.getContext(), u, time.Now())
+	cookies, err := j.cookies(j.getContext(), u)
 	if err != nil {
 		j.lastErr.Store(err)
 	}
@@ -73,7 +74,7 @@ func (j *Jar) Cookies(u *url.URL) []*http.Cookie {
 }
 
 func (j *Jar) CookiesContext(ctx context.Context, u *url.URL) ([]*http.Cookie, error) {
-	return j.cookies(ctx, u, time.Now())
+	return j.cookies(ctx, u)
 }
 
 func (j *Jar) getContext() context.Context {
@@ -83,7 +84,7 @@ func (j *Jar) getContext() context.Context {
 	return context.Background()
 }
 
-func (j *Jar) cookies(ctx context.Context, u *url.URL, now time.Time) (cookies []*http.Cookie, err error) {
+func (j *Jar) cookies(ctx context.Context, u *url.URL) (cookies []*http.Cookie, err error) {
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return nil, nil
 	}
@@ -103,6 +104,7 @@ func (j *Jar) cookies(ctx context.Context, u *url.URL, now time.Time) (cookies [
 	if path == "" {
 		path = "/"
 	}
+	now := time.Now()
 
 	var needDelete []string
 	var selected []Entry
@@ -137,7 +139,7 @@ func entrySort(a, b Entry) int {
 	if r := a.Creation.Compare(b.Creation); r != 0 {
 		return r
 	}
-	return cmp.Compare(a.SeqNum, b.SeqNum)
+	return cmp.Compare(a.Name, b.Name)
 }
 
 // SetCookies implements the SetCookies method of the [http.CookieJar] interface.
@@ -145,18 +147,18 @@ func entrySort(a, b Entry) int {
 // It does nothing if the URL's scheme is not HTTP or HTTPS.
 func (j *Jar) SetCookies(u *url.URL, cookies []*http.Cookie) {
 	j.lastErr.Clear()
-	err := j.setCookies(j.getContext(), u, cookies, time.Now())
+	err := j.setCookies(j.getContext(), u, cookies)
 	if err != nil {
 		j.lastErr.Store(err)
 	}
 }
 
 func (j *Jar) SetCookiesContext(ctx context.Context, u *url.URL, cookies []*http.Cookie) error {
-	return j.setCookies(ctx, u, cookies, time.Now())
+	return j.setCookies(ctx, u, cookies)
 }
 
 // setCookies is like SetCookies but takes the current time as parameter.
-func (j *Jar) setCookies(ctx context.Context, u *url.URL, cookies []*http.Cookie, now time.Time) error {
+func (j *Jar) setCookies(ctx context.Context, u *url.URL, cookies []*http.Cookie) error {
 	if len(cookies) == 0 {
 		return nil
 	}
@@ -178,12 +180,14 @@ func (j *Jar) setCookies(ctx context.Context, u *url.URL, cookies []*http.Cookie
 	for _, item := range items {
 		oldValues[item.ID()] = item
 	}
-
+	now := time.Now()
+	log.Println("now=", now.String())
 	var needDelete []string
 
 	modified := make(map[string]Entry, len(cookies))
 	for _, cookie := range cookies {
 		e, remove, err := j.newEntry(cookie, now, defPath, host)
+		log.Println("cookie:", cookie.Name, "remove=", remove, "expired:", cookie.Expires.String(), cookie.Expires.Before(now))
 		if err != nil {
 			continue
 		}
