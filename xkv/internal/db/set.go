@@ -64,7 +64,8 @@ func (s *Set) SAdd(ctx context.Context, members ...string) (num int64, err error
 	err = s.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := xor.New[SetModel](tx)
 		orm.Table(s.GetTable())
-		num, err = orm.Upsert(ctx, []string{"t", "k", "m"}, nil, items...)
+		// 冲突字段为 []string{} => 冲突后忽略掉数据
+		num, err = orm.Upsert(ctx, []string{"t", "k", "m"}, []string{}, items...)
 		return err
 	})
 	return num, err

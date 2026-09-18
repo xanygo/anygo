@@ -174,14 +174,14 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 				if i == 0 {
 					xt.Equal(t, cnt, 1)
 				} else {
+					driver := orm.DB().Driver()
 					// mysql upsert 冲突更新后，影响条数是2
-					if orm.DB().Driver() == "mysql" {
+					if driver == "mysql" || driver == "mariadb" {
 						xt.Equal(t, cnt, 2)
 					} else {
 						xt.Equal(t, cnt, 1)
 					}
 				}
-
 			}
 		})
 		t.Run("zero-len", func(t *testing.T) {
@@ -203,7 +203,6 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 				} else {
 					xt.Equal(t, cnt, 0)
 				}
-
 			}
 		})
 	})
@@ -313,5 +312,4 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 		xt.NoError(t, err)
 		xt.NotEmpty(t, ret)
 	})
-
 }

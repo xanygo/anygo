@@ -84,6 +84,15 @@ func (j *Jar) getContext() context.Context {
 	return context.Background()
 }
 
+// Key 存储 cookie 数据的 key
+func (j *Jar) Key(u *url.URL) (string, error) {
+	host, err := canonicalHost(u.Host)
+	if err != nil {
+		return "", err
+	}
+	return jarKey(host, j.PSList), nil
+}
+
 func (j *Jar) cookies(ctx context.Context, u *url.URL) (cookies []*http.Cookie, err error) {
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return nil, nil
