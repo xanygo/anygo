@@ -38,7 +38,7 @@ type DeleteItem struct {
 
 func (d DeleteItem) deleteAll(ctx context.Context, tx xdb.DBCore) error {
 	orm := d.Meta.orm(tx)
-	value, found, err := orm.First(ctx, xor.Where("k=?", d.Meta.KeyHash[:]), xor.Columns("dt"))
+	value, found, err := orm.First(ctx, xor.Where("k=?", d.Meta.KeyHash[:]), xor.ExprColumns("dt"))
 	if err != nil || !found {
 		return err
 	}

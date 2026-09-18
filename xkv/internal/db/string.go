@@ -104,7 +104,7 @@ func (d *String) Get(ctx context.Context) (val string, ok bool, err error) {
 		}
 		orm := xor.New[StringModel](tx)
 		orm.Table(d.GetTable())
-		value, found, err1 := orm.First(ctx, xor.Where("t=? and k=?", d.Meta.TypeID, d.Meta.KeyHash[:]), xor.Columns("v"))
+		value, found, err1 := orm.First(ctx, xor.Where("t=? and k=?", d.Meta.TypeID, d.Meta.KeyHash[:]), xor.ExprColumns("v"))
 		if err1 != nil {
 			return err1
 		}
@@ -125,7 +125,7 @@ func (d *String) GetDel(ctx context.Context) (val string, ok bool, err error) {
 		}
 		orm := xor.New[StringModel](tx)
 		orm.Table(d.GetTable())
-		value, found, err2 := orm.First(ctx, xor.Where("t=? and k=?", d.Meta.TypeID, d.Meta.KeyHash[:]), xor.Columns("v"))
+		value, found, err2 := orm.First(ctx, xor.Where("t=? and k=?", d.Meta.TypeID, d.Meta.KeyHash[:]), xor.ExprColumns("v"))
 		if err2 != nil || !found {
 			return err2
 		}
@@ -142,7 +142,7 @@ func (d *String) GetSet(ctx context.Context, value string) (old string, ok bool,
 	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := xor.New[StringModel](tx)
 		orm.Table(d.GetTable())
-		item, found, err2 := orm.First(ctx, xor.Where("t=? and k=?", d.Meta.TypeID, d.Meta.KeyHash[:]), xor.Columns("v"))
+		item, found, err2 := orm.First(ctx, xor.Where("t=? and k=?", d.Meta.TypeID, d.Meta.KeyHash[:]), xor.ExprColumns("v"))
 		if err2 != nil {
 			return err2
 		}
@@ -177,7 +177,7 @@ func (d *String) IncrBy(ctx context.Context, incr int64) (num int64, err error) 
 	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := xor.New[StringModel](tx)
 		orm.Table(d.GetTable())
-		val, found, err1 := orm.First(ctx, xor.Where("t=? and k=?", d.Meta.TypeID, d.Meta.KeyHash[:]), xor.Columns("v"))
+		val, found, err1 := orm.First(ctx, xor.Where("t=? and k=?", d.Meta.TypeID, d.Meta.KeyHash[:]), xor.ExprColumns("v"))
 		if err1 != nil {
 			return err1
 		}
@@ -214,7 +214,7 @@ func (d *String) IncrByFloat(ctx context.Context, incr float64) (num float64, er
 	err = d.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := xor.New[StringModel](tx)
 		orm.Table(d.GetTable())
-		val, found, err1 := orm.First(ctx, xor.Where("t=? and k=?", d.Meta.TypeID, d.Meta.KeyHash[:]), xor.Columns("v"))
+		val, found, err1 := orm.First(ctx, xor.Where("t=? and k=?", d.Meta.TypeID, d.Meta.KeyHash[:]), xor.ExprColumns("v"))
 		if err1 != nil {
 			return err1
 		}

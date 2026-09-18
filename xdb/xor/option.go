@@ -218,10 +218,10 @@ func orderByPk(asc bool) Option {
 	})
 }
 
-// Columns 设置 查询、写入、更新的字段列表
+// ExprColumns 设置 查询、写入、更新的字段列表
 //
 // 可以允许 string 或者 xdb.Expression 类型
-func Columns(cols ...any) Option {
+func ExprColumns(cols ...any) Option {
 	return optionFunc(func(o *config) {
 		for idx, col := range cols {
 			switch col.(type) {
@@ -235,7 +235,7 @@ func Columns(cols ...any) Option {
 	})
 }
 
-func StringColumns(cols ...string) Option {
+func Columns(cols ...string) Option {
 	return optionFunc(func(o *config) {
 		o.columns = nil
 		for _, col := range cols {

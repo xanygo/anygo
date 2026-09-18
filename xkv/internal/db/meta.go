@@ -122,7 +122,7 @@ func (m *Meta) WithTx(ctx context.Context, do func(ctx context.Context, tx xdb.D
 func (m *Meta) checkWriteType(ctx context.Context, tx xdb.DBCore) error {
 	orm := m.orm(tx)
 
-	old, found, err := orm.First(ctx, xor.Where("t=? and k=?", m.TypeID, m.KeyHash[:]), xor.Columns("dt"))
+	old, found, err := orm.First(ctx, xor.Where("t=? and k=?", m.TypeID, m.KeyHash[:]), xor.ExprColumns("dt"))
 	if err != nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func (m *Meta) loadExists(ctx context.Context, tx xdb.DBCore) (MetaModel, bool, 
 
 func (m *Meta) checkReadType(ctx context.Context, tx xdb.DBCore) (bool, error) {
 	orm := m.orm(tx)
-	value, found, err := orm.First(ctx, xor.Where("t=? and k=?", m.TypeID, m.KeyHash[:]), xor.Columns("dt"))
+	value, found, err := orm.First(ctx, xor.Where("t=? and k=?", m.TypeID, m.KeyHash[:]), xor.ExprColumns("dt"))
 	if err != nil {
 		return false, err
 	}

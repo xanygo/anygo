@@ -89,7 +89,7 @@ func (z *ZSet) ZIncrBy(ctx context.Context, inc float64, member string) (num flo
 	err = z.Meta.WithWriteTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := z.orm(tx)
 
-		item, ok, err1 := orm.First(ctx, xor.Where("t=? and k=? and m=?", z.Meta.TypeID, z.Meta.KeyHash[:], memberHash[:]), xor.Columns("s"))
+		item, ok, err1 := orm.First(ctx, xor.Where("t=? and k=? and m=?", z.Meta.TypeID, z.Meta.KeyHash[:], memberHash[:]), xor.ExprColumns("s"))
 		if err1 != nil {
 			return err1
 		}
@@ -168,7 +168,7 @@ func (z *ZSet) ZScore(ctx context.Context, member string) (score float64, found 
 		}
 		orm := z.orm(tx)
 
-		item, ok, err1 := orm.First(ctx, xor.Where("t=? and k=? and m=?", z.Meta.TypeID, z.Meta.KeyHash[:], memberHash), xor.Columns("s"))
+		item, ok, err1 := orm.First(ctx, xor.Where("t=? and k=? and m=?", z.Meta.TypeID, z.Meta.KeyHash[:], memberHash), xor.ExprColumns("s"))
 		if err1 != nil || !ok {
 			return err1
 		}
@@ -186,7 +186,7 @@ func (z *ZSet) ZRange(ctx context.Context, fn func(member string, score float64)
 		}
 		orm := z.orm(tx)
 
-		for item, err := range orm.ListIter(ctx, xor.Where("t=? and k=?", z.Meta.TypeID, z.Meta.KeyHash[:]), xor.OrderBy("s asc"), xor.Columns("m_raw", "s")) {
+		for item, err := range orm.ListIter(ctx, xor.Where("t=? and k=?", z.Meta.TypeID, z.Meta.KeyHash[:]), xor.OrderBy("s asc"), xor.ExprColumns("m_raw", "s")) {
 			if err != nil {
 				return err
 			}
@@ -210,7 +210,7 @@ func (z *ZSet) ZRangeByScore(ctx context.Context, min string, max string, fn fun
 		}
 		orm := z.orm(tx)
 
-		for item, err := range orm.ListIter(ctx, xor.Where(where, args...), xor.OrderBy("s asc"), xor.Columns("m_raw", "s")) {
+		for item, err := range orm.ListIter(ctx, xor.Where(where, args...), xor.OrderBy("s asc"), xor.ExprColumns("m_raw", "s")) {
 			if err != nil {
 				return err
 			}
@@ -271,7 +271,7 @@ func (z *ZSet) ZRemRangeByScore(ctx context.Context, min, max string) (num int64
 
 // checkExists 检查 key 是否还存在，若不存在，则删除 meta
 func (z *ZSet) checkExists(ctx context.Context, orm *xor.Model[ZSetModel]) error {
-	_, found, err := orm.First(ctx, xor.Where("t=? and k=?", z.Meta.TypeID, z.Meta.KeyHash[:]), xor.Columns("c"))
+	_, found, err := orm.First(ctx, xor.Where("t=? and k=?", z.Meta.TypeID, z.Meta.KeyHash[:]), xor.ExprColumns("c"))
 	if err != nil || found {
 		return err
 	}
@@ -284,7 +284,7 @@ func (z *ZSet) ZRank(ctx context.Context, member string) (index int64, score flo
 	err = z.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := z.orm(tx)
 
-		one, found, err1 := orm.First(ctx, xor.Where("t=? and k=? and m=?", z.Meta.TypeID, z.Meta.KeyHash[:], memberHash), xor.Columns("s"))
+		one, found, err1 := orm.First(ctx, xor.Where("t=? and k=? and m=?", z.Meta.TypeID, z.Meta.KeyHash[:], memberHash), xor.ExprColumns("s"))
 		if err1 != nil || !found {
 			return err1
 		}
@@ -308,7 +308,7 @@ func (z *ZSet) popXX(ctx context.Context, count int, orderBy string) (members []
 	}
 	err = z.Meta.WithTx(ctx, func(ctx context.Context, tx xdb.DBCore) error {
 		orm := z.orm(tx)
-		values, err1 := orm.List(ctx, xor.Where("t=? and k=?", z.Meta.TypeID, z.Meta.KeyHash[:]), xor.OrderBy("s "+orderBy), xor.Limit(count), xor.Columns("s", "m", "m_raw"))
+		values, err1 := orm.List(ctx, xor.Where("t=? and k=?", z.Meta.TypeID, z.Meta.KeyHash[:]), xor.OrderBy("s "+orderBy), xor.Limit(count), xor.ExprColumns("s", "m", "m_raw"))
 		if err1 != nil {
 			return err1
 		}

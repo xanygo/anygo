@@ -124,6 +124,11 @@ func (d SQLite3) UpsertSQL(table string, count int, columns, conflictCols, updat
 		colList,
 		strings.Join(xslice.Repeat(valPlaceholders, count), ","),
 	)
+	doNothing := len(updateCols) == 0 && updateCols != nil
+	if updateCols == nil {
+		// 更新除了冲突字段外其他所有字段
+		updateCols = xslice.Difference(columns, conflictCols)
+	}
 
 	updateAssignments := make([]string, len(updateCols))
 	for i, c := range updateCols {
@@ -131,10 +136,11 @@ func (d SQLite3) UpsertSQL(table string, count int, columns, conflictCols, updat
 		updateAssignments[i] = fmt.Sprintf("%s = excluded.%s", c, c)
 	}
 	sqlStr += fmt.Sprintf(" ON CONFLICT (%s) ", strings.Join(xslice.MapFunc(conflictCols, d.QuoteIdentifier), ", "))
-	if len(updateAssignments) > 0 {
-		sqlStr += " DO UPDATE SET " + strings.Join(updateAssignments, ", ")
-	} else {
+
+	if doNothing {
 		sqlStr += " DO NOTHING "
+	} else {
+		sqlStr += " DO UPDATE SET " + strings.Join(updateAssignments, ", ")
 	}
 
 	if len(returningCols) > 0 {

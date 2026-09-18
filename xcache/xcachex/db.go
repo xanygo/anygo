@@ -246,7 +246,7 @@ func (d *Database) doGet(ctx context.Context, fullKey string) (*dbModel, error) 
 func (d *Database) doGetType(ctx context.Context, typeID uint32, fullKey string) (*dbModel, error) {
 	orm := d.orm()
 	value, found, err := orm.First(ctx,
-		xor.Columns("id", "e", "v"),
+		xor.ExprColumns("id", "e", "v"),
 		xor.Where("t=? and k=?", typeID, keyHash(fullKey)),
 	)
 	if err != nil {
@@ -368,7 +368,7 @@ func (d *Database) MGet(ctx context.Context, keys ...string) (result map[string]
 	cond.AndInFmt("k in (%s)", ksh)
 
 	orm := d.orm()
-	items, err := orm.List(ctx, xor.Columns("id", "k_raw", "v", "e"), xor.WhereByCond(cond), xor.Limit(len(keys)))
+	items, err := orm.List(ctx, xor.ExprColumns("id", "k_raw", "v", "e"), xor.WhereByCond(cond), xor.Limit(len(keys)))
 	if err != nil {
 		return nil, err
 	}
@@ -523,9 +523,9 @@ func (d *Database) doClear(ctx context.Context, thisType bool, needDelete int64,
 
 	var col xor.Option
 	if onlyExpire {
-		col = xor.Columns("id", "e")
+		col = xor.ExprColumns("id", "e")
 	} else {
-		xor.Columns("id")
+		xor.ExprColumns("id")
 	}
 
 	for needDelete > 0 {

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/xanygo/anygo/internal/zhttp"
 	"github.com/xanygo/anygo/xcache"
 	"github.com/xanygo/anygo/xenc/xcodec"
 	"github.com/xanygo/anygo/xhttp"
@@ -92,7 +93,7 @@ func (c *Cache) Next(handler http.Handler) http.Handler {
 
 		code := wn.GetStatusCode()
 		if code == 0 || code == http.StatusOK {
-			diff := xhttp.HeaderDiffMore(header1, w.Header())
+			diff := zhttp.HeaderDifference(w.Header(), header1)
 			xhttp.WriteHeader(w, diff)
 			cr := &cachedResponse{
 				H: diff,

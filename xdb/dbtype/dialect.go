@@ -79,14 +79,14 @@ type ReturningDialect interface {
 // UpsertDialect 提供 upsert 片段生成
 type UpsertDialect interface {
 	// UpsertSQL
-	// table: 表名
-	// count: 数据条数
-	// cols: 所有字段
-	// conflictCols: 冲突字段（主键或唯一键）
-	// updateCols: 冲突时需要更新的字段
-	// args: 对应参数值
-	// returningCols: 可选返回字段
-	// 返回可执行 SQL + 参数切片
+	//	table: 表名
+	//	count: 数据条数
+	//	cols: 所有字段
+	//	conflictCols: 冲突字段（主键或唯一键）
+	//	updateCols: 冲突时需要更新的字段,若为 nil，冲突时更新所有字段，若为 []string{},冲突后忽略
+	//	args: 对应参数值
+	//	returningCols: 可选返回字段
+	//	返回可执行 SQL + 参数切片
 	UpsertSQL(table string, count int, cols, conflictCols, updateCols []string, returningCols []string) string
 }
 

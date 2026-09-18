@@ -12,6 +12,7 @@ import (
 
 	"github.com/xanygo/anygo/internal/zreflect"
 	"github.com/xanygo/anygo/xdb/dbtype"
+	"github.com/xanygo/anygo/xslice"
 )
 
 var _ dbtype.Dialect = (*SQLServer)(nil)
@@ -125,6 +126,11 @@ func (d SQLServer) UpsertSQL(table string, count int, cols, conflictCols, update
 		onCond[i] = fmt.Sprintf("target.%s = source.%s", c, c)
 	}
 
+	if updateCols == nil {
+		// 更新除了冲突字段外其他所有字段
+		updateCols = xslice.Difference(cols, conflictCols)
+	}
+
 	// UPDATE 赋值
 	assigns := make([]string, len(updateCols))
 	for i, c := range updateCols {
@@ -167,6 +173,8 @@ ON %s`,
 		strings.Join(cols, ", "),           // source 列
 		strings.Join(onCond, " AND "),      // ON 条件
 	)
+
+	// doNothing 的时候，mssql 并没有 WHEN MATCHED ignore 语法，不写 WHEN MATCHED 即可
 	if len(assigns) > 0 {
 		sqlStr += "\n WHEN MATCHED THEN UPDATE SET " + strings.Join(assigns, ", ") // UPDATE
 	}

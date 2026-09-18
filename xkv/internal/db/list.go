@@ -99,7 +99,7 @@ func (l *List) lPopXX(ctx context.Context, orderBy string) (value string, found 
 		orm := xor.New[ListModel](tx)
 		orm.Table(l.GetTable())
 
-		v, ok, err2 := orm.First(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]), xor.OrderBy("idx "+orderBy), xor.Columns("v", "idx"))
+		v, ok, err2 := orm.First(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]), xor.OrderBy("idx "+orderBy), xor.ExprColumns("v", "idx"))
 		if err2 != nil || !ok {
 			return err2
 		}
@@ -130,7 +130,7 @@ func (l *List) lPopNXX(ctx context.Context, count int, orderBy string) (result [
 		}
 		orm := xor.New[ListModel](tx)
 		orm.Table(l.GetTable())
-		items, err2 := orm.List(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]), xor.OrderBy("idx "+orderBy), xor.Limit(count), xor.Columns("v", "idx"))
+		items, err2 := orm.List(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]), xor.OrderBy("idx "+orderBy), xor.Limit(count), xor.ExprColumns("v", "idx"))
 		if err2 != nil || len(items) == 0 {
 			return err2
 		}
@@ -166,7 +166,7 @@ func (l *List) checkExists(ctx context.Context, orm *xor.Model[ListModel]) error
 	orm = orm.New()
 	orm.Table(l.GetTable())
 
-	_, found, err := orm.First(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]), xor.Columns("c"))
+	_, found, err := orm.First(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]), xor.ExprColumns("c"))
 	if err != nil {
 		return err
 	}
@@ -238,7 +238,7 @@ func (l *List) Range(ctx context.Context, fn func(val string) bool) error {
 		orm := xor.New[ListModel](tx)
 		orm.Table(l.GetTable())
 
-		for item, err1 := range orm.ListIter(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]), xor.Columns("v")) {
+		for item, err1 := range orm.ListIter(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]), xor.ExprColumns("v")) {
 			if err1 != nil {
 				return err1
 			}
@@ -256,7 +256,7 @@ func (l *List) LRange(ctx context.Context, fn func(val string) bool) error {
 		orm := xor.New[ListModel](tx)
 		orm.Table(l.GetTable())
 
-		for item, err1 := range orm.ListIter(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]), xor.OrderBy("idx asc"), xor.Columns("v")) {
+		for item, err1 := range orm.ListIter(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]), xor.OrderBy("idx asc"), xor.ExprColumns("v")) {
 			if err1 != nil {
 				return err1
 			}
@@ -274,7 +274,7 @@ func (l *List) RRange(ctx context.Context, fn func(val string) bool) error {
 		orm := xor.New[ListModel](tx)
 		orm.Table(l.GetTable())
 
-		for item, err1 := range orm.ListIter(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]), xor.OrderBy("idx desc"), xor.Columns("v")) {
+		for item, err1 := range orm.ListIter(ctx, xor.Where("t=? and k=?", l.Meta.TypeID, l.Meta.KeyHash[:]), xor.OrderBy("idx desc"), xor.ExprColumns("v")) {
 			if err1 != nil {
 				return err1
 			}

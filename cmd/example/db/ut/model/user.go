@@ -155,6 +155,59 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 		xt.Equal(t, cnt, 1)
 	})
 
+	t.Run("upsert-updatecols-empty", func(t *testing.T) {
+		t.Run("nil", func(t *testing.T) {
+			const un = "upsert-empty-nil"
+			_, err = orm.Delete(ctx, xor.Where("username=?", un))
+			xt.NoError(t, err)
+
+			for i := 0; i < 3; i++ {
+				t.Logf("loop=%d", i)
+				u3 := User{
+					Username:     un,
+					Password:     "hello",
+					RegisterTime: time.Now(),
+					Version:      int64(i),
+				}
+				cnt, err := orm.Upsert(ctx, []string{"username"}, nil, u3)
+				xt.NoError(t, err)
+				if i == 0 {
+					xt.Equal(t, cnt, 1)
+				} else {
+					// mysql upsert 冲突更新后，影响条数是2
+					if orm.DB().Driver() == "mysql" {
+						xt.Equal(t, cnt, 2)
+					} else {
+						xt.Equal(t, cnt, 1)
+					}
+				}
+
+			}
+		})
+		t.Run("zero-len", func(t *testing.T) {
+			const un = "upsert-empty-zero-len"
+			_, err = orm.Delete(ctx, xor.Where("username=?", un))
+			xt.NoError(t, err)
+			for i := 0; i < 3; i++ {
+				t.Logf("loop=%d", i)
+				u3 := User{
+					Username:     un,
+					Password:     "hello",
+					RegisterTime: time.Now(),
+					Version:      int64(i),
+				}
+				cnt, err := orm.Upsert(ctx, []string{"username"}, []string{}, u3)
+				xt.NoError(t, err)
+				if i == 0 {
+					xt.Equal(t, cnt, 1)
+				} else {
+					xt.Equal(t, cnt, 0)
+				}
+
+			}
+		})
+	})
+
 	t.Run("ModifyFirstByPK", func(t *testing.T) {
 		first, err := orm.GetFirst(ctx, xor.WhereByPK(User{ID: 1}))
 		xt.NoError(t, err)
@@ -260,4 +313,5 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 		xt.NoError(t, err)
 		xt.NotEmpty(t, ret)
 	})
+
 }

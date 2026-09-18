@@ -98,7 +98,7 @@ func (d *Database) Get(ctx context.Context, key string) ([]Entry, error) {
 	defer d.autoCompact()
 
 	orm := d.orm()
-	items, err := orm.List(ctx, xor.StringColumns(dbSelectField...), xor.Where("kh=?", hash(key)))
+	items, err := orm.List(ctx, xor.Columns(dbSelectField...), xor.Where("kh=?", hash(key)))
 	if err != nil || len(items) == 0 {
 		return nil, err
 	}
@@ -190,7 +190,7 @@ func (d *Database) checkLimit(ctx context.Context, keyHash [32]byte) error {
 		return err
 	}
 	items, err := orm.List(ctx,
-		xor.Columns("id"),
+		xor.ExprColumns("id"),
 		xor.Where("kh = ?", keyHash),
 		xor.OrderBy("id asc"),
 		xor.Limit(num-int64(limit)),
@@ -248,7 +248,7 @@ func (d *Database) compact() {
 	var lastID int64
 	for {
 		items, err := orm.List(ctx,
-			xor.Columns("id"),
+			xor.ExprColumns("id"),
 			xor.Where("id>? and expires <= ?", lastID, now),
 			xor.OrderBy("id asc"),
 			xor.Limit(1000),

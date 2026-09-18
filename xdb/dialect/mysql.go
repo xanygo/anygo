@@ -102,6 +102,12 @@ func (d MySQL) UpsertSQL(table string, count int, columns, conflictCols, updateC
 
 	valPlaceholders := "(" + strings.Join(xslice.Repeat("?", len(columns)), ",") + ")"
 
+	doNothing := len(updateCols) == 0 && updateCols != nil
+	if updateCols == nil {
+		// 更新除了冲突字段外其他所有字段
+		updateCols = xslice.Difference(columns, conflictCols)
+	}
+
 	updateAssignments := make([]string, len(updateCols))
 	for i, c := range updateCols {
 		c = d.QuoteIdentifier(c)
@@ -113,11 +119,12 @@ func (d MySQL) UpsertSQL(table string, count int, columns, conflictCols, updateC
 		colList,
 		strings.Join(xslice.Repeat(valPlaceholders, count), ","),
 	)
-	if len(updateAssignments) > 0 {
+
+	if doNothing {
+		sqlStr = "INSERT IGNORE " + sqlStr
+	} else {
 		sqlStr = "INSERT " + sqlStr
 		sqlStr += " ON DUPLICATE KEY UPDATE " + strings.Join(updateAssignments, ", ")
-	} else {
-		sqlStr = "INSERT IGNORE " + sqlStr
 	}
 
 	return sqlStr

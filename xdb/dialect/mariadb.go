@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/xanygo/anygo/xdb/dbtype"
-	"github.com/xanygo/anygo/xslice"
 )
 
 var _ dbtype.Dialect = MariaDB{}
@@ -92,29 +91,7 @@ func (d MariaDB) ReturningClause(columns ...string) string {
 var _ dbtype.UpsertDialect = MariaDB{}
 
 func (d MariaDB) UpsertSQL(table string, count int, columns, conflictCols, updateCols []string, returningCols []string) string {
-	colList := quoteIdentifiersJoin(d, columns)
-
-	valPlaceholders := "(" + strings.Join(xslice.Repeat("?", len(columns)), ",") + ")"
-
-	updateAssignments := make([]string, len(updateCols))
-	for i, c := range updateCols {
-		c = d.QuoteIdentifier(c)
-		updateAssignments[i] = fmt.Sprintf("%s = VALUES(%s)", c, c)
-	}
-
-	sqlStr := fmt.Sprintf("INTO %s (%s) VALUES %s",
-		d.QuoteIdentifier(table),
-		colList,
-		strings.Join(xslice.Repeat(valPlaceholders, count), ","),
-	)
-	if len(updateAssignments) > 0 {
-		sqlStr = "INSERT " + sqlStr
-		sqlStr += " ON DUPLICATE KEY UPDATE " + strings.Join(updateAssignments, ", ")
-	} else {
-		sqlStr = "INSERT IGNORE " + sqlStr
-	}
-
-	return sqlStr
+	return (MySQL{}).UpsertSQL(table, count, columns, conflictCols, updateCols, returningCols)
 }
 
 var _ dbtype.SchemaDialect = MariaDB{}

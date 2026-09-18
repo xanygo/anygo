@@ -116,6 +116,12 @@ func (d Postgres) UpsertSQL(table string, count int, cols, conflictCols, updateC
 		valPlaceholders = append(valPlaceholders, str)
 	}
 
+	doNothing := len(updateCols) == 0 && updateCols != nil
+	if updateCols == nil {
+		// 更新除了冲突字段外其他所有字段
+		updateCols = xslice.Difference(cols, conflictCols)
+	}
+
 	updateAssignments := make([]string, len(updateCols))
 	for i, c := range updateCols {
 		c = d.QuoteIdentifier(c)
@@ -129,10 +135,10 @@ func (d Postgres) UpsertSQL(table string, count int, cols, conflictCols, updateC
 		strings.Join(xslice.MapFunc(conflictCols, d.QuoteIdentifier), ","),
 	)
 
-	if len(updateAssignments) > 0 {
-		sqlStr += " DO UPDATE SET " + strings.Join(updateAssignments, ", ")
-	} else {
+	if doNothing {
 		sqlStr += " DO NOTHING "
+	} else {
+		sqlStr += " DO UPDATE SET " + strings.Join(updateAssignments, ", ")
 	}
 
 	if len(returningCols) > 0 {

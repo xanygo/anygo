@@ -6,18 +6,18 @@ package xslice
 
 import "slices"
 
-// DiffMore 查找到 new 相比 old 增量的部分，总是返回一个全新的 slice
-func DiffMore[S ~[]E, E comparable](old, new S) S {
-	if len(old) == 0 {
-		if len(new) == 0 {
-			return nil
-		}
-		return slices.Clone(new)
+// Difference 返回 a 中不属于 b 的元素，总是返回一个全新的 slice。
+func Difference[S ~[]E, E comparable](a, b S) S {
+	if len(a) == 0 {
+		return nil
+	}
+	if len(b) == 0 {
+		return slices.Clone(a)
 	}
 	var result S
-	om := ToMap(old, true)
-	for _, v := range new {
-		if !om[v] {
+	om := ToMap(b, struct{}{})
+	for _, v := range a {
+		if _, has := om[v]; !has {
 			result = append(result, v)
 		}
 	}

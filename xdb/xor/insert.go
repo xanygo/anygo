@@ -166,7 +166,8 @@ func (m *Model[T]) InsertBatch(ctx context.Context, items []T, opts ...Option) e
 // 输入参数：
 //
 //	conflictCols: 冲突字段名，可选，若为空则，自动读取 pk 字段。
-//	updateCols: 若冲突发生，执行更新的字段列表，可选。若为空，则冲突发生后，该条数据丢弃。
+//	updateCols: 冲突发生后，执行更新的字段列表，
+//		特殊情况：若为 nil，冲突后更新其他所有字段。若为 []string{}，该条数据丢弃。
 //	values: 数据列表，必填
 //
 //	返回值：受影响条数，错误
