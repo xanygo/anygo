@@ -21,7 +21,7 @@ import (
 var logWriter = &xt.TLogWriter{}
 
 func init() {
-	xdb.RegisterIT((&xdb.Logger{Logger: xlog.NewSimple(logWriter)}).ToInterceptor())
+	xdb.RegisterIT((&xdb.Logger{Logger: xlog.NewSimple(logWriter)}).Interceptor())
 	internal.Init()
 }
 

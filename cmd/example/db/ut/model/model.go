@@ -14,7 +14,7 @@ import (
 
 func init() {
 	internal.Init()
-	xdb.RegisterIT((&xdb.Logger{Logger: xlog.NewSimple(os.Stderr)}).ToInterceptor())
+	xdb.RegisterIT((&xdb.Logger{Logger: xlog.NewSimple(os.Stderr)}).Interceptor())
 }
 
 func DoCheck(t *testing.T, client *xdb.Client) {

@@ -22,6 +22,11 @@ func (m *Model[T]) Update(ctx context.Context, v T, opts ...Option) (int64, erro
 	return m.doUpdate(ctx, v, cfg)
 }
 
+func (m *Model[T]) UpdateOnly(ctx context.Context, v T, opts ...Option) error {
+	_, err := m.Update(ctx, v, opts...)
+	return err
+}
+
 func (m *Model[T]) doUpdate(ctx context.Context, v T, cfg *config) (int64, error) {
 	if err := m.checkErr(); err != nil {
 		return 0, err
@@ -92,6 +97,11 @@ func (m *Model[T]) UpdateByPK(ctx context.Context, v T) (int64, error) {
 	return m.doUpdate(ctx, v, cfg)
 }
 
+func (m *Model[T]) UpdateByPKOnly(ctx context.Context, v T) error {
+	_, err := m.UpdateByPK(ctx, v)
+	return err
+}
+
 // Modify 增量更新新一条数据
 // old: 更新前的旧数据
 //
@@ -113,6 +123,11 @@ func (m *Model[T]) Modify(ctx context.Context, old T, update func(nv T) (T, erro
 		return 0, err
 	}
 	return m.UpdateDiff(ctx, old, nv, opts...)
+}
+
+func (m *Model[T]) ModifyOnly(ctx context.Context, old T, update func(nv T) (T, error), opts ...Option) error {
+	_, err := m.Modify(ctx, old, update, opts...)
+	return err
 }
 
 // UpdateDiff 增量更新数据
@@ -139,11 +154,21 @@ func (m *Model[T]) UpdateDiff(ctx context.Context, old T, newValue T, opts ...Op
 	return m.doUpdateMap(ctx, diff, cfg)
 }
 
+func (m *Model[T]) UpdateDiffOnly(ctx context.Context, old T, newValue T, opts ...Option) error {
+	_, err := m.UpdateDiff(ctx, old, newValue, opts...)
+	return err
+}
+
 // ModifyFirstByPK 使用主键查找，然后更新数据。若查找不到会返回错误
 //
 //	q: 查询条件，主键字段必须有值。若主键字段有多个，但是只给部分字段赋值，可能会导致多条数据被更新
 func (m *Model[T]) ModifyFirstByPK(ctx context.Context, q T, update func(nv T) (T, error)) (int64, error) {
 	return m.ModifyFirst(ctx, update, WhereByPK(q))
+}
+
+func (m *Model[T]) ModifyFirstByPKOnly(ctx context.Context, q T, update func(nv T) (T, error)) error {
+	_, err := m.ModifyFirstByPK(ctx, q, update)
+	return err
 }
 
 // ModifyFirst 查找数据然后更新，若查找不到会返回错误
@@ -169,6 +194,11 @@ func (m *Model[T]) ModifyFirst(ctx context.Context, update func(nv T) (T, error)
 		return err1
 	})
 	return num, err
+}
+
+func (m *Model[T]) ModifyFirstOnly(ctx context.Context, update func(nv T) (T, error), opts ...Option) error {
+	_, err := m.ModifyFirst(ctx, update, opts...)
+	return err
 }
 
 // ModifyEach 逐条更新满足条件的每一条数据。
@@ -207,6 +237,11 @@ func (m *Model[T]) ModifyEach(ctx context.Context, update func(nv T) (T, error),
 	return num, nil
 }
 
+func (m *Model[T]) ModifyEachOnly(ctx context.Context, update func(nv T) (T, error), opts ...Option) error {
+	_, err := m.ModifyEach(ctx, update, opts...)
+	return err
+}
+
 // UpdateMap 更新 map 中的数据
 //
 //	data: 若为空会直接返回 (0,nil)。有效数据如:
@@ -228,4 +263,9 @@ func (m *Model[T]) UpdateMap(ctx context.Context, data xdb.Map, opts ...Option) 
 		return 0, err
 	}
 	return m.doUpdateMap(ctx, encoded, cfg)
+}
+
+func (m *Model[T]) UpdateMapOnly(ctx context.Context, data xdb.Map, opts ...Option) error {
+	_, err := m.UpdateMap(ctx, data, opts...)
+	return err
 }

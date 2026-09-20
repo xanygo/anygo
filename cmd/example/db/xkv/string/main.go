@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	xdb.RegisterIT((&xdb.Logger{Logger: xlog.NewSimple(os.Stderr)}).ToInterceptor())
+	xdb.RegisterIT((&xdb.Logger{Logger: xlog.NewSimple(os.Stderr)}).Interceptor())
 
 	db, err := sql.Open("sqlite3", "./foo.db")
 

@@ -12,7 +12,7 @@ import (
 	"github.com/xanygo/anygo/xslice"
 )
 
-// Insert 基本的 Insert 功能
+// Insert 基本的 Insert 功能,返回影响条数和错误
 func (m *Model[T]) Insert(ctx context.Context, v T, opts ...Option) error {
 	if err := m.checkErr(); err != nil {
 		return err
@@ -161,13 +161,23 @@ func (m *Model[T]) InsertBatch(ctx context.Context, items []T, opts ...Option) e
 	return err
 }
 
+// InsertIgnore 批量 insert，若冲突则忽略
+func (m *Model[T]) InsertIgnore(ctx context.Context, conflictCols []string, values ...T) (int64, error) {
+	return m.Upsert(ctx, conflictCols, []string{}, values...)
+}
+
+func (m *Model[T]) InsertIgnoreOnly(ctx context.Context, conflictCols []string, values ...T) error {
+	_, err := m.InsertIgnore(ctx, conflictCols, values...)
+	return err
+}
+
 // Upsert 批量 insert or update
 //
 // 输入参数：
 //
 //	conflictCols: 冲突字段名，可选，若为空则，自动读取 pk 字段。
 //	updateCols: 冲突发生后，执行更新的字段列表，
-//		特殊情况：若为 nil，冲突后更新其他所有字段。若为 []string{}，该条数据丢弃。
+//		特殊情况：若为 nil，冲突后更新其他所有字段。若为 []string{}，该条数据丢弃（即 insert ignore ）。
 //	values: 数据列表，必填
 //
 //	返回值：受影响条数，错误
@@ -219,10 +229,15 @@ func (m *Model[T]) Upsert(ctx context.Context, conflictCols []string, updateCols
 	return xdb.RowsAffected(ret, err)
 }
 
+func (m *Model[T]) UpsertOnly(ctx context.Context, conflictCols []string, updateCols []string, values ...T) error {
+	_, err := m.Upsert(ctx, conflictCols, updateCols, values...)
+	return err
+}
+
 // UpsertByGroup 根据预定义的字段分组执行 Upsert
 //
 // conflictGroup: 冲突的主键分组名称，若为空则使用主键字段
-// updateGroup: 冲突后更新字段分组名称。若值为空则冲突后不更新（丢弃）
+// updateGroup: 冲突后更新字段分组名称。若值为空或者找不到字段列表，则报错
 //
 // conflictGroup 和 updateGroup 都可以使用英文逗号连接多个 group
 //
@@ -247,8 +262,13 @@ func (m *Model[T]) UpsertByGroup(ctx context.Context, conflictGroup string, upda
 		return 0, fmt.Errorf("conflict group %q column list is empty", conflictGroup)
 	}
 	updateCols := m.schema.FilterByGroup(updateGroup).Names()
-	if updateGroup != "" && len(updateCols) == 0 {
+	if len(updateCols) == 0 {
 		return 0, fmt.Errorf("update group %q column list is empty", updateGroup)
 	}
 	return m.Upsert(ctx, conflictCols, updateCols, values...)
+}
+
+func (m *Model[T]) UpsertByGroupOnly(ctx context.Context, conflictGroup string, updateGroup string, values ...T) error {
+	_, err := m.UpsertByGroup(ctx, conflictGroup, updateGroup, values...)
+	return err
 }

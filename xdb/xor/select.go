@@ -33,7 +33,7 @@ func (m *Model[T]) Select[V any](ctx context.Context, opts ...Option) ([]V, erro
 // First 使用 select xx from table where xxx limit 1 查询满足条件的第一条数据
 //
 // 可通过 SetSelectFields、SetSelectIgnore 限制查询返回的字段
-func (m *Model[T]) First(ctx context.Context, opts ...Option) (v T, ok bool, err error) {
+func (m *Model[T]) First(ctx context.Context, opts ...Option) (v T, found bool, err error) {
 	if err := m.checkErr(); err != nil {
 		return v, false, err
 	}
@@ -53,8 +53,8 @@ func (m *Model[T]) First(ctx context.Context, opts ...Option) (v T, ok bool, err
 	return xdb.QueryOne[T](ctx, m.client, sqlStr, args...)
 }
 
-// GetFirst 查询满足添加的首条数据，若没有则返回错误：xerror.NotFound
-func (m *Model[T]) GetFirst(ctx context.Context, opts ...Option) (v T, err error) {
+// FirstOrError 查询满足添加的首条数据，若没有则返回错误：xerror.NotFound
+func (m *Model[T]) FirstOrError(ctx context.Context, opts ...Option) (v T, err error) {
 	value, found, err := m.First(ctx, opts...)
 	if err != nil {
 		return v, err
@@ -76,12 +76,12 @@ func (m *Model[T]) FindByPK(ctx context.Context, v T) (nv T, ok bool, err error)
 	return m.First(ctx, WhereByPK(v))
 }
 
-// GetByPK 使用主键查找数据,若数据查询不到，会返回 error：xerror.NotFound
+// FindByPKOrError 使用主键查找数据,若数据查询不到，会返回 error：xerror.NotFound
 //
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 //
 //	可通过 SetSelectFields、SetSelectIgnore 限制查询返回的字段
-func (m *Model[T]) GetByPK(ctx context.Context, v T) (nv T, err error) {
+func (m *Model[T]) FindByPKOrError(ctx context.Context, v T) (nv T, err error) {
 	value, found, err := m.FindByPK(ctx, v)
 	if err != nil {
 		return nv, err

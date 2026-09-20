@@ -71,7 +71,7 @@ func Ints(query url.Values, name string, sep string) ([]int, error) {
 	result := make([]int, 0, len(ss))
 	for _, v := range ss {
 		num, err := strconv.Atoi(v)
-		if err == nil {
+		if err != nil {
 			return nil, err
 		}
 		result = append(result, num)
@@ -104,7 +104,7 @@ func Int8s(query url.Values, name string, sep string) ([]int8, error) {
 	result := make([]int8, 0, len(ss))
 	for _, v := range ss {
 		num, err := strconv.ParseInt(v, 10, 8)
-		if err == nil {
+		if err != nil {
 			return nil, err
 		}
 		result = append(result, int8(num))
@@ -137,7 +137,7 @@ func Int16s(query url.Values, name string, sep string) ([]int16, error) {
 	result := make([]int16, 0, len(ss))
 	for _, v := range ss {
 		num, err := strconv.ParseInt(v, 10, 16)
-		if err == nil {
+		if err != nil {
 			return nil, err
 		}
 		result = append(result, int16(num))
@@ -170,7 +170,7 @@ func Int32s(query url.Values, name string, sep string) ([]int32, error) {
 	result := make([]int32, 0, len(ss))
 	for _, v := range ss {
 		num, err := strconv.ParseInt(v, 10, 32)
-		if err == nil {
+		if err != nil {
 			return nil, err
 		}
 		result = append(result, int32(num))
@@ -202,7 +202,7 @@ func Int64s(query url.Values, name string, sep string) ([]int64, error) {
 	result := make([]int64, 0, len(ss))
 	for _, v := range ss {
 		num, err := strconv.ParseInt(v, 10, 64)
-		if err == nil {
+		if err != nil {
 			return nil, err
 		}
 		result = append(result, num)
@@ -235,7 +235,7 @@ func Uints(query url.Values, name string, sep string) ([]uint, error) {
 	result := make([]uint, 0, len(ss))
 	for _, v := range ss {
 		num, err := strconv.ParseUint(v, 10, 0)
-		if err == nil {
+		if err != nil {
 			return nil, err
 		}
 		result = append(result, uint(num))
@@ -268,7 +268,7 @@ func Uint8s(query url.Values, name string, sep string) ([]uint8, error) {
 	result := make([]uint8, 0, len(ss))
 	for _, v := range ss {
 		num, err := strconv.ParseUint(v, 10, 8)
-		if err == nil {
+		if err != nil {
 			return nil, err
 		}
 		result = append(result, uint8(num))
@@ -301,7 +301,7 @@ func Uint16s(query url.Values, name string, sep string) ([]uint16, error) {
 	result := make([]uint16, 0, len(ss))
 	for _, v := range ss {
 		num, err := strconv.ParseUint(v, 10, 16)
-		if err == nil {
+		if err != nil {
 			return nil, err
 		}
 		result = append(result, uint16(num))
@@ -334,7 +334,7 @@ func Uint32s(query url.Values, name string, sep string) ([]uint32, error) {
 	result := make([]uint32, 0, len(ss))
 	for _, v := range ss {
 		num, err := strconv.ParseUint(v, 10, 32)
-		if err == nil {
+		if err != nil {
 			return nil, err
 		}
 		result = append(result, uint32(num))
@@ -366,7 +366,7 @@ func Uint64s(query url.Values, name string, sep string) ([]uint64, error) {
 	result := make([]uint64, 0, len(ss))
 	for _, v := range ss {
 		num, err := strconv.ParseUint(v, 10, 64)
-		if err == nil {
+		if err != nil {
 			return nil, err
 		}
 		result = append(result, num)

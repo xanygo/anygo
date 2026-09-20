@@ -15,7 +15,7 @@ type Logger struct {
 	NoArgs bool
 }
 
-func (l *Logger) ToInterceptor() *Interceptor {
+func (l *Logger) Interceptor() *Interceptor {
 	return &Interceptor{
 		After: l.after,
 	}

@@ -208,7 +208,7 @@ func withUser(ctx context.Context, t *testing.T, client *xdb.Client) {
 	})
 
 	t.Run("ModifyFirstByPK", func(t *testing.T) {
-		first, err := orm.GetFirst(ctx, xor.WhereByPK(User{ID: 1}))
+		first, err := orm.FirstOrError(ctx, xor.WhereByPK(User{ID: 1}))
 		xt.NoError(t, err)
 
 		num, err := orm.ModifyFirstByPK(ctx, first, func(nv User) (User, error) {

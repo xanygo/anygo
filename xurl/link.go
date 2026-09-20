@@ -22,6 +22,7 @@ func WithQuery(base *url.URL, queryPair ...string) (string, error) {
 	if len(queryPair)%2 != 0 {
 		return "", errors.New("queryPair length must be even")
 	}
+	base = base.Clone()
 	query := base.Query()
 	for i := 0; i < len(queryPair); i += 2 {
 		key := queryPair[i]
@@ -32,10 +33,8 @@ func WithQuery(base *url.URL, queryPair ...string) (string, error) {
 			query.Set(key, value)
 		}
 	}
-	if len(query) == 0 {
-		return base.Path, nil
-	}
-	return base.Path + "?" + query.Encode(), nil
+	base.RawQuery = query.Encode()
+	return base.String(), nil
 }
 
 // WithNewQuery 基于当前 url 的 path，生成新的 url，会丢掉 base 的所有 query 参数
@@ -46,6 +45,7 @@ func WithNewQuery(base *url.URL, queryPair ...string) (string, error) {
 	if len(queryPair)%2 != 0 {
 		return "", errors.New("queryPair length must be even")
 	}
+	base = base.Clone()
 	query := url.Values{}
 	for i := 0; i < len(queryPair); i += 2 {
 		key := queryPair[i]
@@ -54,10 +54,8 @@ func WithNewQuery(base *url.URL, queryPair ...string) (string, error) {
 			query.Set(key, value)
 		}
 	}
-	if len(query) == 0 {
-		return base.Path, nil
-	}
-	return base.Path + "?" + query.Encode(), nil
+	base.RawQuery = query.Encode()
+	return base.String(), nil
 }
 
 // PathJoin 连接 url 地址

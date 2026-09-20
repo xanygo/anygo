@@ -29,9 +29,19 @@ func (m *Model[T]) Delete(ctx context.Context, opts ...Option) (int64, error) {
 	return ret.RowsAffected()
 }
 
+func (m *Model[T]) DeleteOnly(ctx context.Context, opts ...Option) error {
+	_, err := m.Delete(ctx, opts...)
+	return err
+}
+
 // DeleteByPK 使用主键删除数据
 //
 // 需要在 tag 里有 primaryKey 属性: 如 ID int64 `db:"id,pk"`
 func (m *Model[T]) DeleteByPK(ctx context.Context, v T) (int64, error) {
 	return m.Delete(ctx, WhereByPK(v))
+}
+
+func (m *Model[T]) DeleteByPKOnly(ctx context.Context, v T) error {
+	_, err := m.DeleteByPK(ctx, v)
+	return err
 }
