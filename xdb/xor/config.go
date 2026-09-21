@@ -63,6 +63,15 @@ func (c *config) reset() {
 	c.errs = nil
 }
 
+func (c *config) simpleColumns() bool {
+	for _, item := range c.columns {
+		if _, ok := item.(string); ok {
+			return false
+		}
+	}
+	return true
+}
+
 func (c *config) getEncoder(action encoder.Action) encoder.Encoder[any] {
 	return encoder.Encoder[any]{
 		Schema:       c.schema,

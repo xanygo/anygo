@@ -52,8 +52,8 @@ func (l *Logger) after(ctx context.Context, e Event) {
 	if e.StmtID != "" {
 		attrs = append(attrs, xlog.String("StmtID", e.StmtID))
 	}
-	logger.Output(ctx, xlog.LevelInfo, 3, e.Action, attrs...)
+	logger.Output(ctx, xlog.LevelInfo, 0, e.Action, attrs...)
 	if e.Error != nil {
-		logger.Output(ctx, xlog.LevelError, 3, e.Action, attrs...)
+		logger.Output(ctx, xlog.LevelError, 0, e.Action, attrs...)
 	}
 }

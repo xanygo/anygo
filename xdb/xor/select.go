@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"iter"
+	"slices"
 	"strings"
 
 	"github.com/xanygo/anygo/xdb"
@@ -162,7 +163,7 @@ func (m *Model[T]) doCount(ctx context.Context, field string, opts ...Option) (n
 	return xdb.Count(ctx, m.client, sqlStr, args...)
 }
 
-// ListPage 分页查询，适应于数据量不太大的场景
+// ListPage 分页查询，若表有主键，会采用先查询出主键，然后再查询数据的方式
 func (m *Model[T]) ListPage(ctx context.Context, page int, size int, opts ...Option) (xdb.Pagination, []xdb.PageRecord[T], error) {
 	if err := m.checkErr(); err != nil {
 		return xdb.Pagination{}, nil, m.err
@@ -175,6 +176,8 @@ func (m *Model[T]) ListPage(ctx context.Context, page int, size int, opts ...Opt
 		return xdb.Pagination{}, nil, err
 	}
 
+	rawOpts := slices.Clone(opts) // 后续会使用
+
 	page = max(page, 1) // 最小值为 1
 
 	info := xdb.Pagination{
@@ -183,11 +186,47 @@ func (m *Model[T]) ListPage(ctx context.Context, page int, size int, opts ...Opt
 		PageIndex:    page,
 	}
 
+	c := &config{}
+	c.merge(opts...)
+
 	offset := (page - 1) * size
 	if int64(offset) >= total {
 		return info, nil, nil
 	}
 	opts = append(opts, LimitOffset(size, offset))
+
+	// 若没有指定查询字段，或者指定了多个查询字段（非 Expr）
+	if len(c.columns) == 0 || (len(c.columns) > 2 && c.simpleColumns()) {
+		// 若有主键字段，则采用先只查询主键字段，让后再用主键字段查询出正式数据
+		pks := m.schema.PKColumns().Names()
+		if len(pks) > 0 {
+			opts = append(opts, Columns(pks...))
+			result, err := m.Select[xdb.Map](ctx, opts...)
+			if err != nil || len(result) == 0 {
+				return info, nil, err
+			}
+			cond := &xdb.Condition{}
+			if len(pks) == 1 {
+				field := pks[0]
+				inValues := make([]any, 0, len(result))
+				for _, item := range result {
+					inValues = append(inValues, item[field])
+				}
+				cond.AndInFmt(m.dialect.QuoteIdentifier(field)+" in (%s)", inValues)
+			} else {
+				for _, item := range result {
+					subWhere, args, err := mapWere(m.dialect.QuoteIdentifier, item)
+					if err != nil {
+						return info, nil, err
+					}
+					cond.Or(subWhere, args...)
+				}
+			}
+			// 替换掉之前的查询条件
+			opts = append(rawOpts, WhereByCond(cond))
+		}
+	}
+
 	result, err := m.List(ctx, opts...)
 	if err != nil {
 		return info, nil, err

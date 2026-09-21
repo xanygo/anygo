@@ -65,9 +65,9 @@ func CallerPC(skip int) uintptr {
 	for {
 		frame, more := frames.Next()
 		if !found {
-			found = strings.Contains(frame.File, selfPkg)
-		} else if !strings.Contains(frame.File, selfPkg) {
-			// 返回紧挨着框架文的下一个文件
+			found = strings.Contains(frame.Function, selfPkg)
+		} else if !strings.Contains(frame.Function, selfPkg) {
+			// 返回紧挨着框架文件的下一个文件
 			return frame.PC
 		}
 		if !more {

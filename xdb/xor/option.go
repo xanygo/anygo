@@ -74,20 +74,23 @@ func WhereByPK(v any) Option {
 func WhereByMap(kv map[string]any) Option {
 	return optionFunc(func(o *config) {
 		o.noWhere = false
-		if len(kv) == 0 {
-			o.addError(fmt.Errorf("is zero WhereMap %#v", kv))
-			return
-		}
-		cond := &xdb.Condition{}
-		for key, value := range kv {
-			cond.And(o.dialect.QuoteIdentifier(key)+"=?", value)
-		}
 		var err error
-		o.where, o.whereArgs, err = cond.Build()
+		o.where, o.whereArgs, err = mapWere(o.dialect.QuoteIdentifier, kv)
 		if err != nil {
 			o.addError(err)
 		}
 	})
+}
+
+func mapWere(quote func(string) string, kv map[string]any) (string, []any, error) {
+	if len(kv) == 0 {
+		return "", nil, fmt.Errorf("is zero WhereMap %#v", kv)
+	}
+	cond := &xdb.Condition{}
+	for key, value := range kv {
+		cond.And(quote(key)+"=?", value)
+	}
+	return cond.Build()
 }
 
 // WhereByCond 将 Condition 转换为 Where
