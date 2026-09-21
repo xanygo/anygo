@@ -5,6 +5,7 @@
 package encoder_test
 
 import (
+	"database/sql"
 	"testing"
 	"time"
 
@@ -299,25 +300,94 @@ type testUser9 struct {
 	Enable bool   `db:"enable"`
 }
 
-func TestEncoder_EncodeArgs(t *testing.T) {
-	schema, err := dbschema.Schema(dialect.SQLite3{}, testUser9{})
-	xt.NoError(t, err)
-	enc := encoder.Encoder[testUser9]{
-		Schema:  schema,
-		Dialect: dialect.SQLite3{},
-	}
-	t.Run("ok", func(t *testing.T) {
-		ok := true
-		got, err := enc.EncodeArgs(1, true, &ok, false)
+func TestEncode(t *testing.T) {
+	t.Run("sqlite", func(t *testing.T) {
+		schema, err := dbschema.Schema(dialect.SQLite3{}, testUser9{})
 		xt.NoError(t, err)
-		xt.Equal(t, got, []any{1, 1, 1, 0})
+		enc := encoder.Encoder[testUser9]{
+			Schema:  schema,
+			Dialect: dialect.SQLite3{},
+		}
+		got, err := enc.Encode(testUser9{Name: "a", Num1: new(int64(2)), Enable: true})
+		xt.NoError(t, err)
+		xt.Equal(t, got, map[string]any{"name": "a", "num1": int64(2), "enable": 1})
+
+		got, err = enc.Encode(testUser9{Name: "a", Num1: new(int64(2)), Enable: false})
+		xt.NoError(t, err)
+		xt.Equal(t, got, map[string]any{"name": "a", "num1": int64(2), "enable": 0})
+	})
+	t.Run("pgx", func(t *testing.T) {
+		schema, err := dbschema.Schema(dialect.Postgres{}, testUser9{})
+		xt.NoError(t, err)
+		enc := encoder.Encoder[testUser9]{
+			Schema:  schema,
+			Dialect: dialect.Postgres{},
+		}
+		got, err := enc.Encode(testUser9{Name: "a", Num1: new(int64(2)), Enable: true})
+		xt.NoError(t, err)
+		xt.Equal(t, got, map[string]any{"name": "a", "num1": int64(2), "enable": true})
+
+		got, err = enc.Encode(testUser9{Name: "a", Num1: new(int64(2)), Enable: false})
+		xt.NoError(t, err)
+		xt.Equal(t, got, map[string]any{"name": "a", "num1": int64(2), "enable": false})
+	})
+}
+
+func TestEncoder_EncodeArgs(t *testing.T) {
+	t.Run("sqlite", func(t *testing.T) {
+		schema, err := dbschema.Schema(dialect.SQLite3{}, testUser9{})
+		xt.NoError(t, err)
+		enc := encoder.Encoder[testUser9]{
+			Schema:  schema,
+			Dialect: dialect.SQLite3{},
+		}
+		t.Run("ok", func(t *testing.T) {
+			ok := true
+			got, err := enc.EncodeArgs(1, true, &ok, false)
+			xt.NoError(t, err)
+			xt.Equal(t, got, []any{1, 1, 1, 0}) // sqlite 不支持 bool，需要转换 true -> 1, false -> 0
+		})
+
+		t.Run("sqlNamed", func(t *testing.T) {
+			got, err := enc.EncodeArgs(sql.Named("?enable", true), sql.Named("?enable", false))
+			xt.NoError(t, err)
+			xt.Equal(t, got, []any{1, 0})
+		})
+
+		t.Run("invalid", func(t *testing.T) {
+			got, err := enc.EncodeArgs(1, nil)
+			xt.Error(t, err)
+			xt.Empty(t, got)
+		})
 	})
 
-	t.Run("invalid", func(t *testing.T) {
-		got, err := enc.EncodeArgs(1, nil)
-		xt.Error(t, err)
-		xt.Empty(t, got)
+	t.Run("pgx", func(t *testing.T) {
+		schema, err := dbschema.Schema(dialect.Postgres{}, testUser9{})
+		xt.NoError(t, err)
+		enc := encoder.Encoder[testUser9]{
+			Schema:  schema,
+			Dialect: dialect.Postgres{},
+		}
+		t.Run("ok", func(t *testing.T) {
+			ok := true
+			got, err := enc.EncodeArgs(1, true, &ok, false)
+			xt.NoError(t, err)
+			xt.Equal(t, got, []any{1, true, true, false}) // pkx 元素支持 bool
+		})
+
+		t.Run("sqlNamed", func(t *testing.T) {
+			got, err := enc.EncodeArgs(sql.Named("?enable", true), sql.Named("?enable", false))
+			xt.NoError(t, err)
+			xt.Equal(t, got, []any{true, false})
+		})
+
+		t.Run("invalid", func(t *testing.T) {
+			got, err := enc.EncodeArgs(1, nil)
+			xt.Error(t, err)
+			xt.Empty(t, got)
+		})
 	})
+
 }
 
 type model1 struct {

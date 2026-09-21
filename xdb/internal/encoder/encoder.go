@@ -13,6 +13,7 @@ import (
 
 	"github.com/xanygo/anygo/internal/xstruct"
 	"github.com/xanygo/anygo/internal/zreflect"
+	"github.com/xanygo/anygo/xdb/dbcodec"
 	"github.com/xanygo/anygo/xdb/dbtype"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xslice"
@@ -249,10 +250,7 @@ func (e Encoder[T]) encodeColumnValue(schema dbtype.ColumnSchema, val any) (any,
 	}
 
 	// 类型的判断处理应该有 schema parser 处理好，传入正确的 Codec 即可
-	if schema.Codec != nil {
-		return schema.Codec.Encode(val)
-	}
-	return val, nil
+	return e.callEncode(schema.Codec, val)
 }
 
 func (e Encoder[T]) PKNameAndValues(obj T) (map[string]any, error) {
@@ -321,10 +319,27 @@ func (e Encoder[T]) EncodeNamedValue(field sql.NamedArg) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if col.Codec == nil {
-		return e.Dialect.EncodeValue(field.Value)
+	return e.callEncode(col.Codec, field.Value)
+}
+
+// 执行 encode
+//
+//  1. 若字段的 Codec 是 Native Codec，则处理流程是先使用方言的 EncodeValue 编码，
+//     然后再使用 Native Codec
+//  2. 若字段的 Codec 为空，则直接使用方言的 EncodeValue 编码
+//  3. 若是其他Codec，则直接使用此 Codec 编码
+func (e Encoder[T]) callEncode(c dbtype.Codec, value any) (any, error) {
+	if c == nil {
+		return e.Dialect.EncodeValue(value)
 	}
-	return col.Codec.Encode(field.Value)
+	if !dbcodec.IsNative(c) {
+		return c.Encode(value)
+	}
+	v, err := e.Dialect.EncodeValue(value)
+	if err != nil {
+		return nil, err
+	}
+	return c.Encode(v)
 }
 
 // EncodeArgs 对 where 的参数编码
@@ -341,9 +356,11 @@ func (e Encoder[T]) EncodeArgs(args ...any) ([]any, error) {
 				return nil, fmt.Errorf("encode args %#v: %w", arg, err)
 			}
 			item.Value = v
+			// 特性：以 ? 开头，表示只对值按照字段名的 Codec 编码
 			if strings.HasPrefix(item.Name, "?") {
 				result[i] = v
 			} else {
+				// 其他情况，继续返回 sql.NamedValue
 				result[i] = item
 			}
 		default:

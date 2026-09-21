@@ -182,6 +182,11 @@ func (c *config) getSQLTail(paramIndesStart int) string {
 		b.WriteString(c.replacePlaceholder(paramIndesStart, c.where))
 	}
 
+	if c.groupBy != "" {
+		b.WriteString(" GROUP BY ")
+		b.WriteString(c.groupBy)
+	}
+
 	if c.orderBy != "" {
 		b.WriteString(" ORDER BY ")
 		b.WriteString(c.orderBy)
@@ -195,11 +200,6 @@ func (c *config) getSQLTail(paramIndesStart int) string {
 		}
 		b.WriteString(" ")
 		b.WriteString(str)
-	}
-
-	if c.groupBy != "" {
-		b.WriteString(" GROUP BY ")
-		b.WriteString(c.groupBy)
 	}
 
 	where := b.String()
