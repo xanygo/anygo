@@ -190,7 +190,8 @@ func scanRowsAsStruct[T any](rows *sql.Rows, cols []string, schema *dbtype.Table
 					}
 					return doScanField(fv.Elem())
 				default:
-					panic(fmt.Sprintf("what Anonymous kind %v, filed=%q", field.Type.Kind(), field.Name))
+					// 理论上不会触发
+					return fmt.Errorf("what Anonymous kind %v, filed=%q", field.Type.Kind(), field.Name)
 				}
 			}
 			if !field.IsExported() {

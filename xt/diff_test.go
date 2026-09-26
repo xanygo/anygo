@@ -48,3 +48,10 @@ func Test_cutDiffAfter(t *testing.T) {
 		})
 	}
 }
+
+func Test_prettyGoValue(t *testing.T) {
+	var a []string
+	got1 := prettyGoValue(a)
+	want1 := "[]string(nil)"
+	Equal(t, got1, want1)
+}

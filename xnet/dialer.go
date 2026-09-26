@@ -49,7 +49,7 @@ func DialContextWith(ctx context.Context, d Dialer, network, address string) (ne
 	if d == nil {
 		d = DefaultDialer()
 	}
-	its := zslice.SafeMerge(globalDialIts, ITsFromContext[*DialerInterceptor](ctx))
+	its := zslice.Merge(globalDialIts, ITsFromContext[*DialerInterceptor](ctx))
 	return its.Execute(ctx, d.DialContext, network, address, 0)
 }
 

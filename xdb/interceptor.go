@@ -43,7 +43,7 @@ func ContextWithIT(ctx context.Context, its ...*Interceptor) context.Context {
 
 func allInterceptors(ctx context.Context) interceptors {
 	its := xctx.Values[*xctx.Key, *Interceptor](ctx, ctxKeyIt, true)
-	return zslice.SafeMerge(globalInterceptors, its)
+	return zslice.Merge(globalInterceptors, its)
 }
 
 type interceptors []*Interceptor

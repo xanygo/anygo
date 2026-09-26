@@ -118,17 +118,18 @@ func SetRunMode(mode Mode) {
 	Default.SetRunMode(mode)
 }
 
-func Set(key any, value any) {
-	Default.Set(key, value)
+func SetOther(key any, value any) {
+	Default.SetOther(key, value)
 }
 
-func Get(key any) (any, bool) {
-	return Default.Get(key)
+func GetOther(key any) (any, bool) {
+	return Default.GetOther(key)
 }
 
-// GetAs 读取值,并将值转换为指定的类型，若 key 不存在，或者 转换失败
-func GetAs[T any](key any) (result T, err error) {
-	val, ok := Get(key)
+// GetOtherAs 读取值,并将值转换为指定的类型，
+// 若 key 不存在，或者 转换失败 时会返回 error
+func GetOtherAs[T any](key any) (result T, err error) {
+	val, ok := GetOther(key)
 	if !ok {
 		return result, xerror.NotFound
 	}
@@ -154,14 +155,28 @@ func GetAs[T any](key any) (result T, err error) {
 	return result, fmt.Errorf("cannot convert %#v to %T", val, result)
 }
 
-func GetDefault[T any](key any, def T) T {
-	val, err := GetAs[T](key)
+// GetOtherDefault 读取 key 的值，若 key 不存在或者类型错误时，会使用默认值
+func GetOtherDefault[T any](key any, def T) T {
+	val, err := GetOtherAs[T](key)
 	if err != nil {
 		return def
 	}
 	return val
 }
 
-func Range(fn func(key any, value any) bool) {
-	Default.Range(fn)
+func RangeOther(fn func(key any, value any) bool) {
+	Default.RangeOther(fn)
+}
+
+// Tags 返回环境的标签列表
+func Tags() []string {
+	return Default.Tags()
+}
+
+func SetTags(tags []string) {
+	Default.SetTags(tags)
+}
+
+func AppendTags(tags ...string) {
+	Default.AppendTags(tags...)
 }

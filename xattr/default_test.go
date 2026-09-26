@@ -24,8 +24,8 @@ func TestDefault(t *testing.T) {
 	xt.Equal(t, IDC(), IDCDev)
 	xt.Equal(t, RunMode(), ModeDebug)
 
-	Set("k1", "v1")
-	got1, ok1 := Get("k1")
+	SetOther("k1", "v1")
+	got1, ok1 := GetOther("k1")
 	xt.Equal(t, got1, "v1")
 	xt.True(t, ok1)
 
@@ -55,12 +55,12 @@ func TestDefault(t *testing.T) {
 }
 
 func TestGetAs(t *testing.T) {
-	Set("TestGetAs-1", 123)
-	got1, ok1 := Get("TestGetAs-1")
+	SetOther("TestGetAs-1", 123)
+	got1, ok1 := GetOther("TestGetAs-1")
 	xt.Equal(t, got1, 123)
 	xt.True(t, ok1)
 
-	got2, err2 := GetAs[int64]("TestGetAs-1")
+	got2, err2 := GetOtherAs[int64]("TestGetAs-1")
 	xt.Equal(t, got2, 123)
 	xt.NoError(t, err2)
 }

@@ -7,7 +7,6 @@ package xt
 import (
 	"bytes"
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -81,7 +80,7 @@ func prettyGoValue(v any) string {
 	if v == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("%s(%v)", reflect.TypeOf(v), v)
+	return fmt.Sprintf("%#v", v)
 }
 
 func getDiffIndex(str1, str2 string) int {

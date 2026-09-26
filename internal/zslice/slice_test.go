@@ -11,7 +11,7 @@ import (
 )
 
 func TestMerge(t *testing.T) {
-	xt.Equal(t, Merge([]int{}), []int{})
+	xt.Equal(t, Merge([]int{}), nil)
 	xt.Equal(t, Merge([]int{1}, []int{2}), []int{1, 2})
 }
 
@@ -44,4 +44,40 @@ func TestReverse(t *testing.T) {
 	b2 := []byte("1-")
 	Reverse(b2)
 	xt.Equal(t, string(b2), "-1")
+}
+
+func TestGet(t *testing.T) {
+	arr := []int{1, 2, 3}
+
+	got, ok := Get(arr, 0)
+	xt.Equal(t, got, 1)
+	xt.True(t, ok)
+
+	got, ok = Get(arr, 1)
+	xt.Equal(t, got, 2)
+	xt.True(t, ok)
+
+	got, ok = Get(arr, 2)
+	xt.Equal(t, got, 3)
+	xt.True(t, ok)
+
+	got, ok = Get(arr, 3)
+	xt.Equal(t, got, 0)
+	xt.False(t, ok)
+
+	got, ok = Get(arr, -1)
+	xt.Equal(t, got, 3)
+	xt.True(t, ok)
+
+	got, ok = Get(arr, -2)
+	xt.Equal(t, got, 2)
+	xt.True(t, ok)
+
+	got, ok = Get(arr, -3)
+	xt.Equal(t, got, 1)
+	xt.True(t, ok)
+
+	got, ok = Get(arr, -4)
+	xt.Equal(t, got, 0)
+	xt.False(t, ok)
 }

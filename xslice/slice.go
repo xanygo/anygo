@@ -15,14 +15,9 @@ import (
 	"github.com/xanygo/anygo/internal/zslice"
 )
 
-// Merge merge 多个 slice 为一个，并最终返回一个新的 slice
+// Merge merge 多个 slice 合并为一个新的 slice。若为空，则返回nil
 func Merge[S ~[]T, T any](items ...S) S {
 	return zslice.Merge(items...)
-}
-
-// SafeMerge 安全的合并 Slice,总是返回新的 slice，若为空，则返回 nil
-func SafeMerge[S ~[]T, T any](ss ...S) S {
-	return zslice.SafeMerge(ss...)
 }
 
 // Unique 返回去重后的 slice
@@ -90,6 +85,11 @@ func ToAnys[E any](s []E) []any {
 		result[i] = s[i]
 	}
 	return result
+}
+
+// Anys 返回 []any
+func Anys(items ...any) []any {
+	return items
 }
 
 // DeleteValue 删除指定的值
@@ -258,7 +258,7 @@ func Join[E any](arr []E, sep string) string {
 
 // Filter 过滤删选出满足条件的元素
 //
-// filter: 过滤函数，参数依次为 index-元素索引、item 元素、okTotal-已过滤满足条件的个数
+// filter: 过滤函数，返回 true 的为满足条件
 func Filter[S ~[]E, E any](arr S, filter func(item E) bool) S {
 	if len(arr) == 0 {
 		return nil
@@ -285,6 +285,7 @@ func Find[S ~[]E, E any](arr S, match func(item E) bool) (e E, ok bool) {
 	return e, false
 }
 
+// FilterAs 将 []E 过滤并转换为 []Y
 func FilterAs[E any, Y any](arr []E, filter func(item E) (Y, bool)) []Y {
 	if len(arr) == 0 {
 		return nil
@@ -515,4 +516,13 @@ func OrderWith[S ~[]T, T comparable](src S, all S) (S, error) {
 		return order[a] - order[b]
 	})
 	return result, nil
+}
+
+// Get 从 s 中安全地读取索引 index 对应的值。
+//
+//	index >= 0 时从切片头部开始索引。
+//	index < 0 时从切片尾部开始索引，-1 表示最后一个元素。
+//	当 index 超出有效范围时返回零值和 false。
+func Get[S ~[]E, E any](s S, index int) (E, bool) {
+	return zslice.Get(s, index)
 }

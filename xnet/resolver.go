@@ -55,7 +55,7 @@ func LookupIPWith(ctx context.Context, re Resolver, network string, host string)
 	if re == nil {
 		re = DefaultResolver()
 	}
-	its := zslice.SafeMerge(globalResolverITs, ITsFromContext[*ResolverInterceptor](ctx))
+	its := zslice.Merge(globalResolverITs, ITsFromContext[*ResolverInterceptor](ctx))
 	return its.Execute(ctx, re.LookupIP, network, host)
 }
 

@@ -4,41 +4,19 @@
 
 package zslice
 
-import "slices"
-
 func Merge[S ~[]T, T any](items ...S) S {
-	switch len(items) {
-	case 0:
-		return nil
-	case 1:
-		return slices.Clone(items[0])
-	}
-
 	var n int
 	for i := range items {
 		n += len(items[i])
+	}
+	if n == 0 {
+		return nil
 	}
 	cp := make([]T, 0, n)
 	for i := range items {
 		cp = append(cp, items[i]...)
 	}
 	return cp
-}
-
-// SafeMerge 安全的合并两个Slice,总是返回一个全新的 slice,若为空，则返回 nil
-func SafeMerge[S ~[]T, T any](ss ...S) S {
-	var count int
-	for _, s := range ss {
-		count += len(s)
-	}
-	if count == 0 {
-		return nil
-	}
-	nc := make(S, 0, count)
-	for _, s := range ss {
-		nc = append(nc, s...)
-	}
-	return nc
 }
 
 // Unique 返回去重后的 slice
@@ -107,4 +85,22 @@ func Reverse[S ~[]E, E any](b S) {
 	for i, j := 0, len(b)-1; i < j; i, j = i+1, j-1 {
 		b[i], b[j] = b[j], b[i]
 	}
+}
+
+// Get 从 s 中安全地读取索引 index 对应的值。
+//
+//	index >= 0 时从切片头部开始索引。
+//	index < 0 时从切片尾部开始索引，-1 表示最后一个元素，-2 表示倒数第二个元素。
+//	当 index 超出有效范围时返回零值和 false。
+func Get[S ~[]E, E any](s S, index int) (E, bool) {
+	var zero E
+	if index < 0 {
+		index += len(s)
+	}
+
+	if index < 0 || index >= len(s) {
+		return zero, false
+	}
+
+	return s[index], true
 }

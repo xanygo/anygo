@@ -12,7 +12,7 @@ import (
 )
 
 func TestMerge(t *testing.T) {
-	xt.Equal(t, Merge([]int{}), []int{})
+	xt.Equal(t, Merge([]int{}), nil)
 	xt.Equal(t, Merge([]int{1}, []int{2}), []int{1, 2})
 }
 

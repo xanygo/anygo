@@ -6,6 +6,7 @@ package xattr
 
 import (
 	"path/filepath"
+	"slices"
 	"sync"
 	"sync/atomic"
 )
@@ -49,6 +50,7 @@ type Attribute struct {
 	confDir string
 	idc     string
 	mode    atomic.Int32
+	tags    []string `yaml:"Tags"`
 	other   sync.Map
 }
 
@@ -145,14 +147,26 @@ func (a *Attribute) RunMode() Mode {
 	return Mode(a.mode.Load())
 }
 
-func (a *Attribute) Set(key any, value any) {
+func (a *Attribute) SetTags(tags []string) {
+	a.tags = slices.Clone(tags)
+}
+
+func (a *Attribute) AppendTags(tags ...string) {
+	a.tags = append(a.tags, tags...)
+}
+
+func (a *Attribute) Tags() []string {
+	return a.tags
+}
+
+func (a *Attribute) SetOther(key any, value any) {
 	a.other.Store(key, value)
 }
 
-func (a *Attribute) Get(key any) (any, bool) {
+func (a *Attribute) GetOther(key any) (any, bool) {
 	return a.other.Load(key)
 }
 
-func (a *Attribute) Range(fn func(key any, value any) bool) {
+func (a *Attribute) RangeOther(fn func(key any, value any) bool) {
 	a.other.Range(fn)
 }

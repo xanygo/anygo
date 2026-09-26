@@ -140,5 +140,5 @@ func ITFromContext(ctx context.Context) []Interceptor {
 
 func allITs(ctx context.Context) []Interceptor {
 	its := ITFromContext(ctx)
-	return xslice.SafeMerge(globalInterceptors, its)
+	return xslice.Merge(globalInterceptors, its)
 }

@@ -42,6 +42,10 @@ type FileConfig struct {
 	// TempDir 应用临时文件目录，可选
 	TempDir string `yaml:"TempDir"`
 
+	// Tags 应用部署及运行标签，可选，可设置多个
+	// 例如：prod、web、api、blue、us-west
+	Tags []string `yaml:"Tags"`
+
 	// Other 其他项，可选
 	Other map[string]any `yaml:"Other"`
 
@@ -139,8 +143,9 @@ func (c FileConfig) SetTo(attr *Attribute) {
 		attr.SetLogDir(c.LogDir)
 	}
 	for key, value := range c.Other {
-		attr.Set(key, value)
+		attr.SetOther(key, value)
 	}
+	attr.AppendTags(c.Tags...)
 }
 
 func (c FileConfig) SetToDefault() {
@@ -149,6 +154,7 @@ func (c FileConfig) SetToDefault() {
 
 var _ xenc.UnmarshalExtra = FileConfig{}
 
+// NeedDecodeExtra 将其他未定义的字段全部解析的 Other 这个 map 里去
 func (c FileConfig) NeedDecodeExtra() string {
 	return "Other"
 }
