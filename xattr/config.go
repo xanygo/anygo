@@ -5,7 +5,9 @@
 package xattr
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -49,6 +51,10 @@ type FileConfig struct {
 	// Other 其他项，可选
 	Other map[string]any `yaml:"Other"`
 
+	// EnsureDirs 应用启动时需要确保存在的目录，可选
+	// 目录不存在时自动创建
+	EnsureDirs []string `yaml:"EnsureDirs"`
+
 	// SelfPath 配置自己的路径
 	SelfPath string
 }
@@ -84,12 +90,13 @@ func (c FileConfig) getAppName() string {
 	if c.AppName != "" {
 		return c.AppName
 	}
-	if c.SelfPath != "" {
-		return filepath.Dir(filepath.Dir(c.SelfPath))
-	}
 	root := c.getRootDir()
 	if root != "" {
-		return filepath.Dir(root)
+		return filepath.Base(root)
+	}
+	wd, _ := os.Getwd()
+	if wd != "" {
+		return filepath.Base(wd)
 	}
 	return ""
 }
@@ -101,17 +108,34 @@ func (c FileConfig) getRootDir() string {
 	if c.SelfPath == "" {
 		return ""
 	}
-	return filepath.Dir(filepath.Dir(c.SelfPath))
+	dir := filepath.Dir(c.SelfPath)
+	// 支持这样的目录结构：
+	// xxx/conf/app.yml          <-- 普通
+	// xxx/conf/product/app.yml  <-- 子目录中放主配置文件
+	//
+	// xxx/conf_product/app.yml  <-- 不同环境的配置文件以 conf_xxx 命名
+	// xxx/conf_dev/app.yml
+	for i := 0; i < 2; i++ {
+		base := filepath.Base(dir)
+		if base == "conf" || strings.HasPrefix(base, "conf_") {
+			return filepath.Dir(dir)
+		}
+		dir = filepath.Dir(dir)
+	}
+	return dir
 }
 
 func (c FileConfig) getConfDir() string {
 	if c.ConfDir != "" {
 		return c.ConfDir
 	}
-	if c.SelfPath == "" {
-		return ""
+	if c.SelfPath != "" {
+		return filepath.Dir(c.SelfPath)
 	}
-	return filepath.Dir(c.SelfPath)
+	if c.RootDir != "" {
+		return filepath.Join(c.RootDir, "conf")
+	}
+	return ""
 }
 
 func (c FileConfig) SetTo(attr *Attribute) {
@@ -159,6 +183,38 @@ func (c FileConfig) NeedDecodeExtra() string {
 	return "Other"
 }
 
+// ensureDirectories 检查 EnsureDirs 中的目录是否存在，不存在则自动创建。
+func (c FileConfig) ensureDirectories() error {
+	var errs []error
+	for _, dir := range c.EnsureDirs {
+		dir = strings.TrimSpace(dir)
+		if dir == "" {
+			continue
+		}
+		dir = c.realDir(dir)
+		dir = filepath.Clean(dir)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			errs = append(errs, fmt.Errorf("create directory %q: %w", dir, err))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func (c FileConfig) realDir(dir string) string {
+	if !strings.Contains(dir, "{") {
+		return dir
+	}
+	return strings.NewReplacer(
+		"{RootDir}", RootDir(),
+		"{DataDir}", DataDir(),
+		"{ConfDir}", ConfDir(),
+		"{TempDir}", TempDir(),
+		"{LogDir}", LogDir(),
+		"{IDC}", IDC(),
+		"{RunMode}", RunMode().String(),
+	).Replace(dir)
+}
+
 func ParserFileConfig(path string, parser func(string, any) error) (*FileConfig, error) {
 	path, err := filepath.Abs(path)
 	if err != nil {
@@ -183,16 +239,23 @@ func AppMain() FileConfig {
 	return mainCfg
 }
 
-// InitAppMain 初始化应用主配置文件
+// InitAppMain 初始化应用主配置文件,并处理：
+//  1. 应用切换到 RootDir()
+//  2. 检查 EnsureDirs 目前，若不存在则创建
 func InitAppMain(path string, parser func(string, any) error) (FileConfig, error) {
 	cfg, err := ParserFileConfig(path, parser)
 	if err != nil {
 		return FileConfig{}, err
 	}
+	Init(AppName(), cfg.getRootDir())
 	mainCfg = *cfg
 	mainCfgInited = true
 	cfg.SetToDefault()
-	return mainCfg, nil
+	err = os.Chdir(RootDir())
+	if err == nil {
+		err = cfg.ensureDirectories()
+	}
+	return mainCfg, err
 }
 
 // MustInitAppMain 初始化应用主配置文件，若失败会 panic
