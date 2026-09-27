@@ -40,7 +40,7 @@ type Config struct {
 	UseProxy         string          `json:"UseProxy" yaml:"UseProxy"`                 // 将另外一个service 当做代理
 	WorkerCycle      xtime.Duration  `json:"WorkerCycle"         yaml:"WorkerCycle"`   // 后台任务运行周期，可选，如 "3s"
 
-	Proxy      *xproxy.Config     `json:"Proxy"             yaml:"Proxy"`                                         // 当子服务是代理时使用，可选
+	Proxy      *xproxy.Config     `json:"Proxy"             yaml:"Proxy"`                                         // 当服务是代理时使用，可选
 	HTTP       *HTTPPart          `json:"HTTP"              yaml:"HTTP"`                                          // HTTP 下游特有配置，可选
 	ConnPool   *ConnPoolPart      `json:"ConnPool"          yaml:"ConnPool"`                                      // 网络连接池配置，可选
 	TLS        *xoption.TLSConfig `json:"TLS"               yaml:"TLS"`                                           // TLS 加密配置，可选

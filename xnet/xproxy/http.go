@@ -31,6 +31,7 @@ func (h *httpProxy) Proxy(ctx context.Context, proxyConn *xnet.ConnNode, c *Conf
 }
 
 func doHttpProxy(ctx context.Context, proxyConn *xnet.ConnNode, c *Config, target string) (*xnet.ConnNode, error) {
+	// todo 修改实现，authType 也采用驱动注册方式
 	hello, err := getHTTPHelloRequest(c, proxyConn.Addr, target)
 	if err != nil {
 		return nil, err
@@ -98,15 +99,19 @@ func getHTTPHelloRequest(c *Config, proxyAddr xnet.AddrNode, target string) (*by
 	fmt.Fprintf(buf, "Host: %s\r\n", proxyAddr.HostPort)
 	fmt.Fprintf(buf, "User-Agent: %s\r\n", xnet.UserAgent)
 	buf.WriteString("Proxy-Connection: keep-alive\r\n")
+
+	var err error
 	if c.Username != "" {
 		switch c.AuthType {
 		case "", "Basic":
 			code := base64.StdEncoding.EncodeToString([]byte(c.Username + ":" + c.Password))
-			buf.WriteString("Proxy-Authorization: Basic " + code + "\r\n")
+			_, err = buf.WriteString("Proxy-Authorization: Basic " + code + "\r\n")
+		default:
+			return nil, fmt.Errorf("not support proxy AuthType %q", c.AuthType)
 		}
 	}
 	buf.WriteString("\r\n")
-	return buf, nil
+	return buf, err
 }
 
 func init() {

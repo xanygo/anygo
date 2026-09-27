@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/xanygo/anygo/xattr"
 	"github.com/xanygo/anygo/xbus"
 	"github.com/xanygo/anygo/xnet/internal"
 	"github.com/xanygo/anygo/xnet/xbalance"
@@ -90,7 +91,7 @@ func NewServiceByAddress(name string, address ...string) (Service, error) {
 			Address: address,
 		},
 	}
-	return cfg.Parser("dev")
+	return cfg.Parser(xattr.IDC())
 }
 
 func NewServiceByURL(name string, urlStr string) (Service, error) {

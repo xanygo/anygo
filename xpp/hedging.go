@@ -5,9 +5,10 @@
 package xpp
 
 import (
+	"cmp"
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 	"time"
 )
 
@@ -28,7 +29,7 @@ type Hedging[T any] struct {
 //	fn: 对冲函数
 func (h *Hedging[T]) Add(delay time.Duration, fn func(ctx context.Context) (T, error)) {
 	info := hedgingFn[T]{
-		Delay: delay,
+		Delay: max(delay, 0),
 		Fn:    fn,
 	}
 	h.fns = append(h.fns, info)
@@ -36,8 +37,8 @@ func (h *Hedging[T]) Add(delay time.Duration, fn func(ctx context.Context) (T, e
 
 func (h *Hedging[T]) sortFns() {
 	// 按照延迟时间排序，延迟时间小的排前面
-	sort.Slice(h.fns, func(i, j int) bool {
-		return h.fns[i].Delay < h.fns[j].Delay
+	slices.SortStableFunc(h.fns, func(a, b hedgingFn[T]) int {
+		return cmp.Compare(a.Delay, b.Delay)
 	})
 	firstDelay := h.fns[0].Delay
 	// 将绝对时间转换为相对时间

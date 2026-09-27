@@ -9,7 +9,7 @@ HandshakeTimeout = 1000   # 握手超时时间
 
 Protocol="HTTP"     # 交互协议,可选
 
-UseProxy = "proxy1" # 可选，使用指定的代理
+UseProxy = "proxy1" # 可选，使用指定的代理（服务配置的名称）
 
 # HTTP 协议专属配置，可选
 [HTTP]
@@ -73,3 +73,29 @@ Address  = ["127.0.0.1:80"]
 [DownStream.IDC.bj]
 Address  = ["127.0.0.1:80"]
 ```
+
+
+## HTTP 代理配置文件格式示例：
+
+```toml
+Name = "proxy1"     # Name 需要和文件名保持一致: proxy1.toml
+
+[HTTP]
+Host = "myproxy.com"
+HTTPS = true
+
+[Proxy]
+Protocol = "HTTP"       # 代理协议类型，必填，可选值： HTTP、HTTPS
+AuthType = "Basic"      # 认证类型，可选，可选值为： Basic(默认)，暂不支持其他认证类型
+Username = "user"       # 认证账号，可选，有值时才会发送认证信息
+Password = "password"   # 认证密码，可选
+
+[DownStream]
+Address  = ["127.0.0.1:443"] # 默认的代理服务器地址列表，可选
+
+# 分 IDC 的地址列表，可选
+[DownStream.IDC.bj]
+Address  = ["127.0.0.1:443"]
+```
+
+SOCKS5 代理协议未内置支持。
