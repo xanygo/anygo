@@ -29,6 +29,8 @@ import (
 	"github.com/xanygo/anygo/xattr"
 	"github.com/xanygo/anygo/xcast"
 	"github.com/xanygo/anygo/xhtml/internal/tplfn"
+	"github.com/xanygo/anygo/xhttp"
+	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xmap"
 	"github.com/xanygo/anygo/xstr"
 	"github.com/xanygo/anygo/xsync"
@@ -41,6 +43,7 @@ func NewTPLRequest(req *http.Request) *TPLRequest {
 	}
 }
 
+// TPLRequest 用于在模板中，读取 http.Request 的相关信息
 type TPLRequest struct {
 	Request *http.Request
 	once    xsync.OnceDoValue[url.Values]
@@ -205,6 +208,7 @@ func (t *TPLRequest) Dir() string {
 	return path.Dir(t.Request.URL.Path)
 }
 
+// DirN 第 N 级父目录，若 n = 0 返回 Path；n = 1 返回 父目录（相当于 Dir() ）
 func (t *TPLRequest) DirN(n int) string {
 	p := t.Request.URL.Path
 	for range n {
@@ -213,7 +217,7 @@ func (t *TPLRequest) DirN(n int) string {
 	return p
 }
 
-// IsWeXin 是否微信环境
+// IsWeXin 使用 UserAgent 判断 是否微信环境
 func (t *TPLRequest) IsWeXin() bool {
 	return strings.Contains(t.Request.UserAgent(), "MicroMessenger/")
 }
@@ -551,6 +555,10 @@ type TemplateCore[T any] interface {
 	Parse(string) (T, error)
 }
 
+type TemplateExecutor interface {
+	ExecuteTemplate(wr io.Writer, name string, data any) error
+}
+
 // WalkParseFS 遍历读取 fsys ，并将符合 pattern 的文件解析
 //
 // patterns: 文件名的规则，可选，不能包含目录，有效值如 *.html。若为空，则解析所有文件
@@ -598,4 +606,84 @@ func WalkParseFS[T TemplateCore[T]](t T, fsys fs.FS, root string, patterns ...st
 		return nil
 	})
 	return t, err
+}
+
+// TemplateEngine 封装了 渲染单个文件以及和模板一起渲染的功能
+//
+// 在模板中，总是可以读取到 $.TR 变量，值为 xhtml.TPLRequest，可以用于读取 query 参数，请求路径等
+type TemplateEngine struct {
+	// 必填，初始化好的  *html/template.Template
+	Temp TemplateExecutor
+
+	// 可选，渲染前对 values 复制的回调
+	Before func(values map[string]any, r *http.Request)
+
+	// 可选，判断是否 ajax 请求，若为空则使用 xhttp.IsAjax
+	IsAjax func(r *http.Request) bool
+
+	// 可选，默认布局文件，若为空则使用 layout/layout.html
+	// 模板中，使用  LayoutBody 变量来展示主体内容
+	Layout string
+}
+
+// Render 直接渲染模板 fileName
+func (t *TemplateEngine) Render(w http.ResponseWriter, r *http.Request, fileName string, values map[string]any) error {
+	if values == nil {
+		values = make(map[string]any)
+	}
+	if t.Before != nil {
+		t.Before(values, r)
+	}
+	values["TR"] = NewTPLRequest(r)
+
+	return t.render(r.Context(), w, fileName, values)
+}
+
+func (t *TemplateEngine) render(ctx context.Context, w io.Writer, fileName string, values map[string]any) error {
+	err := t.Temp.ExecuteTemplate(w, fileName, values)
+	if err != nil {
+		_, _ = w.Write([]byte("Render failed:" + template.HTMLEscapeString(err.Error())))
+		xlog.Warn(ctx, "Render failed", xlog.String("fileName", fileName), xlog.Err("error", err))
+	}
+	return err
+}
+
+func (t *TemplateEngine) isAjax(r *http.Request) bool {
+	return (t.IsAjax != nil && t.IsAjax(r)) || xhttp.IsAjax(r)
+}
+
+func (t *TemplateEngine) getLayout() string {
+	if t.Layout != "" {
+		return t.Layout
+	}
+	return "layout/layout.html"
+}
+
+// RenderPage 渲染模板 fileName，不是 ajax，则将内容渲染到默认的 Layout
+func (t *TemplateEngine) RenderPage(w http.ResponseWriter, r *http.Request, fileName string, values map[string]any) error {
+	return t.RenderPageLayout(w, r, fileName, t.getLayout(), values)
+}
+
+// RenderPageLayout 渲染模板 fileName，不是 ajax，则将内容渲染到指定的 Layout
+func (t *TemplateEngine) RenderPageLayout(w http.ResponseWriter, r *http.Request, fileName string, layout string, values map[string]any) error {
+	if values == nil {
+		values = make(map[string]any)
+	}
+	if t.Before != nil {
+		t.Before(values, r)
+	}
+	values["TR"] = NewTPLRequest(r)
+
+	if t.isAjax(r) {
+		return t.render(r.Context(), w, fileName, values)
+	}
+	bf := xsync.GetBytesBuffer()
+	err1 := t.render(r.Context(), bf, fileName, values)
+	if err1 != nil {
+		bf.WriteString("")
+	}
+	values["LayoutBody"] = bf.String()
+	xsync.PutBytesBuffer(bf)
+	err2 := t.render(r.Context(), w, layout, values)
+	return errors.Join(err1, err2)
 }
