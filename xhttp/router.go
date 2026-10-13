@@ -100,6 +100,10 @@ type Router struct {
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	req.Method = zroute.CleanMethod(req.Method)
+
+	// 将 Path 归一化，方便后续路由查找
+	req.URL.Path = zroute.CleanPath(req.URL.Path)
+
 	sr, values := r.findRoute(req)
 	for k, v := range values {
 		req.SetPathValue(k, v)

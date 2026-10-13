@@ -21,18 +21,18 @@ type TemplateRender struct {
 	Languages []Language // 由 http header accept-language 解析出的首选语言列表
 }
 
-// RA 在模版中加载渲染本地化内容
+// Text 在模版中加载渲染本地化内容
 //
-//	如  hello {{ .xi.RA "index/k1" }} 、 {{ .xi.RA "index/k1" arg1 arg2 }}
+//	如  hello {{ .xi.Text "index/k1" }} 、 {{ .xi.Text "index/k1" arg1 arg2 }}
 //	第一个参数 "index/k1" 中 namespace = "index", key="k1"
 //	arg1 arg2 等是可选参数，支持 >=0 个
 //
 // 由于 xi 是通过 namespace + key 读取本地化内容的，所以要求所有的本地化资源都在 Bundle 中有定义
-func (tr *TemplateRender) RA(key string, args ...any) (string, error) {
-	return renderA(tr.Bundle, tr.Languages, key, args...)
+func (tr *TemplateRender) Text(key string, args ...any) (string, error) {
+	return renderText(tr.Bundle, tr.Languages, key, args...)
 }
 
-func renderA(b *Bundle, ls []Language, key string, args ...any) (string, error) {
+func renderText(b *Bundle, ls []Language, key string, args ...any) (string, error) {
 	msg := FindMessage(b, ls, "", key)
 	if msg == nil {
 		return "", fmt.Errorf("cannot find %q, languages=%q", key, ls)
@@ -40,15 +40,15 @@ func renderA(b *Bundle, ls []Language, key string, args ...any) (string, error) 
 	return msg.Render(args...)
 }
 
-// RB 渲染本地化内容,若没有对应的语言内容，则使用传入的 text 渲染
+// TextOr 渲染本地化内容,若没有对应的语言内容，则使用传入的 text 渲染
 //
-//	如 {{ .xi.RB "你好" "index/k1" }} 或者 {{ .xi.RB "你好 {0}" "index/k1" "demo" }}
+//	如 {{ .xi.TextOr "你好" "index/k1" }} 或者 {{ .xi.TextOr "你好 {0}" "index/k1" "demo" }}
 //	在 “|” 前的内容是预定义的本地化模版信息,本地化信息中的变量使用 {number} 作为占位符，从 0 依次递增
-func (tr *TemplateRender) RB(text string, key string, args ...any) (string, error) {
-	return renderB(tr.Bundle, tr.Languages, text, key, args...)
+func (tr *TemplateRender) TextOr(text string, key string, args ...any) (string, error) {
+	return renderTextOr(tr.Bundle, tr.Languages, text, key, args...)
 }
 
-func renderB(b *Bundle, ls []Language, text string, key string, args ...any) (string, error) {
+func renderTextOr(b *Bundle, ls []Language, text string, key string, args ...any) (string, error) {
 	if b.preferred(ls) {
 		return renderMsgSlice(text, args...)
 	}
@@ -87,7 +87,7 @@ func (tr *TemplateRender) BindXTT(b *Bundle, languages []Language, namespace str
 		if namespace != "" {
 			key = path.Join(namespace, key)
 		}
-		return renderB(b, languages, text, key, args[:len(args)-1]...)
+		return renderTextOr(b, languages, text, key, args[:len(args)-1]...)
 	}
 }
 
@@ -176,10 +176,10 @@ func FuncMap(b *Bundle, languages []Language, namespace string) map[string]any {
 
 var errNoBundleInCtx = errors.New("not found Bundle in context, should ContextWithBundle first")
 
-// RA 使用资源的 key 渲染文本内容,需要提前使用 ContextWithBundle 将 *Bundle 存入 ctx。
+// Text 使用资源的 key 渲染文本内容,需要提前使用 ContextWithBundle 将 *Bundle 存入 ctx。
 //
 //	若是 Bundle 不存在会 panic，key 不存在会返回错误信息。
-func RA(ctx context.Context, key string, args ...any) (string, error) {
+func Text(ctx context.Context, key string, args ...any) (string, error) {
 	rr, ok := ctx.Value(ctxKeyBundle).(*ctxBundle)
 	if !ok {
 		return "", errNoBundleInCtx
@@ -187,14 +187,14 @@ func RA(ctx context.Context, key string, args ...any) (string, error) {
 	if rr.namespace != "" {
 		key = path.Join(rr.namespace, key)
 	}
-	return renderA(rr.bundle, LanguagesFromContext(ctx), key, args...)
+	return renderText(rr.bundle, LanguagesFromContext(ctx), key, args...)
 }
 
-// RB 使用资源 key 渲染文本内容,若 key 不存在则使用传入的模版( 参数名: text，作为默认模版 ) 渲染
+// TextOr 使用资源 key 渲染文本内容,若 key 不存在则使用传入的模版( 参数名: text，作为默认模版 ) 渲染
 //
 //	需要提前使用 ContextWithBundle 将 *Bundle 和 首选语言 Language 存入 ctx。
 //	若是 Bundle 不存在会 panic，key 不存在会返回错误信息。
-func RB(ctx context.Context, text string, key string, args ...any) (string, error) {
+func TextOr(ctx context.Context, text string, key string, args ...any) (string, error) {
 	rr, ok := ctx.Value(ctxKeyBundle).(*ctxBundle)
 	if !ok {
 		return "", errNoBundleInCtx
@@ -203,19 +203,19 @@ func RB(ctx context.Context, text string, key string, args ...any) (string, erro
 	if rr.namespace != "" {
 		key = path.Join(rr.namespace, key)
 	}
-	return renderB(rr.bundle, languages, text, key, args...)
+	return renderTextOr(rr.bundle, languages, text, key, args...)
 }
 
 var hh = &HTTPHandler{}
 
-func RC(b *Bundle, req *http.Request, key string, args ...any) (string, error) {
+func HTTPText(b *Bundle, req *http.Request, key string, args ...any) (string, error) {
 	languages := hh.PreferredLanguage(req)
-	return renderA(b, languages, key, args...)
+	return renderText(b, languages, key, args...)
 }
 
-func RD(b *Bundle, req *http.Request, text string, key string, args ...any) (string, error) {
+func HTTPTextOr(b *Bundle, req *http.Request, text string, key string, args ...any) (string, error) {
 	languages := hh.PreferredLanguage(req)
-	return renderB(b, languages, text, key, args...)
+	return renderTextOr(b, languages, text, key, args...)
 }
 
 // BuildTemplate 构建支持多语言支持的模版集合

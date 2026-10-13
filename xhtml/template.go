@@ -612,8 +612,14 @@ func WalkParseFS[T TemplateCore[T]](t T, fsys fs.FS, root string, patterns ...st
 //
 // 在模板中，总是可以读取到 $.TR 变量，值为 xhtml.TPLRequest，可以用于读取 query 参数，请求路径等
 type TemplateEngine struct {
-	// 必填，初始化好的  *html/template.Template
-	Temp TemplateExecutor
+	// 初始化好的  *html/template.Template
+	// Template 和 TemplateResolver 两者至少有一个不为空，并优先使用 Template
+	// 若最终查找 Template 为 nil，则 panic
+	Template TemplateExecutor
+
+	// TemplateResolver 依据请求返回 Template
+	// 可以返回 nil，返回 nil 时则使用 Template
+	TemplateResolver func(r *http.Request) TemplateExecutor
 
 	// 可选，渲染前对 values 复制的回调
 	Before func(values map[string]any, r *http.Request)
@@ -626,6 +632,16 @@ type TemplateEngine struct {
 	Layout string
 }
 
+func (t *TemplateEngine) findTemplate(r *http.Request) TemplateExecutor {
+	if t.TemplateResolver != nil {
+		v := t.TemplateResolver(r)
+		if v != nil {
+			return v
+		}
+	}
+	return t.Template
+}
+
 // Render 直接渲染模板 fileName
 func (t *TemplateEngine) Render(w http.ResponseWriter, r *http.Request, fileName string, values map[string]any) error {
 	if values == nil {
@@ -636,14 +652,14 @@ func (t *TemplateEngine) Render(w http.ResponseWriter, r *http.Request, fileName
 	}
 	values["TR"] = NewTPLRequest(r)
 
-	return t.render(r.Context(), w, fileName, values)
+	return t.render(r, w, fileName, values)
 }
 
-func (t *TemplateEngine) render(ctx context.Context, w io.Writer, fileName string, values map[string]any) error {
-	err := t.Temp.ExecuteTemplate(w, fileName, values)
+func (t *TemplateEngine) render(r *http.Request, w io.Writer, fileName string, values map[string]any) error {
+	err := t.findTemplate(r).ExecuteTemplate(w, fileName, values)
 	if err != nil {
 		_, _ = w.Write([]byte("Render failed:" + template.HTMLEscapeString(err.Error())))
-		xlog.Warn(ctx, "Render failed", xlog.String("fileName", fileName), xlog.Err("error", err))
+		xlog.Warn(r.Context(), "Render failed", xlog.String("fileName", fileName), xlog.Err("error", err))
 	}
 	return err
 }
@@ -675,15 +691,15 @@ func (t *TemplateEngine) RenderPageLayout(w http.ResponseWriter, r *http.Request
 	values["TR"] = NewTPLRequest(r)
 
 	if t.isAjax(r) {
-		return t.render(r.Context(), w, fileName, values)
+		return t.render(r, w, fileName, values)
 	}
 	bf := xsync.GetBytesBuffer()
-	err1 := t.render(r.Context(), bf, fileName, values)
+	err1 := t.render(r, bf, fileName, values)
 	if err1 != nil {
 		bf.WriteString("")
 	}
 	values["LayoutBody"] = bf.String()
 	xsync.PutBytesBuffer(bf)
-	err2 := t.render(r.Context(), w, layout, values)
+	err2 := t.render(r, w, layout, values)
 	return errors.Join(err1, err2)
 }

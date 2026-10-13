@@ -10,15 +10,13 @@ import (
 	"strings"
 )
 
+// CleanPath 返回干净的 Path，去除掉 Path 中的 "/./","/../", 和连续的 "/"如 “//”
 func CleanPath(p string) string {
 	if p == "" {
 		return "/"
 	}
 	np := path.Clean(p)
-	// path.CleanPath removes trailing slash except for root;
-	// put the trailing slash back if necessary.
 	if p[len(p)-1] == '/' && np != "/" {
-		// Fast path for common case of p being the string we want:
 		if len(p) == len(np)+1 && strings.HasPrefix(p, np) {
 			np = p
 		} else {

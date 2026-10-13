@@ -151,22 +151,22 @@ func TestRA(t *testing.T) {
 	b.MustLocalize(LangZh).MustAdd("index", &Message{Key: "k2", Other: "你好 {0}"})
 	b.MustLocalize(LangEn).MustAdd("index", &Message{Key: "k2", Other: "hello {0}"})
 
-	_, err0 := RA(t.Context(), "index/k1")
+	_, err0 := Text(t.Context(), "index/k1")
 	xt.Error(t, err0)
 
 	ctx1 := ContextWithBundle(context.Background(), b, "")
-	xt.Equal(t, anygo.Must1(RA(ctx1, "index/k1")), "你好")
-	xt.Equal(t, anygo.Must1(RA(ctx1, "index/k2", "demo")), "你好 demo")
+	xt.Equal(t, anygo.Must1(Text(ctx1, "index/k1")), "你好")
+	xt.Equal(t, anygo.Must1(Text(ctx1, "index/k2", "demo")), "你好 demo")
 
 	t.Run("RB", func(t *testing.T) {
-		xt.Equal(t, anygo.Must1(RB(ctx1, "abc", "index/k1")), "你好")
+		xt.Equal(t, anygo.Must1(TextOr(ctx1, "abc", "index/k1")), "你好")
 
 		// lang 不存在，使用默认lang-,zh
 		ctx2 := ContextWithLanguages(ctx1, []Language{"jp"})
-		xt.Equal(t, anygo.Must1(RB(ctx2, "abc", "index/k1")), "abc")
-		xt.Equal(t, anygo.Must1(RB(ctx2, "abc {0}", "index/k2", "demo")), "abc demo")
+		xt.Equal(t, anygo.Must1(TextOr(ctx2, "abc", "index/k1")), "abc")
+		xt.Equal(t, anygo.Must1(TextOr(ctx2, "abc {0}", "index/k2", "demo")), "abc demo")
 	})
 
 	ctx3 := ContextWithLanguages(ctx1, []Language{LangEn})
-	xt.Equal(t, anygo.Must1(RA(ctx3, "index/k1")), "hello")
+	xt.Equal(t, anygo.Must1(Text(ctx3, "index/k1")), "hello")
 }

@@ -5,9 +5,14 @@
 package xhtml_test
 
 import (
+	"embed"
 	"fmt"
+	"html/template"
+	"maps"
+	"net/http"
 
 	"github.com/xanygo/anygo/xhtml"
+	"github.com/xanygo/anygo/xi18n"
 )
 
 func ExampleHTMLBytes_Div() {
@@ -55,4 +60,29 @@ func ExampleNewOption() {
 	// Output:
 	// <option value="1">class 1</option>
 	// <option value="1">1</option>
+}
+
+func ExampleTemplateEngine_i18n() {
+	// 演示：使用 i18n 渲染模板
+
+	funcmap := template.FuncMap{}
+	files := embed.FS{}
+
+	maps.Copy(funcmap, xhtml.FuncMap)
+	ib := xi18n.NewBundle(xi18n.LangZh, xi18n.LangEn)
+	// 这里略掉了将 language 资源信息加载到 ib 的逻辑
+
+	it := xi18n.BuildTemplate(xi18n.LangZh, ib, func(t *template.Template) *template.Template {
+		return template.Must(xhtml.WalkParseFS(t.Funcs(funcmap), files, "files", "*.html"))
+	})
+
+	te := &xhtml.TemplateEngine{
+		TemplateResolver: func(r *http.Request) xhtml.TemplateExecutor {
+			// 需要给 xhttp.Router 注册中间件  xi18n.HTTPHandler
+			languages := xi18n.LanguagesFromContext(r.Context())
+			return it.Any(xi18n.LangZh, languages...)
+		},
+	}
+
+	_ = te
 }

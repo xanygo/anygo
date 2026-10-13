@@ -6,6 +6,61 @@ package zroute
 
 import "testing"
 
+func TestCleanPath(t *testing.T) {
+	type args struct {
+		p string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "case 1",
+			args: args{
+				p: "/",
+			},
+			want: "/",
+		},
+		{
+			name: "case 2",
+			args: args{
+				p: "/hello",
+			},
+			want: "/hello",
+		},
+		{
+			name: "case 3",
+			args: args{
+				p: "/hello/",
+			},
+			want: "/hello/",
+		},
+		{
+			name: "case 4",
+			args: args{
+				p: "/hello//world",
+			},
+			want: "/hello/world",
+		},
+		{
+			name: "case 5",
+			args: args{
+				p: "hello",
+			},
+			want: "hello",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := CleanPath(tt.args.p); got != tt.want {
+				t.Errorf("CleanPath() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestCleanPattern(t *testing.T) {
 	type args struct {
 		p string

@@ -14,7 +14,7 @@ import (
 	"github.com/xanygo/anygo/xi18n"
 )
 
-func ExampleRA() {
+func ExampleText() {
 	b := &xi18n.Bundle{}
 	// 在 index 这个名字空间下，为 zh 和 en 两种语言定义 title 这个资源
 	b.MustLocalize(xi18n.LangZh).MustAdd("index", &xi18n.Message{Key: "title", Other: "你好 {0}"})
@@ -22,7 +22,7 @@ func ExampleRA() {
 
 	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// 从 context 里读取到 Bundle 和语言支持列表，并渲染内容
-		txt := anygo.Must1(xi18n.RA(r.Context(), "index/title", "AnyGo"))
+		txt := anygo.Must1(xi18n.Text(r.Context(), "index/title", "AnyGo"))
 		_, _ = w.Write([]byte(txt))
 	})
 
