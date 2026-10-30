@@ -622,7 +622,10 @@ type TemplateEngine struct {
 	TemplateResolver func(r *http.Request) TemplateExecutor
 
 	// 可选，渲染前对 values 复制的回调
-	Before func(values map[string]any, r *http.Request)
+	Before func(r *http.Request, values map[string]any)
+
+	// 可选，渲染时对 Writer 加工，如压缩
+	WithWriter func(r *http.Request, w io.Writer) io.Writer
 
 	// 可选，判断是否 ajax 请求，若为空则使用 xhttp.IsAjax
 	IsAjax func(r *http.Request) bool
@@ -645,17 +648,21 @@ func (t *TemplateEngine) findTemplate(r *http.Request) TemplateExecutor {
 // Render 直接渲染模板 fileName
 func (t *TemplateEngine) Render(w http.ResponseWriter, r *http.Request, fileName string, values map[string]any) error {
 	if values == nil {
-		values = make(map[string]any)
+		values = make(map[string]any, 2)
 	}
 	if t.Before != nil {
-		t.Before(values, r)
+		t.Before(r, values)
 	}
 	values["TR"] = NewTPLRequest(r)
+	values["deps"] = &Deps{}
 
-	return t.render(r, w, fileName, values)
+	return t.render(r, t.withCustomWriter(r, w), fileName, values)
 }
 
 func (t *TemplateEngine) render(r *http.Request, w io.Writer, fileName string, values map[string]any) error {
+	if wc, ok := w.(io.Closer); ok {
+		defer wc.Close()
+	}
 	err := t.findTemplate(r).ExecuteTemplate(w, fileName, values)
 	if err != nil {
 		_, _ = w.Write([]byte("Render failed:" + template.HTMLEscapeString(err.Error())))
@@ -683,15 +690,16 @@ func (t *TemplateEngine) RenderPage(w http.ResponseWriter, r *http.Request, file
 // RenderPageLayout 渲染模板 fileName，不是 ajax，则将内容渲染到指定的 Layout
 func (t *TemplateEngine) RenderPageLayout(w http.ResponseWriter, r *http.Request, fileName string, layout string, values map[string]any) error {
 	if values == nil {
-		values = make(map[string]any)
+		values = make(map[string]any, 3)
 	}
 	if t.Before != nil {
-		t.Before(values, r)
+		t.Before(r, values)
 	}
 	values["TR"] = NewTPLRequest(r)
+	values["deps"] = &Deps{}
 
 	if t.isAjax(r) {
-		return t.render(r, w, fileName, values)
+		return t.render(r, t.withCustomWriter(r, w), fileName, values)
 	}
 	bf := xsync.GetBytesBuffer()
 	err1 := t.render(r, bf, fileName, values)
@@ -700,6 +708,13 @@ func (t *TemplateEngine) RenderPageLayout(w http.ResponseWriter, r *http.Request
 	}
 	values["LayoutBody"] = bf.String()
 	xsync.PutBytesBuffer(bf)
-	err2 := t.render(r, w, layout, values)
+	err2 := t.render(r, t.withCustomWriter(r, w), layout, values)
 	return errors.Join(err1, err2)
+}
+
+func (t *TemplateEngine) withCustomWriter(r *http.Request, w io.Writer) io.Writer {
+	if t.WithWriter == nil {
+		return w
+	}
+	return t.WithWriter(r, w)
 }
