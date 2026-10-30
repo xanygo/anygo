@@ -29,3 +29,7 @@ func Get(h http.Header, key string) (value string, ok bool) {
 	value = h.Get(key)
 	return value, value != ""
 }
+
+func Clear() {
+	clear(trustHeaders)
+}
