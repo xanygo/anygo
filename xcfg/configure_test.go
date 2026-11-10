@@ -7,6 +7,7 @@ package xcfg
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/xanygo/anygo/xcfg/internal/hook"
@@ -26,7 +27,7 @@ func Test_confImpl(t *testing.T) {
 }
 
 func TestNewDefault1(t *testing.T) {
-	hd := append([]Hook{}, defaultHooks...)
+	hd := slices.Clone(defaultHooks)
 	defer func() {
 		defaultHooks = hd
 		if re := recover(); re == nil {

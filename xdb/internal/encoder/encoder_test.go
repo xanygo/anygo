@@ -387,7 +387,6 @@ func TestEncoder_EncodeArgs(t *testing.T) {
 			xt.Empty(t, got)
 		})
 	})
-
 }
 
 type model1 struct {

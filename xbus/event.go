@@ -5,6 +5,7 @@
 package xbus
 
 import (
+	"slices"
 	"sync"
 
 	"github.com/xanygo/anygo/safely"
@@ -55,7 +56,7 @@ func (e *EventBus[T]) Unsubscribe(ch <-chan T) {
 	for i, sub := range e.subs {
 		if sub == ch {
 			close(sub)
-			e.subs = append(e.subs[:i], e.subs[i+1:]...)
+			e.subs = slices.Delete(e.subs, i, i+1)
 			break
 		}
 	}

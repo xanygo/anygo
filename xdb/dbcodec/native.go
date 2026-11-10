@@ -20,8 +20,7 @@ type nativeType interface {
 type Native struct{}
 
 // native implements [nativeType].
-func (r *Native) native() {
-}
+func (r *Native) native() {}
 
 func (r Native) Kind() dbtype.Kind {
 	return dbtype.KindNative

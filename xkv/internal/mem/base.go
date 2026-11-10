@@ -119,6 +119,5 @@ func withReadLocked[T any](base *Base, key string, dt internal.DataType, fn func
 			return internal.ErrInvalidType
 		}
 		return fn(value.(T))
-
 	})
 }

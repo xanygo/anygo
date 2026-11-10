@@ -92,5 +92,4 @@ func TestMemoryRange(t *testing.T) {
 		xt.NoError(t, err)
 		xt.Equal(t, num, 0)
 	})
-
 }

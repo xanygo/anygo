@@ -4,6 +4,8 @@
 
 package zslice
 
+import "slices"
+
 func Merge[S ~[]T, T any](items ...S) S {
 	var n int
 	for i := range items {
@@ -49,7 +51,7 @@ func DeleteValue[S ~[]E, E comparable](s S, values ...E) S {
 	oldLen := len(s)
 	for i := len(s) - 1; i >= 0; i-- {
 		if _, ok := kv[s[i]]; ok {
-			s = append(s[:i], s[i+1:]...)
+			s = slices.Delete(s, i, i+1)
 		}
 	}
 	clear(s[len(s):oldLen])

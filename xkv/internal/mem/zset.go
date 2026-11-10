@@ -209,6 +209,7 @@ func (m *ZSet) withWriteLocked(fn func(*zsetValue) (*zsetValue, operate, error))
 		return fn(value)
 	}, zSetValueEmpty)
 }
+
 func (m *ZSet) withReadLocked(fn func(*zsetValue) error) error {
 	return withReadLocked(m.Base, m.Key, internal.DataTypeZSet, func(value *zsetValue) error {
 		return fn(value)
