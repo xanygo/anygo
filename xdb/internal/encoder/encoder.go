@@ -182,7 +182,7 @@ func (e Encoder[T]) rangeStructFields(v reflect.Value, fn func(fieldSchema dbtyp
 			return nil
 		}
 
-		tag := xstruct.ParserTagCached(field.Tag, e.Schema.TagName)
+		tag := xstruct.CachedShiftTag(field.Tag, e.Schema.TagName)
 		name := tag.Name()
 		if name == "-" || name == "" {
 			return nil

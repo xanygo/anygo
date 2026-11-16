@@ -12,7 +12,7 @@ import (
 
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xoption"
-	"github.com/xanygo/anygo/xvalidator"
+	"github.com/xanygo/anygo/xvld"
 )
 
 var OptKeyProxy = xoption.NewKey("Proxy") // proxy 类型，支持的值： HTTP
@@ -27,7 +27,7 @@ type Config struct {
 	TLS      *xoption.TLSConfig
 }
 
-var _ xvalidator.AutoChecker = (*Config)(nil)
+var _ xvld.AutoChecker = (*Config)(nil)
 
 func (pc *Config) AutoCheck() (err error) {
 	if pc.Protocol != "" {

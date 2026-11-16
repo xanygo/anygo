@@ -197,7 +197,7 @@ func scanRowsAsStruct[T any](rows *sql.Rows, cols []string, schema *dbtype.Table
 			if !field.IsExported() {
 				return nil
 			}
-			tag := xstruct.ParserTagCached(field.Tag, tn)
+			tag := xstruct.CachedShiftTag(field.Tag, tn)
 			name := tag.Name()
 			if name == "" || name == "-" {
 				// 此字段不需要解析

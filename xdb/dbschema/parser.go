@@ -115,7 +115,7 @@ func (sp schemaParser) getSchema(rt reflect.Type) (*dbtype.TableSchema, error) {
 				return nil
 			}
 
-			tag := xstruct.ParserTagCached(field.Tag, sp.tagName)
+			tag := xstruct.CachedShiftTag(field.Tag, sp.tagName)
 			name := tag.Name()
 			if name == "-" || name == "" {
 				return nil

@@ -18,7 +18,7 @@ import (
 	"github.com/xanygo/anygo/xattr"
 	"github.com/xanygo/anygo/xenc"
 	"github.com/xanygo/anygo/xenc/xcodec"
-	"github.com/xanygo/anygo/xvalidator"
+	"github.com/xanygo/anygo/xvld"
 )
 
 // NewDefault 创建一个新的配置解析实例
@@ -44,7 +44,7 @@ type Configure struct {
 	Dir string
 
 	ctx       context.Context
-	validator xvalidator.Validator
+	validator xvld.StructValidator
 	decoders  map[string]xenc.Unmarshaler
 	exts      []string // 支持的文件后缀，如 []string{".json",".toml"}
 	hooks     hooks
@@ -179,7 +179,7 @@ func (c *Configure) parseBytes(confPath string, fileExt string, content []byte, 
 		return fmt.Errorf("%w, config content=\n%s", errParser, string(contentNew))
 	}
 
-	return xvalidator.ValidateWith(c.validator, obj)
+	return xvld.ValidateWith(c.validator, obj)
 }
 
 func (c *Configure) Exists(path string) bool {

@@ -13,7 +13,7 @@ import (
 	"sync"
 
 	"github.com/xanygo/anygo/xenc/xcodec"
-	"github.com/xanygo/anygo/xvalidator"
+	"github.com/xanygo/anygo/xvld"
 )
 
 func NewBinder(req *http.Request) *Binder {
@@ -60,7 +60,7 @@ func (b *Binder) BinJSON(obj any) error {
 	if err != nil {
 		return err
 	}
-	return xvalidator.Validate(obj)
+	return xvld.ValidateContext(b.req.Context(), obj)
 }
 
 func Bind(r *http.Request, obj any) error {
@@ -78,5 +78,5 @@ func Bind(r *http.Request, obj any) error {
 	} else {
 		return fmt.Errorf("not support Content-Type: %s", ct)
 	}
-	return xvalidator.Validate(obj)
+	return xvld.ValidateContext(r.Context(), obj)
 }

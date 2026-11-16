@@ -45,40 +45,6 @@ func IsComplexKind(k reflect.Kind) bool {
 	}
 }
 
-func NumberEqual(a, b reflect.Value) bool {
-	ak, bk := a.Kind(), b.Kind()
-
-	// int vs int
-	if IsIntKind(ak) && IsIntKind(bk) {
-		return a.Int() == b.Int()
-	}
-
-	// uint vs uint
-	if IsUintKind(ak) && IsUintKind(bk) {
-		return a.Uint() == b.Uint()
-	}
-
-	// int vs uint
-	if IsIntKind(ak) && IsUintKind(bk) {
-		ai := a.Int()
-		if ai < 0 {
-			return false
-		}
-		return uint64(ai) == b.Uint()
-	}
-
-	// uint vs int
-	if IsUintKind(ak) && IsIntKind(bk) {
-		bi := b.Int()
-		if bi < 0 {
-			return false
-		}
-		return a.Uint() == uint64(bi)
-	}
-
-	return false
-}
-
 func IsBytesArray(rt reflect.Type) bool {
 	return rt.Kind() == reflect.Array && rt.Elem().Kind() == reflect.Uint8
 }
@@ -153,4 +119,27 @@ func TypeID2[K any, V any]() uint32 {
 		}
 	}
 	return genTypeID(rt1, rt2)
+}
+
+func IsStruct(val any) bool {
+	rt := reflect.TypeOf(val)
+	return IsStructType(rt, true)
+}
+
+// IsStructType 判断类型是否 struct，可以用 indirect 参数控制是否解引用指针
+func IsStructType(rt reflect.Type, indirect bool) bool {
+	for {
+		switch rt.Kind() {
+		case reflect.Struct:
+			return true
+		case reflect.Pointer:
+			if indirect {
+				rt = rt.Elem()
+			} else {
+				return false
+			}
+		default:
+			return false
+		}
+	}
 }

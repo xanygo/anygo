@@ -11,13 +11,13 @@ import (
 )
 
 func ExampleParserTag() {
-	tag1 := xstruct.ParserTag(`name,omitempty`)
+	tag1 := xstruct.ParserTag("xdb", `name,omitempty`)
 
 	fmt.Println("Name:", tag1.Name())                  // name
 	fmt.Printf("Value: %q\n", tag1.Value("omitempty")) // ""
 	fmt.Printf("Has: %v\n", tag1.Has("omitempty"))     // true
 	// Output:
-	// Name: name
+	// Name: xdb
 	// Value: ""
 	// Has: true
 }

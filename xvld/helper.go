@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-12-02
 
-package xvalidator
+package xvld
 
 import (
 	"errors"
