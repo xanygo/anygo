@@ -99,8 +99,17 @@ func isURL(str string, _ Rule) bool {
 func isContains(str string, rule Rule) bool {
 	return strings.Contains(str, rule.Param)
 }
+
 func excludes(str string, rule Rule) bool {
 	return !strings.Contains(str, rule.Param)
+}
+
+func isPrefix(str string, rule Rule) bool {
+	return strings.HasPrefix(str, rule.Param)
+}
+
+func isSuffix(str string, rule Rule) bool {
+	return strings.HasSuffix(str, rule.Param)
 }
 
 func isNumeric(str string, _ Rule) bool {

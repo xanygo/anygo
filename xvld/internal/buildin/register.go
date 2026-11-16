@@ -30,6 +30,8 @@ var Rules = map[string]internal.ValidationFunc{
 
 	"contains": internal.ByMatchString(isContains),
 	"excludes": internal.ByMatchString(excludes),
+	"prefix":   internal.ByMatchString(isPrefix),
+	"suffix":   internal.ByMatchString(isSuffix),
 
 	"one-of":    oneOf, // oneof
 	"oneof":     oneOf, // oneof
