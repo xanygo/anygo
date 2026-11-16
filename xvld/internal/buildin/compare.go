@@ -22,7 +22,7 @@ func minMax(fc *FieldContext, rule Rule) error {
 		if s == "" || compareMinMax(s, rule.Param, rule.Name) {
 			return nil
 		}
-		return fc.Error(rule.Name, rule.Param, s)
+		return fc.Error(rule.Name, rule.Param, internal.ShortErrStr(s))
 
 	case reflect.Array, reflect.Slice:
 		// 检查子元素
@@ -143,17 +143,18 @@ func validateCompare(fc *FieldContext, rule Rule) error {
 	}
 	switch v.Kind() {
 	case reflect.String:
+		s := v.String()
 		if rule.Name == "eq" {
-			if v.String() == rule.Param {
+			if s == rule.Param {
 				return nil
 			}
-			return fc.Error(rule.Name, rule.Param, v.String())
+			return fc.Error(rule.Name, rule.Param, internal.ShortErrStr(s))
 		}
 		if rule.Name == "ne" {
-			if v.String() != rule.Param {
+			if s != rule.Param {
 				return nil
 			}
-			return fc.Error(rule.Name, rule.Param, v.String())
+			return fc.Error(rule.Name, rule.Param, internal.ShortErrStr(s))
 		}
 		return fc.UnsupportedType(rule)
 

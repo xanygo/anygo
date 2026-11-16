@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/xanygo/anygo/internal/zcache"
@@ -25,14 +26,18 @@ func ByRegexp(regText string) ValidationFunc {
 			if s == "" || reg.MatchString(s) {
 				return nil
 			}
-			return fc.Error(rule.Name, s)
+			return fc.Error(rule.Name, ShortErrStr(s))
 		case reflect.Slice, reflect.Array:
 			length := v.Len()
 			if length == 0 {
 				return nil
 			}
-			if v.Elem().Kind() == reflect.Uint8 && reg.Match(v.Bytes()) {
-				return nil
+			if v.Elem().Kind() == reflect.Uint8 {
+				bf := v.Bytes()
+				if reg.Match(bf) {
+					return nil
+				}
+				return fc.Error(rule.Name, ShortErrStr(string(bf)))
 			}
 			for i := 0; i < length; i++ {
 				sv := v.Index(i)
@@ -76,14 +81,18 @@ func ByMatchString(match func(string, Rule) bool) ValidationFunc {
 			if s == "" || match(s, rule) {
 				return nil
 			}
-			return fc.Error(rule.Name, s)
+			return fc.Error(rule.Name, ShortErrStr(s))
 		case reflect.Slice, reflect.Array:
 			length := v.Len()
 			if length == 0 {
 				return nil
 			}
-			if v.Elem().Kind() == reflect.Uint8 && match(string(v.Bytes()), rule) {
-				return nil
+			if v.Elem().Kind() == reflect.Uint8 {
+				str := string(v.Bytes())
+				if match(str, rule) {
+					return nil
+				}
+				return fc.Error(rule.Name, ShortErrStr(str))
 			}
 			for i := 0; i < length; i++ {
 				sv := v.Index(i)
@@ -132,4 +141,15 @@ func CheckMapValue(fc *FieldContext, rule Rule, checker ValidationFunc) error {
 		}
 	}
 	return nil
+}
+
+func ShortErrStr(s string) string {
+	length := len(s)
+	if length < 16 {
+		return fmt.Sprintf("%q", s)
+	}
+	if length < 33 {
+		return fmt.Sprintf("%q (len=%d)", s, length)
+	}
+	return fmt.Sprintf("%q... (len=%d)", s[:31], length)
 }

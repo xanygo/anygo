@@ -24,6 +24,6 @@ func ExampleStruct() {
 	fmt.Println("u2=", xvld.Struct(u2))
 
 	// Output:
-	// u1= Field 'Name': is a required field
+	// u1= Field 'Name': empty value
 	// u2= Field 'Age': must be 10 or greater, got 1
 }

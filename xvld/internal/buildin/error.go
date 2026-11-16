@@ -7,11 +7,11 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "is a required field",
+				Text: "empty value",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "为必填字段",
+				Text: "不允许空值",
 			},
 		},
 	},
@@ -175,11 +175,11 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "must be one of the allowed values, got {1}",
+				Text: "not one of the allowed values, got {1}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "必须为允许的值之一, 当前为 {1}",
+				Text: "不是允许的值之一, 当前为 {1}",
 			},
 		},
 	},
@@ -187,11 +187,11 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "must be a valid email address, got {1}",
+				Text: "not a valid email address, got {1}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "必须是一个有效的邮箱地址, 当前为 {1}",
+				Text: "不是有效的 email, 当前为 {1}",
 			},
 		},
 	},
@@ -199,11 +199,83 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "must be a valid URL, got {1}",
+				Text: "not a valid URL, got {1}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "必须是一个有效的 URL, 当前为 {1}",
+				Text: "不是有效的 URL, 当前为 {1}",
+			},
+		},
+	},
+	"domain": {
+		Messages: []*xi18n.LangMessage{
+			{
+				Lang: xi18n.LangEn,
+				Text: "not a valid Domain, got {1}",
+			},
+			{
+				Lang: xi18n.LangZh,
+				Text: "不是有效的域名, 当前为 {1}",
+			},
+		},
+	},
+	"port": {
+		Messages: []*xi18n.LangMessage{
+			{
+				Lang: xi18n.LangEn,
+				Text: "not a valid Port, got {1}",
+			},
+			{
+				Lang: xi18n.LangZh,
+				Text: "不是有效的端口, 当前为 {1}",
+			},
+		},
+	},
+	"ip": {
+		Messages: []*xi18n.LangMessage{
+			{
+				Lang: xi18n.LangEn,
+				Text: "not a valid IP, got {1}",
+			},
+			{
+				Lang: xi18n.LangZh,
+				Text: "不是有效的 IP, 当前为 {1}",
+			},
+		},
+	},
+	"ipv4": {
+		Messages: []*xi18n.LangMessage{
+			{
+				Lang: xi18n.LangEn,
+				Text: "not a valid IPV4, got {1}",
+			},
+			{
+				Lang: xi18n.LangZh,
+				Text: "不是有效的 IPV4, 当前为 {1}",
+			},
+		},
+	},
+	"ipv6": {
+		Messages: []*xi18n.LangMessage{
+			{
+				Lang: xi18n.LangEn,
+				Text: "not a valid IPV6, got {1}",
+			},
+			{
+				Lang: xi18n.LangZh,
+				Text: "不是有效的 IPV6, 当前为 {1}",
+			},
+		},
+	},
+	"ident": {
+		Messages: []*xi18n.LangMessage{
+			{
+				Lang: xi18n.LangEn,
+				Text: "not a valid identifier, got {1}",
+			},
+			{
+				Lang: xi18n.LangZh,
+				Text: "不是有效的标识符, 当前为 {1}",
 			},
 		},
 	},
@@ -225,11 +297,11 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "must be a valid UUID, got {0}",
+				Text: "not a valid UUID, got {0}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "必须是有效的 UUID, 当前为 {0}",
+				Text: "不是有效的 UUID, 当前为 {0}",
 			},
 		},
 	},
@@ -237,25 +309,37 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "must be a valid numeric value, got {0}",
+				Text: "not a valid numeric value, got {0}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "必须是一个有效的数值, 当前为 {0}",
+				Text: "不是有效的数值, 当前为 {0}",
 			},
 		},
 	},
 	"hex-color": errHexColor,
 	"hexcolor":  errHexColor,
+	"hex": {
+		Messages: []*xi18n.LangMessage{
+			{
+				Lang: xi18n.LangEn,
+				Text: "not a valid hex value, got {0}",
+			},
+			{
+				Lang: xi18n.LangZh,
+				Text: "不是效的 16进制, 当前为 {0}",
+			},
+		},
+	},
 	"base36": {
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "must be a valid base36 value, got {0}",
+				Text: "not a valid base36 value, got {0}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "必须是一个有效的 Base36, 当前为 {0}",
+				Text: "不是效的 Base36, 当前为 {0}",
 			},
 		},
 	},
@@ -263,11 +347,11 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "must be a valid base58 value, got {0}",
+				Text: "not a valid base58 value, got {0}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "必须是一个有效的 Bas58, 当前为 {0}",
+				Text: "不是有效的 Bas58, 当前为 {0}",
 			},
 		},
 	},
@@ -275,11 +359,11 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "must be a valid base64-url value, got {0}",
+				Text: "not a valid base64-url value, got {0}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "必须是一个有效的 Base64-URL, 当前为 {0}",
+				Text: "不是有效的 Base64-URL, 当前为 {0}",
 			},
 		},
 	},
@@ -287,14 +371,19 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "must be a valid base64-std value, got {0}",
+				Text: "not a valid base64-std value, got {0}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "必须是一个有效的 Base64-STD, 当前为 {0}",
+				Text: "不是有效的 Base64-STD, 当前为 {0}",
 			},
 		},
 	},
+	"md4":    errHash,
+	"md5":    errHash,
+	"sha256": errHash,
+	"sha384": errHash,
+	"sha512": errHash,
 }
 
 var (
@@ -314,11 +403,23 @@ var (
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "must be a valid hex color, got {0}",
+				Text: "not a valid hex color, got {0}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "必须是一个有效的十六进制颜色, 当前为 {0}",
+				Text: "不是有效的十六进制颜色, 当前为 {0}",
+			},
+		},
+	}
+	errHash = &xi18n.Error{
+		Messages: []*xi18n.LangMessage{
+			{
+				Lang: xi18n.LangEn,
+				Text: "must be a valid hash value, got {0}",
+			},
+			{
+				Lang: xi18n.LangZh,
+				Text: "不是有效的 Hash 值, 当前为 {0}",
 			},
 		},
 	}

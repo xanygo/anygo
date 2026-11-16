@@ -1,6 +1,8 @@
 package buildin
 
 import (
+	"math"
+	"net"
 	"net/url"
 	"reflect"
 	"regexp"
@@ -43,7 +45,7 @@ func oneOf(fc *FieldContext, rule Rule) error {
 		if s == "" || slices.Contains(arr, s) {
 			return nil
 		}
-		return fc.Error(rule.Name, rule.Param, s)
+		return fc.Error(rule.Name, rule.Param, internal.ShortErrStr(s))
 	case reflect.Int, reflect.Int8, reflect.Int16,
 		reflect.Int32, reflect.Int64:
 		str := strconv.FormatInt(v.Int(), 10)
@@ -151,6 +153,138 @@ func notZeroUint(fc *FieldContext, rule Rule) error {
 			return nil
 		}
 		return fc.Error(rule.Name, num)
+	case reflect.Array, reflect.Slice:
+		return internal.CheckSliceElem(fc, rule, notZeroUint)
+	case reflect.Map:
+		return internal.CheckMapValue(fc, rule, notZeroUint)
+	default:
+		return fc.UnsupportedType(rule)
+	}
+}
+
+func validatePort(fc *FieldContext, rule Rule) error {
+	v := fc.Value()
+	if !v.IsValid() {
+		return fc.UnsupportedType(rule)
+	}
+
+	switch v.Kind() {
+	case reflect.String:
+		s := v.String()
+		if s == "" {
+			return nil
+		}
+		num, err := strconv.ParseUint(s, 10, 64)
+		if err == nil && num > 0 && num < 65535 {
+			return nil
+		}
+		return fc.Error(rule.Name, internal.ShortErrStr(s))
+	case reflect.Int, reflect.Int8, reflect.Int16,
+		reflect.Int32, reflect.Int64:
+		num := v.Int()
+		if num > 0 && num < 65535 {
+			return nil
+		}
+		return fc.Error(rule.Name, num)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16,
+		reflect.Uint32, reflect.Uint64:
+		num := v.Uint()
+		if num > 0 && num < 65535 {
+			return nil
+		}
+		return fc.Error(rule.Name, num)
+	case reflect.Array, reflect.Slice:
+		return internal.CheckSliceElem(fc, rule, notZeroUint)
+	case reflect.Map:
+		return internal.CheckMapValue(fc, rule, notZeroUint)
+	default:
+		return fc.UnsupportedType(rule)
+	}
+}
+
+func validateIP(fc *FieldContext, rule Rule) error {
+	v := fc.Value()
+	if !v.IsValid() {
+		return fc.UnsupportedType(rule)
+	}
+
+	switch v.Kind() {
+	case reflect.String:
+		s := v.String()
+		if s == "" {
+			return nil
+		}
+		ip := net.ParseIP(s)
+		if ip != nil {
+			return nil
+		}
+		return fc.Error(rule.Name, internal.ShortErrStr(s))
+	case reflect.Array, reflect.Slice:
+		return internal.CheckSliceElem(fc, rule, notZeroUint)
+	case reflect.Map:
+		return internal.CheckMapValue(fc, rule, notZeroUint)
+	default:
+		return fc.UnsupportedType(rule)
+	}
+}
+
+func validateIPV4(fc *FieldContext, rule Rule) error {
+	v := fc.Value()
+	if !v.IsValid() {
+		return fc.UnsupportedType(rule)
+	}
+
+	switch v.Kind() {
+	case reflect.String:
+		s := v.String()
+		if s == "" {
+			return nil
+		}
+		ip := net.ParseIP(s)
+		if ip != nil {
+			return nil
+		}
+		return fc.Error(rule.Name, internal.ShortErrStr(s))
+	case reflect.Int, reflect.Int8, reflect.Int16,
+		reflect.Int32, reflect.Int64:
+		num := v.Int()
+		if num > 0 && num < math.MaxUint32 {
+			return nil
+		}
+		return fc.Error(rule.Name, num)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16,
+		reflect.Uint32, reflect.Uint64:
+		num := v.Uint()
+		if num > 0 && num < math.MaxUint32 {
+			return nil
+		}
+		return fc.Error(rule.Name, num)
+	case reflect.Array, reflect.Slice:
+		return internal.CheckSliceElem(fc, rule, notZeroUint)
+	case reflect.Map:
+		return internal.CheckMapValue(fc, rule, notZeroUint)
+	default:
+		return fc.UnsupportedType(rule)
+	}
+}
+
+func validateIPV6(fc *FieldContext, rule Rule) error {
+	v := fc.Value()
+	if !v.IsValid() {
+		return fc.UnsupportedType(rule)
+	}
+
+	switch v.Kind() {
+	case reflect.String:
+		s := v.String()
+		if s == "" {
+			return nil
+		}
+		ip := net.ParseIP(s)
+		if ip != nil && ip.To4() == nil {
+			return nil
+		}
+		return fc.Error(rule.Name, internal.ShortErrStr(s))
 	case reflect.Array, reflect.Slice:
 		return internal.CheckSliceElem(fc, rule, notZeroUint)
 	case reflect.Map:
