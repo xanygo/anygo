@@ -1,7 +1,6 @@
 package buildin
 
 import (
-	"math"
 	"net"
 	"net/url"
 	"reflect"
@@ -19,7 +18,7 @@ import (
 
 const domainRegText = `[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+$`
 
-var mailRegText = `^[a-zA-Z0-9]+([._%+-][a-zA-Z0-9]+)*@` + domainRegText
+const mailRegText = `^[a-zA-Z0-9]+([._%+-][a-zA-Z0-9]+)*@` + domainRegText
 
 func required(fc *FieldContext, rule Rule) error {
 	if !zreflect.IsEmptyValue(fc.Value()) {
@@ -194,9 +193,9 @@ func validatePort(fc *FieldContext, rule Rule) error {
 		}
 		return fc.Error(rule.Name, num)
 	case reflect.Array, reflect.Slice:
-		return internal.CheckSliceElem(fc, rule, notZeroUint)
+		return internal.CheckSliceElem(fc, rule, validatePort)
 	case reflect.Map:
-		return internal.CheckMapValue(fc, rule, notZeroUint)
+		return internal.CheckMapValue(fc, rule, validatePort)
 	default:
 		return fc.UnsupportedType(rule)
 	}
@@ -215,14 +214,26 @@ func validateIP(fc *FieldContext, rule Rule) error {
 			return nil
 		}
 		ip := net.ParseIP(s)
+		// 只判断格式正确
 		if ip != nil {
 			return nil
 		}
 		return fc.Error(rule.Name, internal.ShortErrStr(s))
 	case reflect.Array, reflect.Slice:
-		return internal.CheckSliceElem(fc, rule, notZeroUint)
+		if v.Len() == 0 {
+			return nil
+		}
+		if v.Type().Elem().Kind() == reflect.Uint8 {
+			s := string(v.Bytes())
+			ip := net.ParseIP(s)
+			if ip != nil {
+				return nil
+			}
+			return fc.Error(rule.Name, internal.ShortErrStr(s))
+		}
+		return internal.CheckSliceElem(fc, rule, validateIP)
 	case reflect.Map:
-		return internal.CheckMapValue(fc, rule, notZeroUint)
+		return internal.CheckMapValue(fc, rule, validateIP)
 	default:
 		return fc.UnsupportedType(rule)
 	}
@@ -241,28 +252,25 @@ func validateIPV4(fc *FieldContext, rule Rule) error {
 			return nil
 		}
 		ip := net.ParseIP(s)
-		if ip != nil {
+		if ip != nil && ip.To4() != nil {
 			return nil
 		}
 		return fc.Error(rule.Name, internal.ShortErrStr(s))
-	case reflect.Int, reflect.Int8, reflect.Int16,
-		reflect.Int32, reflect.Int64:
-		num := v.Int()
-		if num > 0 && num < math.MaxUint32 {
-			return nil
-		}
-		return fc.Error(rule.Name, num)
-	case reflect.Uint, reflect.Uint8, reflect.Uint16,
-		reflect.Uint32, reflect.Uint64:
-		num := v.Uint()
-		if num > 0 && num < math.MaxUint32 {
-			return nil
-		}
-		return fc.Error(rule.Name, num)
 	case reflect.Array, reflect.Slice:
-		return internal.CheckSliceElem(fc, rule, notZeroUint)
+		if v.Len() == 0 {
+			return nil
+		}
+		if v.Type().Elem().Kind() == reflect.Uint8 {
+			s := string(v.Bytes())
+			ip := net.ParseIP(s)
+			if ip != nil && ip.To4() != nil {
+				return nil
+			}
+			return fc.Error(rule.Name, internal.ShortErrStr(s))
+		}
+		return internal.CheckSliceElem(fc, rule, validateIPV4)
 	case reflect.Map:
-		return internal.CheckMapValue(fc, rule, notZeroUint)
+		return internal.CheckMapValue(fc, rule, validateIPV4)
 	default:
 		return fc.UnsupportedType(rule)
 	}
@@ -286,9 +294,20 @@ func validateIPV6(fc *FieldContext, rule Rule) error {
 		}
 		return fc.Error(rule.Name, internal.ShortErrStr(s))
 	case reflect.Array, reflect.Slice:
-		return internal.CheckSliceElem(fc, rule, notZeroUint)
+		if v.Len() == 0 {
+			return nil
+		}
+		if v.Type().Elem().Kind() == reflect.Uint8 {
+			s := string(v.Bytes())
+			ip := net.ParseIP(s)
+			if ip != nil && ip.To4() == nil {
+				return nil
+			}
+			return fc.Error(rule.Name, internal.ShortErrStr(s))
+		}
+		return internal.CheckSliceElem(fc, rule, validateIPV6)
 	case reflect.Map:
-		return internal.CheckMapValue(fc, rule, notZeroUint)
+		return internal.CheckMapValue(fc, rule, validateIPV6)
 	default:
 		return fc.UnsupportedType(rule)
 	}

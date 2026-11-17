@@ -32,7 +32,7 @@ func ByRegexp(regText string) ValidationFunc {
 			if length == 0 {
 				return nil
 			}
-			if v.Elem().Kind() == reflect.Uint8 {
+			if v.Type().Elem().Kind() == reflect.Uint8 {
 				bf := v.Bytes()
 				if reg.Match(bf) {
 					return nil
@@ -87,7 +87,7 @@ func ByMatchString(match func(string, Rule) bool) ValidationFunc {
 			if length == 0 {
 				return nil
 			}
-			if v.Elem().Kind() == reflect.Uint8 {
+			if v.Type().Elem().Kind() == reflect.Uint8 {
 				str := string(v.Bytes())
 				if match(str, rule) {
 					return nil
@@ -128,6 +128,22 @@ func CheckSliceElem(fc *FieldContext, rule Rule, checker ValidationFunc) error {
 }
 
 func CheckMapValue(fc *FieldContext, rule Rule, checker ValidationFunc) error {
+	v := fc.Value()
+	length := v.Len()
+	if length == 0 {
+		return nil
+	}
+	for _, key := range v.MapKeys() {
+		sv := v.MapIndex(key)
+		nc := fc.Child(sv)
+		if err := checker(nc, rule); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func CheckInterfaceValue(fc *FieldContext, rule Rule, checker ValidationFunc) error {
 	v := fc.Value()
 	length := v.Len()
 	if length == 0 {

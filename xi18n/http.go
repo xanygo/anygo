@@ -42,10 +42,10 @@ var ctxKeyHTTPHandler = xctx.NewKey()
 
 func (h *HTTPHandler) Next(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		accept := h.acceptLanguages(r)
+		accepts := h.acceptLanguages(r)
 		ctx := context.WithValue(r.Context(), ctxKeyHTTPHandler, h)
-		if len(accept) > 0 {
-			ctx = ContextWithLanguages(ctx, accept)
+		if len(accepts) > 0 {
+			ctx = ContextWithLanguages(ctx, accepts...)
 		}
 		if h.Bundle != nil {
 			ctx = ContextWithBundle(ctx, h.Bundle, "")

@@ -1,13 +1,14 @@
 package internal
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
 	"github.com/xanygo/anygo/internal/zreflect"
 )
 
-var ErrParamEmpty = fmt.Errorf("param is empty")
+var ErrParamEmpty = errors.New("param is empty")
 
 type ValidationFunc func(fl *FieldContext, rule Rule) error
 
@@ -18,12 +19,19 @@ type Rule struct {
 	Param string
 }
 
+func (rule Rule) String() string {
+	if rule.Param == "" {
+		return rule.Name
+	}
+	return fmt.Sprintf("%s=%q", rule.Name, rule.Param)
+}
+
 func NewFieldContext(field reflect.StructField, top, parent, current reflect.Value, newErr NewErrFunc) *FieldContext {
 	return &FieldContext{
 		fieldName:   field.Name,
-		value:       current,
-		parent:      parent,
-		top:         top,
+		value:       zreflect.IndirectValue(current),
+		parent:      zreflect.IndirectValue(parent),
+		top:         zreflect.IndirectValue(top),
 		structField: field,
 		newErr:      newErr,
 	}
@@ -76,7 +84,7 @@ func (fc *FieldContext) StructField() reflect.StructField {
 
 // ExtractField 获取指定字段的值
 func (fc *FieldContext) ExtractField(name string) reflect.Value {
-	parent := zreflect.IndirectValue(fc.parent)
+	parent := fc.parent
 	if !parent.IsValid() || parent.Kind() != reflect.Struct {
 		return reflect.Value{}
 	}
@@ -90,13 +98,13 @@ func (fc *FieldContext) Error(name string, params ...any) error {
 }
 
 const (
-	KeyInvalidRule   = "InvalidRule"
+	KeyInvalidParam  = "InvalidParam"
 	KeyUnsupportType = "UnsupportType"
 )
 
 // InvalidParam 校验规则定义错误,如 定义 max=abc (预期应该是数字)
 func (fc *FieldContext) InvalidParam(rule Rule, err error) error {
-	return fc.Error(KeyInvalidRule, rule.Name, rule.Param)
+	return fc.Error(KeyInvalidParam, rule.String())
 }
 
 // UnsupportedType 数据类型不支持该校验规则的错误
@@ -107,7 +115,7 @@ func (fc *FieldContext) UnsupportedType(rule Rule) error {
 func (fc *FieldContext) Child(v reflect.Value) *FieldContext {
 	return &FieldContext{
 		fieldName:   fc.fieldName,
-		value:       v,
+		value:       zreflect.IndirectValue(v),
 		top:         fc.top,
 		parent:      fc.value,
 		structField: fc.structField,

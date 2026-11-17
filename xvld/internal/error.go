@@ -4,6 +4,7 @@ import (
 	"github.com/xanygo/anygo/xi18n"
 )
 
+// ErrDefault 没有定义对应的 error 时候的默认错误
 var ErrDefault = &xi18n.Error{
 	Messages: []*xi18n.LangMessage{
 		{
@@ -17,6 +18,7 @@ var ErrDefault = &xi18n.Error{
 	},
 }
 
+// ErrBase 基础错误信息模板，添加字段名信息，用于包裹具体的错误作
 var ErrBase = &xi18n.Error{
 	Messages: []*xi18n.LangMessage{
 		{
@@ -30,6 +32,7 @@ var ErrBase = &xi18n.Error{
 	},
 }
 
+// ErrNotStruct 输入类型不是 struct 或者 *strcut 的错误
 var ErrNotStruct = &xi18n.Error{
 	Messages: []*xi18n.LangMessage{
 		{

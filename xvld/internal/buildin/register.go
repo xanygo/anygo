@@ -17,9 +17,9 @@ var Rules = map[string]internal.ValidationFunc{
 	"min": minMax,
 	"max": minMax,
 
-	"min-len": validateMinMaxLen,
-	"max-len": validateMinMaxLen,
-	"len":     validateMinMaxLen,
+	"min-len": validateLen,
+	"max-len": validateLen,
+	"len":     validateLen,
 
 	"eq":  validateCompare,  // eq=hello
 	"ne":  validateNotEqual, // ne=hello   ne=a,b

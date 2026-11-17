@@ -162,11 +162,11 @@ func TestRA(t *testing.T) {
 		xt.Equal(t, anygo.Must1(TextOr(ctx1, "abc", "index/k1")), "你好")
 
 		// lang 不存在，使用默认lang-,zh
-		ctx2 := ContextWithLanguages(ctx1, []Language{"jp"})
+		ctx2 := ContextWithLanguages(ctx1, "jp")
 		xt.Equal(t, anygo.Must1(TextOr(ctx2, "abc", "index/k1")), "abc")
 		xt.Equal(t, anygo.Must1(TextOr(ctx2, "abc {0}", "index/k2", "demo")), "abc demo")
 	})
 
-	ctx3 := ContextWithLanguages(ctx1, []Language{LangEn})
+	ctx3 := ContextWithLanguages(ctx1, LangEn)
 	xt.Equal(t, anygo.Must1(Text(ctx3, "index/k1")), "hello")
 }

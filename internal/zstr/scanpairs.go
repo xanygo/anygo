@@ -61,7 +61,6 @@ func ScanPairs(input string, sep byte, fn func(key, value string) bool) error {
 				return nil
 			}
 		}
-
 	}
 	return nil
 }

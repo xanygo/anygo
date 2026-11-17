@@ -1,6 +1,9 @@
 package buildin
 
-import "github.com/xanygo/anygo/xi18n"
+import (
+	"github.com/xanygo/anygo/xi18n"
+	"github.com/xanygo/anygo/xvld/internal"
+)
 
 var Errs = map[string]*xi18n.Error{
 	"required": {
@@ -91,11 +94,11 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "should not be equal to {0}, got {1}",
+				Text: "should not be equal to {0}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "不应等于 {0}, 当前为 {1}",
+				Text: "不应等于 {0}",
 			},
 		},
 	},
@@ -115,7 +118,7 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "must be {1} or greater, got {1}",
+				Text: "must be {0} or greater, got {1}",
 			},
 			{
 				Lang: xi18n.LangZh,
@@ -139,7 +142,7 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "must be {1} or less, got {1}",
+				Text: "must be {0} or less, got {1}",
 			},
 			{
 				Lang: xi18n.LangZh,
@@ -175,11 +178,11 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "not one of the allowed values, got {1}",
+				Text: "not one of the allowed values, got {0}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "不是允许的值之一, 当前为 {1}",
+				Text: "不是允许的值之一, 当前为 {0}",
 			},
 		},
 	},
@@ -187,11 +190,11 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "not a valid email address, got {1}",
+				Text: "not a valid email address, got {0}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "不是有效的 email, 当前为 {1}",
+				Text: "不是有效的 email, 当前为 {0}",
 			},
 		},
 	},
@@ -199,11 +202,11 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "not a valid URL, got {1}",
+				Text: "not a valid URL, got {0}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "不是有效的 URL, 当前为 {1}",
+				Text: "不是有效的 URL, 当前为 {0}",
 			},
 		},
 	},
@@ -211,11 +214,11 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "not a valid Domain, got {1}",
+				Text: "not a valid Domain, got {0}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "不是有效的域名, 当前为 {1}",
+				Text: "不是有效的域名, 当前为 {0}",
 			},
 		},
 	},
@@ -223,11 +226,11 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "not a valid Port, got {1}",
+				Text: "not a valid Port, got {0}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "不是有效的端口, 当前为 {1}",
+				Text: "不是有效的端口, 当前为 {0}",
 			},
 		},
 	},
@@ -235,11 +238,11 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "not a valid IP, got {1}",
+				Text: "not a valid IP, got {0}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "不是有效的 IP, 当前为 {1}",
+				Text: "不是有效的 IP, 当前为 {0}",
 			},
 		},
 	},
@@ -247,11 +250,11 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "not a valid IPV4, got {1}",
+				Text: "not a valid IPV4, got {0}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "不是有效的 IPV4, 当前为 {1}",
+				Text: "不是有效的 IPV4, 当前为 {0}",
 			},
 		},
 	},
@@ -259,11 +262,11 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "not a valid IPV6, got {1}",
+				Text: "not a valid IPV6, got {0}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "不是有效的 IPV6, 当前为 {1}",
+				Text: "不是有效的 IPV6, 当前为 {0}",
 			},
 		},
 	},
@@ -271,11 +274,11 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "not a valid identifier, got {1}",
+				Text: "not a valid identifier, got {0}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "不是有效的标识符, 当前为 {1}",
+				Text: "不是有效的标识符, 当前为 {0}",
 			},
 		},
 	},
@@ -384,6 +387,31 @@ var Errs = map[string]*xi18n.Error{
 	"sha256": errHash,
 	"sha384": errHash,
 	"sha512": errHash,
+
+	internal.KeyInvalidParam: {
+		Messages: []*xi18n.LangMessage{
+			{
+				Lang: xi18n.LangEn,
+				Text: "invalid rule param {0}",
+			},
+			{
+				Lang: xi18n.LangZh,
+				Text: "错误的校验规则 {0}",
+			},
+		},
+	},
+	internal.KeyUnsupportType: {
+		Messages: []*xi18n.LangMessage{
+			{
+				Lang: xi18n.LangEn,
+				Text: "Data type {0} does not support {1} validation",
+			},
+			{
+				Lang: xi18n.LangZh,
+				Text: "数据类型 {0} 不支持 {1} 校验",
+			},
+		},
+	},
 }
 
 var (

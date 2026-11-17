@@ -79,5 +79,4 @@ func TestScanPairs(t *testing.T) {
 		})
 		xt.Equal(t, count, 1)
 	})
-
 }

@@ -9,14 +9,17 @@ import (
 
 	"github.com/xanygo/anygo/internal/xstruct"
 	"github.com/xanygo/anygo/internal/zreflect"
+	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xi18n"
 	"github.com/xanygo/anygo/xvld/internal"
 	"github.com/xanygo/anygo/xvld/internal/buildin"
 )
 
 type (
-	FieldContext   = internal.FieldContext
-	Rule           = internal.Rule
+	FieldContext = internal.FieldContext
+
+	Rule = internal.Rule
+
 	ValidationFunc = internal.ValidationFunc
 )
 
@@ -192,7 +195,7 @@ func (ins *Instance) newDetailErr(ruleName string, langs []xi18n.Language, param
 	if ok {
 		return e.WithLangParams(langs, params)
 	}
-	return internal.ErrDefault.WithLangParams(langs, params)
+	return internal.ErrDefault.WithLangParams(langs, []any{ruleName})
 }
 
 func (ins *Instance) parserRules(tag xstruct.Tag) (before []Rule, after []Rule) {
@@ -236,12 +239,11 @@ func (ins *Instance) one(fc *FieldContext, rule Rule) error {
 	if ok {
 		return fn(fc, rule)
 	}
-	if len(ins.validationFuncs) == 0 {
-		return fc.UnsupportedType(rule)
+	if len(ins.validationFuncs) > 0 {
+		fn, ok = ins.validationFuncs[rule.Name]
+		if ok {
+			return fn(fc, rule)
+		}
 	}
-	fn, ok = ins.validationFuncs[rule.Name]
-	if !ok {
-		return fc.UnsupportedType(rule)
-	}
-	return fn(fc, rule)
+	return fmt.Errorf("xvld rule=%q %w", rule.Name, xerror.NotFound)
 }

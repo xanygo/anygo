@@ -24,25 +24,6 @@ func minMax(fc *FieldContext, rule Rule) error {
 		}
 		return fc.Error(rule.Name, rule.Param, internal.ShortErrStr(s))
 
-	case reflect.Array, reflect.Slice:
-		// 检查子元素
-		for i := 0; i < v.Len(); i++ {
-			nc := fc.Child(v.Index(i))
-			if err := minMax(nc, rule); err != nil {
-				return err
-			}
-		}
-		return nil
-	case reflect.Map:
-		// 检查子元素
-		for _, key := range v.MapKeys() {
-			val := v.MapIndex(key)
-			nc := fc.Child(val)
-			if err := minMax(nc, rule); err != nil {
-				return err
-			}
-		}
-		return nil
 	case reflect.Int, reflect.Int8, reflect.Int16,
 		reflect.Int32, reflect.Int64:
 		num, err := strconv.ParseInt(rule.Param, 10, 64)
@@ -74,6 +55,26 @@ func minMax(fc *FieldContext, rule Rule) error {
 			return nil
 		}
 		return fc.Error(rule.Name, num, v.Float())
+
+	case reflect.Array, reflect.Slice:
+		// 检查子元素
+		for i := 0; i < v.Len(); i++ {
+			nc := fc.Child(v.Index(i))
+			if err := minMax(nc, rule); err != nil {
+				return err
+			}
+		}
+		return nil
+	case reflect.Map:
+		// 检查子元素
+		for _, key := range v.MapKeys() {
+			val := v.MapIndex(key)
+			nc := fc.Child(val)
+			if err := minMax(nc, rule); err != nil {
+				return err
+			}
+		}
+		return nil
 	default:
 		return fc.UnsupportedType(rule)
 	}
@@ -91,8 +92,8 @@ func compareMinMax[T cmp.Ordered](value, param T, op string) bool {
 	return false
 }
 
-// validateMinMaxLen 验证长度 (len)
-func validateMinMaxLen(fc *FieldContext, rule Rule) error {
+// validateLen 验证长度 (len)
+func validateLen(fc *FieldContext, rule Rule) error {
 	v := fc.Value()
 	if !v.IsValid() {
 		return fc.UnsupportedType(rule)
@@ -123,9 +124,9 @@ func validateMinMaxLen(fc *FieldContext, rule Rule) error {
 	}
 }
 
-// validateNotEqual ne 的校验逻辑，支持 ne=hello,world ,即同时支持 1个或多个关键字
+// validateNotEqual ne 的校验逻辑，支持 ne=hello|world ,即同时支持 1个或多个关键字
 func validateNotEqual(fc *FieldContext, rule Rule) error {
-	arr := strings.Split(rule.Param, ",")
+	arr := strings.Split(rule.Param, "|")
 	for i := 0; i < len(arr); i++ {
 		nr := Rule{Name: rule.Name, Param: strings.TrimSpace(arr[i])}
 		if err := validateCompare(fc, nr); err != nil {
@@ -173,15 +174,13 @@ func validateCompare(fc *FieldContext, rule Rule) error {
 		}
 		return fc.UnsupportedType(rule)
 
-	case reflect.Int, reflect.Int8, reflect.Int16,
-		reflect.Int32, reflect.Int64:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		num, err := strconv.ParseInt(rule.Param, 10, 64)
 		if err != nil {
 			return fc.InvalidParam(rule, err)
 		}
 		return doCompare(fc, rule, num, v.Int())
-	case reflect.Uint, reflect.Uint8, reflect.Uint16,
-		reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		num, err := strconv.ParseUint(rule.Param, 10, 64)
 		if err != nil {
 			return fc.InvalidParam(rule, err)
@@ -211,7 +210,7 @@ func doCompare[T cmp.Ordered](fc *FieldContext, rule Rule, expect T, got T) erro
 		}
 		return fc.Error(rule.Name, expect, got)
 	case "ne":
-		if got != got {
+		if got != expect {
 			return nil
 		}
 		return fc.Error(rule.Name, expect, got)

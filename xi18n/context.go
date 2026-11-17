@@ -29,7 +29,7 @@ func ContextWithBundle(ctx context.Context, b *Bundle, namespace string) context
 
 // ContextWithLanguages 将当前应该使用的语言信息设置到 context 里。
 // 若是 languages 是多个，则优先级支持的语言排在最前面
-func ContextWithLanguages(ctx context.Context, languages []Language) context.Context {
+func ContextWithLanguages(ctx context.Context, languages ...Language) context.Context {
 	return context.WithValue(ctx, ctxKeyLang, languages)
 }
 
