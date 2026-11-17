@@ -201,6 +201,7 @@ func Test_validatePort(t *testing.T) {
 		})
 	}
 }
+
 func Test_validateIP(t *testing.T) {
 	rule := Rule{Name: "ip"}
 	falseValues := []any{
@@ -243,6 +244,7 @@ func Test_validateIP(t *testing.T) {
 		})
 	}
 }
+
 func Test_validateIPV4(t *testing.T) {
 	rule := Rule{Name: "ipv4"}
 	falseValues := []any{

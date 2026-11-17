@@ -46,6 +46,7 @@ func Test_minMax_min(t *testing.T) {
 		})
 	}
 }
+
 func Test_minMax_max(t *testing.T) {
 	rule := Rule{Name: "max", Param: "20"}
 	falseValues := []any{
@@ -122,6 +123,7 @@ func Test_validateLen_min(t *testing.T) {
 		})
 	}
 }
+
 func Test_validateLen_max(t *testing.T) {
 	rule := Rule{Name: "max-len", Param: "2"}
 	falseValues := []any{

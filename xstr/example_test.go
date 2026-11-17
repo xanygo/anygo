@@ -73,7 +73,7 @@ func ExampleCutIndex() {
 
 	// Output:
 	// before="a" after="c" found=true
-	// before="abc" after="" found=false
+	// before="" after="abc" found=false
 	// before="abc" after="" found=false
 }
 
@@ -116,11 +116,11 @@ func ExampleCutLastByteN() {
 	}
 
 	printCut("/home/work/go/src/", '/', 1) // before="/home/work/go" after="src/" found=true
-	printCut("/home/work/go/src/", '/', 9) // before="/home/work/go/src/" after="" found=false
+	printCut("/home/work/go/src/", '/', 9) // before="" after="/home/work/go/src/" found=false
 
 	// Output:
 	// before="/home/work/go" after="src/" found=true
-	// before="/home/work/go/src/" after="" found=false
+	// before="" after="/home/work/go/src/" found=false
 }
 
 func ExampleCutLastByteNBefore() {

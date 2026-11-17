@@ -15,14 +15,6 @@ import (
 	"github.com/xanygo/anygo/xvld/internal/buildin"
 )
 
-type (
-	FieldContext = internal.FieldContext
-
-	Rule = internal.Rule
-
-	ValidationFunc = internal.ValidationFunc
-)
-
 var _ StructValidator = (*Instance)(nil)
 var _ VarValidator = (*Instance)(nil)
 
@@ -127,8 +119,8 @@ func (ins *Instance) dive(fc *FieldContext, rules []Rule) error {
 			return nil
 		}
 		for i := 0; i < rv.Len(); i++ {
-			v := rv.Index(i)
-			if err := ins.validateField(fc.Child(v), rules); err != nil {
+			item := rv.Index(i)
+			if err := ins.validateField(fc.Child(item), rules); err != nil {
 				return err
 			}
 		}
@@ -138,8 +130,8 @@ func (ins *Instance) dive(fc *FieldContext, rules []Rule) error {
 			return nil
 		}
 		for _, k := range rv.MapKeys() {
-			v := rv.MapIndex(k)
-			if err := ins.validateField(fc.Child(v), rules); err != nil {
+			item := rv.MapIndex(k)
+			if err := ins.validateField(fc.Child(item), rules); err != nil {
 				return err
 			}
 		}

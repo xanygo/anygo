@@ -4,7 +4,11 @@
 
 package xstr
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/xanygo/anygo/xt"
+)
 
 func TestCutIndex(t *testing.T) {
 	type args struct {
@@ -25,8 +29,8 @@ func TestCutIndex(t *testing.T) {
 				s:     "hello",
 				index: -1,
 			},
-			wantBefore: "hello",
-			wantAfter:  "",
+			wantBefore: "",
+			wantAfter:  "hello",
 			wantFound:  false,
 		},
 		{
@@ -87,96 +91,17 @@ func TestCutIndex(t *testing.T) {
 }
 
 func TestSubstr(t *testing.T) {
-	type args struct {
-		s      string
-		start  int
-		length int
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			name: "case 1",
-			args: args{
-				s:      "hello",
-				start:  0,
-				length: 2,
-			},
-			want: "he",
-		},
-		{
-			name: "case 2",
-			args: args{
-				s:      "hello",
-				start:  0,
-				length: 5,
-			},
-			want: "hello",
-		},
-		{
-			name: "case 3",
-			args: args{
-				s:      "hello",
-				start:  0,
-				length: 6,
-			},
-			want: "hello",
-		},
-		{
-			name: "case 4",
-			args: args{
-				s:      "hello",
-				start:  -1,
-				length: 1,
-			},
-			want: "o",
-		},
-		{
-			name: "case 5",
-			args: args{
-				s:      "hello",
-				start:  -2,
-				length: 1,
-			},
-			want: "l",
-		},
-		{
-			name: "case 6",
-			args: args{
-				s:      "hello",
-				start:  -2,
-				length: 2,
-			},
-			want: "lo",
-		},
-		{
-			name: "case 7",
-			args: args{
-				s:      "hello",
-				start:  -5,
-				length: 2,
-			},
-			want: "he",
-		},
-		{
-			name: "case 8",
-			args: args{
-				s:      "hello",
-				start:  -10,
-				length: 5,
-			},
-			want: "hello",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := Substr(tt.args.s, tt.args.start, tt.args.length); got != tt.want {
-				t.Errorf("Substr() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	xt.Equal(t, Substr("hello", 0, 2), "he")
+	xt.Equal(t, Substr("hello", 0, 5), "hello")
+	xt.Equal(t, Substr("hello", 0, 6), "hello")
+	xt.Equal(t, Substr("hello", -1, 1), "o")
+	xt.Equal(t, Substr("hello", -2, 2), "lo")
+	xt.Equal(t, Substr("hello", -5, 2), "he")
+	xt.Equal(t, Substr("hello", -10, 5), "hello")
+	xt.Equal(t, Substr("hello", -10, 4), "hell")
+	xt.Equal(t, Substr("hello", 5, 4), "")
+	xt.Equal(t, Substr("hello", 4, 4), "o")
+	xt.Equal(t, Substr("hello", 10, 4), "")
 }
 
 func TestCutLastNAfter(t *testing.T) {
@@ -237,4 +162,8 @@ func TestCutLastNBefore(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSplitLen(t *testing.T) {
+	xt.Equal(t, SplitLen("hello", 2), []string{"he", "ll", "o"})
 }

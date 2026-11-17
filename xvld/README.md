@@ -83,7 +83,7 @@ import 	(
 
 type User struct {
 	Name string `xv:"required,min-len=2,max-len=32"`
-    Age  uint16 `xv:"required,min=1,max=200"`
+	Age  uint16 `xv:"required,min=1,max=200"`
 }
 
 

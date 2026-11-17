@@ -67,6 +67,7 @@ func Test_validateContains_str(t *testing.T) {
 		}
 	})
 }
+
 func Test_validateContains_int(t *testing.T) {
 	rule1 := Rule{Name: "contains", Param: "1"}
 	rule2 := Rule{Name: "contains", Param: "1|2"}

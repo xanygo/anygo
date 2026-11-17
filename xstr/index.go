@@ -94,7 +94,8 @@ func LastIndexByteN(s string, c byte, n int) int {
 	return pos
 }
 
-// BytePairIndex 查找字符串中，前后匹配的字符对，
+// BytePairIndex 查找字符串中，前后匹配的字符对。
+//
 // 可以来查找一对匹配的:<>、()、{}，支持内部嵌套，
 // 比如对于字符串 “(hello(a,b,c,d(e,f))) word(a,b)”，查找 '(' 和 ')'，
 // 会找到 "(hello(a,b,c,d(e,f)))" 的首个 '(' 的索引位置和最后一个 ‘）’的索引位置

@@ -8,7 +8,20 @@ import (
 	"context"
 
 	"github.com/xanygo/anygo/internal/zreflect"
+	"github.com/xanygo/anygo/xvld/internal"
 )
+
+type (
+	FieldContext = internal.FieldContext
+
+	Rule = internal.Rule
+
+	ValidationFunc = internal.ValidationFunc
+)
+
+func NewRule(name string, param string) Rule {
+	return Rule{Name: name, Param: param}
+}
 
 // AutoChecker 当配置解析完成后，用于自动校验，
 // 这个方法是在 validator 校验完成之后才执行的
