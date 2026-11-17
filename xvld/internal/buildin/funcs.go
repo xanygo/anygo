@@ -45,16 +45,14 @@ func oneOf(fc *FieldContext, rule Rule) error {
 			return nil
 		}
 		return fc.Error(rule.Name, rule.Param, internal.ShortErrStr(s))
-	case reflect.Int, reflect.Int8, reflect.Int16,
-		reflect.Int32, reflect.Int64:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		str := strconv.FormatInt(v.Int(), 10)
 		if slices.Contains(arr, str) {
 			return nil
 		}
 		return fc.Error(rule.Name, rule.Param, str)
 
-	case reflect.Uint, reflect.Uint8, reflect.Uint16,
-		reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		str := strconv.FormatUint(v.Uint(), 10)
 		if slices.Contains(arr, str) {
 			return nil
@@ -97,14 +95,6 @@ func isURL(str string, _ Rule) bool {
 	return false
 }
 
-func isContains(str string, rule Rule) bool {
-	return strings.Contains(str, rule.Param)
-}
-
-func excludes(str string, rule Rule) bool {
-	return !strings.Contains(str, rule.Param)
-}
-
 func isPrefix(str string, rule Rule) bool {
 	return strings.HasPrefix(str, rule.Param)
 }
@@ -138,15 +128,13 @@ func notZeroUint(fc *FieldContext, rule Rule) error {
 			return nil
 		}
 		return fc.Error(rule.Name, s)
-	case reflect.Int, reflect.Int8, reflect.Int16,
-		reflect.Int32, reflect.Int64:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		num := v.Int()
 		if num > 0 {
 			return nil
 		}
 		return fc.Error(rule.Name, num)
-	case reflect.Uint, reflect.Uint8, reflect.Uint16,
-		reflect.Uint32, reflect.Uint64:
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		num := v.Uint()
 		if num > 0 {
 			return nil
@@ -178,15 +166,13 @@ func validatePort(fc *FieldContext, rule Rule) error {
 			return nil
 		}
 		return fc.Error(rule.Name, internal.ShortErrStr(s))
-	case reflect.Int, reflect.Int8, reflect.Int16,
-		reflect.Int32, reflect.Int64:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		num := v.Int()
 		if num > 0 && num < 65535 {
 			return nil
 		}
 		return fc.Error(rule.Name, num)
-	case reflect.Uint, reflect.Uint8, reflect.Uint16,
-		reflect.Uint32, reflect.Uint64:
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		num := v.Uint()
 		if num > 0 && num < 65535 {
 			return nil

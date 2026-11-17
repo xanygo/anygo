@@ -28,10 +28,11 @@ var Rules = map[string]internal.ValidationFunc{
 	"lt":  validateCompare,  // 小于 lt=1
 	"lte": validateCompare,  // 小于等于  lte=1
 
-	"contains": internal.ByMatchString(isContains),
-	"excludes": internal.ByMatchString(excludes),
-	"prefix":   internal.ByMatchString(isPrefix),
-	"suffix":   internal.ByMatchString(isSuffix),
+	"contains": validateContains,
+	"excludes": validateExcludes,
+
+	"prefix": internal.ByMatchString(isPrefix),
+	"suffix": internal.ByMatchString(isSuffix),
 
 	"one-of": oneOf, // oneof=1|2|3
 	"oneof":  oneOf, // oneof=hello|world

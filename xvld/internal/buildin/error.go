@@ -154,11 +154,11 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "must contains {0}",
+				Text: "must contains {0}, got {1}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "必须包含 {0}",
+				Text: "必须包含 {0}, 当前为 {1}",
 			},
 		},
 	},
@@ -166,11 +166,11 @@ var Errs = map[string]*xi18n.Error{
 		Messages: []*xi18n.LangMessage{
 			{
 				Lang: xi18n.LangEn,
-				Text: "must not contains {0}",
+				Text: "must not contains {0}, got {1}",
 			},
 			{
 				Lang: xi18n.LangZh,
-				Text: "不能包含 {0}",
+				Text: "不能包含 {0}, 当前为 {1}",
 			},
 		},
 	},
