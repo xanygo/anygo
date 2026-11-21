@@ -69,6 +69,8 @@ func WithDecoder(ext string, fn xenc.Unmarshaler) error {
 }
 
 // MustWithDecoder 注册一个解析器，若返回的 err!=nil 则 panic
+//
+// ext: 文件后缀，如 .yml
 func MustWithDecoder(ext string, fn xenc.Unmarshaler) {
 	Default().MustWithDecoder(ext, fn)
 }

@@ -29,6 +29,7 @@ import (
 	"github.com/xanygo/anygo/xattr"
 	"github.com/xanygo/anygo/xcast"
 	"github.com/xanygo/anygo/xhtml/internal/tplfn"
+	"github.com/xanygo/anygo/xhtml/webdep"
 	"github.com/xanygo/anygo/xhttp"
 	"github.com/xanygo/anygo/xlog"
 	"github.com/xanygo/anygo/xmap"
@@ -621,6 +622,9 @@ type TemplateEngine struct {
 	// 可以返回 nil，返回 nil 时则使用 Template
 	TemplateResolver func(r *http.Request) TemplateExecutor
 
+	// NewWebDep 创建 web资源依赖对象，可选
+	NewWebDep func(r *http.Request) *webdep.Deps
+
 	// 可选，渲染前对 values 复制的回调
 	Before func(r *http.Request, values map[string]any)
 
@@ -645,6 +649,13 @@ func (t *TemplateEngine) findTemplate(r *http.Request) TemplateExecutor {
 	return t.Template
 }
 
+func (t *TemplateEngine) getDeps(r *http.Request) *webdep.Deps {
+	if t.NewWebDep == nil {
+		return webdep.NewDeps(nil)
+	}
+	return t.NewWebDep(r)
+}
+
 // Render 直接渲染模板 fileName
 func (t *TemplateEngine) Render(w http.ResponseWriter, r *http.Request, fileName string, values map[string]any) error {
 	if values == nil {
@@ -654,7 +665,7 @@ func (t *TemplateEngine) Render(w http.ResponseWriter, r *http.Request, fileName
 		t.Before(r, values)
 	}
 	values["TR"] = NewTPLRequest(r)
-	values["deps"] = &Deps{}
+	values["deps"] = t.getDeps(r)
 
 	return t.render(r, t.withCustomWriter(r, w), fileName, values)
 }
@@ -696,7 +707,7 @@ func (t *TemplateEngine) RenderPageLayout(w http.ResponseWriter, r *http.Request
 		t.Before(r, values)
 	}
 	values["TR"] = NewTPLRequest(r)
-	values["deps"] = &Deps{}
+	values["deps"] = t.getDeps(r)
 
 	if t.isAjax(r) {
 		return t.render(r, t.withCustomWriter(r, w), fileName, values)

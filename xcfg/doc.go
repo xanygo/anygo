@@ -8,6 +8,14 @@
 //
 // 默认内置支持 .json 和 .xml 格式, 支持使用 WithParser 和 MustWithParser 注册新的解析器。
 //
+//	比如：
+//	import 	"go.yaml.in/yaml/v4"
+//	import "github.com/BurntSushi/toml"
+//
+//	xcfg.MustWithDecoder(".yml", xenc.UnmarshalFunc(yaml.Unmarshal))
+//	xcfg.MustWithDecoder(".yaml", xenc.UnmarshalFunc(yaml.Unmarshal))
+//	xcfg.MustWithDecoder(".toml", xenc.UnmarshalFunc(toml.Unmarshal))
+//
 // # 2. 配置文件路径
 //
 // 在使用 Parse 方法解析配置文件或者使用 Exists 判断文件是否存在时，传入的配置文件路径( path 参数)
@@ -120,15 +128,14 @@
 //	 	return nil
 //	 }
 //
-// 除此之外，还可以使用 Validator 实现自动校验，使用的前提是给 DefaultValidator 赋值。
-// 如可以使用 github.com/go-playground/validator/v10 来初始化 DefaultValidator。
+// 除此之外，还可以使用 xvld 数据模块实现自动校验。
 //
 //	type Info struct {
-//		A string `validate:"required"` // A 字段必填，不能为空
+//		A string `xv:"required"` // A 字段必填，不能为空
 //	}
 //
 // 具体顺序为：
 //
-//  1. Validator
+//  1. xvld
 //  2. AutoChecker
 package xcfg
