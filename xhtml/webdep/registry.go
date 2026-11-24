@@ -8,7 +8,8 @@ import (
 )
 
 type AssetGetter interface {
-	Get(name string) (Asset, bool)
+	GetByName(name string) (Asset, bool)
+	GetByTag(tag string) []Asset
 }
 
 // AssetGetters 将多个 AssetGetter 合并为一个
@@ -16,16 +17,33 @@ type AssetGetter interface {
 // 如可以将全局的 AssetGetter 和 本地局部的合并在一起。实现本地局部的可以覆盖全局的效果。
 type AssetGetters []AssetGetter
 
-// Get 获取指定名称的资源。
+// GetByName 获取指定名称的资源。
 //
 // 逆向遍历 AssetGetters，读取数据。
-func (as AssetGetters) Get(name string) (Asset, bool) {
+func (as AssetGetters) GetByName(name string) (Asset, bool) {
 	for i := len(as) - 1; i >= 0; i-- {
-		if item, ok := as[i].Get(name); ok {
+		if item, ok := as[i].GetByName(name); ok {
 			return item, true
 		}
 	}
 	return Asset{}, false
+}
+
+// GetByTag 获取指定标签的资源。
+//
+// 逆向遍历 AssetGetters，读取数据。
+func (as AssetGetters) GetByTag(tag string) []Asset {
+	var result []Asset
+	mp := make(map[string]struct{}, 4)
+	for i := len(as) - 1; i >= 0; i-- {
+		for _, item := range as[i].GetByTag(tag) {
+			if _, ok := mp[item.Name]; !ok {
+				result = append(result, item)
+				mp[item.Name] = struct{}{}
+			}
+		}
+	}
+	return result
 }
 
 // DefaultRegistry 全局的，默认的 Registry
@@ -44,7 +62,7 @@ var _ AssetGetter = (*Registry)(nil)
 type Registry struct {
 	mu     sync.RWMutex
 	assets map[string]Asset
-	order  []string
+	order  []string // 注册的顺序
 }
 
 // Register 注册一个或多个资源。
@@ -70,9 +88,9 @@ func (r *Registry) Register(assets ...Asset) error {
 	return nil
 }
 
-// Get 获取指定名称的资源。
+// GetByName 获取指定名称的资源。
 // 返回副本，避免外部修改内部数据。
-func (r *Registry) Get(name string) (Asset, bool) {
+func (r *Registry) GetByName(name string) (Asset, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -82,6 +100,20 @@ func (r *Registry) Get(name string) (Asset, bool) {
 	}
 
 	return asset.Clone(), true
+}
+
+func (r *Registry) GetByTag(tag string) []Asset {
+	var result []Asset
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, item := range r.assets {
+		if slices.Contains(item.Tags, tag) {
+			result = append(result, item)
+		}
+	}
+	return result
 }
 
 // Has 判断资源是否已注册。

@@ -6,6 +6,7 @@ package xnet
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"time"
 
@@ -133,7 +134,7 @@ func (d *HedgingDialer) dialStd(ctx context.Context, network string, address str
 		conn, err = zeroDialer.DialContext(ctx, network, address)
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("xnet.HedgingDialer %q: %w", network, err)
 	}
 	return NewContextConn(ctx, conn), nil
 }

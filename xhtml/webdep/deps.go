@@ -48,7 +48,30 @@ func (r *Deps) Use(names ...string) string {
 	return ""
 }
 
-// Needs 判断资源是否被使用(不会检查 registry 中对应的资源是否存在)
+const tagPrefix = "Tag/"
+
+func (r *Deps) UseTag(tags ...string) string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.used == nil {
+		r.used = make(map[string]struct{}, max(len(tags), 6))
+	}
+
+	for _, tag := range tags {
+		name := tagPrefix + tag
+		if _, ok := r.used[name]; ok {
+			continue
+		}
+
+		r.used[name] = struct{}{}
+		r.usedOrder = append(r.usedOrder, name)
+	}
+
+	return ""
+}
+
+// Needs 使用资源名称( Name )判断资源是否被使用(不会检查 registry 中对应的资源是否存在)
 func (r *Deps) Needs(name string) bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -57,6 +80,19 @@ func (r *Deps) Needs(name string) bool {
 		return false
 	}
 
+	_, ok := r.used[name]
+	return ok
+}
+
+// NeedsTag 使用资源标签( Tag )判断资源是否被使用(不会检查 registry 中对应的资源是否存在)
+func (r *Deps) NeedsTag(tag string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if len(r.used) == 0 {
+		return false
+	}
+	name := tagPrefix + tag
 	_, ok := r.used[name]
 	return ok
 }
@@ -101,7 +137,16 @@ func (r *Deps) assets() ([]Asset, error) {
 			return fmt.Errorf("circular asset dependency detected: %q", name)
 		}
 
-		asset, ok := registry.Get(name)
+		if tag, ok := strings.CutPrefix(name, tagPrefix); ok {
+			for _, a := range registry.GetByTag(tag) {
+				if err := visit(a.Name); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+
+		asset, ok := registry.GetByName(name)
 		if !ok {
 			return fmt.Errorf("asset %q is not registered", name)
 		}

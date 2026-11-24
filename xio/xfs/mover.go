@@ -29,6 +29,11 @@ func Rename(src, dst string) error {
 	return mover.Rename(src, dst)
 }
 
+// CopyFile 拷贝文件
+func CopyFile(src, dst string) error {
+	return mover.CopyFile(src, dst)
+}
+
 // Mover 支持跨盘位文件和目录移动操作
 type Mover struct {
 	// ChunkSize 指定复制操作的缓冲区大小。
@@ -45,6 +50,10 @@ func (m *Mover) Rename(src, dst string) error {
 	// 确保源路径存在
 	if _, err := os.Stat(src); errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("source path does not exist: %s", src)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return err
 	}
 
 	// 1. 尝试原子移动 (Rename)
@@ -72,7 +81,7 @@ func (m *Mover) Rename(src, dst string) error {
 	if srcInfo.IsDir() {
 		err = m.copyDir(src, dst)
 	} else {
-		err = m.copyFile(src, dst)
+		err = m.CopyFile(src, dst)
 	}
 
 	if err != nil {
@@ -118,7 +127,7 @@ func (m *Mover) copyDir(src, dst string) error {
 				return err
 			}
 		} else {
-			if err = m.copyFile(srcPath, dstPath); err != nil {
+			if err = m.CopyFile(srcPath, dstPath); err != nil {
 				return err
 			}
 		}
@@ -134,8 +143,12 @@ func (m *Mover) copyDir(src, dst string) error {
 	return nil
 }
 
-// copyFile 执行文件复制，优先尝试零拷贝，失败则回退。
-func (m *Mover) copyFile(src, dst string) error {
+// CopyFile 执行文件复制，优先尝试零拷贝，失败则回退。
+func (m *Mover) CopyFile(src, dst string) error {
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return err
+	}
+
 	srcFile, err := os.Open(src)
 	if err != nil {
 		return err

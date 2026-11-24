@@ -29,6 +29,9 @@ type Asset struct {
 	// Type 指定资源类型，支持 AssetJS 和 AssetCSS。
 	Type AssetType
 
+	// Tags 资源的标签
+	Tags []string
+
 	// URL 是资源的访问地址，可以是 CDN 地址、相对路径或绝对路径。
 	URL string
 
