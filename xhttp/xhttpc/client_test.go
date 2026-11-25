@@ -113,7 +113,7 @@ func TestClient(t *testing.T) {
 		data := map[string]any{
 			"k1": "v1",
 		}
-		c1 := &xhttpc.Client{}
+		c1 := &xhttpc.Transport{}
 		resp, err := c1.PostJSON(ctx, ts.URL, data)
 		xt.NoError(t, err)
 		xt.Equal(t, resp.Header.Get("X-Ok"), "Ok")

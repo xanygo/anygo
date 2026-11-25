@@ -11,7 +11,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/xanygo/anygo/internal/xmeta"
+	"github.com/xanygo/anygo/internal/zmeta"
 	"github.com/xanygo/anygo/xmetric"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/dsession"
@@ -51,7 +51,7 @@ func (c *connector) Connect(ctx context.Context, addr xnet.AddrNode, opt xoption
 	}
 	// 若有执行 StartSession
 	if started {
-		xmeta.TrySet(conn, xmeta.KeySessionReply, reply)
+		zmeta.TrySet(conn, zmeta.KeySessionReply, reply)
 	}
 
 	return conn, nil

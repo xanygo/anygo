@@ -42,11 +42,12 @@ func Run(args []string) {
 }
 
 func usage() {
-	fmt.Print(`webdep - web asset build tool
+	fmt.Print(`anygo-webdep - web asset build tool
 
 Commands:
-  webdep build [-c webdep.yaml] [-mode cdn|embed|both]
-  webdep clean [-c webdep.yaml]
+  anygo-webdep build [-c webdep.yaml] [-mode cdn|embed]
+  anygo-webdep clean [-c webdep.yaml]
 
+https://github.com/xanygo/anygo
 `)
 }

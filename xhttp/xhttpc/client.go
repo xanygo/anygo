@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xanygo/anygo/internal/xhash"
+	"github.com/xanygo/anygo/internal/zhash"
 	"github.com/xanygo/anygo/safely"
 	"github.com/xanygo/anygo/xcache"
 	"github.com/xanygo/anygo/xctx"
@@ -130,6 +130,12 @@ type Executor interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
+type ExecutorFunc func(req *http.Request) (*http.Response, error)
+
+func (f ExecutorFunc) Do(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
 // ExecutorToInvoker 将 Executor 转换为 Invoker
 //
 // 使用场景：
@@ -153,53 +159,62 @@ func ExecutorToInvoker(e Executor) Invoker {
 	})
 }
 
-var _ http.RoundTripper = (*Client)(nil)
+var DefaultClient = &http.Client{
+	Transport: &Transport{},
+}
 
-// Client 实现了 RoundTripper 的 HTTP Client
+var _ http.RoundTripper = (*Transport)(nil)
+var _ Executor = (*Transport)(nil)
+
+// Transport 实现了 RoundTripper 的 HTTP Transport
 //
-// 该 Client 所有方法都只会发送一次请求，不会处理更高层协议细节，例如重定向、认证或 Cookie。
-// 若需要处理重定向，可以结合 http.Client 使用
-type Client struct {
+// 该 Transport 所有方法都只会发送一次请求，不会处理更高层协议细节，例如重定向、认证或 Cookie。
+// 若需要处理重定向，可以结合 http.Transport 使用
+type Transport struct {
 	Service any           // 可选，当为空时，会使用 Dummy
 	Opts    []xrpc.Option // 可选，额外的 RPC Client 参数
 }
 
-func (c *Client) getService() any {
+func (c *Transport) getService() any {
 	if c.Service == nil {
 		return xservice.GetDummyService()
 	}
 	return c.Service
 }
 
-func (c *Client) RoundTrip(req *http.Request) (*http.Response, error) {
+func (c *Transport) Do(req *http.Request) (*http.Response, error) {
+	return c.RoundTrip(req)
+}
+
+func (c *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	r := &http.Response{}
 	handler := FetchResponse(r)
 	err := Invoke(req.Context(), c.getService(), req, handler, c.Opts...)
 	return r, err
 }
 
-func (c *Client) Get(ctx context.Context, url string) (*http.Response, error) {
+func (c *Transport) Get(ctx context.Context, url string) (*http.Response, error) {
 	r := &http.Response{}
 	handler := FetchResponse(r)
 	err := Get(ctx, c.getService(), url, handler, c.Opts...)
 	return r, err
 }
 
-func (c *Client) Post(ctx context.Context, url string, contentType string, body io.Reader) (*http.Response, error) {
+func (c *Transport) Post(ctx context.Context, url string, contentType string, body io.Reader) (*http.Response, error) {
 	r := &http.Response{}
 	handler := FetchResponse(r)
 	err := Post(ctx, c.getService(), url, contentType, body, handler, c.Opts...)
 	return r, err
 }
 
-func (c *Client) PostForm(ctx context.Context, url string, data url.Values) (*http.Response, error) {
+func (c *Transport) PostForm(ctx context.Context, url string, data url.Values) (*http.Response, error) {
 	r := &http.Response{}
 	handler := FetchResponse(r)
 	err := PostForm(ctx, c.getService(), url, data, handler, c.Opts...)
 	return r, err
 }
 
-func (c *Client) PostJSON(ctx context.Context, url string, data any) (*http.Response, error) {
+func (c *Transport) PostJSON(ctx context.Context, url string, data any) (*http.Response, error) {
 	r := &http.Response{}
 	handler := FetchResponse(r)
 	err := PostJSON(ctx, c.getService(), url, data, handler, c.Opts...)
@@ -275,7 +290,7 @@ func (ci CachedClient) getCacheKey() string {
 	if ci.Key != "" {
 		return ci.getService() + "|" + ci.Request.Method + "|" + ci.Key
 	}
-	return xhash.Md5(ci.getService() + "|" + ci.Request.Method + "|" + ci.Request.URL.String())
+	return zhash.Md5(ci.getService() + "|" + ci.Request.Method + "|" + ci.Request.URL.String())
 }
 
 // DeleteCache 删除此请求对应的缓存

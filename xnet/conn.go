@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/xanygo/anygo/internal/xmeta"
+	"github.com/xanygo/anygo/internal/zmeta"
 	"github.com/xanygo/anygo/internal/zslice"
 	"github.com/xanygo/anygo/xpool"
 	"github.com/xanygo/anygo/xsync"
@@ -289,13 +289,13 @@ func (t *ConnNode) OnRecycle(fn func()) {
 	}))
 }
 
-var _ xmeta.Setter = (*ConnNode)(nil)
+var _ zmeta.Setter = (*ConnNode)(nil)
 
 func (t *ConnNode) SetMeta(key any, val any) {
 	t.meta.Store(key, val)
 }
 
-var _ xmeta.Getter = (*ConnNode)(nil)
+var _ zmeta.Getter = (*ConnNode)(nil)
 
 func (t *ConnNode) GetMeta(key any) (any, bool) {
 	return t.meta.Load(key)

@@ -20,7 +20,7 @@ func main() {
 
 	log.Println("Fetch:", *url)
 
-	client := &xhttpc.Client{}
+	client := &xhttpc.Transport{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	resp, err := client.Get(ctx, *url)

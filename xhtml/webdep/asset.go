@@ -11,8 +11,13 @@ import (
 type AssetType string
 
 const (
-	AssetJS  AssetType = "js"
+	AssetJS AssetType = "js"
+
+	// AssetCSS 样式表
 	AssetCSS AssetType = "css"
+
+	// HTML 链接声明（通过 rel 指定具体关系）
+	AssetLink AssetType = "link"
 )
 
 const (
@@ -29,36 +34,17 @@ type Asset struct {
 	// Type 指定资源类型，支持 AssetJS 和 AssetCSS。
 	Type AssetType
 
+	// HTML link 的关系类型。
+	Rel string
+
 	// Tags 资源的标签
 	Tags []string
 
 	// URL 是资源的访问地址，可以是 CDN 地址、相对路径或绝对路径。
 	URL string
 
-	// Integrity 指定资源的 Subresource Integrity（SRI）校验值。
-	// 通常使用 sha256、sha384 或 sha512 算法生成。
-	// 非空时，Render 会输出 integrity 属性。
-	Integrity string
-
-	// CrossOrigin 指定跨域资源的请求方式。
-	// 支持 anonymous 和 use-credentials。
-	// 当 Integrity 非空且 CrossOrigin 为空时，默认使用 anonymous。
-	CrossOrigin string
-
-	// Media 指定 CSS 资源适用的媒体类型或媒体查询条件。
-	// 例如 all、screen、print 或 (max-width: 768px)。
-	// 仅适用于 AssetCSS。
-	Media string
-
-	// Defer 指定 JavaScript 资源是否使用 defer 属性。
-	// 设置为 true 时，脚本将在 HTML 解析完成后执行。
-	// 仅适用于 AssetJS。
-	Defer bool
-
-	// Async 指定 JavaScript 资源是否使用 async 属性。
-	// 设置为 true 时，脚本下载完成后立即执行，不保证执行顺序。
-	// 仅适用于 AssetJS。
-	Async bool
+	// HTML 标签的附加属性。
+	Attrs map[string]string
 
 	// DependsOn 指定当前资源依赖的其他资源名称。
 	// 渲染时会先输出依赖资源，再输出当前资源。
@@ -83,52 +69,47 @@ func (a Asset) writeBuilder(b *strings.Builder) {
 		b.WriteString(`<link rel="stylesheet" href="`)
 		b.WriteString(html.EscapeString(a.URL))
 		b.WriteString(`"`)
-
-		if a.Media != "" {
-			b.WriteString(` media="`)
-			b.WriteString(html.EscapeString(a.Media))
-			b.WriteString(`"`)
-		}
-
-		a.writeSRI(b)
+		a.writeAttrs(b)
 		b.WriteString(">")
 
 	case AssetJS:
 		b.WriteString(`<script src="`)
 		b.WriteString(html.EscapeString(a.URL))
 		b.WriteString(`"`)
-
-		a.writeSRI(b)
-
-		if a.Defer {
-			b.WriteString(" defer")
-		}
-		if a.Async {
-			b.WriteString(" async")
-		}
-
+		a.writeAttrs(b)
 		b.WriteString("></script>")
+
+	case AssetLink:
+		b.WriteString(`<link rel="`)
+		b.WriteString(a.Rel)
+		b.WriteString(`" href="`)
+		b.WriteString(html.EscapeString(a.URL))
+		b.WriteString(`" `)
+		a.writeAttrs(b)
+		b.WriteString(">")
+
 	default:
 		fmt.Fprintf(b, "unsupported AssetType %q", a.Type)
 	}
 }
 
 // writeSRI 输出 SRI 相关属性
-func (a Asset) writeSRI(b *strings.Builder) {
-	if a.Integrity != "" {
-		b.WriteString(` integrity="`)
-		b.WriteString(html.EscapeString(a.Integrity))
-		b.WriteString(`"`)
+func (a Asset) writeAttrs(b *strings.Builder) {
+	if len(a.Attrs) == 0 {
+		return
+	}
+	for k, v := range a.Attrs {
+		b.WriteString(" ")
+		b.WriteString(k)
+		if v != "" {
+			b.WriteString(`=`)
+			fmt.Fprintf(b, "%q", v)
+		}
 	}
 
-	crossOrigin := a.CrossOrigin
-	if crossOrigin == "" && a.Integrity != "" {
-		crossOrigin = CrossOriginAnonymous
-	}
-
-	if crossOrigin != "" {
-		b.WriteString(` crossorigin="`)
-		b.WriteString(html.EscapeString(crossOrigin))
-		b.WriteString(`"`)
+	if _, has1 := a.Attrs["integrity"]; has1 {
+		if _, has2 := a.Attrs["crossorigin"]; !has2 {
+			b.WriteString(` crossorigin="anonymous"`)
+		}
 	}
 }

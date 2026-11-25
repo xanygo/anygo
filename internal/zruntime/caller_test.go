@@ -2,14 +2,14 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-12-27
 
-package xruntime_test
+package zruntime_test
 
 import (
 	"fmt"
 	"log"
 	"testing"
 
-	"github.com/xanygo/anygo/internal/xruntime"
+	"github.com/xanygo/anygo/internal/zruntime"
 	"github.com/xanygo/anygo/xt"
 )
 
@@ -37,7 +37,7 @@ func TestPanicCaller(t *testing.T) {
 		defer func() {
 			re := recover()
 			xt.NotEmpty(t, re)
-			file, line, fn := xruntime.PanicCaller(1)
+			file, line, fn := zruntime.PanicCaller(1)
 			xt.Contains(t, file, "aller_test.go")
 			xt.Equal(t, line, 19)
 			xt.Contains(t, fn, "panic1")
@@ -49,7 +49,7 @@ func TestPanicCaller(t *testing.T) {
 		defer func() {
 			re := recover()
 			xt.NotEmpty(t, re)
-			file, line, fn := xruntime.PanicCaller(1)
+			file, line, fn := zruntime.PanicCaller(1)
 			xt.Contains(t, file, "aller_test.go")
 			xt.Equal(t, line, 25)
 			xt.Contains(t, fn, "panic2")
@@ -61,7 +61,7 @@ func TestPanicCaller(t *testing.T) {
 		defer func() {
 			re := recover()
 			xt.NotEmpty(t, re)
-			file, line, fn := xruntime.PanicCaller(1)
+			file, line, fn := zruntime.PanicCaller(1)
 			xt.Contains(t, file, "aller_test.go")
 			xt.Equal(t, line, 32)
 			xt.Contains(t, fn, "panic3")

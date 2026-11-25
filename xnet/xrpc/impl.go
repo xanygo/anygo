@@ -11,7 +11,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/xanygo/anygo/internal/xmeta"
+	"github.com/xanygo/anygo/internal/zmeta"
 	"github.com/xanygo/anygo/xmetric"
 	"github.com/xanygo/anygo/xnet"
 	"github.com/xanygo/anygo/xnet/dsession"
@@ -212,12 +212,12 @@ func (c *Feilian) tryOnce(ctx context.Context, cfg *config, req Request, resp Re
 		return errPool
 	}
 
-	if cfg.sessionInit != nil && !xmeta.HasKey(conn, xmeta.KeySessionReply) {
+	if cfg.sessionInit != nil && !zmeta.HasKey(conn, zmeta.KeySessionReply) {
 		reply, errSS := cfg.sessionInit.StartSession(ctx, conn, opt)
 		if errSS != nil {
 			return errSS
 		}
-		xmeta.TrySet(conn, xmeta.KeySessionReply, reply)
+		zmeta.TrySet(conn, zmeta.KeySessionReply, reply)
 		rootSpan.SetAttributes(xmetric.AnyAttr("StartSession", reply))
 	}
 

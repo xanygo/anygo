@@ -14,8 +14,12 @@ const (
 	// TableAlphaNum 所有字母和数字的合集
 	TableAlphaNum Table = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
-	// TableAlpha 所有字母的合集
+	// TableAlpha 所有字母的合集,包含所有大小写的
 	TableAlpha Table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+	TableAlphaUpper Table = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+	TableAlphaLower Table = "abcdefghijklmnopqrstuvwxyz"
 
 	// TableNum 所有数字的集合
 	TableNum Table = "0123456789"
@@ -68,13 +72,44 @@ func RandByte() byte {
 	return TableAlphaNum.RandByte()
 }
 
-// RandIdentN 返回一个可用作标志符的字符串
+// RandIdentN 返回一个可用作标志符的字符串，
+// n 表示标识符的总长度，n 应 >1。
 func RandIdentN(n int) string {
 	if n < 1 {
 		panic(fmt.Sprintf("invalid n %d, should >=1", n))
 	}
 	bf := make([]byte, n)
 	bf[0] = TableAlpha.RandByte()
+	for i := 1; i < n; i++ {
+		bf[i] = TableAlphaNum.RandByte()
+	}
+	return unsafe.String(unsafe.SliceData(bf), n)
+}
+
+// RandPublicIdentN 返回一个首字母大写的随机标识符。
+// n 表示标识符的总长度，n 应 >1。
+func RandPublicIdentN(n int) string {
+	if n < 1 {
+		panic(fmt.Sprintf("invalid n %d, should >=1", n))
+	}
+
+	bf := make([]byte, n)
+	bf[0] = TableAlphaUpper.RandByte()
+	for i := 1; i < n; i++ {
+		bf[i] = TableAlphaNum.RandByte()
+	}
+	return unsafe.String(unsafe.SliceData(bf), n)
+}
+
+// RandPrivateIdentN 返回一个首字母小写的随机标识符。
+// n 表示标识符的总长度，n 应 >1。
+func RandPrivateIdentN(n int) string {
+	if n < 1 {
+		panic(fmt.Sprintf("invalid n %d, should >=1", n))
+	}
+
+	bf := make([]byte, n)
+	bf[0] = TableAlphaLower.RandByte()
 	for i := 1; i < n; i++ {
 		bf[i] = TableAlphaNum.RandByte()
 	}

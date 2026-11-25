@@ -54,7 +54,7 @@ sources:
       filename: bootstrap.zip
 
       # ZIP 文件 SHA256 校验值，可选
-      sha256: "13f7bb777406d87cfd4f34cf285aa586db085db526e1669594d0954c4b119259"
+      hash: "sha256:13f7bb777406d87cfd4f34cf285aa586db085db526e1669594d0954c4b119259"
 
       strip_components: 1
 
@@ -80,7 +80,8 @@ assets:
     type: js
     source: bootstrap
     file: bootstrap.min.js
-    defer: true
+    attrs:
+      defer:
     depends_on:
       - bootstrap-css
 
@@ -89,18 +90,21 @@ assets:
     type: js
     source: htmx
     file: htmx.min.js
-    defer: true
+    attrs:
+      defer: 
 
   # jQuery
   - name: jquery
     type: js
     source: jquery
     file: jquery.min.js
-    defer: true
+    attrs:
+      defer: 
 
   # 纯 CDN 资源
   # 不下载、不 Embed
   - name: my-jquery
     type: js
     url: https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js
-    defer: true
+    attrs:
+      defer: 

@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-12-27
 
-package xruntime
+package zruntime
 
 import (
 	"runtime"

@@ -10,10 +10,12 @@ import (
 func TestDepsGet(t *testing.T) {
 	reg := NewRegistry()
 	a := Asset{
-		Name:  "htmx",
-		Type:  AssetJS,
-		URL:   "/assets/htmx.min.js",
-		Defer: true,
+		Name: "htmx",
+		Type: AssetJS,
+		URL:  "/assets/htmx.min.js",
+		Attrs: map[string]string{
+			"defer": "",
+		},
 	}
 	reg.Register(a)
 	b := Asset{
@@ -55,5 +57,4 @@ func TestDepsGet(t *testing.T) {
 		want3 := "<script src=\"/assets/htmx.min.js\" defer></script>\n<script src=\"/assets/myjs.min.js\"></script>\n"
 		xt.Equal(t, h3, template.HTML(want3))
 	})
-
 }

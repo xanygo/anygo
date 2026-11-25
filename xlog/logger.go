@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xanygo/anygo/internal/xruntime"
+	"github.com/xanygo/anygo/internal/zruntime"
 )
 
 // Level 日志等级
@@ -182,7 +182,7 @@ func handlerOutput(ctx context.Context, handler Handler, level Level, callerSkip
 			callerSkip = ck
 		}
 		if callerSkip == 0 {
-			pc = xruntime.CallerPC(0)
+			pc = zruntime.CallerPC(0)
 		} else {
 			var pcs [1]uintptr
 			runtime.Callers(callerSkip+2, pcs[:])

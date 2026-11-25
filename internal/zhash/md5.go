@@ -2,7 +2,7 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-12-21
 
-package xhash
+package zhash
 
 import (
 	"crypto/md5"

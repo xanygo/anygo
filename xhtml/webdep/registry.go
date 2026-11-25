@@ -184,22 +184,10 @@ func validateAsset(asset Asset) error {
 		return fmt.Errorf("asset %q: URL cannot be empty", asset.Name)
 	}
 
-	if asset.Type != AssetJS && asset.Type != AssetCSS {
+	switch asset.Type {
+	case AssetJS, AssetCSS, AssetLink:
+	default:
 		return fmt.Errorf("asset %q: unsupported type %q", asset.Name, asset.Type)
-	}
-
-	if asset.CrossOrigin != "" &&
-		asset.CrossOrigin != CrossOriginAnonymous &&
-		asset.CrossOrigin != CrossOriginUseCredentials {
-		return fmt.Errorf("asset %q: invalid crossorigin %q", asset.Name, asset.CrossOrigin)
-	}
-
-	if asset.Type == AssetCSS && (asset.Defer || asset.Async) {
-		return fmt.Errorf("asset %q: defer and async are only supported for JS", asset.Name)
-	}
-
-	if asset.Type == AssetJS && asset.Media != "" {
-		return fmt.Errorf("asset %q: media is only supported for CSS", asset.Name)
 	}
 
 	for _, dep := range asset.DependsOn {

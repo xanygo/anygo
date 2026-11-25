@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xanygo/anygo/internal/xmeta"
+	"github.com/xanygo/anygo/internal/zmeta"
 	"github.com/xanygo/anygo/internal/ztypes"
 	"github.com/xanygo/anygo/xattr"
 	"github.com/xanygo/anygo/xlog"
@@ -110,13 +110,13 @@ type stdioConn struct {
 	local     net.Addr
 }
 
-var _ xmeta.Setter = (*stdioConn)(nil)
+var _ zmeta.Setter = (*stdioConn)(nil)
 
 func (s *stdioConn) SetMeta(key any, val any) {
 	s.meta.Store(key, val)
 }
 
-var _ xmeta.Getter = (*stdioConn)(nil)
+var _ zmeta.Getter = (*stdioConn)(nil)
 
 func (s *stdioConn) GetMeta(key any) (any, bool) {
 	return s.meta.Load(key)

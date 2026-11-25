@@ -9,7 +9,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/xanygo/anygo/internal/xmeta"
+	"github.com/xanygo/anygo/internal/zmeta"
 	"github.com/xanygo/anygo/xctx"
 	"github.com/xanygo/anygo/xio"
 	"github.com/xanygo/anygo/xmetric"
@@ -52,7 +52,7 @@ func WithStarter(c xdial.Connector, h Starter, opt xoption.Reader) xdial.Connect
 			conn.Close()
 			return conn, err
 		}
-		xmeta.TrySet(conn, xmeta.KeySessionReply, ret)
+		zmeta.TrySet(conn, zmeta.KeySessionReply, ret)
 		return conn, nil
 	})
 }

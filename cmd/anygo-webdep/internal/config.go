@@ -1,14 +1,19 @@
 package internal
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 
 	"github.com/xanygo/anygo/xcfg"
+	"github.com/xanygo/anygo/xenc/xcompress"
+	"github.com/xanygo/anygo/xhtml/webdep"
+	"github.com/xanygo/anygo/xhttp/xhttpc"
 	"github.com/xanygo/anygo/xio/xfs"
 	"github.com/xanygo/anygo/xstr"
 )
@@ -73,17 +78,17 @@ func (sc SourceConfig) download(dir string) error {
 }
 
 func (sc SourceConfig) downloadFromCDN(dir string) error {
+	log.Println("download from cdn ...")
 	for _, item := range sc.Files {
 		fileDir := filepath.Join(dir, "asset", sc.Name)
-		if err := os.MkdirAll(fileDir, 0755); err != nil {
-			return err
+		dl := &xhttpc.Downloader{
+			URL:        item.URL,
+			OutputPath: filepath.Join(fileDir, item.Name),
+			MaxSize:    maxDownload,
 		}
-		fp, err := downloadFile(item.URL, fileDir)
+		err := dl.Run(context.Background())
+		log.Println("download ", item.URL, "err=", err)
 		if err != nil {
-			return err
-		}
-		out := filepath.Join(fileDir, item.Name)
-		if err := xfs.Rename(fp, out); err != nil {
 			return err
 		}
 	}
@@ -101,13 +106,42 @@ type ArchiveConfig struct {
 	Type            string `yaml:"type"`
 	URL             string `yaml:"url"`
 	Filename        string `yaml:"filename"`
-	SHA256          string `yaml:"sha256"`
+	Hash            string `yaml:"hash"` // hash 值，如 sha256:xxx
 	StripComponents uint   `yaml:"strip_components"`
 	// Include     []string `yaml:"include"`
 }
 
 func (ac ArchiveConfig) download(dir string) error {
-	return downloadArchiveFile(&ac, dir)
+	tmpPath := filepath.Join(dir, ac.relName()+".tmp")
+	dl := &xhttpc.Downloader{
+		URL:        ac.URL,
+		HashValue:  ac.Hash,
+		OutputPath: tmpPath,
+		MaxSize:    maxDownload,
+	}
+	err := dl.Run(context.Background())
+	log.Println("download ", ac.URL, "err=", err)
+	if err != nil {
+		return err
+	}
+
+	outPath := filepath.Join(dir, ac.relName())
+
+	if ac.StripComponents > 0 {
+		zc := &xcompress.ZipFileStrip{
+			Input:           tmpPath,
+			Output:          outPath,
+			StripComponents: ac.StripComponents,
+			Overwrite:       true,
+			Filter: func(name string) bool {
+				bn := path.Base(name)
+				return !strings.HasPrefix(bn, ".")
+			},
+		}
+		return zc.Run()
+	}
+
+	return xfs.Rename(tmpPath, outPath)
 }
 
 func (ac ArchiveConfig) relName() string {
@@ -115,17 +149,13 @@ func (ac ArchiveConfig) relName() string {
 }
 
 type AssetConfig struct {
-	Name        string   `yaml:"name"`
-	Type        string   `yaml:"type"`
-	Source      string   `yaml:"source"`
-	File        string   `yaml:"file"`
-	URL         string   `yaml:"url"`
-	Integrity   string   `yaml:"integrity"`
-	CrossOrigin string   `yaml:"cross_origin"`
-	Media       string   `yaml:"media"`
-	Defer       bool     `yaml:"defer"`
-	Async       bool     `yaml:"async"`
-	DependsOn   []string `yaml:"depends_on"`
+	Name      string            `yaml:"name"`
+	Type      webdep.AssetType  `yaml:"type"`
+	Source    string            `yaml:"source"`
+	File      string            `yaml:"file"`
+	URL       string            `yaml:"url"`
+	Attrs     map[string]string `yaml:"attrs"`
+	DependsOn []string          `yaml:"depends_on"`
 }
 
 func (a AssetConfig) transCDN(sources []SourceConfig) AssetConfig {
@@ -139,10 +169,15 @@ func (a AssetConfig) transCDN(sources []SourceConfig) AssetConfig {
 			break
 		}
 	}
+	if a.Attrs == nil {
+		a.Attrs = map[string]string{}
+	}
 	for _, item := range s.Files {
 		if item.Name == a.File {
 			a.URL = item.URL
-			a.Integrity = item.Integrity
+			if item.Integrity != "" {
+				a.Attrs["integrity"] = item.Integrity
+			}
 			break
 		}
 	}
@@ -157,6 +192,9 @@ func (a AssetConfig) transEmbed(urlPrefix string, sources []SourceConfig) AssetC
 			break
 		}
 	}
+	if a.Attrs == nil {
+		a.Attrs = map[string]string{}
+	}
 	for _, item := range s.Files {
 		if item.Name == a.File {
 			if item.ArchivePath != "" {
@@ -164,7 +202,9 @@ func (a AssetConfig) transEmbed(urlPrefix string, sources []SourceConfig) AssetC
 			} else {
 				a.URL = path.Join(urlPrefix, "a", s.Name, item.Name)
 			}
-			a.Integrity = item.Integrity
+			if item.Integrity != "" {
+				a.Attrs["integrity"] = item.Integrity
+			}
 			break
 		}
 	}
@@ -174,16 +214,40 @@ func (a AssetConfig) transEmbed(urlPrefix string, sources []SourceConfig) AssetC
 func (a AssetConfig) GoString() string {
 	const tpl = `{
 		Name:"{{ .Name }}",
-		Type:"{{ .Type }}",
+		 Type:{{ .Type }},
 		URL:"{{ .URL }}",
-{{ if .Integrity -}} Integrity:"{{ .Integrity }}",{{ end }}
-{{ if .CrossOrigin -}} CrossOrigin:"{{ .CrossOrigin }}",{{ end }}
-{{ if .Media -}} Media: "{{ .Media }}", {{ end }}
-{{ if .Defer -}} Defer:{{ .Defer }},  {{ end }}
-{{ if .Async -}} Async: {{ .Async }},  {{ end }}
-{{ if .DependsOn -}} DependsOn: {{ printf "%#v" .DependsOn }},  {{ end }}
+{{ if .Attrs -}} 
+ Attrs:map[string]string{
+{{ range $k,$v:=.Attrs }}
+	{{ printf "%q:%q" $k $v }},
+{{ end }}
+ },
+ {{ end }}
+{{ if .DependsOn -}} 
+ DependsOn: []string{
+	{{ range $index,$item:=.DependsOn }}
+		{{ printf "%#v" $item }},
+	{{ end }}
+},  
+ {{ end }}
 		}`
-	str, _ := xstr.RenderTemplate(tpl, a)
+	data := map[string]any{
+		"Name":      a.Name,
+		"URL":       a.URL,
+		"DependsOn": a.DependsOn,
+		"Attrs":     a.Attrs,
+	}
+	switch a.Type {
+	case webdep.AssetCSS:
+		data["Type"] = "webdep.AssetCSS"
+	case webdep.AssetJS:
+		data["Type"] = "webdep.AssetJS"
+	case webdep.AssetLink:
+		data["Type"] = "webdep.AssetLink"
+	default:
+		panic("unsupport Type=" + a.Type)
+	}
+	str, _ := xstr.RenderTemplate(tpl, data)
 	return trimLines(str)
 }
 
@@ -211,9 +275,6 @@ func normalizeAndValidate(cfg *Config) error {
 	}
 	if cfg.Output.Package == "" {
 		cfg.Output.Package = "webassets"
-	}
-	if !isGoIdentifier(cfg.Output.Package) {
-		return fmt.Errorf("invalid output.package %q", cfg.Output.Package)
 	}
 	if cfg.Output.HandlerPrefix == "" {
 		cfg.Output.HandlerPrefix = "/asset/"
@@ -271,12 +332,14 @@ func normalizeAndValidate(cfg *Config) error {
 			return fmt.Errorf("duplicate asset name %q", a.Name)
 		}
 		assetNames[a.Name] = true
-		if a.Type != "js" && a.Type != "css" {
-			return fmt.Errorf("asset %q: type must be js or css", a.Name)
+
+		switch a.Type {
+		case webdep.AssetCSS, webdep.AssetJS, webdep.AssetLink:
+			// pass
+		default:
+			return fmt.Errorf("asset %q: type must be js or css or link", a.Name)
 		}
-		if a.Async && a.Defer {
-			return fmt.Errorf("asset %q: async and defer cannot both be true", a.Name)
-		}
+
 		if a.URL != "" {
 			if a.Source != "" || a.File != "" {
 				return fmt.Errorf("asset %q: url cannot be combined with source or file", a.Name)

@@ -13,7 +13,7 @@ import (
 	"net/smtp"
 	"time"
 
-	"github.com/xanygo/anygo/internal/xmeta"
+	"github.com/xanygo/anygo/internal/zmeta"
 	"github.com/xanygo/anygo/xio"
 	"github.com/xanygo/anygo/xmetric"
 	"github.com/xanygo/anygo/xnet/xrpc"
@@ -39,7 +39,7 @@ func (r request) APIName() string {
 }
 
 func (r request) WriteTo(ctx context.Context, wr io.Writer, opt xoption.Reader) error {
-	cr, ok := xmeta.TryGet(wr, xmeta.KeySessionReply).(*handshakeReply)
+	cr, ok := zmeta.TryGet(wr, zmeta.KeySessionReply).(*handshakeReply)
 	if !ok {
 		return fmt.Errorf("invalid handshake type: %T, not smtp client", wr)
 	}

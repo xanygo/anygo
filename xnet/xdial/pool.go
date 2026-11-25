@@ -11,7 +11,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/xanygo/anygo/internal/xmeta"
+	"github.com/xanygo/anygo/internal/zmeta"
 	"github.com/xanygo/anygo/internal/znet"
 	"github.com/xanygo/anygo/xerror"
 	"github.com/xanygo/anygo/xmetric"
@@ -135,7 +135,7 @@ func newLong(opt *xpool.Option, cc Connector) GroupPool {
 		Connect: func(ctx context.Context, addr xnet.AddrNode) (io.ReadWriteCloser, error) {
 			ctx = xpool.ContextWithOption(ctx, opt)
 			node, err := Connect(ctx, cc, addr, nil)
-			xmeta.TrySet(node, xmeta.KeyLongPool, true)
+			zmeta.TrySet(node, zmeta.KeyLongPool, true)
 			return node, err
 		},
 	}

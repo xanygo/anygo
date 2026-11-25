@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"github.com/xanygo/anygo/internal/xruntime"
+	"github.com/xanygo/anygo/internal/zruntime"
 	"github.com/xanygo/anygo/xerror"
 )
 
@@ -55,7 +55,7 @@ func RecoveredPECtx(ctx context.Context, err *PanicErr) {
 //	re: recover() 的内容不应该为 nil
 //	callerSkip: 追踪触发 panic 位置时，应跳过的调用层次
 func NewPanicErr(re any, callerSkip int, data ...any) *PanicErr {
-	file, line, fn := xruntime.PanicCaller(callerSkip)
+	file, line, fn := zruntime.PanicCaller(callerSkip)
 	return &PanicErr{
 		ID:    NewRecoverID(),
 		Panic: re,

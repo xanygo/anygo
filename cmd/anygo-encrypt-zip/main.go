@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/xanygo/anygo/cli/xcolor"
-	"github.com/xanygo/anygo/internal/xhash"
+	"github.com/xanygo/anygo/internal/zhash"
 	"github.com/xanygo/anygo/xenc/xcipher"
 	"github.com/xanygo/anygo/xenc/xcompress"
 	"github.com/xanygo/anygo/xstr"
@@ -241,7 +241,7 @@ func generateGoFile() {
 		"PKG":     pkg,
 		"FnName":  *goFn,
 		"VarName": *goVar,
-		"VarTmp":  "_" + xhash.Md5(strings.Join(os.Args, "|")),
+		"VarTmp":  "_" + zhash.Md5(strings.Join(os.Args, "|")),
 		"Token":   tokenStr(*token),
 		"EZFile":  *outfile,
 		"Tags":    *tags,
