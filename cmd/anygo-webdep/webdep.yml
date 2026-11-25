@@ -82,7 +82,7 @@ assets:
     file: bootstrap.min.js
     attrs:
       defer:
-    depends_on:
+    depends:
       - bootstrap-css
 
   # HTMX

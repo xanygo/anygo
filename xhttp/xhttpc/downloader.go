@@ -43,6 +43,8 @@ func (d *Downloader) hashFactory(name string) func() hash.Hash {
 		return sha256.New
 	case "sha512":
 		return sha512.New
+	case "sha384":
+		return sha512.New384
 	case "md5":
 		return md5.New
 	default:

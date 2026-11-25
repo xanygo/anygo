@@ -28,7 +28,12 @@ type Deps struct {
 	usedOrder []string
 }
 
-// Use 标记需要使用(不会检查 registry 中对应的资源是否存在)
+// Use 标记需要使用
+//
+// 不会检查 registry 中对应的资源是否存在
+// 但是在调用 Render 方法的时候会检查资源必须存在
+//
+// 若 name 是以 "|" 开头，Render 时会忽略掉，调用可以使用 Needs 读取到
 func (r *Deps) Use(names ...string) string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -153,7 +158,7 @@ func (r *Deps) assets() ([]Asset, error) {
 
 		visiting[name] = struct{}{}
 
-		for _, dep := range asset.DependsOn {
+		for _, dep := range asset.Depends {
 			if err := visit(dep); err != nil {
 				return err
 			}
@@ -168,6 +173,10 @@ func (r *Deps) assets() ([]Asset, error) {
 	}
 
 	for _, name := range names {
+		// 特殊的名字，忽略
+		if strings.HasPrefix(name, "|") {
+			continue
+		}
 		if err := visit(name); err != nil {
 			return nil, err
 		}

@@ -19,10 +19,10 @@ func TestDepsGet(t *testing.T) {
 	}
 	reg.Register(a)
 	b := Asset{
-		Name:      "my-js",
-		Type:      AssetJS,
-		URL:       "/assets/myjs.min.js",
-		DependsOn: []string{"htmx"},
+		Name:    "my-js",
+		Type:    AssetJS,
+		URL:     "/assets/myjs.min.js",
+		Depends: []string{"htmx"},
 	}
 	reg.Register(b)
 	xt.Equal(t, reg.Names(), []string{"htmx", "my-js"})

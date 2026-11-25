@@ -33,7 +33,11 @@ func VerifyFile(path string, newHash func() hash.Hash, expected []byte) error {
 
 // ParseHash 解析算法和预期 Hash
 func ParseHash(value string, hashFactory func(string) func() hash.Hash) (func() hash.Hash, []byte, error) {
-	parts := strings.SplitN(strings.TrimSpace(value), ":", 2)
+	value = strings.TrimSpace(value)
+	parts := strings.SplitN(value, ":", 2)
+	if len(parts) != 2 {
+		parts = strings.SplitN(value, "-", 2)
+	}
 	if len(parts) != 2 {
 		return nil, nil, fmt.Errorf("invalid hash format: %q", value)
 	}
@@ -48,8 +52,10 @@ func ParseHash(value string, hashFactory func(string) func() hash.Hash) (func() 
 		return nil, nil, fmt.Errorf("invalid hash value: %w", err)
 	}
 
-	if len(expected) != newHash().Size() {
-		return nil, nil, fmt.Errorf("invalid %s hash length", parts[0])
+	expectSize := newHash().Size()
+
+	if len(expected) != expectSize {
+		return nil, nil, fmt.Errorf("invalid %s hash length, expect %d, got %d", parts[0], len(expected), expectSize)
 	}
 
 	return newHash, expected, nil

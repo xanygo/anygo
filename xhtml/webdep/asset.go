@@ -34,9 +34,6 @@ type Asset struct {
 	// Type 指定资源类型，支持 AssetJS 和 AssetCSS。
 	Type AssetType
 
-	// HTML link 的关系类型。
-	Rel string
-
 	// Tags 资源的标签
 	Tags []string
 
@@ -46,10 +43,10 @@ type Asset struct {
 	// HTML 标签的附加属性。
 	Attrs map[string]string
 
-	// DependsOn 指定当前资源依赖的其他资源名称。
+	// Depends 指定当前资源依赖的其他资源名称。
 	// 渲染时会先输出依赖资源，再输出当前资源。
 	// 支持多个依赖，依赖资源会自动去重。
-	DependsOn []string
+	Depends []string
 }
 
 func (a Asset) String() string {
@@ -59,7 +56,7 @@ func (a Asset) String() string {
 }
 
 func (a Asset) Clone() Asset {
-	a.DependsOn = slices.Clone(a.DependsOn)
+	a.Depends = slices.Clone(a.Depends)
 	return a
 }
 
@@ -80,9 +77,7 @@ func (a Asset) writeBuilder(b *strings.Builder) {
 		b.WriteString("></script>")
 
 	case AssetLink:
-		b.WriteString(`<link rel="`)
-		b.WriteString(a.Rel)
-		b.WriteString(`" href="`)
+		b.WriteString(`<link href="`)
 		b.WriteString(html.EscapeString(a.URL))
 		b.WriteString(`" `)
 		a.writeAttrs(b)

@@ -2,6 +2,8 @@ package internal
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -9,11 +11,11 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/xanygo/anygo/xcfg"
 	"github.com/xanygo/anygo/xenc/xcompress"
 	"github.com/xanygo/anygo/xhtml/webdep"
-	"github.com/xanygo/anygo/xhttp/xhttpc"
 	"github.com/xanygo/anygo/xio/xfs"
 	"github.com/xanygo/anygo/xstr"
 )
@@ -78,16 +80,19 @@ func (sc SourceConfig) download(dir string) error {
 }
 
 func (sc SourceConfig) downloadFromCDN(dir string) error {
-	log.Println("download from cdn ...")
 	for _, item := range sc.Files {
 		fileDir := filepath.Join(dir, "asset", sc.Name)
-		dl := &xhttpc.Downloader{
-			URL:        item.URL,
-			OutputPath: filepath.Join(fileDir, item.Name),
-			MaxSize:    maxDownload,
+
+		log.Println("start download", item.URL)
+		start := time.Now()
+		tmpPath, err := download(context.Background(), item.URL, item.integrityToHash())
+		cost := time.Since(start)
+		log.Println("download", item.URL, "used=", cost.String(), "err=", err)
+		if err != nil {
+			return err
 		}
-		err := dl.Run(context.Background())
-		log.Println("download ", item.URL, "err=", err)
+		outPath := filepath.Join(fileDir, item.Name)
+		err = xfs.CopyFile(tmpPath, outPath)
 		if err != nil {
 			return err
 		}
@@ -98,29 +103,39 @@ func (sc SourceConfig) downloadFromCDN(dir string) error {
 type FileConfig struct {
 	Name        string `yaml:"name"`
 	URL         string `yaml:"url"`
-	ArchivePath string `yaml:"archive_path"` // 在 zip 中的文件路径
+	ArchivePath string `yaml:"archive_path"` // 可选，在 zip 中的文件路径，在有 Archive 时必填
 	Integrity   string `yaml:"integrity"`    // 该 url 对应的 sri 值
 }
 
+func (f FileConfig) integrityToHash() string {
+	if f.Integrity == "" {
+		return ""
+	}
+	arr := strings.SplitN(f.Integrity, "-", 2)
+	if len(arr) != 2 {
+		return f.Integrity
+	}
+	bf, err := base64.StdEncoding.DecodeString(arr[1])
+	if err != nil {
+		return f.Integrity
+	}
+	return arr[0] + ":" + hex.EncodeToString(bf)
+}
+
 type ArchiveConfig struct {
-	Type            string `yaml:"type"`
-	URL             string `yaml:"url"`
-	Filename        string `yaml:"filename"`
-	Hash            string `yaml:"hash"` // hash 值，如 sha256:xxx
-	StripComponents uint   `yaml:"strip_components"`
-	// Include     []string `yaml:"include"`
+	Type            string `yaml:"type"`             // 可选，默认 zip
+	URL             string `yaml:"url"`              // 必填，zip 文件 url 地址
+	Filename        string `yaml:"filename"`         // 可选，文件名，如 bootstrap.zip
+	Hash            string `yaml:"hash"`             // 可选，zip 文件的 Hash 值，如 sha256:xxx
+	StripComponents uint   `yaml:"strip_components"` // 可选，zip 文件内需要移除的上层目录数
 }
 
 func (ac ArchiveConfig) download(dir string) error {
-	tmpPath := filepath.Join(dir, ac.relName()+".tmp")
-	dl := &xhttpc.Downloader{
-		URL:        ac.URL,
-		HashValue:  ac.Hash,
-		OutputPath: tmpPath,
-		MaxSize:    maxDownload,
-	}
-	err := dl.Run(context.Background())
-	log.Println("download ", ac.URL, "err=", err)
+	log.Println("start download", ac.URL)
+	start := time.Now()
+	tmpPath, err := download(context.Background(), ac.URL, ac.Hash)
+	cost := time.Since(start)
+	log.Println("download", ac.URL, "used=", cost.String(), "err=", err)
 	if err != nil {
 		return err
 	}
@@ -140,8 +155,7 @@ func (ac ArchiveConfig) download(dir string) error {
 		}
 		return zc.Run()
 	}
-
-	return xfs.Rename(tmpPath, outPath)
+	return xfs.CopyFile(tmpPath, outPath)
 }
 
 func (ac ArchiveConfig) relName() string {
@@ -149,13 +163,13 @@ func (ac ArchiveConfig) relName() string {
 }
 
 type AssetConfig struct {
-	Name      string            `yaml:"name"`
-	Type      webdep.AssetType  `yaml:"type"`
-	Source    string            `yaml:"source"`
-	File      string            `yaml:"file"`
-	URL       string            `yaml:"url"`
-	Attrs     map[string]string `yaml:"attrs"`
-	DependsOn []string          `yaml:"depends_on"`
+	Name    string            `yaml:"name"`
+	Type    webdep.AssetType  `yaml:"type"`
+	Source  string            `yaml:"source"`
+	File    string            `yaml:"file"` // 对应的 SourceConfig.Files.Name
+	URL     string            `yaml:"url"`
+	Attrs   map[string]string `yaml:"attrs"`   // 其他属性
+	Depends []string          `yaml:"depends"` // 依赖的 AssetConfig.Name
 }
 
 func (a AssetConfig) transCDN(sources []SourceConfig) AssetConfig {
@@ -223,19 +237,19 @@ func (a AssetConfig) GoString() string {
 {{ end }}
  },
  {{ end }}
-{{ if .DependsOn -}} 
- DependsOn: []string{
-	{{ range $index,$item:=.DependsOn }}
+{{ if .Depends -}} 
+ Depends: []string{
+	{{ range $index,$item:=.Depends }}
 		{{ printf "%#v" $item }},
 	{{ end }}
 },  
  {{ end }}
 		}`
 	data := map[string]any{
-		"Name":      a.Name,
-		"URL":       a.URL,
-		"DependsOn": a.DependsOn,
-		"Attrs":     a.Attrs,
+		"Name":    a.Name,
+		"URL":     a.URL,
+		"Depends": a.Depends,
+		"Attrs":   a.Attrs,
 	}
 	switch a.Type {
 	case webdep.AssetCSS:
@@ -267,8 +281,11 @@ func normalizeAndValidate(cfg *Config) error {
 	if cfg.Output.Mode == "" {
 		cfg.Output.Mode = "cdn"
 	}
-	if cfg.Output.Mode != "cdn" && cfg.Output.Mode != "embed" && cfg.Output.Mode != "both" {
-		return errors.New("output.mode must be cdn, embed or both")
+	switch cfg.Output.Mode {
+	case "cdn", "embed":
+		// pass
+	default:
+		return fmt.Errorf("invalid output.mode=%q", cfg.Output.Mode)
 	}
 	if cfg.Output.Dir == "" {
 		return errors.New("output.dir is required")
@@ -286,7 +303,7 @@ func normalizeAndValidate(cfg *Config) error {
 		cfg.Output.HandlerPrefix += "/"
 	}
 
-	sources := make(map[string]SourceConfig)
+	sources := make(map[string]SourceConfig, len(cfg.Sources))
 	for i := range cfg.Sources {
 		s := &cfg.Sources[i]
 		if s.Name == "" {
@@ -306,10 +323,10 @@ func normalizeAndValidate(cfg *Config) error {
 			}
 			fileNames[f.Name] = true
 			if s.Archive != nil && f.ArchivePath == "" {
-				return fmt.Errorf("source %q file %q: path is required when archive is configured", s.Name, f.Name)
+				return fmt.Errorf("source %q file %q: ArchivePath is required when archive is configured", s.Name, f.Name)
 			}
 			if f.ArchivePath != "" && !safeRelativeSlashPath(f.ArchivePath) {
-				return fmt.Errorf("source %q file %q: unsafe path %q", s.Name, f.Name, f.ArchivePath)
+				return fmt.Errorf("source %q file %q: unsafe ArchivePath %q", s.Name, f.Name, f.ArchivePath)
 			}
 		}
 		if s.Archive != nil {
@@ -318,6 +335,9 @@ func normalizeAndValidate(cfg *Config) error {
 			}
 			if s.Archive.URL == "" {
 				return fmt.Errorf("source %q: archive.url and archive.include are required", s.Name)
+			}
+			if s.Archive.Filename == "" {
+				s.Archive.Filename = s.Name + ".zip"
 			}
 		}
 		sources[s.Name] = *s
@@ -358,7 +378,7 @@ func normalizeAndValidate(cfg *Config) error {
 		}
 	}
 	for _, a := range cfg.Assets {
-		for _, dep := range a.DependsOn {
+		for _, dep := range a.Depends {
 			if !assetNames[dep] {
 				return fmt.Errorf("asset %q: unknown dependency %q", a.Name, dep)
 			}
@@ -373,7 +393,7 @@ func normalizeAndValidate(cfg *Config) error {
 func checkDependencyCycles(assets []AssetConfig) error {
 	deps := make(map[string][]string, len(assets))
 	for _, a := range assets {
-		deps[a.Name] = a.DependsOn
+		deps[a.Name] = a.Depends
 	}
 	state := make(map[string]uint8)
 	var visit func(string) error

@@ -190,7 +190,7 @@ func validateAsset(asset Asset) error {
 		return fmt.Errorf("asset %q: unsupported type %q", asset.Name, asset.Type)
 	}
 
-	for _, dep := range asset.DependsOn {
+	for _, dep := range asset.Depends {
 		if dep == "" {
 			return fmt.Errorf("asset %q: dependency name cannot be empty", asset.Name)
 		}
