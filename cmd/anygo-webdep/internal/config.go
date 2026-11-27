@@ -20,9 +20,17 @@ import (
 	"github.com/xanygo/anygo/xstr"
 )
 
+const (
+	assetDirName   = "webdep_asset"
+	archiveDirName = "webdep_archive"
+)
+
 func loadConfig(filename string) (Config, error) {
 	var cfg Config
 	err := xcfg.Parse(filename, &cfg)
+	if err != nil {
+		err = fmt.Errorf("%w, %q", err, filename)
+	}
 	return cfg, err
 }
 
@@ -42,14 +50,26 @@ func (c Config) hasAssetDir() bool {
 }
 
 type OutputConfig struct {
-	Mode          string `yaml:"mode"`
-	Dir           string `yaml:"dir"`
-	Package       string `yaml:"package"`
-	HandlerPrefix string `yaml:"handler_prefix"`
+	Mode       string `yaml:"mode"`
+	Dir        string `yaml:"dir"`         // 输出目录
+	GoPackage  string `yaml:"go_package"`  // go 目录
+	HTTPPrefix string `yaml:"http_prefix"` // 可选
+	FnPrefix   string `yaml:"fn_prefix"`   // 可选,函数名称的前缀
 }
 
 func (oc OutputConfig) cdnGoFile() string {
-	return filepath.Join(oc.Dir, "asset_cdn.go")
+	return filepath.Join(oc.Dir, "webdep_cdn.go")
+}
+
+func (oc OutputConfig) getGoPackage() string {
+	if oc.GoPackage != "" {
+		return oc.GoPackage
+	}
+	fp, err := filepath.Abs(oc.Dir)
+	if err != nil {
+		panic(err)
+	}
+	return filepath.Base(fp)
 }
 
 func (oc OutputConfig) cleanCDNFile() {
@@ -58,12 +78,12 @@ func (oc OutputConfig) cleanCDNFile() {
 
 func (oc OutputConfig) cleanEmbedFile() {
 	os.Remove(oc.embedGoFile())
-	os.RemoveAll(filepath.Join(oc.Dir, "archive"))
-	os.RemoveAll(filepath.Join(oc.Dir, "asset"))
+	os.RemoveAll(filepath.Join(oc.Dir, archiveDirName))
+	os.RemoveAll(filepath.Join(oc.Dir, assetDirName))
 }
 
 func (oc OutputConfig) embedGoFile() string {
-	return filepath.Join(oc.Dir, "asset_embed.go")
+	return filepath.Join(oc.Dir, "webdep_embed.go")
 }
 
 type SourceConfig struct {
@@ -81,7 +101,7 @@ func (sc SourceConfig) download(dir string) error {
 
 func (sc SourceConfig) downloadFromCDN(dir string) error {
 	for _, item := range sc.Files {
-		fileDir := filepath.Join(dir, "asset", sc.Name)
+		fileDir := filepath.Join(dir, assetDirName, sc.Name)
 
 		log.Println("start download", item.URL)
 		start := time.Now()
@@ -123,15 +143,37 @@ func (f FileConfig) integrityToHash() string {
 }
 
 type ArchiveConfig struct {
-	Type            string `yaml:"type"`             // 可选，默认 zip
-	URL             string `yaml:"url"`              // 必填，zip 文件 url 地址
-	Filename        string `yaml:"filename"`         // 可选，文件名，如 bootstrap.zip
-	Hash            string `yaml:"hash"`             // 可选，zip 文件的 Hash 值，如 sha256:xxx
-	StripComponents uint   `yaml:"strip_components"` // 可选，zip 文件内需要移除的上层目录数
+	Type            string   `yaml:"type"`             // 可选，默认 zip, 还支持 tgz
+	URL             string   `yaml:"url"`              // 必填，zip 文件 url 地址
+	Filename        string   `yaml:"filename"`         // 可选，文件名，如 bootstrap.zip
+	Hash            string   `yaml:"hash"`             // 可选，zip 文件的 Hash 值，如 sha256:xxx
+	StripComponents uint     `yaml:"strip_components"` // 可选，zip 文件内需要移除的上层目录数
+	Include         []string `yaml:"include"`          // 可选，允许保留的文件名
+	Exclude         []string `yaml:"exclude"`          // 可选，会忽略的文件名
+}
+
+func (ac ArchiveConfig) buildFilter() (func(string) bool, error) {
+	fn, err := xstr.CompileFilters(ac.Include, ac.Exclude)
+	if err != nil {
+		return nil, err
+	}
+	return func(name string) bool {
+		bn := path.Base(name)
+		if strings.HasPrefix(bn, ".") {
+			return false
+		}
+		return fn(name)
+	}, nil
 }
 
 func (ac ArchiveConfig) download(dir string) error {
 	log.Println("start download", ac.URL)
+
+	filter, err := ac.buildFilter()
+	if err != nil {
+		return err
+	}
+
 	start := time.Now()
 	tmpPath, err := download(context.Background(), ac.URL, ac.Hash)
 	cost := time.Since(start)
@@ -140,26 +182,29 @@ func (ac ArchiveConfig) download(dir string) error {
 		return err
 	}
 
+	if ac.Type == "tgz" {
+		np := tmpPath + ".zip"
+		if err = xcompress.TgzToZip(tmpPath, np); err != nil {
+			return err
+		}
+		tmpPath = np
+	}
+
 	outPath := filepath.Join(dir, ac.relName())
 
-	if ac.StripComponents > 0 {
-		zc := &xcompress.ZipFileStrip{
-			Input:           tmpPath,
-			Output:          outPath,
-			StripComponents: ac.StripComponents,
-			Overwrite:       true,
-			Filter: func(name string) bool {
-				bn := path.Base(name)
-				return !strings.HasPrefix(bn, ".")
-			},
-		}
-		return zc.Run()
+	zc := &xcompress.ZipFileStrip{
+		Input:           tmpPath,
+		Output:          outPath,
+		StripComponents: ac.StripComponents,
+		Overwrite:       true,
+		Filter:          filter,
 	}
-	return xfs.CopyFile(tmpPath, outPath)
+	return zc.Run()
+	// return xfs.CopyFile(tmpPath, outPath)
 }
 
 func (ac ArchiveConfig) relName() string {
-	return path.Join("archive", ac.Filename)
+	return path.Join(archiveDirName, ac.Filename)
 }
 
 type AssetConfig struct {
@@ -287,20 +332,15 @@ func normalizeAndValidate(cfg *Config) error {
 	default:
 		return fmt.Errorf("invalid output.mode=%q", cfg.Output.Mode)
 	}
-	if cfg.Output.Dir == "" {
-		return errors.New("output.dir is required")
+
+	if cfg.Output.HTTPPrefix == "" {
+		cfg.Output.HTTPPrefix = "/asset/"
 	}
-	if cfg.Output.Package == "" {
-		cfg.Output.Package = "webassets"
-	}
-	if cfg.Output.HandlerPrefix == "" {
-		cfg.Output.HandlerPrefix = "/asset/"
-	}
-	if !strings.HasPrefix(cfg.Output.HandlerPrefix, "/") {
+	if !strings.HasPrefix(cfg.Output.HTTPPrefix, "/") {
 		return errors.New("output.handler.prefix must start with /")
 	}
-	if !strings.HasSuffix(cfg.Output.HandlerPrefix, "/") {
-		cfg.Output.HandlerPrefix += "/"
+	if !strings.HasSuffix(cfg.Output.HTTPPrefix, "/") {
+		cfg.Output.HTTPPrefix += "/"
 	}
 
 	sources := make(map[string]SourceConfig, len(cfg.Sources))
@@ -330,8 +370,12 @@ func normalizeAndValidate(cfg *Config) error {
 			}
 		}
 		if s.Archive != nil {
-			if strings.ToLower(s.Archive.Type) != "zip" {
-				return fmt.Errorf("source %q: only zip archives are supported", s.Name)
+			ext := strings.ToLower(s.Archive.Type)
+			switch ext {
+			case "zip", "tgz":
+				// pass
+			default:
+				return fmt.Errorf("source %q: not support %s archive", s.Name, ext)
 			}
 			if s.Archive.URL == "" {
 				return fmt.Errorf("source %q: archive.url and archive.include are required", s.Name)

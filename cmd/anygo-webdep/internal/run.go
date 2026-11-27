@@ -97,12 +97,12 @@ func cleanOldTemp() {
 	expire := time.Now().Add(-maxAge)
 	dir := tmpDir()
 	filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
+		if err != nil || dir == path {
 			return err
 		}
 
 		if d.IsDir() {
-			log.Println("delete ignore, isDir", dir+"/"+path)
+			log.Println("delete ignore, isDir", path)
 			return nil
 		}
 
@@ -113,7 +113,7 @@ func cleanOldTemp() {
 
 		if info.ModTime().Before(expire) {
 			err := os.Remove(path)
-			log.Println("delete ", dir+"/"+path, "err=", err)
+			log.Println("delete ", path, "err=", err)
 		}
 
 		return nil

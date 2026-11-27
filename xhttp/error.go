@@ -14,7 +14,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/xanygo/anygo/internal"
+	"github.com/xanygo/anygo/internal/zhttp"
 	"github.com/xanygo/anygo/xlog"
 )
 
@@ -116,7 +116,10 @@ func doInitErrTpl() {
 }
 
 func notFound(w http.ResponseWriter, r *http.Request) {
-	if internal.HandlerImage404(w, r) {
+	if zhttp.HandlerImage404(w, r) {
+		return
+	}
+	if zhttp.HandlerStatic404(w, r) {
 		return
 	}
 	if IsAjax(r) {

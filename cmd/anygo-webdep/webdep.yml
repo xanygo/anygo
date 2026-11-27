@@ -7,19 +7,17 @@ output:
   # embed - 下载资源，生成 Go Embed 和 HTTP Handler
   mode: embed
 
-  # 生成文件的输出目录
+  # 生成的 go 文件的输出目录，必填
   dir: output/
 
-  # 生成 Go 文件的包名
-  package: webassets
+  # 生成 Go 文件的包名,可选
+  go_package: output
 
-  # Embed 模式下 HTTP Handler 配置
-  handler:
-    # 资源访问 URL 前缀
-    prefix: /asset/
+  # Embed 模式下 HTTP Handler 资源访问 URL 前缀，可选，默认 /asset/
+  http_prefix: /asset/
 
-    # 生成的 Handler 函数名称
-    name: Handler
+  # 生成的函数名称的前缀
+  fn_prefix: 
 
 
 # 资源来源配置
@@ -47,16 +45,19 @@ sources:
         url: https://cdn.jsdelivr.net/npm/bootstrap@5.3.9/dist/css/bootstrap.min.css
         archive_path: css/bootstrap.min.css
 
-    # ZIP 下载及文件提取配置
+    # 下载压缩文件及文件提取配置
     archive:
-      type: zip
+      type: zip # 支持 zip 和 tgz
       url: https://github.com/twbs/bootstrap/releases/download/v5.3.9/bootstrap-5.3.9-dist.zip
       filename: bootstrap.zip
 
-      # ZIP 文件 SHA256 校验值，可选
+      # 文件 SHA256 校验值，可选
       hash: "sha256:13f7bb777406d87cfd4f34cf285aa586db085db526e1669594d0954c4b119259"
-
-      strip_components: 1
+      strip_components: 1 # 可选，移除顶层的目录
+      # include:  # 可选，保留的文件列表
+      #   - wc:*
+      # exclude:   # 可选，不保留的文件列表
+      #   - wc:*.md
 
   # 4. jQuery资源包示例
   - name: jquery

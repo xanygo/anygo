@@ -5,6 +5,7 @@
 package xstr
 
 import (
+	"fmt"
 	"unicode"
 
 	"github.com/xanygo/anygo/internal/zstr/zmatcher"
@@ -105,4 +106,67 @@ func CompileMatch(pattern string) (func(string) bool, error) {
 	val = &patternCompile{Match: fn, Err: err}
 	matchCompilePool.Set(pattern, val)
 	return fn, err
+}
+
+// CompileFilters 将包含和排除规则编译为过滤函数。
+//
+// include 包含规则。非空时，只保留匹配任意 include 规则的字符串。为空时默认保留所有。
+// exclude 排除规则, 优先级高于 include,可以空
+//
+// include 和 exclude 的书写规则详见 CompileMatch
+//
+// 同一组内，多个条件之间是 or 的关系，
+// 如 include=["wc:*.js","wc:*.css"] 会匹配 .js 或者 .css 后缀的字符串
+func CompileFilters(include, exclude []string) (func(name string) bool, error) {
+	includes, err := compileMatches(include)
+	if err != nil {
+		return nil, fmt.Errorf("compile include: %w", err)
+	}
+
+	excludes, err := compileMatches(exclude)
+	if err != nil {
+		return nil, fmt.Errorf("compile exclude: %w", err)
+	}
+
+	if len(includes) == 0 && len(excludes) == 0 {
+		return zmatcher.AllTrue, nil
+	}
+
+	return func(name string) bool {
+		// 排除规则优先。
+		for _, match := range excludes {
+			if match(name) {
+				return false
+			}
+		}
+
+		// 没有包含规则，默认保留。
+		if len(includes) == 0 {
+			return true
+		}
+
+		for _, match := range includes {
+			if match(name) {
+				return true
+			}
+		}
+
+		return false
+	}, nil
+}
+
+// compileMatches 批量编译匹配规则。
+func compileMatches(patterns []string) ([]func(string) bool, error) {
+	matches := make([]func(string) bool, 0, len(patterns))
+
+	for i, pattern := range patterns {
+		match, err := CompileMatch(pattern)
+		if err != nil {
+			return nil, fmt.Errorf("[%d] %q: %w", i, pattern, err)
+		}
+
+		matches = append(matches, match)
+	}
+
+	return matches, nil
 }

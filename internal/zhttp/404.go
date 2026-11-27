@@ -2,30 +2,19 @@
 //  Author: hidu <duv123+git@gmail.com>
 //  Date: 2024-11-26
 
-package internal
+package zhttp
 
 import (
-	"embed"
+	_ "embed"
 	"net/http"
 	"path"
-	"sync"
 	"time"
+
+	"github.com/xanygo/anygo/xattr"
 )
 
-//go:embed asset
-var asset embed.FS
-
+//go:embed asset/404.webp
 var image404 []byte
-
-var once sync.Once
-
-func doOnce() {
-	var err error
-	image404, err = asset.ReadFile("asset/404.webp")
-	if err != nil {
-		panic(err)
-	}
-}
 
 var assetLastMTime time.Time
 
@@ -45,7 +34,6 @@ func HandlerImage404(w http.ResponseWriter, r *http.Request) bool {
 	default:
 		return false
 	}
-	once.Do(doOnce)
 	w.Header().Set("Cache-Control", "public, max-age=86400")
 	w.Header().Set("Expires", time.Now().Add(24*time.Hour).UTC().Format(http.TimeFormat))
 
@@ -59,6 +47,22 @@ func HandlerImage404(w http.ResponseWriter, r *http.Request) bool {
 
 	w.Header().Set("Last-Modified", assetLastMTime.UTC().Format(http.TimeFormat))
 	w.Header().Set("Content-Type", "image/webp")
+	w.WriteHeader(http.StatusNotFound)
 	_, _ = w.Write(image404)
 	return true
+}
+
+func HandlerStatic404(w http.ResponseWriter, r *http.Request) bool {
+	ext := path.Ext(r.URL.Path)
+	switch ext {
+	case ".css", ".js":
+		w.WriteHeader(http.StatusNotFound)
+		if xattr.RunMode() == xattr.ModeDebug {
+			w.Write([]byte(r.URL.Path + "\n"))
+		}
+		w.Write([]byte("404 not found"))
+		return true
+	default:
+		return false
+	}
 }

@@ -5,8 +5,10 @@
 package xcompress
 
 import (
+	"archive/tar"
 	"archive/zip"
 	"bytes"
+	"compress/gzip"
 	"crypto/md5"
 	"errors"
 	"fmt"
@@ -78,7 +80,7 @@ type ZipFileStrip struct {
 
 	Output string // 输出的 zip 文件，必填
 
-	// StripComponents 移除 ZIP 内部路径开头的目录层级，比条，应传入 >0 的值
+	// StripComponents 移除 ZIP 内部路径开头的目录层级，可选
 	StripComponents uint
 
 	// Overwrite 是否覆盖已存在的输出文件
@@ -126,17 +128,16 @@ func (opts *ZipFileStrip) Run() error {
 	var result error
 
 	for _, file := range src.File {
-		if opts.Filter != nil && !opts.Filter(file.Name) {
-			continue
-		}
-
-		parts := strings.Split(file.Name, "/")
-		if uint(len(parts)) <= opts.StripComponents {
-			continue
-		}
-
 		header := file.FileHeader
-		header.Name = strings.Join(parts[opts.StripComponents:], "/")
+		header.Name = file.Name
+
+		if opts.StripComponents > 0 {
+			header.Name = opts.stripName(file.Name)
+		}
+
+		if opts.Filter != nil && !opts.Filter(header.Name) {
+			continue
+		}
 
 		reader, err := file.OpenRaw()
 		if err != nil {
@@ -169,4 +170,88 @@ func (opts *ZipFileStrip) Run() error {
 	}
 
 	return result
+}
+
+func (opts *ZipFileStrip) stripName(name string) string {
+	parts := strings.Split(name, "/")
+	if uint(len(parts)) <= opts.StripComponents {
+		return name
+	}
+	return strings.Join(parts[opts.StripComponents:], "/")
+}
+
+// TgzToZip 将 tgz 文件转换为 zip 文件。
+func TgzToZip(src, dst string) error {
+	input, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer input.Close()
+
+	gz, err := gzip.NewReader(input)
+	if err != nil {
+		return err
+	}
+	defer gz.Close()
+
+	output, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer output.Close()
+
+	zw := zip.NewWriter(output)
+	defer zw.Close()
+
+	tr := tar.NewReader(gz)
+
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		name := strings.TrimPrefix(path.Clean(header.Name), "./")
+		if name == "." || name == "" {
+			continue
+		}
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			fh := &zip.FileHeader{
+				Name:     strings.TrimSuffix(name, "/") + "/",
+				Method:   zip.Store,
+				Modified: header.ModTime,
+			}
+			fh.SetMode(os.FileMode(header.Mode))
+
+			_, err = zw.CreateHeader(fh)
+
+		case tar.TypeReg:
+			fh := &zip.FileHeader{
+				Name:     name,
+				Method:   zip.Deflate,
+				Modified: header.ModTime,
+			}
+			fh.SetMode(os.FileMode(header.Mode))
+
+			var fw io.Writer
+			fw, err = zw.CreateHeader(fh)
+			if err == nil {
+				_, err = io.Copy(fw, tr)
+			}
+
+		default:
+			continue
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return zw.Close()
 }

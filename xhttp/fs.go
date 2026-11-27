@@ -271,6 +271,7 @@ func (z *ZipFile) Open(name string) (fs.File, error) {
 }
 
 func (z *ZipFile) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	z.once.Do(z.init)
 	if z.initErr != nil {
 		http.Error(w, z.initErr.Error(), http.StatusInternalServerError)
 		return

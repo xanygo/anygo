@@ -4,7 +4,11 @@
 
 package xstr
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/xanygo/anygo/xt"
+)
 
 func TestToSnakeCase(t *testing.T) {
 	type args struct {
@@ -133,4 +137,30 @@ func TestMatch(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCompileFilters(t *testing.T) {
+	t.Run("case 1", func(t *testing.T) {
+		fn, err := CompileFilters(nil, nil)
+		xt.NoError(t, err)
+		xt.True(t, fn("ok"))
+	})
+	t.Run("case 2", func(t *testing.T) {
+		fn, err := CompileFilters([]string{"wc:*.css", "wc:*.js"}, nil)
+		xt.NoError(t, err)
+		xt.True(t, fn("ok.css"))
+		xt.True(t, fn("ok.js"))
+		xt.True(t, fn("tmp/ok.js"))
+
+		xt.False(t, fn("ok.png"))
+		xt.False(t, fn("ok.js.png"))
+	})
+	t.Run("case 3", func(t *testing.T) {
+		fn, err := CompileFilters([]string{"wc:*.css", "wc:*.js"}, []string{"wc:tmp/*"})
+		xt.NoError(t, err)
+		xt.True(t, fn("ok.css"))
+		xt.True(t, fn("ok.js"))
+		xt.False(t, fn("ok.png"))
+		xt.False(t, fn("tmp/ok.js"))
+	})
 }

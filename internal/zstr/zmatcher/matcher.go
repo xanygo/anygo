@@ -28,7 +28,7 @@ func compile(pattern string) (MatchFunc, error) {
 	if strings.HasPrefix(pattern, "re:") {
 		re, err := regexp.Compile(pattern[3:])
 		if err != nil {
-			return nil, fmt.Errorf("invalid regex: %w", err)
+			return nil, fmt.Errorf("compile invalid regex %q: %w", pattern[3:], err)
 		}
 		return re.MatchString, nil
 	}
@@ -45,7 +45,7 @@ func compile(pattern string) (MatchFunc, error) {
 		if strings.ContainsAny(pattern, "*?") {
 			re, err := regexp.Compile(wildcardToRegex(pattern))
 			if err != nil {
-				return nil, fmt.Errorf("invalid wildcard: %w", err)
+				return nil, fmt.Errorf("compile invalid wildcard %q: %w", pattern, err)
 			}
 			return re.MatchString, nil
 		}
@@ -120,4 +120,8 @@ func wildcardToRegex(p string) string {
 
 func AllFalse(string) bool {
 	return false
+}
+
+func AllTrue(string) bool {
+	return true
 }
